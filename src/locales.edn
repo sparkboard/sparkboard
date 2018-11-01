@@ -124,6 +124,8 @@
              :fr "Filtres"}
  :i/looking-for-help {:en "Looking for Help"
                       :fr "Demander de l'aide"}
+ :i/looking-for {:en "Looking For"
+                 :fr "À la recherche de"}
  :i/my-projects {:en "My projects"
                  :fr "Mes projets"}
  :i/project {:en "Project"
