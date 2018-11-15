@@ -52,6 +52,8 @@
                     :fr "Pour les demandes urgentes, veuillez envoyer un courriel à {email}."}
  :i/type-here {:en "Type Here"
                :fr "écrivez ici"}
+ :i/title {:en "Title"
+           :fr "Título"}
  :auth/welcome-register {:en "Sign Up for Sparkboard"
                          :fr "Inscrivez-vous pour Sparkboard"}
  :auth/welcome-sign-in {:en "Sign in to Sparkboard"
@@ -159,6 +161,8 @@
                 :fr "Adhésion"}
  :i/add-a-member {:en "Add a Member"
                   :fr "Ajouter un membre"}
+ :i/add {:en "Add"
+         :fr "Ajouter"}
  :i/team {:en "Team"
           :fr "Équipe"}
  :i/boards {:en "Boards"
