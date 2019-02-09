@@ -112,6 +112,8 @@
                                      :fr "Étiquette"}
  :i/available                       {:en "Available"
                                      :fr "Disponible"}
+ :i/more                            {:en "More"
+                                     :fr "Plus"}
  :notification/newPost
                                     {:en "{first}{count, plural, offset:1
                =0 {}
