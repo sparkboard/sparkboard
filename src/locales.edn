@@ -102,7 +102,7 @@
               :es "necesario"}
  :i/signed-in-as {:en "You are signed in as {name}."
                   :fr "Vous êtes connecté en tant que {name}."
-                  :es "Has iniciado sesión como {nombre}"}
+                  :es "Has iniciado sesión como {name}"}
  :i/sign-out {:en "Sign Out"
               :fr "se déconnecter"
               :es "Desconectar"}
@@ -111,7 +111,7 @@
              :es "Registrarse"}
  :auth/greeting {:en "Welcome, {name}."
                  :fr "Bienvenue, {name}."
-                 :es "Bienvenido, {nombre}"}
+                 :es "Bienvenido, {name}"}
  :i/powered-by {:en "Powered by Sparkboard"
                 :fr "Propulsé par Sparkboard"
                 :es "Desarrollado por Sparkboard"}
@@ -170,7 +170,7 @@
                = 0 {}
                = 1 {}
                = 2 {y {second}}
-               other {y # otros}} escribieron: {título}"}
+               other {y # otros}} escribieron: {title}"}
  :notification/newComment
  {:en "{first}{count, plural, offset:1
                =0 {}
