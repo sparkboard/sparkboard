@@ -21,7 +21,7 @@
               :es "Opcional"}
  :i/feedback {:en "Feedback"
               :fr "Commentaires"
-              :es "Realimentación"}
+              :es "Feedback"}
  :i/bug-report {:en "Bug Report"
                 :fr "Rapport d'erreur"
                 :es "Informe de error"}
@@ -166,11 +166,11 @@
                =1 {}
                =2 { and {second}}
                other { and # others}} wrote: {title}"
-  :es "{first} {count, plural, offset: 1
-               = 0 {}
-               = 1 {}
-               = 2 {y {second}}
-               other {y # otros}} escribieron: {title}"}
+  :es "{first}{count, plural, offset:1
+               =0 {}
+               =1 {}
+               =2 { y {second}}
+               other { y # otros}} escribieron: {title}"}
  :notification/newComment
  {:en "{first}{count, plural, offset:1
                =0 {}
