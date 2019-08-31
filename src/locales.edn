@@ -167,10 +167,10 @@
                =2 { and {second}}
                other { and # others}} wrote: {title}"
   :es "{first}{count, plural, offset:1
-               =0 {}
-               =1 {}
-               =2 { y {second}}
-               other { y # otros}} escribieron: {title}"}
+               =0 {}
+               =1 {}
+               =2 { y {second}}
+               other { y # otros}} escribieron: {title}"}
  :notification/newComment
  {:en "{first}{count, plural, offset:1
                =0 {}
