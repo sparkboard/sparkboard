@@ -2,236 +2,346 @@
 ;
 ;   Entries should be plain strings with ICU-style interpolation.
 
-{:forms/validators.required         {:en "{label, default, Field} is required."
-                                     :fr "{label, default, Champ} requis."
-                                     :es "Se requiere {label, default, este campo}."}
- :forms/validators.min-length       {:en "{label, default, Text} is too short (minimum {n} characters)"
-                                     :fr "{label, default, Le champ} est trop court (minimum {n} caractères)"
-                                     :es "{label, default, El campo} es demasiado corto (mínimo {n} caracteres)"}
+{:forms/validators.required {:en "{label, default, Field} is required."
+                             :fr "{label, default, Champ} requis."
+                             :es "Se requiere {label, default, este campo}."}
+ :forms/validators.min-length {:en "{label, default, Text} is too short (minimum {n} characters)"
+                               :fr "{label, default, Le champ} est trop court (minimum {n} caractères)"
+                               :es "{label, default, El campo} es demasiado corto (mínimo {n} caracteres)"}
 
- :forms/validators.max-length       {:en "{label, default, Text} is too long (max {n} characters)"
-                                     :fr "{label, default, Le texte} est trop long (max {n} caractères)"
-                                     :es "{label, default, El campo} es demasiado largo (máximo {n} caracteres)"}
+ :forms/validators.max-length {:en "{label, default, Text} is too long (max {n} characters)"
+                               :fr "{label, default, Le texte} est trop long (max {n} caractères)"
+                               :es "{label, default, El campo} es demasiado largo (máximo {n} caracteres)"}
  :forms/validators.confirm-password {:en "Passwords must match"
                                      :fr "les mots de passe doivent correspondre"
                                      :es "Las contraseñas deben coincidir"}
 
- :i/optional                        {:en "Optional"
-                                     :fr "Optionnel"
-                                     :es "Opcional"}
- :i/feedback                        {:en "Feedback"
-                                     :fr "Commentaires"
-                                     :es "Realimentación"}
- :i/bug-report                      {:en "Bug Report"
-                                     :fr "Rapport d'erreur"
-                                     :es "Informe de error"}
- :i/upload                          {:en "Upload"
-                                     :fr "télécharger"}
- :i/your-message                    {:en "Your Message"
-                                     :fr "Votre message"}
- :i/messages                        {:en "Messages"
-                                     :fr "Messages"}
- :i/vote                            {:en "Vote"
-                                     :fr "Vote"}
- :i/select                          {:en "Select"
-                                     :fr "Choisir"}
- :i/summary                         {:en "Summary"
-                                     :fr "l'introduction"}
- :i/question                        {:en "Question"}
- :i/suggestion                      {:en "Suggestion"}
- :i/compliment                      {:en "Compliment"}
- :i/idea                            {:en "Idea"
-                                     :fr "Idée"}
- :i/other                           {:en "Other"
-                                     :fr "Autre"}
- :i/send                            {:en "Send"
-                                     :fr "envoyer"}
- :i/settings                        {:en "Settings"
-                                     :fr "Paramètres"}
- :i/okay                            {:en "Okay"
-                                     :fr "d'accord"}
- :feedback/received                 {:en "Thanks! We have received your message."
-                                     :fr "Merci! Nous avons reçu votre message."}
- :feedback/contact                  {:en "For urgent enquiries, please email {email}."
-                                     :fr "Pour les demandes urgentes, veuillez envoyer un courriel à {email}."}
- :i/type-here                       {:en "Type Here"
-                                     :fr "écrivez ici"}
- :i/title                           {:en "Title"
-                                     :fr "Título"}
- :auth/welcome-register             {:en "Sign Up for Sparkboard"
-                                     :fr "Inscrivez-vous pour Sparkboard"}
- :auth/welcome-sign-in              {:en "Sign in to Sparkboard"
-                                     :fr "Connexion au Sparkboard"}
- :auth/not-public                   {:en "Invitation required. Please ask the organizer(s) for access."
-                                     :fr "Invitation requise. S'il vous plaît demander à l'organisateur (s) pour l'accès."}
- :auth/checking-permission          {:en "Checking permissions..."
-                                     :fr "Vérification des autorisations ..."}
- :auth/invalid-code                 {:en "That's an invalid code. Please contact an organizer."
-                                     :fr "C'est un code invalide. Veuillez contacter un organisateur."}
- :auth/auth-required                {:en "Authentication required"
-                                     :fr "Authentification requise"}
- :i/published                       {:en "Published"
-                                     :fr "Publié"}
- :i/required                        {:en "required"
-                                     :fr "obligatoire"}
- :i/signed-in-as                    {:en "You are signed in as {name}."
-                                     :fr "Vous êtes connecté en tant que {name}."}
- :i/sign-out                        {:en "Sign Out"
-                                     :fr "se déconnecter"}
- :i/sign-in                         {:en "Sign In"
-                                     :fr "se connecter"}
- :auth/greeting                     {:en "Welcome, {name}."
-                                     :fr "Bienvenue, {name}."}
- :i/powered-by                      {:en "Powered by Sparkboard"
-                                     :fr "Propulsé par Sparkboard"}
- :i/new-board                       {:en "New Board"
-                                     :fr "Nouveau tableau de bord"}
- :i/new                             {:en "New"
-                                     :fr "Nouveau"}
- :i/profile                         {:en "Profile"
-                                     :fr "Profil"}
- :i/notification-settings           {:en "Notification Settings"
-                                     :fr "Paramètre de notification"}
- :i/notifications                   {:en "Notifications"
-                                     :fr "Les notifications"}
- :i/back                            {:en "Back"
-                                     :fr "Retourner"}
- :i/register                        {:en "New Account"
-                                     :fr "Nouveau compte"}
- :i/home                            {:en "Home"
-                                     :fr "d'accueil"}
- :i/archive                         {:en "Archive"
-                                     :fr "Archiver"}
- :i/archived                        {:en "Archived"
-                                     :fr "Archivé"}
- :i/search                          {:en "Search"
-                                     :fr "Rechercher"}
- :i/tags                            {:en "Tags"
-                                     :fr "Étiquettes"}
- :i/tag                             {:en "Tag"
-                                     :fr "Étiquette"}
- :i/available                       {:en "Available"
-                                     :fr "Disponible"}
- :i/more                            {:en "More"
-                                     :fr "Plus"}
+ :i/optional {:en "Optional"
+              :fr "Optionnel"
+              :es "Opcional"}
+ :i/feedback {:en "Feedback"
+              :fr "Commentaires"
+              :es "Realimentación"}
+ :i/bug-report {:en "Bug Report"
+                :fr "Rapport d'erreur"
+                :es "Informe de error"}
+ :i/upload {:en "Upload"
+            :fr "télécharger"
+            :es "Subir"}
+ :i/your-message {:en "Your Message"
+                  :fr "Votre message"
+                  :es "Tu mensaje"}
+ :i/messages {:en "Messages"
+              :fr "Messages"
+              :es "Mensajes"}
+ :i/vote {:en "Vote"
+          :fr "Vote"
+          :es "Votar"}
+ :i/select {:en "Select"
+            :fr "Choisir"
+            :es "Seleccionar"}
+ :i/summary {:en "Summary"
+             :fr "l'introduction"
+             :es "Resumen"}
+ :i/question {:en "Question"
+              :es "Pregunta"}
+ :i/suggestion {:en "Suggestion"
+                :es "Sugerencia"}
+ :i/compliment {:en "Compliment"
+                :es "Cumplido"}
+ :i/idea {:en "Idea"
+          :fr "Idée"
+          :es "Idea"}
+ :i/other {:en "Other"
+           :fr "Autre"
+           :es "Otro"}
+ :i/send {:en "Send"
+          :fr "envoyer"
+          :es "Enviar"}
+ :i/settings {:en "Settings"
+              :fr "Paramètres"
+              :es "Configuraciones"}
+ :i/okay {:en "Okay"
+          :fr "d'accord"
+          :es "Acepto"}
+ :feedback/received {:en "Thanks! We have received your message."
+                     :fr "Merci! Nous avons reçu votre message."
+                     :es "¡Gracias! Hemos recibido tu mensaje"}
+ :feedback/contact {:en "For urgent enquiries, please email {email}."
+                    :fr "Pour les demandes urgentes, veuillez envoyer un courriel à {email}."
+                    :es "Para consultas urgentes, envíe un correo electrónico a {email}"}
+ :i/type-here {:en "Type Here"
+               :fr "écrivez ici"
+               :es "Escriba aquí"}
+ :i/title {:en "Title"
+           :fr "Titre"
+           :es "Título"}
+ :auth/welcome-register {:en "Sign Up for Sparkboard"
+                         :fr "Inscrivez-vous pour Sparkboard"
+                         :es "Regístrese en Sparkboard"}
+ :auth/welcome-sign-in {:en "Sign in to Sparkboard"
+                        :fr "Connexion au Sparkboard"
+                        :es "Iniciar sesión en Sparkboard"}
+ :auth/not-public {:en "Invitation required. Please ask the organizer(s) for access."
+                   :fr "Invitation requise. S'il vous plaît demander à l'organisateur (s) pour l'accès."
+                   :es "Se requiere invitación. Solicite acceso a los organizadores."}
+ :auth/checking-permission {:en "Checking permissions..."
+                            :fr "Vérification des autorisations ..."
+                            :es "Comprobando permisos ..."}
+ :auth/invalid-code {:en "That's an invalid code. Please contact an organizer."
+                     :fr "C'est un code invalide. Veuillez contacter un organisateur."
+                     :es "Ese es un código no válido. Comunícate con un organizador."}
+ :auth/auth-required {:en "Authentication required"
+                      :fr "Authentification requise"
+                      :es "Autenticacion requerida"}
+ :i/published {:en "Published"
+               :fr "Publié"
+               :es "Publicado"}
+ :i/required {:en "required"
+              :fr "obligatoire"
+              :es "necesario"}
+ :i/signed-in-as {:en "You are signed in as {name}."
+                  :fr "Vous êtes connecté en tant que {name}."
+                  :es "Has iniciado sesión como {nombre}"}
+ :i/sign-out {:en "Sign Out"
+              :fr "se déconnecter"
+              :es "Desconectar"}
+ :i/sign-in {:en "Sign In"
+             :fr "se connecter"
+             :es "Registrarse"}
+ :auth/greeting {:en "Welcome, {name}."
+                 :fr "Bienvenue, {name}."
+                 :es "Bienvenido, {nombre}"}
+ :i/powered-by {:en "Powered by Sparkboard"
+                :fr "Propulsé par Sparkboard"
+                :es "Desarrollado por Sparkboard"}
+ :i/new-board {:en "New Board"
+               :fr "Nouveau tableau de bord"
+               :es "Nuevo tablero"}
+ :i/new {:en "New"
+         :fr "Nouveau"
+         :es "Nuevo"}
+ :i/profile {:en "Profile"
+             :fr "Profil"
+             :es "Perfil"}
+ :i/notification-settings {:en "Notification Settings"
+                           :fr "Paramètre de notification"
+                           :es "Configuración de las notificaciones"}
+ :i/notifications {:en "Notifications"
+                   :fr "Les notifications"
+                   :es "Notificaciones"}
+ :i/back {:en "Back"
+          :fr "Retourner"
+          :es "Atrás"}
+ :i/register {:en "New Account"
+              :fr "Nouveau compte"
+              :es "Nueva cuenta"}
+ :i/home {:en "Home"
+          :fr "d'accueil"
+          :es "Casa"}
+ :i/archive {:en "Archive"
+             :fr "Archiver"
+             :es "Archivar"}
+ :i/archived {:en "Archived"
+              :fr "Archivé"
+              :es "Archivado"}
+ :i/search {:en "Search"
+            :fr "Rechercher"
+            :es "Buscar"}
+ :i/tags {:en "Tags"
+          :fr "Étiquettes"
+          :es "Etiquetas"}
+ :i/tag {:en "Tag"
+         :fr "Étiquette"
+         :es "Etiqueta"}
+ :i/available {:en "Available"
+               :fr "Disponible"
+               :es "Disponible"}
+ :i/more {:en "More"
+          :fr "Plus"
+          :es "Más"}
  :notification/newPost
-                                    {:en "{first}{count, plural, offset:1
+ {:en "{first}{count, plural, offset:1
                =0 {}
                =1 {}
                =2 { and {second}}
-               other { and # others}} wrote: {title}"}
+               other { and # others}} wrote: {title}"
+  :es "{first} {count, plural, offset: 1
+               = 0 {}
+               = 1 {}
+               = 2 {y {second}}
+               other {y # otros}} escribieron: {título}"}
  :notification/newComment
-                                    {:en "{first}{count, plural, offset:1
+ {:en "{first}{count, plural, offset:1
                =0 {}
                =1 {}
                =2 { and {second}}
-               other { and # others}} commented on {title}"}
+               other { and # others}} commented on {title}"
+  :es "{first}{count, plural, offset:1
+               =0 {}
+               =1 {}
+               =2 { y {second}}
+               other { y # otros}} comentaron {title}"}
  :notification/newMember
-                                    {:en "{first}{count, plural, offset:1
+ {:en "{first}{count, plural, offset:1
                =0 {}
                =1 {}
                =2 { and {second}}
-               other { and # others}} joined {title}"}
- :i/filters                         {:en "Filters"
-                                     :fr "Filtres"}
- :i/looking-for-help                {:en "Looking for Help"
-                                     :fr "Demander de l'aide"}
- :i/looking-for                     {:en "Looking For"
-                                     :fr "À la recherche de"}
- :i/my-projects                     {:en "My projects"
-                                     :fr "Mes projets"}
- :i/project                         {:en "Project"
-                                     :fr "Projet"}
- :i/person                          {:en "Person"
-                                     :fr "Participant"}
- :i/projects                        {:en "Projects"
-                                     :fr "Projets"}
- :i/people                          {:en "People"
-                                     :fr "Participants"}
- :i/date-added                      {:en "Date Added"
-                                     :fr "date ajoutée"}
- :i/admin                           {:en "Admin"
-                                     :fr "Admin"}
- :i/editor                          {:en "Editor"
-                                     :fr "Éditeur"}
- :i/member                          {:en "Member"
-                                     :fr "Membre"}
- :i/remove                          {:en "Remove"
-                                     :fr "Retirer"}
- :i/delete                          {:en "Delete"
-                                     :fr "Supprimer"}
- :i/advanced                        {:en "Advanced"
-                                     :fr "Options avancées"}
- :i/owner                           {:en "Owner"
-                                     :fr "Propriétaire"}
- :i/not-found                       {:en "Sorry, we couldn't find that page."
-                                     :fr "Désolé, nous n'avons pas trouvé cette page."}
- :error/loading-data                {:en "Error loading data."
-                                     :fr "Erreur lors du chargement des données."}
+               other { and # others}} joined {title}"
+  :es "{first}{count, plural, offset:1
+               =0 {}
+               =1 {}
+               =2 { y {second}}
+               other { y # otros}} se unieron a {title}"}
+ :i/filters {:en "Filters"
+             :fr "Filtres"
+             :es "Filtros"}
+ :i/looking-for-help {:en "Looking for Help"
+                      :fr "Demander de l'aide"
+                      :es "En busca de ayuda"}
+ :i/looking-for {:en "Looking For"
+                 :fr "À la recherche de"
+                 :es "Buscando"}
+ :i/my-projects {:en "My projects"
+                 :fr "Mes projets"
+                 :es "Mis proyectos"}
+ :i/project {:en "Project"
+             :fr "Projet"
+             :es "Proyecto"}
+ :i/person {:en "Person"
+            :fr "Participant"
+            :es "Persona"}
+ :i/projects {:en "Projects"
+              :fr "Projets"
+              :es "Proyectos"}
+ :i/people {:en "People"
+            :fr "Participants"
+            :es "Gente"}
+ :i/date-added {:en "Date Added"
+                :fr "date ajoutée"
+                :es "Fecha Agregada"}
+ :i/admin {:en "Admin"
+           :fr "Admin"
+           :es "Administración"}
+ :i/editor {:en "Editor"
+            :fr "Éditeur"
+            :es "Editor"}
+ :i/member {:en "Member"
+            :fr "Membre"
+            :es "Miembro"}
+ :i/remove {:en "Remove"
+            :fr "Retirer"
+            :es "Retirar"}
+ :i/delete {:en "Delete"
+            :fr "Supprimer"
+            :es "Borrar"}
+ :i/advanced {:en "Advanced"
+              :fr "Options avancées"
+              :es "Avanzado"}
+ :i/owner {:en "Owner"
+           :fr "Propriétaire"
+           :es "Propietario"}
+ :i/not-found {:en "Sorry, we couldn't find that page."
+               :fr "Désolé, nous n'avons pas trouvé cette page."
+               :es "Lo siento, no pudimos encontrar esa página"}
+ :error/loading-data {:en "Error loading data."
+                      :fr "Erreur lors du chargement des données."
+                      :es "Error al cargar datos"}
 
- :auth/firebase-error               {:en "Firebase authentication error"
-                                     :fr "Erreur d'authentification Firebase"}
- :i/membership                      {:en "Membership"
-                                     :fr "Adhésion"}
- :i/add-a-member                    {:en "Add a Member"
-                                     :fr "Ajouter un membre"}
- :i/add                             {:en "Add"
-                                     :fr "Ajouter"}
- :i/add-item                        {:en "Add an item"
-                                     :fr "Ajouter un élément"}
- :i/team                            {:en "Team"
-                                     :fr "Équipe"}
- :i/boards                          {:en "Boards"
-                                     :fr "Tableaux de bord"}
- :i/sort                            {:en "Sort"
-                                     :fr "Trier"}
- :i/save                            {:en "Save"
-                                     :fr "Enregistrer"}
- :i/done                            {:en "Done"
-                                     :fr "Terminer"}
- :i/join                            {:en "Join"
-                                     :fr "se joindre"}
- :i/contact                         {:en "Contact"
-                                     :fr "Contactez nous"}
- :i/create                          {:en "Create"
-                                     :fr "créer"}
- :i/cancel                          {:en "Cancel"
-                                     :fr "annuler"}
- :i/category                        {:en "Category"
-                                     :fr "Catégorie"}
- :i/topic                           {:en "Topic"
-                                     :fr "Sujet"}
- :i/participant                     {:en "Participant"
-                                     :fr "Participant"}
- :i/participants                    {:en "Participants"
-                                     :fr "Participants"}
- :i/link                            {:en "Link"
-                                     :fr "Lien"}
- :i/description                     {:en "Description"
-                                     :fr "Description"}
- :i/welcome-message                 {:en "Welcome Message"}
+ :auth/firebase-error {:en "Firebase authentication error"
+                       :fr "Erreur d'authentification Firebase"
+                       :es "Error de autenticación de Firebase"}
+ :i/membership {:en "Membership"
+                :fr "Adhésion"
+                :es "Afiliación"}
+ :i/add-a-member {:en "Add a Member"
+                  :fr "Ajouter un membre"
+                  :es "Agregar un miembro"}
+ :i/add {:en "Add"
+         :fr "Ajouter"
+         :es "Añadir"}
+ :i/add-item {:en "Add an item"
+              :fr "Ajouter un élément"
+              :es "Agregar un elemento"}
+ :i/team {:en "Team"
+          :fr "Équipe"
+          :es "Equipo"}
+ :i/boards {:en "Boards"
+            :fr "Tableaux de bord"
+            :es "Tablas"}
+ :i/sort {:en "Sort"
+          :fr "Trier"
+          :es "Ordenar"}
+ :i/save {:en "Save"
+          :fr "Enregistrer"
+          :es "Salvar"}
+ :i/done {:en "Done"
+          :fr "Terminer"
+          :es "Hecho"}
+ :i/join {:en "Join"
+          :fr "se joindre"
+          :es "Unirse"}
+ :i/contact {:en "Contact"
+             :fr "Contactez nous"
+             :es "Contacto"}
+ :i/create {:en "Create"
+            :fr "créer"
+            :es "Crear"}
+ :i/cancel {:en "Cancel"
+            :fr "annuler"
+            :es "Cancelar"}
+ :i/category {:en "Category"
+              :fr "Catégorie"
+              :es "Categoría"}
+ :i/topic {:en "Topic"
+           :fr "Sujet"
+           :es "Tema"}
+ :i/participant {:en "Participant"
+                 :fr "Participant"
+                 :es "Partícipe"}
+ :i/participants {:en "Participants"
+                  :fr "Participants"
+                  :es "Participantes"}
+ :i/link {:en "Link"
+          :fr "Lien"
+          :es "Enlazar"}
+ :i/description {:en "Description"
+                 :fr "Description"
+                 :es "Descripción"}
+ :i/welcome-message {:en "Welcome Message"
+                     :es "Mensaje de bienvenida"}
  :membership.create.consent/contact-details
-                                    {:en "Allow my contact details to be shared with {title} for organizational purposes"
-                                     :fr "Permettre à mes coordonnées d'être partagées avec {title} à des fins d'organisation"}
+ {:en "Allow my contact details to be shared with {title} for organizational purposes"
+  :fr "Permettre à mes coordonnées d'être partagées avec {title} à des fins d'organisation"
+  :es "Permitir que mis datos de contacto se compartan con {title} para fines organizativos"}
  :membership.create.consent/terms
-                                    {:en "I agree to the terms & conditions for {title}."
-                                     :fr "J'accepte les termes et conditions pour {title}."}
- :i/continue                        {:en "Continue"
-                                     :fr "continuer"}
+ {:en "I agree to the terms & conditions for {title}."
+  :fr "J'accepte les termes et conditions pour {title}."
+  :es "Acepto los términos y condiciones de {title}"}
+ :i/continue {:en "Continue"
+              :fr "continuer"
+              :es "Continuar"}
 
- :i/join-entity                     {:en "Become a member of {title}"}
- :i/join-this-board                 {:en "Join this board"
-                                     :fr "Rejoindre ce groupe"}
+ :i/join-entity {:en "Become a member of {title}"
+                 :es "Hágase miembro de {title}"}
+ :i/join-this-board {:en "Join this board"
+                     :fr "Rejoindre ce groupe"
+                     :es "Únete a este foro"}
 
- :privacy-policy/url                {:en "https://www.iubenda.com/privacy-policy/7930385"
-                                     :fr "https://www.iubenda.com/privacy-policy/47741885"}
- :privacy-policy/label              {:en "Privacy Policy"
-                                     :fr "Politique de confidentialité"}
- :i/label                           {:en "Label"
-                                     :fr "étiquette"}
- :locale/en                         {:en "English"}
- :locale/fr                         {:fr "français"}
- :i/view                            {:en "View"
-                                     :fr "voir"}
- :i/updates                         {:en "Updates"
-                                     :fr "Actus"}}
+ :privacy-policy/url {:en "https://www.iubenda.com/privacy-policy/7930385"
+                      :fr "https://www.iubenda.com/privacy-policy/47741885"}
+ :privacy-policy/label {:en "Privacy Policy"
+                        :fr "Politique de confidentialité"
+                        :es "Política de privacidad"}
+ :i/label {:en "Label"
+           :fr "étiquette"
+           :es "Etiqueta"}
+ :locale/en {:en "English"}
+ :locale/fr {:fr "français"}
+ :locale/es {:es "español"}
+ :i/view {:en "View"
+          :fr "voir"
+          :es "Ver"}
+ :i/updates {:en "Updates"
+             :fr "Actus"
+             :es "Actualizaciones"}}
