@@ -138,7 +138,7 @@
               :es "Nueva cuenta"}
  :i/home {:en "Home"
           :fr "d'accueil"
-          :es "Casa"}
+          :es "Inicio"}
  :i/archive {:en "Archive"
              :fr "Archiver"
              :es "Archivar"}
