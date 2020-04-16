@@ -1,0 +1,29 @@
+# from https://github.com/salarmehr/IDEA-gitignore/blob/master/.gitignore
+
+#### ignore all .idea files ...
+*
+
+#### except
+
+# Version Control configuration for your project
+!vcs.xml
+
+# how IDEA should treat the text files in your project
+!encodings.xml
+
+# automatic code formatting
+!codeStyleSettings.xml
+!codeStyles/codeStyleConfig.xml
+!codeStyles/Project.xml
+
+# project specific words
+!dictionaries
+
+!copyrights
+!misc.xml
+!sqldialects.xml
+
+# Clojure stuff
+!clojure-deps.xml
+!ClojureProjectResolveSettings.xml
+!.name

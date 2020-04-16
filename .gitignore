@@ -1,0 +1,12 @@
+.cpcache
+.yarn
+target
+.nrepl-port
+public/js
+_scratch
+.shadow-cljs
+node_modules
+*.iml
+*.DS_Store
+**/compiled/**
+.local.config.edn
