@@ -1,1 +1,22 @@
-{:paths ["src"]}
+{:paths ["src"]
+ :deps {
+        ;; juxt on postgres
+        juxt/crux-core {:mvn/version "20.03-1.8.0-alpha"}
+        juxt/crux-jdbc {:mvn/version "20.03-1.8.0-alpha"}
+        org.postgresql/postgresql {:mvn/version "42.2.11"}
+
+        ;; Google Cloud PubSub
+        jonotin {:local/root "vendor/jonotin"}
+
+        ;; system
+        mount {:mvn/version "0.1.16"}
+
+        ;; config/environment
+        aero {:mvn/version "1.1.5"}
+        mhuebert/shadow-env {:mvn/version "0.1.6"}
+
+        ;; util
+        org.bovinegenius/exploding-fish {:mvn/version "0.3.6"}
+        metosin/jsonista {:mvn/version "0.2.5"}
+
+        }}

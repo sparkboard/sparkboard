@@ -1,0 +1,12 @@
+{:clj
+ {:postgres/database-url #profile {:dev "postgresql://localhost/sparkboard_crux"
+                                   :default #env DATABASE_URL}
+  :google.pubsub/legacy-log-subscription "legacy-log-crux"
+  :google/application-credentials #profile {:dev "./google-application-credentials.json"
+                                            :default #env GOOGLE_APPLICATION_CREDENTIALS}}
+
+ :common
+ {:server/host #profile {:dev #join["http://localhost:" #ref [:common :server/port]]
+                         :staging "https://staging.sparkboard.dev"
+                         :prod "https://prod.sparkboard.dev"}
+  :server/port #or [#env PORT 8000]}}

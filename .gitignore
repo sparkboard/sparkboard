@@ -9,4 +9,5 @@ node_modules
 *.iml
 *.DS_Store
 **/compiled/**
-.local.config.edn
+**/.local.config.edn
+google-application-credentials.json

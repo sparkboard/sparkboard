@@ -1,6 +1,5 @@
-; Map of translations. All user-facing text should be defined here.
-;
-;   Entries should be plain strings with ICU-style interpolation.
+;; Map of translations. All user-facing text should be defined here.
+;; Entries should be plain strings with ICU-style interpolation.
 
 {:forms/validators.required {:en "{label, default, Field} is required."
                              :fr "{label, default, Champ} requis."
