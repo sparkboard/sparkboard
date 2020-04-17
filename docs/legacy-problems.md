@@ -1,0 +1,5 @@
+# Legacy problems & limitations
+
+- When viewing a board, users are connected to the server via websocket, and subscribe to changes on the board. These subscriptions are managed in-memory. It is not possible to run >1 Sparkboard server because the servers would not communicate with each other, so updates would only be pushed to clients that are connected to the server that received the update.
+- When viewing a board, clients download and sync all of the data for a board. For large boards (>1k members) this becomes a significant performance bottleneck (large JSON payload to download and parse).
+- Orgs/Boards and their roles are stored in Firebase, while Projects (groups) & all other data are stored in MongoDB. This means we cannot have a single query to retrieve information relevant to a particular user, and have to patch together data from multiple sources. Even if all our data was in one of these databases, neither MongoDB nor Firebase support relational queries, so we'd still have to stitch together data manually in multiple hops. We rely on a 3rd party service (Algolia) to perform queries of projects that span multiple boards.
