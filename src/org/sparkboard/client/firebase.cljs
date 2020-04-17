@@ -16,7 +16,11 @@
 ;; auth state
 
 (defonce current-user (ratom/create :initial-state))
-(defn id-token [] (j/get @current-user :idToken))
+
+(defn id-token []
+  (let [user @current-user]
+    (when (object? user)
+      (j/get user :idToken))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; firebaseui-web
