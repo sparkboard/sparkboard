@@ -2,6 +2,11 @@
 
 Dead-simple Google Cloud Pub/Sub from Clojure. jonotin is a never used Finnish word for a thing that queues. Read more about jonotin from [IPRally blog](https://www.iprally.com/news/google-cloud-pubsub-with-clojure).
 
+## Local modifications
+
+- support a `:credentials` parameter, to pass in a service account json string
+- `subscribe!` returns the `Subscription` instance
+
 ## Latest version
 
 Leiningen/Boot
@@ -34,6 +39,7 @@ Maven
 (require `[jonotin.core :as jonotin])
 
 (jonotin/publish! {:project-name "my-gcloud-project"
+                   :credentials service-account-json-string
                    :topic-name "my-topic"
                    :messages ["msg1" "msg2"]})
 ```
