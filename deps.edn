@@ -18,5 +18,6 @@
         ;; util
         org.bovinegenius/exploding-fish {:mvn/version "0.3.6"}
         metosin/jsonista {:mvn/version "0.2.5"}
+        clj-http {:mvn/version "3.10.1"}
 
         }}
