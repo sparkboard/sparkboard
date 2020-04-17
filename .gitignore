@@ -10,4 +10,4 @@ node_modules
 *.DS_Store
 **/compiled/**
 **/.local.config.edn
-google-application-credentials.json
+.migration-data

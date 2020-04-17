@@ -1,8 +1,10 @@
-(ns org.sparkboard.server.pubsub
+(ns org.sparkboard.migration.pubsub
   (:require [jonotin.core :as jonotin]
             [jsonista.core :as json]
             [org.sparkboard.env :as env]
             [mount.core :as mo]))
+
+;; to be run in prod - consumes stream of updates from mongodb + firebase
 
 (def service-account-json (env/get :firebase/service-account))
 (def service-account (json/read-value service-account-json))
