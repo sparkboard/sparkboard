@@ -15,12 +15,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auth state
 
-(defonce current-user (ratom/create :initial-state))
+(defonce auth-state (ratom/create nil))
 
 (defn id-token []
-  (let [user @current-user]
-    (when (object? user)
-      (j/get user :idToken))))
+  (:id-token @auth-state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; firebaseui-web
@@ -46,7 +44,9 @@
   (j/call @auth :onAuthStateChanged
           (fn [user]
             (if (nil? user)
-              (reset! current-user :signed-out)
+              (reset! auth-state {:status :signed-out})
               (p/let [token (j/call user :getIdToken)]
-                (reset! current-user
-                        (j/extend! (j/lit {:idToken token}) user)))))))
+                (reset! auth-state
+                        {:status :signed-in
+                         :user user
+                         :id-token token}))))))

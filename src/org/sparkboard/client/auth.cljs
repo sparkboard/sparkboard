@@ -25,13 +25,13 @@
   [:div#firebaseui])
 
 (v/defview auth-header* []
-  (let [auth-state @firebase/current-user]
-    (cond (= :initial-state auth-state) "..."
-          (or (= :signed-out auth-state)
-              (j/call @firebase/UI :isPendingRedirect))
-          [use-firebaseui-web]
-          :else
-          (j/let [^:js {:keys [displayName idToken photoURL]} auth-state]
+  (let [{:keys [status id-token user]} @firebase/auth-state]
+    (cond (nil? status) "..."
+          (or (= :signed-out status)
+              (j/call @firebase/UI :isPendingRedirect)) [use-firebaseui-web]
+
+          (= :signed-in status)
+          (j/let [^:js {:keys [displayName photoURL]} user]
             [:div.sans-serif.lh-copy
              [:div.flex.items-center.f4
               (when photoURL
@@ -39,7 +39,7 @@
               [:div.mr3 "Hello, " displayName ". "]
               [:div.flex-auto]
               [:a.blue.pointer.underline-hover {:on-click #(j/call @firebase/auth :signOut)} "Sign Out"]]
-             [:div.f6.mt3 [:b "id token: "] idToken]]))))
+             [:div.f6.mt3 [:b "id token: "] id-token]]))))
 
 (v/defview auth-header [{:keys [locale]}]
   [after-promise {:promise (firebase/ui-deps locale)
