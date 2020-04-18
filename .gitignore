@@ -11,3 +11,4 @@ node_modules
 **/compiled/**
 **/.local.config.edn
 .migration-data
+public
