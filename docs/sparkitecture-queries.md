@@ -4,13 +4,13 @@ Overview of current and expected queries.
 
 * For every request, we use the hostname of the request to look up the entity that is linked to the domain. Multiple kinds of entities can be associated with a custom domain: `#{:board, :org, :collection}`. 
 * **Real-time:** no
-* **Legacy: **domains are stored in Firebase, at path `/{entityKind}/{entityId}/domain`, with an index for reverse lookup maintained at `/domain/{domain}`
+* **Legacy:** domains are stored in Firebase, at path `/{entityKind}/{entityId}/domain`, with an index for reverse lookup maintained at `/domain/{domain}`
 
 **Org, Board, and Collection Entities**
 
 * For every request, we look up the **entity** associated with the domain, containing fields like `title`, `description`, etc (see [schema](https://github.com/sparkboard/sparkboard/blob/master/docs/legacy-schema.md))
 * **Real-time**: yes, some of this data changes during an event and should update on user's screens immediately, eg. when we start a "community vote" period. 
-* **Legacy: **in firebase, `/{entityKind}/{entityId}/`
+* **Legacy:** in firebase, `/{entityKind}/{entityId}/`
 
 **Org, Board, and Collection Children (Projects & Memberships)**
 
@@ -32,4 +32,4 @@ Overview of current and expected queries.
 
 * Notifications link to a `target` entity (eg. a membership, project, post, or comment). We track whether a notification has been viewed, and whether the target has been viewed (we do not need to continue to highlight the notification if the user navigated to its target independently).
 * **Real-time:** yes, we show an up-to-date notifications indicator in the browser.
-* **Legacy: **Notifications are stored in their own mongodb collection. The client watches an `invalidations` path in Firebase associated with the current user, which is updated with the current timestamp when a new notification has been created for that user, triggering the client to request its latest notifications.
+* **Legacy:** Notifications are stored in their own mongodb collection. The client watches an `invalidations` path in Firebase associated with the current user, which is updated with the current timestamp when a new notification has been created for that user, triggering the client to request its latest notifications.
