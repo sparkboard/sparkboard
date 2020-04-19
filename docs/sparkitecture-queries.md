@@ -12,7 +12,7 @@ Overview of current and expected queries.
 * **Real-time**: yes, some of this data changes during an event and should update on user's screens immediately, eg. when we start a "community vote" period. 
 * **Legacy:** in firebase, `/{entityKind}/{entityId}/`
 
-**Org, Board, and Collection Children (Projects & Memberships)**
+**Org, Board, and Collection: Queries of nested/child entities (Projects & Memberships)**
 
 * **Relations:**
   * Organizations "own" boards, and (transitively) projects and members (one to many)
@@ -22,14 +22,29 @@ Overview of current and expected queries.
   * **Legacy:** A board's projects and members are downloaded in full to the client, where they are searched in-memory (this needs to stop, infeasible for large boards). Searching all of the projects for an organization is achieved via a separate index (managed by [Algolia](https://algolia.com)).
 * **Real-time:** yes, participants often keep a Sparkboard window open during events, and expect to see new projects/members appear over time. Eg, during a "pitch night", a representative of each project will talk for 1-2 minutes. Participants browse and join projects and it is important that everyone can see who has joined which project without refreshing the page. OTOH, search queries do not need to be updated in real time.
 
-**Field specifications**
+**Projects & Memberships (users)**
 
-* Projects and Memberships (users) contain a list of profile "fields". These fields are described by "field specs" owned by a parent entity (eg. the board they are a part of). 
-  * A field spec describes its `type` (eg. text, checkbox, photo, video, link, link-list, etc), `label`, `hint`, `options` (for select drop-downs or tag fields) and so on. 
-  * Displaying a project requires first fetching the field-spec for its parent, then using that metadata to correctly display the project's fields (the project contains only values for each field, not the associated metadata).
+* Projects contain a list of fields (some of which are dynamically specified by the parent board)
+* **Real-time:** yes, it should reflect edits immediately while it is being viewed
+* **Joins**: A project shows profiles of its members
+* **Field specifications**
+  * Projects and Memberships (users) contain a list of profile "fields". These fields are described by "field specs" owned by a parent entity (eg. the board they are a part of).
+    * A field spec describes its `type` (eg. text, checkbox, photo, video, link, link-list, etc), `label`, `hint`, `options` (for select drop-downs or tag fields) and so on.
+    * Displaying a project requires first fetching the field-spec for its parent, then using that metadata to correctly display the project's fields (the project contains only values for each field, not the associated metadata).
 
 **Notifications**
 
 * Notifications link to a `target` entity (eg. a membership, project, post, or comment). We track whether a notification has been viewed, and whether the target has been viewed (we do not need to continue to highlight the notification if the user navigated to its target independently).
 * **Real-time:** yes, we show an up-to-date notifications indicator in the browser.
 * **Legacy:** Notifications are stored in their own mongodb collection. The client watches an `invalidations` path in Firebase associated with the current user, which is updated with the current timestamp when a new notification has been created for that user, triggering the client to request its latest notifications.
+
+**Discussions**
+
+* Each project has a "Discussion" which contains a list of nested posts with comments (1 level deep)
+* **Real-time:** yes
+
+**Threads/Messages**
+
+* Users can message each other
+* **Real-time:** yes, like any chat
+
