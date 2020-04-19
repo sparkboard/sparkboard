@@ -1,16 +1,13 @@
 {:clj
  {:postgres/database-url #profile {:dev "postgresql://localhost/sparkboard_crux"
                                    :default #env DATABASE_URL}
-  :google.pubsub/legacy-log-subscription "legacy-log-crux"
-  :google/application-credentials #profile {:dev "./google-application-credentials.json"
-                                            :default #env GOOGLE_APPLICATION_CREDENTIALS}}
+  :google.pubsub/legacy-log-subscription "legacy-log-crux"}
 
  :common
  {:server/host #profile {:dev #join["http://localhost:" #ref [:common :server/port]]
                          :staging "https://staging.sparkboard.dev"
                          :prod "https://prod.sparkboard.dev"}
   :server/port #or [#env PORT 8000]
-  :firebase/config
-  #profile {:dev "{\"apiKey\":\"AIzaSyBS2FVATX9zvytieEgK-1sPGmI3DU5JUhY\",\"authDomain\":\"sparkboard-dev-482f0.firebaseapp.com\",\"databaseURL\":\"https://sparkboard-dev-482f0.firebaseio.com\",\"projectId\":\"sparkboard-dev\",\"storageBucket\":\"sparkboard-dev.appspot.com\",\"messagingSenderId\":\"94039713434\",\"appId\":\"1:94039713434:web:a448eb6375ac640f\"}"
-            :staging "{\"apiKey\":\"AIzaSyAhvfCsdeFca1l22fhVR55S9zQxIZNWT8c\",\"authDomain\":\"sparkboard-staging.firebaseapp.com\",\"databaseURL\":\"https://sparkboard-staging.firebaseio.com\",\"projectId\":\"sparkboard-staging\",\"storageBucket\":\"sparkboard-staging.appspot.com\",\"messagingSenderId\":\"146437767784\",\"appId\":\"1:146437767784:web:24ab716e60bc95219a71dd\"}"
-            :prod "{\"apiKey\":\"AIzaSyCTziMxCUG2nBPhg9JNqZ9nTEs7OYxVfuI\",\"authDomain\":\"sparkboard-002.firebaseapp.com\",\"databaseURL\":\"https://sparkboard-002.firebaseio.com\",\"projectId\":\"sparkboard-002\",\"storageBucket\":\"sparkboard-002.appspot.com\",\"messagingSenderId\":\"476510914514\",\"appId\":\"1:476510914514:web:fc0db0bfdf6515d2d4aa0b\"}"}}}
+
+  ;; json string for firebase.initializeApp
+  :firebase/app-config #env FIREBASE_APP_CONFIG}}

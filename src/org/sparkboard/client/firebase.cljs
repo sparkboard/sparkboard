@@ -39,7 +39,7 @@
 ;; initial setup
 
 (defn init []
-  (j/call app :initializeApp (.parse js/JSON (env/get :firebase/config)))
+  (j/call app :initializeApp (.parse js/JSON (env/get :firebase/app-config)))
 
   (j/call @auth :onAuthStateChanged
           (fn [user]

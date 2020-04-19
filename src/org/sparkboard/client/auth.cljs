@@ -26,7 +26,7 @@
 
 (v/defview auth-header* []
   (let [{:keys [status id-token user]} @firebase/auth-state]
-    (cond (nil? status) "..."
+    (cond (nil? status) "Loading..."
           (or (= :signed-out status)
               (j/call @firebase/UI :isPendingRedirect)) [use-firebaseui-web]
 
@@ -43,5 +43,5 @@
 
 (v/defview auth-header [{:keys [locale]}]
   [after-promise {:promise (firebase/ui-deps locale)
-                  :fallback ".."}
+                  :fallback "Loading.."}
    [auth-header*]])
