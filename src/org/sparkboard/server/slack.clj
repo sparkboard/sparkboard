@@ -45,15 +45,13 @@
 (defn channel-id [channel-name]
   (:id (get (channels) channel-name)))
 
-;; TODO automatically add users
-
 (defn create-linked-channel! [channel-name]
   ;; TODO determine channel naming scheme
   (let [create-rsp (create-channel! channel-name)
         chnnl-id (-> create-rsp :body
                      (json/read-value (json/object-mapper {:decode-key-fn keyword}))
                      :channel :id)]
-    ;; TODO save channel name to Sparkboard DB
+    ;; TODO save channel name/id to Sparkboard DB
     ;; Add members of the Sparkboard project to the channel
     (invite-to-channel! channel-name ;; TODO user name lookup
                         ["FIXME"])
@@ -72,45 +70,14 @@
 
 ;; TODO "when a new member joins a project, add them to the linked channel"
 
-(comment ;; Flow: new linked channel is created
-  ;; Create channel
-  (create-channel! "is-this-thing-on") ;; TODO determine channel naming scheme
-
-  ;; "Add existing members of the project to the channel"
-  (invite-to-channel! "is-this-thing-on"
-                      ;; TODO user name lookup
-                      ["dave.liepmann"])
-  
-  ;; "Pin a message to the top of the channel, TODO linking back to the
-  ;; Sparkboard project"  
-  (let [chnnl (channel-id "is-this-thing-on")
-        msg-rsp (json/read-value (:body (web-api "/chat.postMessage"
-                                                 {:channel chnnl :text "FIXME"}))
-                                 (json/object-mapper {:decode-key-fn keyword}))]
-    (if (:ok msg-rsp)
-      (web-api "/pins.add" {:channel chnnl
-                            :timestamp (:ts msg-rsp)})))
-
-  ;; Set channel purpose/description
-  (web-api "/conversations.setPurpose" {:purpose "FIXME (purpose)"
-                                        :channel (channel-id "is-this-thing-on")})
-
-  ;; Set channel topic
-  (web-api "/conversations.setTopic" {:topic "FIXME (topic)"
-                                      :channel (channel-id "is-this-thing-on")})
-  
-  ;; TODO "Store the channel ID with the project"
-  
-  )
-
 (comment ;;;; Feature: "prompted updates" from teams
-  ;; TODO `broadcast` function, for organizers to ping all active project channels.
+  ;; TODO `broadcast` function, for organizers to ping all active project channels:
   (doseq [cn (map :get-channel-name-FIXME [:FIXME :sparkboard-database-lookup])]
     (web-api "/chat.postMessage"
              {:channel (channel-id cn) :text "FIXME"}
              (json/object-mapper {:decode-key-fn keyword})))
 
-  ;; TODO determine what info we want to save on Sparkboard side, and how configurable we want that to be
+  ;; TODO determine what prompted-update info we want to save on Sparkboard side, and how configurable we want that to be
   ;; TODO use that to decide interaction method
   ;; ....  - block kit https://api.slack.com/block-kit/interactivity
   ;; ....  - shortcuts or slash commands https://api.slack.com/interactivity/entry-points
