@@ -1,5 +1,4 @@
-{:deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        com.google.cloud/google-cloud-pubsub {:mvn/version "1.102.1"}
+{:deps {com.google.cloud/google-cloud-pubsub {:mvn/version "1.102.1"}
         io.grpc/grpc-netty-shaded {:mvn/version "1.26.0"}
         io.grpc/grpc-core {:mvn/version "1.26.0"}
         io.grpc/grpc-api {:mvn/version "1.26.0"}}}
