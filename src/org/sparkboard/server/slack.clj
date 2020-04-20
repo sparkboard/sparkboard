@@ -29,7 +29,6 @@
                                       :channel (channel-id channel-name)})))
 
 (defn create-channel! [channel]
-  ;; https://api.slack.com/methods/conversations.create
   (web-api "/conversations.create" {:name channel}))
 
 (defn users []
@@ -41,19 +40,32 @@
             (assoc m (:name_normalized channel) channel))
           {}
           (:channels (json/read-value (:body (web-api "/channels.list"))
-                               (json/object-mapper {:decode-key-fn keyword})))))
+                                      (json/object-mapper {:decode-key-fn keyword})))))
 
 (defn channel-id [channel-name]
   (:id (get (channels) channel-name)))
 
-
 ;; TODO automatically add users
+
+(comment ;; Flow: new linked channel is created
+  (create-channel! "is-this-thing-on")
+
+  ;; "Pin a message to the top of the channel, linking back to the
+  ;; Sparkboard project"
+  
+  (let [chnnl (channel-id "is-this-thing-on")
+        msg-rsp (json/read-value (:body (web-api "/chat.postMessage"
+                                                 {:channel chnnl :text "it's as easy as"}))
+                                 (json/object-mapper {:decode-key-fn keyword}))]
+    (if (:ok msg-rsp)
+      (web-api "/pins.add" {:channel chnnl
+                            :timestamp (:ts msg-rsp)})))
+  
+  )
 
 (comment
   (http-verb "/users.list")
   
-  (create-channel! "is-this-thing-on")
-
   (map :name (users))
   ;; ("slackbot" "me1" "sparkboard" "mhuebert" "dave.liepmann")
 
@@ -61,3 +73,4 @@
 
   ;; TODO delete/archive channel, for testing and clean-up
   )
+
