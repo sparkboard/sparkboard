@@ -53,6 +53,7 @@
         chnnl-id (-> create-rsp :body
                      (json/read-value (json/object-mapper {:decode-key-fn keyword}))
                      :channel :id)]
+    ;; TODO save channel name to Sparkboard DB
     ;; Add members of the Sparkboard project to the channel
     (invite-to-channel! channel-name ;; TODO user name lookup
                         ["FIXME"])
@@ -68,7 +69,6 @@
                               :timestamp (:ts msg-rsp)})))
     (web-api "/conversations.setPurpose" {:purpose "FIXME (purpose)" :channel chnnl-id})
     (web-api "/conversations.setTopic" {:topic "FIXME (topic)" :channel chnnl-id})))
-
 
 ;; TODO "when a new member joins a project, add them to the linked channel"
 
@@ -100,6 +100,20 @@
                                       :channel (channel-id "is-this-thing-on")})
   
   ;; TODO "Store the channel ID with the project"
+  
+  )
+
+(comment ;;;; Feature: "prompted updates" from teams
+  ;; TODO `broadcast` function, for organizers to ping all active project channels.
+  (doseq [cn (map :get-channel-name-FIXME [:FIXME :sparkboard-database-lookup])]
+    (web-api "/chat.postMessage"
+             {:channel (channel-id cn) :text "FIXME"}
+             (json/object-mapper {:decode-key-fn keyword})))
+
+  ;; TODO determine what info we want to save on Sparkboard side, and how configurable we want that to be
+  ;; TODO use that to decide interaction method
+  ;; ....  - block kit https://api.slack.com/block-kit/interactivity
+  ;; ....  - shortcuts or slash commands https://api.slack.com/interactivity/entry-points
   
   )
 
