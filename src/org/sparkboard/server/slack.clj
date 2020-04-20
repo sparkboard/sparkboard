@@ -69,6 +69,9 @@
     (web-api "/conversations.setPurpose" {:purpose "FIXME (purpose)" :channel chnnl-id})
     (web-api "/conversations.setTopic" {:topic "FIXME (topic)" :channel chnnl-id})))
 
+
+;; TODO "when a new member joins a project, add them to the linked channel"
+
 (comment ;; Flow: new linked channel is created
   ;; Create channel
   (create-channel! "is-this-thing-on") ;; TODO determine channel naming scheme
