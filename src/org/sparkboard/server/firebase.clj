@@ -3,7 +3,10 @@
             [jsonista.core :as json]
             [org.sparkboard.env :as env]))
 
-(def to-json #(json/read-value % (json/object-mapper {:decode-key-fn true})))
+(defn to-json
+  "Parse json string, with keyword-keys"
+  [s]
+  (json/read-value s (json/object-mapper {:decode-key-fn true})))
 
 (def database-url (:databaseURL (to-json (env/get :firebase/app-config))))
 (def database-secret (env/get :firebase/database-secret))
