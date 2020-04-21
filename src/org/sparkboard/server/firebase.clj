@@ -1,7 +1,7 @@
 (ns org.sparkboard.server.firebase
-  (:require [jsonista.core :as json]
-            [org.sparkboard.env :as env]
-            [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [jsonista.core :as json]
+            [org.sparkboard.env :as env]))
 
 (def to-json #(json/read-value % (json/object-mapper {:decode-key-fn true})))
 
@@ -10,9 +10,9 @@
 
 (defn json-path [path]
   (str database-url
-       (str/replace-first path #"^\/*" "/")
+       (str/replace-first path #"^\/*" "/")                 ;; needs a single leading "/"
        ".json"
-       "?auth=" (env/get :firebase/database-secret)))
+       "?auth=" database-secret))
 
 (def fetch-json (comp to-json slurp json-path))
 
