@@ -1,5 +1,7 @@
 {:clj
- {:postgres/database-url #profile {:dev "postgresql://localhost/sparkboard_crux"
+ {:firebase/service-account #env FIREBASE_SERVICE_ACCOUNT
+  :firebase/database-secret #env FIREBASE_DATABASE_SECRET
+  :postgres/database-url #profile {:dev "postgresql://localhost/sparkboard_crux"
                                    :default #env DATABASE_URL}
   :google.pubsub/legacy-log-subscription "legacy-log-crux"}
 
