@@ -1,6 +1,5 @@
 (ns org.sparkboard.server.slack
   (:require [clj-http.client :as client]
-            [clojure.string :as string]
             [jsonista.core :as json]
             [org.sparkboard.env :as env]))
 
@@ -23,18 +22,6 @@
      :headers {"Authorization" (str "Bearer " (-> env/get :slack.app :bot-user-oauth-token))}
      :body (json/write-value-as-string body)})))
 
-(defn invite-to-channel! [channel-name usernames]
-  (let [usrs (into {} (map (juxt :name :id)) (users))]
-    (web-api "/conversations.invite" {:users (map usrs usernames)
-                                      :channel (channel-id channel-name)})))
-
-(defn create-channel! [channel]
-  (web-api "/conversations.create" {:name channel}))
-
-(defn users []
-  (:members (json/read-value (:body (web-api "/users.list"))
-                             (json/object-mapper {:decode-key-fn keyword}))))
-
 (defn channels []
   (reduce (fn [m channel]
             (assoc m (:name_normalized channel) channel))
@@ -44,6 +31,18 @@
 
 (defn channel-id [channel-name]
   (:id (get (channels) channel-name)))
+
+(defn users []
+  (:members (json/read-value (:body (web-api "/users.list"))
+                             (json/object-mapper {:decode-key-fn keyword}))))
+
+(defn invite-to-channel! [channel-name usernames]
+  (let [usrs (into {} (map (juxt :name :id)) (users))]
+    (web-api "/conversations.invite" {:users (map usrs usernames)
+                                      :channel (channel-id channel-name)})))
+
+(defn create-channel! [channel]
+  (web-api "/conversations.create" {:name channel}))
 
 (defn create-linked-channel! [channel-name]
   ;; TODO determine channel naming scheme
@@ -58,11 +57,10 @@
     ;; "Pin a message to the top of the channel, TODO linking back to
     ;; the Sparkboard project"
     (let [msg-rsp (-> (web-api "/chat.postMessage"
-                               {:channel chnnl-id :text "FIXME"}
-                               (json/object-mapper {:decode-key-fn keyword}))
+                               {:channel chnnl-id :text "FIXME"})
                       :body
                       (json/read-value (json/object-mapper {:decode-key-fn keyword})))]
-      (if (:ok msg-rsp)
+      (when (:ok msg-rsp)
         (web-api "/pins.add" {:channel chnnl-id
                               :timestamp (:ts msg-rsp)})))
     (web-api "/conversations.setPurpose" {:purpose "FIXME (purpose)" :channel chnnl-id})
@@ -73,9 +71,7 @@
 (comment ;;;; Feature: "prompted updates" from teams
   ;; TODO `broadcast` function, for organizers to ping all active project channels:
   (doseq [cn (map :get-channel-name-FIXME [:FIXME :sparkboard-database-lookup])]
-    (web-api "/chat.postMessage"
-             {:channel (channel-id cn) :text "FIXME"}
-             (json/object-mapper {:decode-key-fn keyword})))
+    (web-api "/chat.postMessage" {:channel (channel-id cn) :text "FIXME"}))
 
   ;; TODO determine what prompted-update info we want to save on Sparkboard side, and how configurable we want that to be
   ;; TODO use that to decide interaction method
