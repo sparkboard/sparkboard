@@ -20,7 +20,6 @@
 (def fetch-json (comp to-json slurp json-path))
 
 (comment
-  app-config
 
   (:title (fetch-json "settings/demo"))
 
