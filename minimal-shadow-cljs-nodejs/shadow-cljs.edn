@@ -1,0 +1,6 @@
+{:source-paths ["src"]
+ :dependencies [[appliedscience/js-interop "0.2.5"]]
+ :builds {:app {:target :node-library
+                :exports {:handler server.main/handler}
+                :output-dir "target"
+                :output-to "target/main.js"}}}
