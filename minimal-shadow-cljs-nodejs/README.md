@@ -1,6 +1,20 @@
-
-Node.js example for [shadow-cljs](https://github.com/thheller/shadow-cljs)
+AWS Lambda with node.js + shadow-cljs
 ----
+
+### CIDER
+
+    cider-jack-in-cljs
+    :app
+
+In terminal, in directory target/
+   
+    node main.js
+
+
+
+
+Below is original instructions for quickstart Node.js shadow-cljs project.
+
 
 ### Develop
 
