@@ -4,7 +4,9 @@ AWS Lambda with node.js + shadow-cljs
 ### CIDER
 
     cider-jack-in-cljs
+    shadow
     :app
+    y
 
 In terminal, in directory target/
    

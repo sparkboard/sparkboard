@@ -1,12 +1,62 @@
 (ns server.main
-  "AWS Lambda <--> Slack API"
+  "AWS Lambda <--> Slack API
+
+  Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
   (:require [applied-science.js-interop :as j]
+            [clojure.edn :as edn]
             [clojure.string :as string]))
 
 (println "Hello, this is ClojureScript; how may I direct your call?")
 
-;; Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Environment variables/config
+(def config (edn/read-string (j/get js/process.env :SPARKBOARD_CONFIG)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; HTTP requests
+(def node-fetch (js/require "node-fetch"))
+
+(defn- fetch+ [decode-fn url opts]
+  (-> (node-fetch url opts)
+      (.then (fn [^js/Response res] (if (.-ok res)
+                                     (decode-fn res)
+                                     (throw (ex-info "Invalid network request"
+                                                     {:status (.-status res)})))))))
+
+(defn decode-json [^js/Response resp] (.json resp))
+
+(def ^js/Promise fetch-json+ (partial fetch+ decode-json))
+
+(defn slack-api-get [family-method callback-fn]
+  (-> (fetch+ decode-json
+              (str "https://slack.com/api/" family-method)
+              #js {"method" "GET"
+                   "Content-Type" "application/json; charset=utf-8"
+                   :headers #js {"Authorization" (str "Bearer " (-> config :slack :bot-user-oauth-token))}})
+      (.then callback-fn)))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defonce db (atom {:slack/users nil
+                   :sparkboard/users nil}))
+
+(slack-api-get "users.list"
+               ;; FIXME detect and log errors
+               (fn [rsp] (swap! db #(assoc % :slack/users (j/get rsp :members)))))
+
+(comment
+  (:slack/users @db)
+
+  (reset! db {:slack/users nil
+              :sparkboard/users nil})
+  
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; FIXME
 (defn from-slack? [event] ;; FIXME ran into trouble with
                         ;; goog.crypt.Sha256 so using a hack for
                         ;; now. TODO implement HMAC check per
@@ -18,6 +68,12 @@
   #_  (let [s (string/join ":" [(j/get evt :version)
                             (j/get-in evt [:headers :x-slack-request-timestamp])
                             (j/get evt :body)])]))
+
+(defn slack-username [slack-user-id]
+  )
+
+(defn sparkboard-admin? [slack-username]
+  )
 
 
 (defn handler [event _context callback]
@@ -42,13 +98,36 @@
   (from-slack? dummy-event) ;; true
   
   (.parse js/JSON (j/get dummy-event :body))
-
+  #js {:token "2GI5dHsNabxffKscvxK3nBwh",
+       :team_id "T010MGVT4TV",
+       :api_app_id "A010P0KP6SV",
+       :type "event_callback",
+       :event_id "Ev0130HRS518",
+       :event_time 1588609616,
+       :authed_users #js ["U010MH3GSKD"]
+       :event #js {:client_msg_id "756c2148-b72c-45fc-b33d-50309a2b9f49",
+                   :type "app_mention",
+                   :text "<@U010MH3GSKD> test",
+                   :user "U012E480NTB",
+                   :ts "1588609616.000200",
+                   :team "T010MGVT4TV",
+                   :blocks #js [#js {:type "rich_text",
+                                     :block_id "rGa",
+                                     :elements #js [#js {:type "rich_text_section",
+                                                         :elements #js [#js {:type "user", :user_id "U010MH3GSKD"}
+                                                                        #js {:type "text", :text " test"}]}]}],
+                   :channel "C0121SEV6Q2",
+                   :event_ts "1588609616.000200"}}
+  
   (j/get-in dummy-event [:headers :user-agent])
 
   (j/get-in dummy-event [:requestContext :http :path])
   
   (j/get dummy-event :body)
+  
+  (js-keys js/process.env)
+  #js ["CAML_LD_LIBRARY_PATH" "MANPATH" "TERM_PROGRAM" "NVM_CD_FLAGS" "TERM" "SHELL" "CLICOLOR" "TMPDIR" "PERL5LIB" "GOOGLE_APPLICATION_CREDENTIALS" "DATA_WORLD_API_TOKEN" "TERM_PROGRAM_VERSION" "JAVA_11_HOME" "TERM_SESSION_ID" "LC_ALL" "OCAML_TOPLEVEL_PATH" "NVM_DIR" "USER" "COMMAND_MODE" "SSH_AUTH_SOCK" "__CF_USER_TEXT_ENCODING" "BASH_SILENCE_DEPRECATION_WARNING" "PAGER" "LSCOLORS" "OPAMUTF8MSGS" "FTP_PASSIVE" "CLOJURESCRIPT_HOME" "PATH" "MY_DATOMIC_USERNAME" "LaunchInstanceID" "GH_TUFTE_GIST_AUTH_TOKEN" "PWD" "JAVA_HOME" "EDITOR" "LANG" "ITERM_PROFILE" "XPC_FLAGS" "URUK_TEST_IMG_PATH" "RBENV_SHELL" "XPC_SERVICE_NAME" "PYENV_SHELL" "SHLVL" "HOME" "COLORFGBG" "GOROOT" "LANGUAGE" "LC_TERMINAL_VERSION" "ITERM_SESSION_ID" "LOGNAME" "MY_DATOMIC_PASSWORD" "LC_CTYPE" "CLOJURESCRIPT" "NVM_BIN" "GOPATH" "XCC_HOME" "LC_TERMINAL" "DISPLAY" "JAVA_8_HOME" "SECURITYSESSIONID" "COLORTERM" "_" "OLDPWD"]
 
-  (js-keys dummy-event)
-
+  (j/get js/process.env :MANPATH)
+  
   )
