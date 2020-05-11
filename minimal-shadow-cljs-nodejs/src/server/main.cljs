@@ -3,7 +3,6 @@
 
   Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
   (:require [applied-science.js-interop :as j]
-            [clojure.edn :as edn]
             [clojure.string :as string]))
 
 (println "Hello, this is ClojureScript; how may I direct your call?")
@@ -11,7 +10,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Environment variables/config
-(def config (edn/read-string (j/get js/process.env :SPARKBOARD_CONFIG)))
+(def config (cljs.reader/read-string (j/get js/process.env :SPARKBOARD_CONFIG)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
