@@ -5,8 +5,7 @@
   (:require [applied-science.js-interop :as j]
             [clojure.string :as string]))
 
-(println "Hello, this is ClojureScript; how may I direct your call?")
-
+(println "Running ClojureScript in AWS Lambda")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Environment variables/config
@@ -37,14 +36,13 @@
       (.then callback-fn)))
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defonce db (atom {:slack/users nil
                    :sparkboard/users nil}))
 
 (slack-api-get "users.list"
                ;; FIXME detect and log errors
-               (fn [rsp] (swap! db #(assoc % :slack/users (j/get rsp :members)))))
+               (fn [rsp] (swap! db #(assoc % :slack/users-raw (js->clj (j/get rsp :members))))))
 
 (comment
   (:slack/users @db)
@@ -69,6 +67,15 @@
                             (j/get evt :body)])]))
 
 (defn slack-username [slack-user-id]
+  (let [users-by-id (:slack/users-by-id
+                     (swap! db #(assoc % :slack/users-by-id
+                                       (group-by (fn [usr] (get usr "id"))
+                                                 (:slack/users-raw @db)))))]
+    (first (get users-by-id slack-user-id))))
+
+(comment
+  (slack-username "U012E480NTB")
+
   )
 
 (defn sparkboard-admin? [slack-username]
