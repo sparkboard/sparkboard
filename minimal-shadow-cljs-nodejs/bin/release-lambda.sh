@@ -7,3 +7,6 @@ yarn install --production
 rm archive.zip 
 zip -r archive.zip main.js ../node_modules/
 # TODO send to s3 or lambda
+
+# restore node_modules
+yarn
