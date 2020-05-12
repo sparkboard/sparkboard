@@ -1,0 +1,23 @@
+#!/bin/bash
+# this scripts downlaods babashka when needed and runs it
+
+name=babashka
+version="0.0.75"
+install_dir="$(pwd)/.store/$name-$version"
+
+if ! [[ -f "$install_dir/bb" ]]; then
+  case "$(uname -s)" in
+      Linux*)     platform=linux;;
+      Darwin*)    platform=macos;;
+  esac
+
+  echo "$name $version not found, installing to $install_dir..."
+  download_url="https://github.com/borkdude/babashka/releases/download/v$version/babashka-$version-$platform-amd64.zip"
+
+  mkdir -p $install_dir
+  echo -e "Downloading $download_url."
+  curl -o bb.zip -sL "$download_url"
+  unzip -qqo "bb.zip" -d $install_dir
+  rm "bb.zip"
+fi
+exec ./.store/$name-$version/bb "$@"
