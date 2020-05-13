@@ -8,11 +8,6 @@
 (println "Running ClojureScript in AWS Lambda")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Environment variables/config
-(def config (cljs.reader/read-string (j/get js/process.env :SPARKBOARD_CONFIG)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Pseudo-database
 (defonce db (atom {:slack/users nil
                    :sparkboard/users nil}))
@@ -77,11 +72,14 @@
                              :text msg}
                             (fn [rsp] (println rsp)))) ;; <-- FIXME
 
-(defn request-updates! [admin-username]
-  (let [channels (map :id (:slack/channels-raw @db))]
-    (run! (partial send-slack-msg! (str admin-username " asks you to please post a project update in #foo-channel"))
-          channels)
-    channels))
+(defn request-updates! [admin-username channels]
+  ;; Write broadcast to Firebase
+  
+  ;; Send message to Slack channels
+  (run! (partial send-slack-msg! (str admin-username " asks you to please post a project update in #foo-channel"))
+        channels)
+  ;; Return channels (?)
+  channels)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,13 +99,12 @@
     (response callback (j/get (.parse js/JSON (j/get event :body)) :challenge))
     
     :else ;; FIXME
-    (let [admin-user (-> (.parse js/JSON (j/get event :body))
-                         (j/get-in [:event :user])
-                         slack-user
-                         (get "name"))]
-      (let [channels (request-updates! admin-user)]
-        (response callback (clj->js {:action "broadcast update request to project channels"
-                                     :channels channels}))))))
+    (response callback (clj->js {:action "broadcast update request to project channels"
+                                 :channels (request-updates! (-> (.parse js/JSON (j/get event :body))
+                                                                 (j/get-in [:event :user])
+                                                                 slack-user
+                                                                 (get "name"))
+                                                             (map :id (:slack/channels-raw @db)))}))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
