@@ -71,17 +71,17 @@
   (map :name_normalized (:slack/channels-raw @db)))
 
 (defn send-slack-msg! [msg channel-id]
-  (slack/post-query-string!
-   "chat.postMessage"
-   {;;:token (-> config :slack :bot-user-oauth-token) ;; why is this in the headers *and* here?
-    :channel channel-id ;; can also be name?
-    ;; :blocks TODO
-    :text msg}
-   (fn [rsp] (println rsp))))
+  (slack/post-query-string! "chat.postMessage"
+                            {:channel channel-id ;; API also accepts channel name
+                             ;; :blocks TODO
+                             :text msg}
+                            (fn [rsp] (println rsp)))) ;; <-- FIXME
 
 (defn request-updates! [admin-username]
-  (run! (partial send-slack-msg! (str admin-username " asks you to please post a project update in #foo-channel"))
-        (map :id (:slack/channels-raw @db))))
+  (let [channels (map :id (:slack/channels-raw @db))]
+    (run! (partial send-slack-msg! (str admin-username " asks you to please post a project update in #foo-channel"))
+          channels)
+    channels))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -105,9 +105,9 @@
                          (j/get-in [:event :user])
                          slack-user
                          (get "name"))]
-      (request-updates! admin-user)
-      (response callback (clj->js {:action "broadcast update request to project channels"
-                                   :channels project-channel-names})))))
+      (let [channels (request-updates! admin-user)]
+        (response callback (clj->js {:action "broadcast update request to project channels"
+                                     :channels channels}))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
