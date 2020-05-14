@@ -40,3 +40,18 @@
        ;; FIXME detect and log errors
        (fn [rsp] (println rsp)))
  )
+
+(defn views-open! [trigger-id blocks]
+  (slack/post-query-string! "views.open"
+                            {:trigger_id trigger-id
+                             :view (clj->json blocks)}
+                            ;; TODO better callback
+                            (fn [rsp] (println "slack modal response:" rsp))))
+
+(defn views-update! [view-id trigger-id blocks]
+  (slack/post-query-string! "views.push"
+                            {:trigger_id trigger-id
+                             :view_id view-id
+                             :view (clj->json blocks)}
+                            ;; TODO better callback
+                            (fn [rsp] (println "slack modal response:" rsp))))

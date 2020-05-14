@@ -70,13 +70,6 @@
 (defn clj->json [x]
   (.stringify js/JSON (clj->js x)))
 
-(defn send-slack-modal! [trigger-id blocks]
-  (slack/post-query-string! "views.open"
-                            {:trigger_id trigger-id
-                             :view (clj->json blocks)}
-                            ;; TODO better callback
-                            (fn [rsp] (println "slack modal response:" rsp))))
-
 (defn send-slack-blocks! [blocks channel]
   (slack/post-query-string! "chat.postMessage"
                             {:channel channel ;; id or name
@@ -138,22 +131,21 @@
   (case (j/get payload "type")
     "shortcut" ; Slack "Global shortcut". Show initial modal of action
                                         ; options (currently just Compose button).
-    (send-slack-modal! (j/get payload "trigger_id")
+    (slack/views-open! (j/get payload "trigger_id")
                        (modal-view-payload "Broadcast" blocks-broadcast-1))
 
     "block_actions" ; branch on user action within prior modal
     (case (-> payload (j/get "actions") first (j/get "action_id"))
       "broadcast1:compose"
-      (send-slack-modal! (j/get payload "trigger_id")
-                         (modal-view-payload "Compose Broadcast" blocks-broadcast-2)))))
+      (slack/views-update! (j/get-in payload ["container" "view_id"])
+                           (j/get payload "trigger_id")
+                           (modal-view-payload "Compose Broadcast" blocks-broadcast-2)))))
 
 
 (comment
-  (-> (parse-json (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyYmxvY2tfYWN0aW9ucyUyMiUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIybmFtZSUyMiUzQSUyMmRhdmUubGllcG1hbm4lMjIlMkMlMjJ0ZWFtX2lkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlN0QlMkMlMjJhcGlfYXBwX2lkJTIyJTNBJTIyQTAxMFAwS1A2U1YlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmNvbnRhaW5lciUyMiUzQSU3QiUyMnR5cGUlMjIlM0ElMjJ2aWV3JTIyJTJDJTIydmlld19pZCUyMiUzQSUyMlYwMTRDTlVSVUZKJTIyJTdEJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMTAxOTgwMTM0MzEuMTAyMTU3MzkyMjk0Ny5jOTA1MWYzOTM5ZDFkMDU4ZGRiODk1MDUzZjAwNDU2ZiUyMiUyQyUyMnRlYW0lMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTJDJTIyZG9tYWluJTIyJTNBJTIyc3Bhcmtib2FyZC1hcHAlMjIlN0QlMkMlMjJ2aWV3JTIyJTNBJTdCJTIyaWQlMjIlM0ElMjJWMDE0Q05VUlVGSiUyMiUyQyUyMnRlYW1faWQlMjIlM0ElMjJUMDEwTUdWVDRUViUyMiUyQyUyMnR5cGUlMjIlM0ElMjJtb2RhbCUyMiUyQyUyMmJsb2NrcyUyMiUzQSU1QiU3QiUyMnR5cGUlMjIlM0ElMjJkaXZpZGVyJTIyJTJDJTIyYmxvY2tfaWQlMjIlM0ElMjJyQVlXJTIyJTdEJTJDJTdCJTIydHlwZSUyMiUzQSUyMnNlY3Rpb24lMjIlMkMlMjJibG9ja19pZCUyMiUzQSUyMlNkdXF0JTIyJTJDJTIydGV4dCUyMiUzQSU3QiUyMnR5cGUlMjIlM0ElMjJtcmtkd24lMjIlMkMlMjJ0ZXh0JTIyJTNBJTIyJTJBVGVhbStCcm9hZGNhc3QlMkElNUNuU2VuZCthK21lc3NhZ2UrdG8rYWxsK3RlYW1zLiUyMiUyQyUyMnZlcmJhdGltJTIyJTNBZmFsc2UlN0QlMkMlMjJhY2Nlc3NvcnklMjIlM0ElN0IlMjJ0eXBlJTIyJTNBJTIyYnV0dG9uJTIyJTJDJTIyYWN0aW9uX2lkJTIyJTNBJTIyYnJvYWRjYXN0MSUzQWNvbXBvc2UlMjIlMkMlMjJzdHlsZSUyMiUzQSUyMnByaW1hcnklMjIlMkMlMjJ0ZXh0JTIyJTNBJTdCJTIydHlwZSUyMiUzQSUyMnBsYWluX3RleHQlMjIlMkMlMjJ0ZXh0JTIyJTNBJTIyQ29tcG9zZSUyMiUyQyUyMmVtb2ppJTIyJTNBdHJ1ZSU3RCUyQyUyMnZhbHVlJTIyJTNBJTIyY2xpY2tfbWVfMTIzJTIyJTdEJTdEJTVEJTJDJTIycHJpdmF0ZV9tZXRhZGF0YSUyMiUzQSUyMiUyMiUyQyUyMmNhbGxiYWNrX2lkJTIyJTNBJTIyJTIyJTJDJTIyc3RhdGUlMjIlM0ElN0IlMjJ2YWx1ZXMlMjIlM0ElN0IlN0QlN0QlMkMlMjJoYXNoJTIyJTNBJTIyMTU4OTQ4MjUwOC4xMTUwYzBlOCUyMiUyQyUyMnRpdGxlJTIyJTNBJTdCJTIydHlwZSUyMiUzQSUyMnBsYWluX3RleHQlMjIlMkMlMjJ0ZXh0JTIyJTNBJTIyQnJvYWRjYXN0JTIyJTJDJTIyZW1vamklMjIlM0F0cnVlJTdEJTJDJTIyY2xlYXJfb25fY2xvc2UlMjIlM0FmYWxzZSUyQyUyMm5vdGlmeV9vbl9jbG9zZSUyMiUzQWZhbHNlJTJDJTIyY2xvc2UlMjIlM0FudWxsJTJDJTIyc3VibWl0JTIyJTNBbnVsbCUyQyUyMnByZXZpb3VzX3ZpZXdfaWQlMjIlM0FudWxsJTJDJTIycm9vdF92aWV3X2lkJTIyJTNBJTIyVjAxNENOVVJVRkolMjIlMkMlMjJhcHBfaWQlMjIlM0ElMjJBMDEwUDBLUDZTViUyMiUyQyUyMmV4dGVybmFsX2lkJTIyJTNBJTIyJTIyJTJDJTIyYXBwX2luc3RhbGxlZF90ZWFtX2lkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJib3RfaWQlMjIlM0ElMjJCMDEwWjFKOEJSNiUyMiU3RCUyQyUyMmFjdGlvbnMlMjIlM0ElNUIlN0IlMjJhY3Rpb25faWQlMjIlM0ElMjJicm9hZGNhc3QxJTNBY29tcG9zZSUyMiUyQyUyMmJsb2NrX2lkJTIyJTNBJTIyU2R1cXQlMjIlMkMlMjJ0ZXh0JTIyJTNBJTdCJTIydHlwZSUyMiUzQSUyMnBsYWluX3RleHQlMjIlMkMlMjJ0ZXh0JTIyJTNBJTIyQ29tcG9zZSUyMiUyQyUyMmVtb2ppJTIyJTNBdHJ1ZSU3RCUyQyUyMnZhbHVlJTIyJTNBJTIyY2xpY2tfbWVfMTIzJTIyJTJDJTIyc3R5bGUlMjIlM0ElMjJwcmltYXJ5JTIyJTJDJTIydHlwZSUyMiUzQSUyMmJ1dHRvbiUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk0ODI1MTAuOTQ2Njc2JTIyJTdEJTVEJTdE")))
-                  :keywordize-keys true) (j/get "actions") first (j/get "action_id"))
-  
+  (j/get-in (parse-json (:payload (uri/query-string->map (decode-base64 "foo")))) ["container" "view_id"])
 
-)
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -174,8 +166,7 @@
 
       ;; Slack Event triggered (e.g. global shortcut)
       (:payload (uri/query-string->map (decode-base64 body)))
-      (handle-modal! (parse-json (:payload (uri/query-string->map (decode-base64 body)))
-                                 :keywordize-keys true))
+      (handle-modal! (parse-json (:payload (uri/query-string->map (decode-base64 body)))))
       
       :else
       (response callback (clj->js {:action "broadcast update request to project channels"
