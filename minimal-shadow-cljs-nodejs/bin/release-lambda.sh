@@ -10,3 +10,5 @@ zip -r archive.zip main.js ../node_modules/
 
 # restore node_modules
 yarn
+
+# TODO https://stackoverflow.com/questions/34437900/how-to-load-npm-modules-in-aws-lambda/53450086#53450086

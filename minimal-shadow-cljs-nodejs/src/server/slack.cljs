@@ -6,6 +6,8 @@
 
 (def base-uri "https://slack.com/api/")
 
+;; TODO refactir some of content-type & headers into a `def`
+
 (defn get! [family-method callback-fn]
   (-> (http/fetch+ http/decode-json
                    (str base-uri family-method)
@@ -25,6 +27,7 @@
       (.then callback-fn)))
 
 (defn post-query-string! [family-method query-params callback-fn]
+  ;; This fn is a hack to work around broken JSON bodies in Slack's API
   (-> (http/fetch+ http/decode-json
                    (str base-uri family-method "?" (uri/map->query-string query-params))
                    #js {:method "post"
