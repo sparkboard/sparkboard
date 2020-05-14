@@ -102,6 +102,23 @@
                 :action_id "broadcast1:compose"
                 :value "click_me_123"}}])
 
+(def blocks-broadcast-2
+  [{:type "section",
+    :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
+   {:type "divider"}
+   {:type "section",
+    :text {:type "mrkdwn", :text "*Post responses to channel:*"},
+    :accessory {:type "conversations_select",
+                :placeholder {:type "plain_text",
+                              :text "Select a channel...",
+                              :emoji true},
+                :filter {:include ["public" "private"]}}}
+   {:type "input",
+    :element {:type "plain_text_input",
+              :multiline true,
+              :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
+    :label {:type "plain_text", :text "Message:", :emoji true}}])
+
 (defn modal-view-payload [title blocks]
   {:type :modal
    :title {:type "plain_text"
@@ -116,6 +133,19 @@
         channels)
   ;; Return channels (?)
   channels)
+
+(defn handle-modal! [payload]
+  (case (j/get payload :type)
+    :shortcut ; Slack "Global shortcut". Show initial modal of action
+              ; options (currently just Compose button).
+    (send-slack-modal! (j/get (.parse js/JSON payload) :trigger_id)
+                       (modal-view-payload "Broadcast" blocks-broadcast-1))
+
+    :block_actions ; branch on user action within prior modal
+    (case (j/get-in payload [:actions :action_id])
+      "broadcast1:compose"
+      (send-slack-modal! (j/get (.parse js/JSON payload) :trigger_id)
+                         (modal-view-payload "Compose Broadcast" blocks-broadcast-2)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -136,13 +166,7 @@
 
       ;; Slack Event triggered (e.g. global shortcut)
       (:payload (uri/query-string->map (decode-base64 body)))
-      (send-slack-modal! (j/get (->> body
-                                     decode-base64
-                                     uri/query-string->map
-                                     :payload
-                                     (.parse js/JSON))
-                                :trigger_id)
-                         (modal-view-payload "Broadcast" blocks-broadcast-1))
+      (handle-modal! (:payload (uri/query-string->map (decode-base64 body))))
       
       :else
       (response callback (clj->js {:action "broadcast update request to project channels"
@@ -155,8 +179,27 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
-  (.parse js/JSON (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyc2hvcnRjdXQlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk0NjkxNzYuNjI2MDQwJTIyJTJDJTIydGVhbSUyMiUzQSU3QiUyMmlkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJkb21haW4lMjIlM0ElMjJzcGFya2JvYXJkLWFwcCUyMiU3RCUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIydGVhbV9pZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTdEJTJDJTIyY2FsbGJhY2tfaWQlMjIlM0ElMjJzcGFya2JvYXJkJTIyJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMzY5NDk4MzE0MDkuMTAyMTU3MzkyMjk0Ny40MjU1NmM0NjAxNzQ3NzU0NWFmMjVlOThlOWUzYzc4YyUyMiU3RA=="))))
+  (.parse js/JSON (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyc2hvcnRjdXQlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk0NzM1OTkuMjAxNTAzJTIyJTJDJTIydGVhbSUyMiUzQSU3QiUyMmlkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJkb21haW4lMjIlM0ElMjJzcGFya2JvYXJkLWFwcCUyMiU3RCUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIydGVhbV9pZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTdEJTJDJTIyY2FsbGJhY2tfaWQlMjIlM0ElMjJzcGFya2JvYXJkJTIyJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMDk4MDQ4ODg5MTkuMTAyMTU3MzkyMjk0Ny43YzAyOTdlNWE2N2U3NDIzZGU4NWQ4N2I1NDQ3YzNmZiUyMiU3RA=="))))
 
+  {:type "block_actions",
+   :user #js {:id "U012E480NTB", :username "dave.liepmann", :name "dave.liepmann", :team_id "T010MGVT4TV"},
+   :api_app_id "A010P0KP6SV", :token "2GI5dHsNabxffKscvxK3nBwh",
+   :container #js {:type "view", :view_id "V013NN81CSX"},
+   :trigger_id "1109815195271.1021573922947.a0dd388e6b681774be9d14efe602f86f",
+   :team #js {:id "T010MGVT4TV", :domain "sparkboard-app"},
+
+   :view #js {:id "V013NN81CSX", :team_id "T010MGVT4TV", :type "modal", :blocks #js [#js {:type "divider", :block_id "LY1"} #js {:type "section", :block_id "YIWrv", :text #js {:type "mrkdwn", :text "*Team+Broadcast*\nSend+a+message+to+all+teams.", :verbatim false}, :accessory #js {:type "button", :action_id "broadcast1:compose", :style "primary", :text #js {:type "plain_text", :text "Compose", :emoji true}, :value "click_me_123"}}], :private_metadata "", :callback_id "", :state #js {:values #js {}}, :hash "1589473604.c3a4512c", :title #js {:type "plain_text", :text "Broadcast", :emoji true}, :clear_on_close false, :notify_on_close false, :close nil, :submit nil, :previous_view_id nil, :root_view_id "V013NN81CSX", :app_id "A010P0KP6SV", :external_id "", :app_installed_team_id "T010MGVT4TV", :bot_id "B010Z1J8BR6"},
+
+   :actions #js [#js {:action_id "broadcast1:compose",
+                      :block_id "YIWrv",
+                      :text #js {:type "plain_text",
+                                 :text "Compose",
+                                 :emoji true},
+                      :value "click_me_123",
+                      :style "primary",
+                      :type "button",
+                      :action_ts "1589473805.190240"}]}
+  
   
   (def dummy-event
     #js {:version "2.0", :routeKey "ANY /slackBot", :rawPath "/default/slackBot", :rawQueryString "", :headers #js {:accept "*/*", :accept-encoding "gzip,deflate", :content-length 604, :content-type "application/json", :host "4jmgrrysk7.execute-api.eu-central-1.amazonaws.com", :user-agent "Slackbot 1.0 (+https://api.slack.com/robots)", :x-amzn-trace-id "Root=1-5eb04251-dff473b7a8d14a51a0dca648", :x-forwarded-for "54.174.192.196", :x-forwarded-port 443, :x-forwarded-proto "https", :x-slack-request-timestamp 1588609617, :x-slack-signature "v0=d846b125b481013842b7e460145f564291455d79ba302acc17bdcad61b762b02"}, :requestContext #js {:accountId 579644408564, :apiId "4jmgrrysk7", :domainName "4jmgrrysk7.execute-api.eu-central-1.amazonaws.com", :domainPrefix "4jmgrrysk7", :http #js {:method "POST", :path "/default/slackBot", :protocol "HTTP/1.1", :sourceIp "54.174.192.196", :userAgent "Slackbot 1.0 (+https://api.slack.com/robots)"}, :requestId "MA9MyiRtFiAEJPQ=", :routeKey "ANY /slackBot", :stage "default", :time "04/May/2020:16:26:57 +0000", :timeEpoch 1588609617791},
