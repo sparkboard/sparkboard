@@ -15,7 +15,7 @@
            e)))
 
 (defn decode-base64 [s]
-  ;; TODO "DeprecationWarning: Buffer() is deprecated due to security
-  ;; and usability issues. Please use the Buffer.alloc(),
-  ;; Buffer.allocUnsafe(), or Buffer.from() methods instead."
-  (.toString (js/Buffer s "base64")))
+  (.toString (.from js/Buffer s "base64")))
+
+(defn clj->json [x]
+  (.stringify js/JSON (clj->js x)))
