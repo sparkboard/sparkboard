@@ -70,7 +70,7 @@
 (defn send-slack-blocks! [blocks channel]
   (slack/post-query-string! "chat.postMessage"
                             {:channel channel ;; id or name
-                             :blocks (clj->json blocks)}
+                             :blocks (slack/clj->json blocks)}
                             ;; TODO better callback
                             (fn [rsp] (println "slack blocks response:" rsp))))
 
@@ -117,7 +117,7 @@
 
 (defn request-updates! [admin-username channels]
   ;; Write broadcast to Firebase
-  
+
   ;; Send message to Slack channels
   (run! (partial send-slack-msg! (str admin-username " asks you to please post a project update in #foo-channel"))
         channels)
@@ -166,7 +166,7 @@
       ;; Slack Event triggered (e.g. global shortcut)
       (:payload (uri/query-string->map (decode-base64 body)))
       (handle-modal! (parse-json (:payload (uri/query-string->map (decode-base64 body)))))
-      
+
       :else
       (response callback (clj->js {:action "broadcast update request to project channels"
                                    :channels (request-updates! (-> (.parse js/JSON body)
@@ -196,8 +196,8 @@
                                  :style "primary",
                                  :type "button",
                                  :action_ts "1589473805.190240"}]} [:actions :action_id])
-  
-  
+
+
   (def dummy-event
     #js {:version "2.0", :routeKey "ANY /slackBot", :rawPath "/default/slackBot", :rawQueryString "", :headers #js {:accept "*/*", :accept-encoding "gzip,deflate", :content-length 604, :content-type "application/json", :host "4jmgrrysk7.execute-api.eu-central-1.amazonaws.com", :user-agent "Slackbot 1.0 (+https://api.slack.com/robots)", :x-amzn-trace-id "Root=1-5eb04251-dff473b7a8d14a51a0dca648", :x-forwarded-for "54.174.192.196", :x-forwarded-port 443, :x-forwarded-proto "https", :x-slack-request-timestamp 1588609617, :x-slack-signature "v0=d846b125b481013842b7e460145f564291455d79ba302acc17bdcad61b762b02"}, :requestContext #js {:accountId 579644408564, :apiId "4jmgrrysk7", :domainName "4jmgrrysk7.execute-api.eu-central-1.amazonaws.com", :domainPrefix "4jmgrrysk7", :http #js {:method "POST", :path "/default/slackBot", :protocol "HTTP/1.1", :sourceIp "54.174.192.196", :userAgent "Slackbot 1.0 (+https://api.slack.com/robots)"}, :requestId "MA9MyiRtFiAEJPQ=", :routeKey "ANY /slackBot", :stage "default", :time "04/May/2020:16:26:57 +0000", :timeEpoch 1588609617791},
          :body "{\"token\":\"abcdefsNabxffKscvxK3nBwh\",\"team_id\":\"T010MGVT4TV\",\"api_app_id\":\"A010P0KP6SV\",\"event\":{\"client_msg_id\":\"756c2148-b72c-45fc-b33d-50309a2b9f49\",\"type\":\"app_mention\",\"text\":\"<@U010MH3GSKD> test\",\"user\":\"U012E480NTB\",\"ts\":\"1588609616.000200\",\"team\":\"T010MGVT4TV\",\"blocks\":[{\"type\":\"rich_text\",\"block_id\":\"rGa\",\"elements\":[{\"type\":\"rich_text_section\",\"elements\":[{\"type\":\"user\",\"user_id\":\"U010MH3GSKD\"},{\"type\":\"text\",\"text\":\" test\"}]}]}],\"channel\":\"C0121SEV6Q2\",\"event_ts\":\"1588609616.000200\"},\"type\":\"event_callback\",\"event_id\":\"Ev0130HRS518\",\"event_time\":1588609616,\"authed_users\":[\"U010MH3GSKD\"]}", :isBase64Encoded false})

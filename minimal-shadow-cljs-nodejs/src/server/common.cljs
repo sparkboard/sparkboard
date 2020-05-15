@@ -1,9 +1,11 @@
 (ns server.common
   (:require [applied-science.js-interop :as j]
-            [cljs.reader]))
+            [cljs.reader]
+            [shadow.resource :as rc]))
 
-(def config
-  (cljs.reader/read-string (j/get js/process.env :SPARKBOARD_CONFIG)))
+(def config (cljs.reader/read-string
+              (or (j/get js/process.env :SPARKBOARD_CONFIG)
+                  (rc/inline "/.local.config.edn"))))
 
 (def firebase
   (js->clj (.parse js/JSON (:firebase/app-config config))

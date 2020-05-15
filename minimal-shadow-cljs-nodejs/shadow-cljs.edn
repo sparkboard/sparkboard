@@ -1,6 +1,5 @@
-{:source-paths ["src"]
- :dependencies [[appliedscience/js-interop "0.2.5"]
-                [lambdaisland/uri "1.3.45"]]
+{:deps true
+ :nrepl {:write-port-file true}
  :builds {:app {:target :node-library
                 :exports {:handler server.main/handler}
                 :output-dir "target"
