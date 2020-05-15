@@ -15,14 +15,18 @@
 (defonce db (atom {:slack/users nil
                    :sparkboard/users nil}))
 
-(slack/get! "users.list"
-            ;; FIXME detect and log errors
-            (fn [rsp] (swap! db #(assoc % :slack/users-raw (js->clj (j/get rsp :members))))))
+(comment
 
-(slack/get! "channels.list"
-            ;; FIXME detect and log errors
-            (fn [rsp] (swap! db #(assoc % :slack/channels-raw (js->clj (j/get rsp :channels)
-                                                                      :keywordize-keys true)))))
+  ;; these requests don't block
+
+  (slack/get! "users.list"
+              ;; FIXME detect and log errors
+              (fn [rsp] (swap! db #(assoc % :slack/users-raw (js->clj (j/get rsp :members))))))
+
+  (slack/get! "channels.list"
+              ;; FIXME detect and log errors
+              (fn [rsp] (swap! db #(assoc % :slack/channels-raw (js->clj (j/get rsp :channels)
+                                                                         :keywordize-keys true))))))
 
 (comment
   (reset! db {:slack/users nil
@@ -75,12 +79,10 @@
                             ;; TODO better callback
                             (fn [rsp] (println "slack blocks response:" rsp))))
 
-(defn send-slack-msg! [msg channel]
-  (slack/post-query-string! "chat.postMessage"
-                            {:channel channel ;; id or name
-                             :text msg}
-                            ;; TODO better callback
-                            (fn [rsp] (println "slack msg response:" rsp))))
+(defn send-slack-msg+ [msg channel]
+  (slack/post-query-string+ "chat.postMessage"
+                            {:channel channel               ;; id or name
+                             :text msg}))
 
 (def blocks-broadcast-1
   [{:type "divider"}
@@ -119,12 +121,10 @@
    :blocks blocks})
 
 (defn request-updates! [msg channels]
-  ;; Write broadcast to Firebase
   ;; TODO
-  ;; Send message to Slack channels
-  (run! (partial send-slack-msg! msg) channels)
-  ;; Return channels (?)
-  channels)
+  ;; Write broadcast to Firebase
+  (p/all
+    (map (partial send-slack-msg+ msg) channels)))
 
 (defn decode-text-input [s]
   ;; Slack appears to use some (?) of
@@ -137,52 +137,58 @@
 
   )
 
-(j/defn handle-modal! [^:js {payload-type :type
-                             :keys [trigger_id]
-                             [{:keys [action_id]}] :actions
-                             {:keys [view_id]} :container
-                             :as payload}]
+(defn handle-modal! [{payload-type :type
+                      :keys [trigger_id]
+                      [{:keys [action_id]}] :actions
+                      {:keys [view_id]} :container
+                      :as payload}]
   (case payload-type
-    "shortcut" ; Slack "Global shortcut".
+    "shortcut"                                              ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
     (do (println "[handle-modal]/shortcut; blocks:" (modal-view-payload "Broadcast" blocks-broadcast-1))
         (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1)))
 
-    "block_actions" ; User acted on existing modal
+    "block_actions"                                         ; User acted on existing modal
     ;; Branch on specifics of given action
     (case action_id
       "broadcast1:compose"
       (slack/views-update! view_id (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
                                           :submit {:type "plain_text",
                                                    :text "Submit"}))
-      
+
       ;; TODO FIXME
       #_"broadcast2:channel-select"
       #_(slack/views-push! (j/get-in payload ["container" "view_id"])
                            (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                    :submit {:type "plain_text", :text "Submit"})))
+                                  :submit {:type "plain_text", :text "Submit"})))
 
-    "view_submission" ; "Submit" button pressed
+    "view_submission"                                       ; "Submit" button pressed
     ;; In the future we will need to branch on other data
-    (request-updates! (decode-text-input (get-in payload [:view
-                                                          :state
-                                                          :values
-                                                          :sb-input1
-                                                          :broadcast2:text-input
-                                                          :value]))
-                      (map :id (:slack/channels-raw @db)))
-    nil))
+    (p/let [channel-ids (p/-> (slack/get+ "channels.list")
+                              (j/get :channels)
+                              (->> (keep (j/fn [^:js {:keys [is_member id]}]
+                                           ;; TODO
+                                           ;; ensure bot joins team-channels when they are created
+                                           (when is_member id)))))
+            message-text (decode-text-input (get-in payload [:view
+                                                             :state
+                                                             :values
+                                                             :sb-input1
+                                                             :broadcast2:text-input
+                                                             :value]))]
+      (request-updates! message-text channel-ids))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
 
 (defn response [body]
-  (println :responding-with body)
-  (p/resolve #js {:statusCode 200 :body (clj->js body)}))
+  (p/let [body-resolved body]
+    (println :responding-with body-resolved)
+    (p/resolve #js {:statusCode 200 :body (clj->js body-resolved)})))
 
 (j/defn parse-body [^:js {:as event
-                          :keys [body headers]
+                          :keys [body]
                           {:keys [Content-Type]} :headers}]
   (case Content-Type
     "application/x-www-form-urlencoded" (uri/query-string->map (do #_decode-base64 body))
@@ -200,21 +206,26 @@
     (pp/pprint ["[handler] body:" body])
     ;(pp/pprint ["[handler] event:" event])
 
-    (case request-type
-      ;; Slack API: identification challenge
-      :challenge
-      (response (:challenge body))
+    (response
+      (case request-type
+        ;; Slack API: identification challenge
+        :challenge
+        (:challenge body)
 
-      ;; Slack Event triggered (e.g. global shortcut)
-      :payload
-      (response (handle-modal! (json->clj (:payload body))))
+        ;; Slack Interaction (e.g. global shortcut)
+        :interaction
+        (p/let [action-result (handle-modal! (json->clj (:payload body)))]
+          (println :action-result action-result)
+          nil)
 
-      :interaction
-      (response {:action "broadcast update request to project channels"
-                 :channels (request-updates! (-> (get-in body [:event :user])
-                                                 slack-user
-                                                 (get "name"))
-                                             (map :id (:slack/channels-raw @db)))}))))
+        ;; Slack Event
+        :event (prn "NOT IMPLEMENTED")
+
+        {:action "broadcast update request to project channels"
+         :channels (request-updates! (-> (get-in body [:event :user])
+                                         slack-user
+                                         (get "name"))
+                                     (map :id (:slack/channels-raw @db)))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment

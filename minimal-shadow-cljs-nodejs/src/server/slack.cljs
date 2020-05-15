@@ -11,12 +11,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Direct HTTP calls
+(defn get+ [family-method]
+  (http/fetch+ http/decode-json
+               (str base-uri family-method)
+               #js {:method "GET"
+                    "Content-Type" "application/json; charset=utf-8"
+                    :headers #js {"Authorization" (str "Bearer " (-> config :slack :bot-user-oauth-token))}}))
+
 (defn get! [family-method callback-fn]
-  (-> (http/fetch+ http/decode-json
-                   (str base-uri family-method)
-                   #js {:method "GET"
-                        "Content-Type" "application/json; charset=utf-8"
-                        :headers #js {"Authorization" (str "Bearer " (-> config :slack :bot-user-oauth-token))}})
+  (-> (get+ family-method)
       (.then callback-fn)))
 
 ;; XXX may or may not work for the rest of the API; breaks on chat.PostMessage for unknown reasons I suspect are related to node-fetch possibly mixing URL parameters with a JSON body, which makes Slack choke with "channel_not_found"
@@ -29,13 +32,16 @@
                         :body (clj->js body) #_(.stringify js/JSON (clj->js body))})
       (.then callback-fn)))
 
-(defn post-query-string! [family-method query-params callback-fn]
+(defn post-query-string+ [family-method query-params]
   ;; This fn is a hack to work around broken JSON bodies in Slack's API
-  (-> (http/fetch+ http/decode-json
-                   (str base-uri family-method "?" (uri/map->query-string query-params))
-                   #js {:method "post"
-                        "Content-Type" "application/json; charset=utf-8"
-                        :headers #js {"Authorization" (str "Bearer " (-> config :slack :bot-user-oauth-token))}})
+  (http/fetch+ http/decode-json
+               (str base-uri family-method "?" (uri/map->query-string query-params))
+               #js {:method "post"
+                    "Content-Type" "application/json; charset=utf-8"
+                    :headers #js {"Authorization" (str "Bearer " (-> config :slack :bot-user-oauth-token))}}))
+
+(defn post-query-string! [family-method query-params callback-fn]
+  (-> (post-query-string+ family-method query-params)
       (.then callback-fn)))
 
 (comment
