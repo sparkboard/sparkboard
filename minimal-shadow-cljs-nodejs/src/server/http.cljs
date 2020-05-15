@@ -1,10 +1,6 @@
 (ns server.http
   "HTTP verbs, via node-fetch"
-  (:require ["node-fetch"]))
-
-;; `node-fetch` is in `require` for static analysis by shadow; we
-;; `js/require` it here to get its function in a callable form
-(def node-fetch (js/require "node-fetch"))
+  (:require ["node-fetch" :as node-fetch]))
 
 (defn fetch+ [decode-fn url opts]
   (-> (node-fetch url opts)
