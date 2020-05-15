@@ -47,16 +47,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [trigger-id blocks]
+  (println "[views-open!] JSON blocks:" (clj->json blocks))
   (post-query-string! "views.open"
                       {:trigger_id trigger-id
                        :view (clj->json blocks)}
                       ;; TODO better callback
-                      (fn [rsp] (println "slack modal response:" rsp))))
+                      (fn [rsp] (println "slack views.open response:" rsp))))
 
-(defn views-push! [view-id trigger-id blocks]
-  (post-query-string! "views.push"
+(defn views-update! [view-id blocks]
+  (post-query-string! "views.update"
                       {:view_id view-id
-                       :trigger_id trigger-id
                        :view (clj->json blocks)}
                       ;; TODO better callback
-                      (fn [rsp] (println "slack modal response:" rsp))))
+                      (fn [rsp] (println "slack views.update response:" rsp))))

@@ -8,8 +8,6 @@
             [server.common :refer [clj->json decode-base64 parse-json]]
             [server.slack :as slack]))
 
-(println "Running ClojureScript in AWS Lambda")
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Pseudo-database
 (defonce db (atom {:slack/users nil
@@ -105,7 +103,7 @@
                               :emoji true},
                 :action_id "broadcast2:channel-select"
                 :filter {:include ["public" "private"]}}}
-   {:type "input",
+   {:type "input", :block_id "sb-input1"
     :element {:type "plain_text_input",
               :multiline true,
               :action_id "broadcast2:text-input"
@@ -127,18 +125,26 @@
   channels)
 
 (defn decode-text-input [s]
-  ;; Slack appears to use some (?) of `application/x-www-form-urlencoded` for at least multiline text input, specifically replacing spaces with `+`
+  ;; Slack appears to use some (?) of
+  ;; `application/x-www-form-urlencoded` for at least multiline text
+  ;; input, specifically replacing spaces with `+`
   (string/replace s "+" " "))
 
-(j/defn handle-modal! [callback ^:js {:as payload
-                                      payload-type :type
+(comment
+  (parse-json (clj->json (modal-view-payload "Broadcast" blocks-broadcast-1)))
+  
+  )
+
+(j/defn handle-modal! [callback ^:js {payload-type :type
                                       :keys [trigger_id]
                                       [{:keys [action_id]}] :actions
-                                      {:keys [view_id]} :container}]
+                                      {:keys [view_id]} :container
+                                      :as payload}]
   (case payload-type
     "shortcut" ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
-    (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1))
+    (do (println "[handle-modal]/shortcut; blocks:" (modal-view-payload "Broadcast" blocks-broadcast-1))
+      (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1)))
 
     "block_actions" ; User acted on existing modal
     ;; Branch on specifics of given action
@@ -157,14 +163,14 @@
 
     "view_submission" ; "Submit" button pressed
     ;; In the future we will need to branch on other data
-    (request-updates! (decode-text-input (j/get-in payload ["view"
-                                                            "state"
-                                                            "values"
-                                                            "sb-input1"
-                                                            "broadcast2:text-input"
-                                                            "value"]))
-                      (map :id (:slack/channels-raw @db)))
-    (callback nil #js {:statusCode 200})))
+    (do (request-updates! (decode-text-input (j/get-in payload ["view"
+                                                                "state"
+                                                                "values"
+                                                                "sb-input1"
+                                                                "broadcast2:text-input"
+                                                                "value"]))
+                          (map :id (:slack/channels-raw @db)))
+        (callback nil #js {:statusCode 200}))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -186,8 +192,11 @@
 
       ;; Slack Event triggered (e.g. global shortcut)
       (:payload (uri/query-string->map (decode-base64 body)))
-      (handle-modal! callback
-                     (parse-json (:payload (uri/query-string->map (decode-base64 body)))))
+      (handle-modal! callback (-> body
+                                  decode-base64
+                                  uri/query-string->map
+                                  :payload
+                                  parse-json))
       
       :else
       (response callback (clj->js {:action "broadcast update request to project channels"
@@ -197,8 +206,7 @@
                                                                    (get "name"))
                                                                (map :id (:slack/channels-raw @db)))})))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
-    
+(parse-json (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyc2hvcnRjdXQlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk1NTI5NDEuMjQ0ODQ4JTIyJTJDJTIydGVhbSUyMiUzQSU3QiUyMmlkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJkb21haW4lMjIlM0ElMjJzcGFya2JvYXJkLWFwcCUyMiU3RCUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIydGVhbV9pZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTdEJTJDJTIyY2FsbGJhY2tfaWQlMjIlM0ElMjJzcGFya2JvYXJkJTIyJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMzk0Mzg2ODYzMDUuMTAyMTU3MzkyMjk0Ny5kNDhhNDExNDBmMjJhMjc4YTlmNGUxZTVkNDliMDBjYSUyMiU3RA=="))))
   )
