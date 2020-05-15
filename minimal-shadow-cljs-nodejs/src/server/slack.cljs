@@ -1,7 +1,7 @@
 (ns server.slack
   "Slack API"
   (:require [lambdaisland.uri :as uri]
-            [server.common :refer [config]]
+            [server.common :refer [clj->json config]]
             [server.http :as http]))
 
 (def base-uri "https://slack.com/api/")
@@ -11,6 +11,9 @@
 
 ;; TODO refactir some of content-type & headers into a `def`
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Direct HTTP calls
 (defn get! [family-method callback-fn]
   (-> (http/fetch+ http/decode-json
                    (str base-uri family-method)
@@ -44,6 +47,8 @@
        (fn [rsp] (println rsp)))
  )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Convenience wrappers over individual endpoints
 (defn views-open! [trigger-id blocks]
   (post-query-string! "views.open"
                       {:trigger_id trigger-id

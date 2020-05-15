@@ -3,8 +3,9 @@
 
   Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
   (:require [applied-science.js-interop :as j]
+            [clojure.string :as string]
             [lambdaisland.uri :as uri]
-            [server.common :refer [parse-json decode-base64]]
+            [server.common :refer [clj->json decode-base64 parse-json]]
             [server.slack :as slack]))
 
 (println "Running ClojureScript in AWS Lambda")
@@ -98,16 +99,18 @@
     [{:type "section",
       :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
      {:type "divider"}
-     {:type "section",
+     {:type "section", :block_id "sb-section1"
       :text {:type "mrkdwn", :text "*Post responses to channel:*"},
       :accessory {:type "conversations_select",
                   :placeholder {:type "plain_text",
                                 :text "Select a channel...",
                                 :emoji true},
+                  :action_id "broadcast2:channel-select"
                   :filter {:include ["public" "private"]}}}
      {:type "input",
       :element {:type "plain_text_input",
                 :multiline true,
+                :action_id "broadcast2:text-input"
                 :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
       :label {:type "plain_text", :text "Message:", :emoji true}}]))
 
@@ -118,37 +121,52 @@
              :text title}
      :blocks blocks}))
 
-(defn request-updates! [admin-username channels]
+(defn request-updates! [msg channels]
   ;; Write broadcast to Firebase
-
+  ;; TODO
   ;; Send message to Slack channels
-  (run! (partial send-slack-msg! (str admin-username " asks you to please post a project update in #foo-channel"))
-        channels)
+  (run! (partial send-slack-msg! msg) channels)
   ;; Return channels (?)
   channels)
 
-(j/defn handle-modal! [^:js {payload-type :type
-                             :keys [trigger_id]
-                             [{:keys [action_id]}] :actions
-                             {:keys [view_id]} :container}]
-  (case payload-type
-    "shortcut" ; Slack "Global shortcut". Show initial modal of action
-                                        ; options (currently just Compose button).
-    (slack/views-open! trigger_id
-                       (modal-view-payload "Broadcast" blocks-broadcast-1))
+(defn decode-text-input [s]
+  ;; Slack appears to use some (?) of `application/x-www-form-urlencoded` for at least multiline text input, specifically replacing spaces with `+`
+  (string/replace s "+" " "))
 
-    "block_actions" ; branch on user action within prior modal
+(j/defn handle-modal! [callback ^:js {payload-type :type
+                                      :keys [trigger_id]
+                                      [{:keys [action_id]}] :actions
+                                      {:keys [view_id]} :container}]
+  (case payload-type
+    "shortcut" ; Slack "Global shortcut".
+    ;; Show initial modal of action options (currently just Compose button).
+    (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1))
+
+    "block_actions" ; User acted on existing modal
+    ;; Branch on specifics of given action
     (case action_id
       "broadcast1:compose"
-      (slack/views-update! view_id
-                           trigger_id
-                           (modal-view-payload "Compose Broadcast" blocks-broadcast-2)))))
+      (slack/views-update! view_id (assoc (modal-view-payload "Compose Broadcast"
+                                                              blocks-broadcast-2)
+                                          :submit {:type "plain_text",
+                                                   :text "Submit"}))
+      
+      ;; TODO FIXME
+      #_"broadcast2:channel-select"
+      #_(slack/views-update! (j/get-in payload ["container" "view_id"])
+                             (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                    :submit {:type "plain_text", :text "Submit"})))
 
-
-(comment
-  (j/get-in (parse-json (:payload (uri/query-string->map (decode-base64 "foo")))) ["container" "view_id"])
-
-  )
+    "view_submission" ; "Submit" button pressed
+    ;; In the future we will need to branch on other data
+    (request-updates! (decode-text-input (j/get-in payload ["view"
+                                                            "state"
+                                                            "values"
+                                                            "sb-input1"
+                                                            "broadcast2:text-input"
+                                                            "value"]))
+                      (map :id (:slack/channels-raw @db)))
+    (callback nil #js {:statusCode 200})))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -160,8 +178,9 @@
 (defn handler [event _context callback]
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
-  (println "event:" event)
+  (println "[handler] event:" event)
   (let [body (j/get event :body)]
+    (println "[handler] body: " body)
     (cond
       ;; Slack API: identification challenge
       (some #{"challenge"} (js-keys (parse-json body)))
@@ -169,8 +188,9 @@
 
       ;; Slack Event triggered (e.g. global shortcut)
       (:payload (uri/query-string->map (decode-base64 body)))
-      (handle-modal! (parse-json (:payload (uri/query-string->map (decode-base64 body)))))
-
+      (handle-modal! callback
+                     (parse-json (:payload (uri/query-string->map (decode-base64 body)))))
+      
       :else
       (response callback (clj->js {:action "broadcast update request to project channels"
                                    :channels (request-updates! (-> (.parse js/JSON body)
@@ -182,60 +202,5 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
-  (j/get #js {:type "block_actions",
-              :user #js {:id "U012E480NTB", :username "dave.liepmann", :name "dave.liepmann", :team_id "T010MGVT4TV"},
-              :api_app_id "A010P0KP6SV", :token "2GI5dHsNabxffKscvxK3nBwh",
-              :container #js {:type "view", :view_id "V013NN81CSX"},
-              :trigger_id "1109815195271.1021573922947.a0dd388e6b681774be9d14efe602f86f",
-              :team #js {:id "T010MGVT4TV", :domain "sparkboard-app"},
-
-              :view #js {:id "V013NN81CSX", :team_id "T010MGVT4TV", :type "modal", :blocks #js [#js {:type "divider", :block_id "LY1"} #js {:type "section", :block_id "YIWrv", :text #js {:type "mrkdwn", :text "*Team+Broadcast*\nSend+a+message+to+all+teams.", :verbatim false}, :accessory #js {:type "button", :action_id "broadcast1:compose", :style "primary", :text #js {:type "plain_text", :text "Compose", :emoji true}, :value "click_me_123"}}], :private_metadata "", :callback_id "", :state #js {:values #js {}}, :hash "1589473604.c3a4512c", :title #js {:type "plain_text", :text "Broadcast", :emoji true}, :clear_on_close false, :notify_on_close false, :close nil, :submit nil, :previous_view_id nil, :root_view_id "V013NN81CSX", :app_id "A010P0KP6SV", :external_id "", :app_installed_team_id "T010MGVT4TV", :bot_id "B010Z1J8BR6"},
-
-              :actions #js [#js {:action_id "broadcast1:compose",
-                                 :block_id "YIWrv",
-                                 :text #js {:type "plain_text",
-                                            :text "Compose",
-                                            :emoji true},
-                                 :value "click_me_123",
-                                 :style "primary",
-                                 :type "button",
-                                 :action_ts "1589473805.190240"}]} [:actions :action_id])
-
-
-  (def dummy-event
-    #js {:version "2.0", :routeKey "ANY /slackBot", :rawPath "/default/slackBot", :rawQueryString "", :headers #js {:accept "*/*", :accept-encoding "gzip,deflate", :content-length 604, :content-type "application/json", :host "4jmgrrysk7.execute-api.eu-central-1.amazonaws.com", :user-agent "Slackbot 1.0 (+https://api.slack.com/robots)", :x-amzn-trace-id "Root=1-5eb04251-dff473b7a8d14a51a0dca648", :x-forwarded-for "54.174.192.196", :x-forwarded-port 443, :x-forwarded-proto "https", :x-slack-request-timestamp 1588609617, :x-slack-signature "v0=d846b125b481013842b7e460145f564291455d79ba302acc17bdcad61b762b02"}, :requestContext #js {:accountId 579644408564, :apiId "4jmgrrysk7", :domainName "4jmgrrysk7.execute-api.eu-central-1.amazonaws.com", :domainPrefix "4jmgrrysk7", :http #js {:method "POST", :path "/default/slackBot", :protocol "HTTP/1.1", :sourceIp "54.174.192.196", :userAgent "Slackbot 1.0 (+https://api.slack.com/robots)"}, :requestId "MA9MyiRtFiAEJPQ=", :routeKey "ANY /slackBot", :stage "default", :time "04/May/2020:16:26:57 +0000", :timeEpoch 1588609617791},
-         :body "{\"token\":\"abcdefsNabxffKscvxK3nBwh\",\"team_id\":\"T010MGVT4TV\",\"api_app_id\":\"A010P0KP6SV\",\"event\":{\"client_msg_id\":\"756c2148-b72c-45fc-b33d-50309a2b9f49\",\"type\":\"app_mention\",\"text\":\"<@U010MH3GSKD> test\",\"user\":\"U012E480NTB\",\"ts\":\"1588609616.000200\",\"team\":\"T010MGVT4TV\",\"blocks\":[{\"type\":\"rich_text\",\"block_id\":\"rGa\",\"elements\":[{\"type\":\"rich_text_section\",\"elements\":[{\"type\":\"user\",\"user_id\":\"U010MH3GSKD\"},{\"type\":\"text\",\"text\":\" test\"}]}]}],\"channel\":\"C0121SEV6Q2\",\"event_ts\":\"1588609616.000200\"},\"type\":\"event_callback\",\"event_id\":\"Ev0130HRS518\",\"event_time\":1588609616,\"authed_users\":[\"U010MH3GSKD\"]}", :isBase64Encoded false})
-
-  (from-slack? dummy-event) ;; true
-
-  
-  
-  (js->clj (.parse js/JSON (j/get dummy-event :body))
-           :keywordize-keys true)
-  {:api_app_id "A010P0KP6SV",
-   :authed_users ["U010MH3GSKD"]
-   :event_id "Ev0130HRS518",
-   :event_time 1588609616,
-   :team_id "T010MGVT4TV",
-   :token "abcdefbxffKscvxK3nBwh",
-   :type "event_callback",   
-   :event {:event_ts "1588609616.000200",
-           :channel "C0121SEV6Q2",
-           :type "app_mention",
-           :ts "1588609616.000200",
-           :team "T010MGVT4TV",
-           :client_msg_id "756c2148-b72c-45fc-b33d-50309a2b9f49",
-           :blocks [{:type "rich_text",
-                     :block_id "rGa",
-                     :elements [{:type "rich_text_section",
-                                 :elements [{:type "user",
-                                             :user_id "U010MH3GSKD"}
-                                            {:type "text",
-                                             :text " test"}]}]}],
-           :user "U012E480NTB",
-           :text "<@U010MH3GSKD> test"}}
-  
-  (j/get-in dummy-event [:headers :user-agent])
-
-  
+    
   )

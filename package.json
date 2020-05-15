@@ -1,10 +1,11 @@
 {
-  "dependencies": {
-    "firebase": "^7.14.1",
-    "md5": "2.2.1",
-    "react": "^0.0.0-experimental-e5d06e34b",
-    "react-dom": "^0.0.0-experimental-e5d06e34b",
-    "react-refresh": "^0.0.0-experimental-e5d06e34b",
-    "shadow-cljs": "^2.8.96"
-  }
+    "license": "UNLICENSED",
+    "dependencies": {
+        "firebase": "^7.14.1",
+        "md5": "2.2.1",
+        "react": "^0.0.0-experimental-e5d06e34b",
+        "react-dom": "^0.0.0-experimental-e5d06e34b",
+        "react-refresh": "^0.0.0-experimental-e5d06e34b",
+        "shadow-cljs": "^2.8.96"
+    }
 }
