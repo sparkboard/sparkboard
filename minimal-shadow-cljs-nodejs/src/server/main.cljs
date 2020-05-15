@@ -4,9 +4,11 @@
   Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
   (:require [applied-science.js-interop :as j]
             [clojure.string :as string]
+            [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
-            [server.common :refer [clj->json decode-base64 parse-json]]
-            [server.slack :as slack]))
+            [server.common :refer [clj->json decode-base64 parse-json json->clj]]
+            [server.slack :as slack]
+            [cljs.pprint :as pp]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Pseudo-database
@@ -132,14 +134,14 @@
 
 (comment
   (parse-json (clj->json (modal-view-payload "Broadcast" blocks-broadcast-1)))
-  
+
   )
 
-(j/defn handle-modal! [callback ^:js {payload-type :type
-                                      :keys [trigger_id]
-                                      [{:keys [action_id]}] :actions
-                                      {:keys [view_id]} :container
-                                      :as payload}]
+(j/defn handle-modal! [^:js {payload-type :type
+                             :keys [trigger_id]
+                             [{:keys [action_id]}] :actions
+                             {:keys [view_id]} :container
+                             :as payload}]
   (case payload-type
     "shortcut" ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
@@ -156,54 +158,63 @@
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
-      #_(slack/views-update! (j/get-in payload ["container" "view_id"])
-                             (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+      #_(slack/views-push! (j/get-in payload ["container" "view_id"])
+                           (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
                                     :submit {:type "plain_text", :text "Submit"})))
 
     "view_submission" ; "Submit" button pressed
     ;; In the future we will need to branch on other data
-    (do (request-updates! (decode-text-input (j/get-in payload ["view"
-                                                                "state"
-                                                                "values"
-                                                                "sb-input1"
-                                                                "broadcast2:text-input"
-                                                                "value"]))
-                          (map :id (:slack/channels-raw @db)))
-        (callback nil #js {:statusCode 200}))))
+    (request-updates! (decode-text-input (get-in payload [:view
+                                                          :state
+                                                          :values
+                                                          :sb-input1
+                                                          :broadcast2:text-input
+                                                          :value]))
+                      (map :id (:slack/channels-raw @db)))
+    nil))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
 
-(defn response [cb body]
-  (cb nil #js {:statusCode 200 :body body}))
+(defn response [body]
+  (println :responding-with body)
+  (p/resolve #js {:statusCode 200 :body (clj->js body)}))
 
-(defn handler [event _context callback]
+(j/defn parse-body [^:js {:as event
+                          :keys [body headers]
+                          {:keys [Content-Type]} :headers}]
+  (case Content-Type
+    "application/x-www-form-urlencoded" (uri/query-string->map (do #_decode-base64 body))
+    "application/json" (js->clj (js/JSON.parse body) :keywordize-keys true)
+    body))
+
+(defn handler [event _context]
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
-  (println "[handler] event:" event)
-  (let [body (j/get event :body)]
-    (println "[handler] body: " body)
-    (cond
+  (let [body (parse-body event)
+        request-type (cond (:challenge body) :challenge
+                           (:event body) :event
+                           (:payload body) :interaction)]
+    (pp/pprint ["[handler] request-type:" request-type])
+    (pp/pprint ["[handler] body:" body])
+    ;(pp/pprint ["[handler] event:" event])
+
+    (case request-type
       ;; Slack API: identification challenge
-      (some #{"challenge"} (js-keys (parse-json body)))
-      (response callback (j/get (.parse js/JSON (j/get event :body)) :challenge))
+      :challenge
+      (response (:challenge body))
 
       ;; Slack Event triggered (e.g. global shortcut)
-      (:payload (uri/query-string->map (decode-base64 body)))
-      (handle-modal! callback (-> body
-                                  decode-base64
-                                  uri/query-string->map
-                                  :payload
-                                  parse-json))
-      
-      :else
-      (response callback (clj->js {:action "broadcast update request to project channels"
-                                   :channels (request-updates! (-> (.parse js/JSON body)
-                                                                   (j/get-in [:event :user])
-                                                                   slack-user
-                                                                   (get "name"))
-                                                               (map :id (:slack/channels-raw @db)))})))))
+      :payload
+      (response (handle-modal! (json->clj (:payload body))))
+
+      :interaction
+      (response {:action "broadcast update request to project channels"
+                 :channels (request-updates! (-> (get-in body [:event :user])
+                                                 slack-user
+                                                 (get "name"))
+                                             (map :id (:slack/channels-raw @db)))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment

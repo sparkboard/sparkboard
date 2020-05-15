@@ -13,6 +13,12 @@ In terminal, in directory target/
     node main.js
 
 
+### Local testing
+
+```
+brew tap aws/tap
+brew install aws-sam-cli
+```
 
 
 Below is original instructions for quickstart Node.js shadow-cljs project.
