@@ -150,10 +150,9 @@
     ;; Branch on specifics of given action
     (case action_id
       "broadcast1:compose"
-      (slack/views-update! view_id trigger_id
-                           (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                  :submit {:type "plain_text",
-                                           :text "Submit"}))
+      (slack/views-update! view_id (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                          :submit {:type "plain_text",
+                                                   :text "Submit"}))
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
