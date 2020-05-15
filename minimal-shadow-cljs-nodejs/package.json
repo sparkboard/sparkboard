@@ -8,8 +8,7 @@
     "scripts": {
         "watch": "shadow-cljs watch app",
         "compile": "shadow-cljs compile app",
-        "build": "shadow-cljs release app",
-        "serve": "sam local start-api"
+        "build": "shadow-cljs release app"
     },
     "keywords": [],
     "author": "jiyinyiyong",
