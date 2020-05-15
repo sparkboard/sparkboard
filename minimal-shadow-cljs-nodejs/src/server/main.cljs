@@ -82,38 +82,41 @@
                             (fn [rsp] (println "slack msg response:" rsp))))
 
 (def blocks-broadcast-1
-  [{:type "divider"}
-   {:type "section",
-    :text {:type "mrkdwn",
-           :text "*Team Broadcast*\nSend a message to all teams."},
-    :accessory {:type "button",
-                :text {:type "plain_text", :text "Compose", :emoji true},
-                :style "primary",
-                :action_id "broadcast1:compose"
-                :value "click_me_123"}}])
+  (j/lit
+    [{:type "divider"}
+     {:type "section",
+      :text {:type "mrkdwn",
+             :text "*Team Broadcast*\nSend a message to all teams."},
+      :accessory {:type "button",
+                  :text {:type "plain_text", :text "Compose", :emoji true},
+                  :style "primary",
+                  :action_id "broadcast1:compose"
+                  :value "click_me_123"}}]))
 
 (def blocks-broadcast-2
-  [{:type "section",
-    :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
-   {:type "divider"}
-   {:type "section",
-    :text {:type "mrkdwn", :text "*Post responses to channel:*"},
-    :accessory {:type "conversations_select",
-                :placeholder {:type "plain_text",
-                              :text "Select a channel...",
-                              :emoji true},
-                :filter {:include ["public" "private"]}}}
-   {:type "input",
-    :element {:type "plain_text_input",
-              :multiline true,
-              :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
-    :label {:type "plain_text", :text "Message:", :emoji true}}])
+  (j/lit
+    [{:type "section",
+      :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
+     {:type "divider"}
+     {:type "section",
+      :text {:type "mrkdwn", :text "*Post responses to channel:*"},
+      :accessory {:type "conversations_select",
+                  :placeholder {:type "plain_text",
+                                :text "Select a channel...",
+                                :emoji true},
+                  :filter {:include ["public" "private"]}}}
+     {:type "input",
+      :element {:type "plain_text_input",
+                :multiline true,
+                :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
+      :label {:type "plain_text", :text "Message:", :emoji true}}]))
 
 (defn modal-view-payload [title blocks]
-  {:type :modal
-   :title {:type "plain_text"
-           :text title}
-   :blocks blocks})
+  (j/lit
+    {:type :modal
+     :title {:type "plain_text"
+             :text title}
+     :blocks blocks}))
 
 (defn request-updates! [admin-username channels]
   ;; Write broadcast to Firebase
@@ -124,18 +127,21 @@
   ;; Return channels (?)
   channels)
 
-(defn handle-modal! [payload]
-  (case (j/get payload "type")
+(j/defn handle-modal! [^:js {payload-type :type
+                             :keys [trigger_id]
+                             [{:keys [action_id]}] :actions
+                             {:keys [view_id]} :container}]
+  (case payload-type
     "shortcut" ; Slack "Global shortcut". Show initial modal of action
                                         ; options (currently just Compose button).
-    (slack/views-open! (j/get payload "trigger_id")
+    (slack/views-open! trigger_id
                        (modal-view-payload "Broadcast" blocks-broadcast-1))
 
     "block_actions" ; branch on user action within prior modal
-    (case (-> payload (j/get "actions") first (j/get "action_id"))
+    (case action_id
       "broadcast1:compose"
-      (slack/views-update! (j/get-in payload ["container" "view_id"])
-                           (j/get payload "trigger_id")
+      (slack/views-update! view_id
+                           trigger_id
                            (modal-view-payload "Compose Broadcast" blocks-broadcast-2)))))
 
 
