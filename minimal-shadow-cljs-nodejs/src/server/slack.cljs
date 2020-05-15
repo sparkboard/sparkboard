@@ -6,9 +6,6 @@
 
 (def base-uri "https://slack.com/api/")
 
-(defn clj->json [x]
-  (.stringify js/JSON (clj->js x)))
-
 ;; TODO refactir some of content-type & headers into a `def`
 
 
@@ -56,10 +53,9 @@
                       ;; TODO better callback
                       (fn [rsp] (println "slack modal response:" rsp))))
 
-(defn views-update! [view-id trigger-id blocks]
+(defn views-update! [view-id blocks]
   (post-query-string! "views.push"
-                      {:trigger_id trigger-id
-                       :view_id view-id
+                      {:view_id view-id
                        :view (clj->json blocks)}
                       ;; TODO better callback
                       (fn [rsp] (println "slack modal response:" rsp))))

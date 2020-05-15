@@ -71,7 +71,7 @@
 (defn send-slack-blocks! [blocks channel]
   (slack/post-query-string! "chat.postMessage"
                             {:channel channel ;; id or name
-                             :blocks (slack/clj->json blocks)}
+                             :blocks (clj->json blocks)}
                             ;; TODO better callback
                             (fn [rsp] (println "slack blocks response:" rsp))))
 
@@ -133,7 +133,8 @@
   ;; Slack appears to use some (?) of `application/x-www-form-urlencoded` for at least multiline text input, specifically replacing spaces with `+`
   (string/replace s "+" " "))
 
-(j/defn handle-modal! [callback ^:js {payload-type :type
+(j/defn handle-modal! [callback ^:js {:as payload
+                                      payload-type :type
                                       :keys [trigger_id]
                                       [{:keys [action_id]}] :actions
                                       {:keys [view_id]} :container}]
