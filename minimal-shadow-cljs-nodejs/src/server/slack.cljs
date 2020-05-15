@@ -53,9 +53,10 @@
                       ;; TODO better callback
                       (fn [rsp] (println "slack modal response:" rsp))))
 
-(defn views-update! [view-id blocks]
+(defn views-push! [view-id trigger-id blocks]
   (post-query-string! "views.push"
                       {:view_id view-id
+                       :trigger_id trigger-id
                        :view (clj->json blocks)}
                       ;; TODO better callback
                       (fn [rsp] (println "slack modal response:" rsp))))
