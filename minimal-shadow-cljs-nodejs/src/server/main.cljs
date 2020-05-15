@@ -4,7 +4,7 @@
   Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
   (:require [applied-science.js-interop :as j]
             [lambdaisland.uri :as uri]
-            [server.common :refer [parse-json decode-base64]]
+            [server.common :refer [clj->json decode-base64 parse-json]]
             [server.slack :as slack]))
 
 (println "Running ClojureScript in AWS Lambda")
@@ -67,9 +67,6 @@
 (def project-channel-names ;; FIXME
   (map :name_normalized (:slack/channels-raw @db)))
 
-(defn clj->json [x]
-  (.stringify js/JSON (clj->js x)))
-
 (defn send-slack-blocks! [blocks channel]
   (slack/post-query-string! "chat.postMessage"
                             {:channel channel ;; id or name
@@ -128,24 +125,25 @@
   channels)
 
 (defn handle-modal! [payload]
+  (println "[handle-modal!] payload: " payload)
+  (println "[handle-modal!] payload->type: " (j/get payload "type"))
   (case (j/get payload "type")
     "shortcut" ; Slack "Global shortcut". Show initial modal of action
                                         ; options (currently just Compose button).
-    (slack/views-open! (j/get payload "trigger_id")
-                       (modal-view-payload "Broadcast" blocks-broadcast-1))
+    (do (println "[handle-modal!] trigger-id: " (j/get payload "trigger_id"))
+        (slack/views-open! (j/get payload "trigger_id")
+                        (modal-view-payload "Broadcast" blocks-broadcast-1)))
 
     "block_actions" ; branch on user action within prior modal
-    (case (-> payload (j/get "actions") first (j/get "action_id"))
-      "broadcast1:compose"
-      (slack/views-update! (j/get-in payload ["container" "view_id"])
-                           (j/get payload "trigger_id")
-                           (modal-view-payload "Compose Broadcast" blocks-broadcast-2)))))
-
-
-(comment
-  (j/get-in (parse-json (:payload (uri/query-string->map (decode-base64 "foo")))) ["container" "view_id"])
-
-  )
+    (do (println "[handle-modal!] block-actions:" (-> payload (j/get "actions") first (j/get "action_id")))
+      (case (-> payload (j/get "actions") first (j/get "action_id"))
+        "broadcast1:compose"
+        (do (println "[handle-modal!] broadcast view-id:" (j/get-in payload ["container" "view_id"]))
+            (println "[handle-modal!] broadcast new blocks:" (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                      :submit {:type "plain_text", :text "Submit"}))
+          (slack/views-update! (j/get-in payload ["container" "view_id"])
+                               (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                      :submit {:type "plain_text", :text "Submit"})))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -157,8 +155,9 @@
 (defn handler [event _context callback]
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
-  (println "event:" event)
+  (println "[handler] event:" event)
   (let [body (j/get event :body)]
+    (println "[handler] body: " body)
     (cond
       ;; Slack API: identification challenge
       (some #{"challenge"} (js-keys (parse-json body)))

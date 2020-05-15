@@ -1,22 +1,23 @@
 {
-  "name": "minimal-shadow-cljs-nodejs",
-  "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "watch": "shadow-cljs watch app",
-    "compile": "shadow-cljs compile app",
-    "build": "shadow-cljs release app"
-  },
-  "keywords": [],
-  "author": "jiyinyiyong",
-  "license": "MIT",
-  "devDependencies": {
-    "shadow-cljs": "^2.9.2",
-    "source-map-support": "^0.5.9",
-    "ws": "^6.1.2"
-  },
-  "dependencies": {
-    "node-fetch": "^2.6.0"
-  }
+    "name": "minimal-shadow-cljs-nodejs",
+    "version": "0.1.0",
+    "private": true,
+    "license": "UNLICENSED",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "watch": "shadow-cljs watch app",
+        "compile": "shadow-cljs compile app",
+        "build": "shadow-cljs release app"
+    },
+    "keywords": [],
+    "author": "jiyinyiyong",
+    "devDependencies": {
+        "shadow-cljs": "^2.9.2",
+        "source-map-support": "^0.5.9",
+        "ws": "^6.1.2"
+    },
+    "dependencies": {
+        "node-fetch": "^2.6.0"
+    }
 }

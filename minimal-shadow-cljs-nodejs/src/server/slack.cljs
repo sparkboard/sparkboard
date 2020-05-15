@@ -1,13 +1,16 @@
 (ns server.slack
   "Slack API"
   (:require [lambdaisland.uri :as uri]
-            [server.common :refer [config]]
+            [server.common :refer [clj->json config]]
             [server.http :as http]))
 
 (def base-uri "https://slack.com/api/")
 
 ;; TODO refactir some of content-type & headers into a `def`
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Direct HTTP calls
 (defn get! [family-method callback-fn]
   (-> (http/fetch+ http/decode-json
                    (str base-uri family-method)
@@ -41,17 +44,18 @@
        (fn [rsp] (println rsp)))
  )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Convenience wrappers over individual endpoints
 (defn views-open! [trigger-id blocks]
-  (slack/post-query-string! "views.open"
-                            {:trigger_id trigger-id
-                             :view (clj->json blocks)}
-                            ;; TODO better callback
-                            (fn [rsp] (println "slack modal response:" rsp))))
+  (post-query-string! "views.open"
+                      {:trigger_id trigger-id
+                       :view (clj->json blocks)}
+                      ;; TODO better callback
+                      (fn [rsp] (println "slack views.open response:" rsp))))
 
-(defn views-update! [view-id trigger-id blocks]
-  (slack/post-query-string! "views.push"
-                            {:trigger_id trigger-id
-                             :view_id view-id
-                             :view (clj->json blocks)}
-                            ;; TODO better callback
-                            (fn [rsp] (println "slack modal response:" rsp))))
+(defn views-update! [view-id blocks]
+  (post-query-string! "views.update"
+                      {:view_id view-id
+                       :view (clj->json blocks)}
+                      ;; TODO better callback
+                      (fn [rsp] (println "slack views.update response:" rsp))))
