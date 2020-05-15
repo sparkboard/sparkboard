@@ -148,10 +148,9 @@
     (case action_id
       "broadcast1:compose"
       (slack/views-push! view_id trigger_id
-                         (assoc (modal-view-payload "Compose Broadcast"
-                                                      blocks-broadcast-2)
-                                  :submit {:type "plain_text",
-                                           :text "Submit"}))
+                         (j/assoc! (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                   :submit (j/lit {:type "plain_text",
+                                                   :text "Submit"})))
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
