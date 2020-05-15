@@ -83,43 +83,40 @@
                             (fn [rsp] (println "slack msg response:" rsp))))
 
 (def blocks-broadcast-1
-  (j/lit
-    [{:type "divider"}
-     {:type "section",
-      :text {:type "mrkdwn",
-             :text "*Team Broadcast*\nSend a message to all teams."},
-      :accessory {:type "button",
-                  :text {:type "plain_text", :text "Compose", :emoji true},
-                  :style "primary",
-                  :action_id "broadcast1:compose"
-                  :value "click_me_123"}}]))
+  [{:type "divider"}
+   {:type "section",
+    :text {:type "mrkdwn",
+           :text "*Team Broadcast*\nSend a message to all teams."},
+    :accessory {:type "button",
+                :text {:type "plain_text", :text "Compose", :emoji true},
+                :style "primary",
+                :action_id "broadcast1:compose"
+                :value "click_me_123"}}])
 
 (def blocks-broadcast-2
-  (j/lit
-    [{:type "section",
-      :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
-     {:type "divider"}
-     {:type "section", :block_id "sb-section1"
-      :text {:type "mrkdwn", :text "*Post responses to channel:*"},
-      :accessory {:type "conversations_select",
-                  :placeholder {:type "plain_text",
-                                :text "Select a channel...",
-                                :emoji true},
-                  :action_id "broadcast2:channel-select"
-                  :filter {:include ["public" "private"]}}}
-     {:type "input",
-      :element {:type "plain_text_input",
-                :multiline true,
-                :action_id "broadcast2:text-input"
-                :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
-      :label {:type "plain_text", :text "Message:", :emoji true}}]))
+  [{:type "section",
+    :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
+   {:type "divider"}
+   {:type "section", :block_id "sb-section1"
+    :text {:type "mrkdwn", :text "*Post responses to channel:*"},
+    :accessory {:type "conversations_select",
+                :placeholder {:type "plain_text",
+                              :text "Select a channel...",
+                              :emoji true},
+                :action_id "broadcast2:channel-select"
+                :filter {:include ["public" "private"]}}}
+   {:type "input",
+    :element {:type "plain_text_input",
+              :multiline true,
+              :action_id "broadcast2:text-input"
+              :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
+    :label {:type "plain_text", :text "Message:", :emoji true}}])
 
 (defn modal-view-payload [title blocks]
-  (j/lit
-    {:type :modal
-     :title {:type "plain_text"
-             :text title}
-     :blocks blocks}))
+  {:type :modal
+   :title {:type "plain_text"
+           :text title}
+   :blocks blocks})
 
 (defn request-updates! [msg channels]
   ;; Write broadcast to Firebase
@@ -148,9 +145,9 @@
     (case action_id
       "broadcast1:compose"
       (slack/views-push! view_id trigger_id
-                         (j/assoc! (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                   :submit (j/lit {:type "plain_text",
-                                                   :text "Submit"})))
+                         (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                :submit {:type "plain_text",
+                                         :text "Submit"}))
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
