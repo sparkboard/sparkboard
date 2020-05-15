@@ -144,21 +144,21 @@
     "shortcut" ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
     (do (println "[handle-modal]/shortcut; blocks:" (modal-view-payload "Broadcast" blocks-broadcast-1))
-      (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1)))
+        (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1)))
 
     "block_actions" ; User acted on existing modal
     ;; Branch on specifics of given action
     (case action_id
       "broadcast1:compose"
-      (slack/views-push! view_id trigger_id
-                         (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                :submit {:type "plain_text",
-                                         :text "Submit"}))
+      (slack/views-update! view_id trigger_id
+                           (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                  :submit {:type "plain_text",
+                                           :text "Submit"}))
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
-      #_(slack/views-push! (j/get-in payload ["container" "view_id"])
-                           (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+      #_(slack/views-update! (j/get-in payload ["container" "view_id"])
+                             (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
                                     :submit {:type "plain_text", :text "Submit"})))
 
     "view_submission" ; "Submit" button pressed
@@ -208,5 +208,5 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
-(parse-json (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyc2hvcnRjdXQlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk1NTI5NDEuMjQ0ODQ4JTIyJTJDJTIydGVhbSUyMiUzQSU3QiUyMmlkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJkb21haW4lMjIlM0ElMjJzcGFya2JvYXJkLWFwcCUyMiU3RCUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIydGVhbV9pZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTdEJTJDJTIyY2FsbGJhY2tfaWQlMjIlM0ElMjJzcGFya2JvYXJkJTIyJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMzk0Mzg2ODYzMDUuMTAyMTU3MzkyMjk0Ny5kNDhhNDExNDBmMjJhMjc4YTlmNGUxZTVkNDliMDBjYSUyMiU3RA=="))))
+  (parse-json (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyc2hvcnRjdXQlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk1NTI5NDEuMjQ0ODQ4JTIyJTJDJTIydGVhbSUyMiUzQSU3QiUyMmlkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJkb21haW4lMjIlM0ElMjJzcGFya2JvYXJkLWFwcCUyMiU3RCUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIydGVhbV9pZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTdEJTJDJTIyY2FsbGJhY2tfaWQlMjIlM0ElMjJzcGFya2JvYXJkJTIyJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMzk0Mzg2ODYzMDUuMTAyMTU3MzkyMjk0Ny5kNDhhNDExNDBmMjJhMjc4YTlmNGUxZTVkNDliMDBjYSUyMiU3RA=="))))
   )
