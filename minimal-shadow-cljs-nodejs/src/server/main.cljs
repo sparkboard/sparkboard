@@ -83,40 +83,43 @@
                             (fn [rsp] (println "slack msg response:" rsp))))
 
 (def blocks-broadcast-1
-  [{:type "divider"}
-   {:type "section",
-    :text {:type "mrkdwn",
-           :text "*Team Broadcast*\nSend a message to all teams."},
-    :accessory {:type "button",
-                :text {:type "plain_text", :text "Compose", :emoji true},
-                :style "primary",
-                :action_id "broadcast1:compose"
-                :value "click_me_123"}}])
+  (j/lit
+    [{:type "divider"}
+     {:type "section",
+      :text {:type "mrkdwn",
+             :text "*Team Broadcast*\nSend a message to all teams."},
+      :accessory {:type "button",
+                  :text {:type "plain_text", :text "Compose", :emoji true},
+                  :style "primary",
+                  :action_id "broadcast1:compose"
+                  :value "click_me_123"}}]))
 
 (def blocks-broadcast-2
-  [{:type "section",
-    :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
-   {:type "divider"}
-   {:type "section", :block_id "sb-section1"
-    :text {:type "mrkdwn", :text "*Post responses to channel:*"},
-    :accessory {:type "conversations_select",
-                :placeholder {:type "plain_text",
-                              :text "Select a channel...",
-                              :emoji true},
-                :action_id "broadcast2:channel-select"
-                :filter {:include ["public" "private"]}}}
-   {:type "input", :block_id "sb-input1"
-    :element {:type "plain_text_input",
-              :multiline true,
-              :action_id "broadcast2:text-input"
-              :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
-    :label {:type "plain_text", :text "Message:", :emoji true}}])
+  (j/lit
+    [{:type "section",
+      :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
+     {:type "divider"}
+     {:type "section", :block_id "sb-section1"
+      :text {:type "mrkdwn", :text "*Post responses to channel:*"},
+      :accessory {:type "conversations_select",
+                  :placeholder {:type "plain_text",
+                                :text "Select a channel...",
+                                :emoji true},
+                  :action_id "broadcast2:channel-select"
+                  :filter {:include ["public" "private"]}}}
+     {:type "input",
+      :element {:type "plain_text_input",
+                :multiline true,
+                :action_id "broadcast2:text-input"
+                :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
+      :label {:type "plain_text", :text "Message:", :emoji true}}]))
 
 (defn modal-view-payload [title blocks]
-  {:type :modal
-   :title {:type "plain_text"
-           :text title}
-   :blocks blocks})
+  (j/lit
+    {:type :modal
+     :title {:type "plain_text"
+             :text title}
+     :blocks blocks}))
 
 (defn request-updates! [msg channels]
   ;; Write broadcast to Firebase
@@ -130,53 +133,40 @@
   ;; Slack appears to use some (?) of `application/x-www-form-urlencoded` for at least multiline text input, specifically replacing spaces with `+`
   (string/replace s "+" " "))
 
-(defn handle-modal! [callback payload]
-  (println "[handle-modal!] payload: " payload)
-  (println "[handle-modal!] payload->type: " (j/get payload "type"))
-  (case (j/get payload "type")
+(j/defn handle-modal! [callback ^:js {payload-type :type
+                                      :keys [trigger_id]
+                                      [{:keys [action_id]}] :actions
+                                      {:keys [view_id]} :container}]
+  (case payload-type
     "shortcut" ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal!] trigger-id: " (j/get payload "trigger_id"))
-        (slack/views-open! (j/get payload "trigger_id")
-                           (modal-view-payload "Broadcast" blocks-broadcast-1)))
+    (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1))
 
     "block_actions" ; User acted on existing modal
     ;; Branch on specifics of given action
-    (do (println "[handle-modal!] block-actions:" (-> payload (j/get "actions") first (j/get "action_id")))
-        (case (-> payload (j/get "actions") first (j/get "action_id"))
-          "broadcast1:compose"
-          (do (println "[handle-modal!] broadcast view-id:" (j/get-in payload ["container" "view_id"]))
-              (println "[handle-modal!] broadcast new blocks:" (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                                                      :submit {:type "plain_text", :text "Submit"}))
-              (slack/views-update! (j/get-in payload ["container" "view_id"])
-                                   (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                          :submit {:type "plain_text", :text "Submit"})))
-          
-          ;; TODO FIXME
-          #_"broadcast2:channel-select"
-          #_(do (println "[handle-modal!] broadcast view-id:" (j/get-in payload ["container" "view_id"]))
-                (println "[handle-modal!] broadcast new blocks:" (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                                                        :submit {:type "plain_text", :text "Submit"}))
-                (slack/views-update! (j/get-in payload ["container" "view_id"])
-                                     (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                            :submit {:type "plain_text", :text "Submit"})))))
+    (case action_id
+      "broadcast1:compose"
+      (slack/views-update! view_id (assoc (modal-view-payload "Compose Broadcast"
+                                                              blocks-broadcast-2)
+                                          :submit {:type "plain_text",
+                                                   :text "Submit"}))
+      
+      ;; TODO FIXME
+      #_"broadcast2:channel-select"
+      #_(slack/views-update! (j/get-in payload ["container" "view_id"])
+                             (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
+                                    :submit {:type "plain_text", :text "Submit"})))
 
     "view_submission" ; "Submit" button pressed
     ;; In the future we will need to branch on other data
-    (do (println "[handle-modal!] view-submission vals:"
-                 (j/get-in payload ["view" "state" "values"]))
-        (println "[handle-modal!] view-submission vals sb-input1:"
-                 (j/get-in payload ["view" "state" "values" "sb-input1"]))
-        (println "[handle-modal!] view-submission vals sb-input1 broadcast2:text-input:"
-                 (j/get-in payload ["view" "state" "values" "sb-input1" "broadcast2:text-input" "value"]))
-        (request-updates! (decode-text-input (j/get-in payload ["view"
-                                                                "state"
-                                                                "values"
-                                                                "sb-input1"
-                                                                "broadcast2:text-input"
-                                                                "value"]))
-                          (map :id (:slack/channels-raw @db)))
-        (callback nil #js {:statusCode 200}))))
+    (request-updates! (decode-text-input (j/get-in payload ["view"
+                                                            "state"
+                                                            "values"
+                                                            "sb-input1"
+                                                            "broadcast2:text-input"
+                                                            "value"]))
+                      (map :id (:slack/channels-raw @db)))
+    (callback nil #js {:statusCode 200})))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
