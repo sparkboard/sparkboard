@@ -14,7 +14,7 @@
     "author": "jiyinyiyong",
     "devDependencies": {
         "shadow-cljs": "^2.9.2",
-        "source-map-support": "^0.5.9",
+        "source-map-support": "^0.5.19",
         "ws": "^6.1.2"
     },
     "dependencies": {
