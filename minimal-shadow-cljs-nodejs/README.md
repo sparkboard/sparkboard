@@ -24,8 +24,6 @@ brew install aws-sam-cli
 
 Set up [AWS credentials](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-set-up-credentials.html)
 
-From the root directory, run `sam local start-api`
-
 #### Install ngrok
 
 https://ngrok.com/download
@@ -49,6 +47,19 @@ Then add a `:slack` entry in `.local.config.edn` as follows:
   :bot-user-oauth-token "XX"}}
  ```
 
+ #### Get started
+
+start the lambda:
+```
+sam local start-api
+```
+
+start ngrok:
+```
+ngrok http 3000
+```
+
+Go to api.slack.com and update the URLs in Features > `Interactivity & Shortcuts` & `Event Subscriptions`
 ----
 
 Below is original instructions for quickstart Node.js shadow-cljs project.

@@ -2,6 +2,7 @@
   "Slack API"
   (:require [applied-science.js-interop :as j]
             [lambdaisland.uri :as uri]
+            [server.blocks :as blocks]
             [server.common :refer [clj->json config]]
             [server.http :as http]
             [kitchen-async.promise :as p]))
@@ -44,16 +45,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [trigger-id blocks]
-  (println "[views-open!] JSON blocks:" (clj->json blocks))
+  (println "[views-open!] JSON blocks:" (blocks/to-json blocks))
   (p/->> (post-query-string+ "views.open"
                              {:trigger_id trigger-id
-                              :view (clj->json blocks)})
+                              :view (blocks/to-json blocks)})
          ;; TODO better callback
          (println "slack views.open response:")))
 
 (defn views-update! [view-id blocks]
   (p/->> (post-query-string+ "views.update"
                              {:view_id view-id
-                              :view (clj->json blocks)})
+                              :view (blocks/to-json blocks)})
          ;; TODO better callback
          (println "slack views.update response:")))

@@ -6,8 +6,10 @@
             [clojure.string :as string]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
+            [server.blocks :as blocks]
             [server.common :refer [clj->json decode-base64 parse-json json->clj]]
             [server.slack :as slack]
+            [server.slack-events :as slack-events]
             [cljs.pprint :as pp]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,7 +37,7 @@
 
   (map :name_normalized (:slack/channels-raw @db))
   (map :id (:slack/channels-raw @db))
-  
+
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -74,7 +76,7 @@
 (defn send-slack-blocks+ [blocks channel]
   (p/->> (slack/post-query-string+ "chat.postMessage"
                                    {:channel channel        ;; id or name
-                                    :blocks (clj->json blocks)})
+                                    :blocks (blocks/to-json blocks)})
          ;; TODO better callback
          (println "slack blocks response:")))
 
@@ -84,40 +86,33 @@
                              :text msg}))
 
 (def blocks-broadcast-1
-  [{:type "divider"}
-   {:type "section",
-    :text {:type "mrkdwn",
-           :text "*Team Broadcast*\nSend a message to all teams."},
-    :accessory {:type "button",
-                :text {:type "plain_text", :text "Compose", :emoji true},
-                :style "primary",
-                :action_id "broadcast1:compose"
-                :value "click_me_123"}}])
+  (list
+    [:divider]
+    [:section
+     {:accessory [:button {:style "primary",
+                           :action_id "broadcast1:compose"
+                           :value "click_me_123"}
+                  "Compose"]}
+     "*Team Broadcast*\nSend a message to all teams."]))
 
 (def blocks-broadcast-2
-  [{:type "section",
-    :text {:type "mrkdwn", :text "Send a prompt to *all projects*."}}
-   {:type "divider"}
-   {:type "section", :block_id "sb-section1"
-    :text {:type "mrkdwn", :text "*Post responses to channel:*"},
-    :accessory {:type "conversations_select",
-                :placeholder {:type "plain_text",
-                              :text "Select a channel...",
-                              :emoji true},
-                :action_id "broadcast2:channel-select"
-                :filter {:include ["public" "private"]}}}
-   {:type "input", :block_id "sb-input1"
-    :element {:type "plain_text_input",
-              :multiline true,
-              :action_id "broadcast2:text-input"
-              :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."},
-    :label {:type "plain_text", :text "Message:", :emoji true}}])
-
-(defn modal-view-payload [title blocks]
-  {:type :modal
-   :title {:type "plain_text"
-           :text title}
-   :blocks blocks})
+  (list
+    [:section "Send a prompt to *all projects*."]
+    [:divider]
+    [:section
+     {:block_id "sb-section1"
+      :accessory [:conversations_select
+                  {:placeholder [:plain_text "Select a channel..."],
+                   :action_id "broadcast2:channel-select"
+                   :filter {:include ["public" "private"]}}]}
+     "*Post responses to channel:*"]
+    [:input
+     {:block_id "sb-input1"
+      :element [:plain_text_input
+                {:multiline true,
+                 :action_id "broadcast2:text-input"
+                 :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}],
+      :label [:plain_text "Message:"]}]))
 
 (defn request-updates! [msg channels]
   ;; TODO
@@ -132,7 +127,8 @@
   (string/replace s "+" " "))
 
 (comment
-  (parse-json (clj->json (modal-view-payload "Broadcast" blocks-broadcast-1)))
+  (parse-json (blocks/to-json [:modal {:title [:plain_text "Broadcast"]
+                                       :blocks blocks-broadcast-1}]))
 
   )
 
@@ -144,22 +140,26 @@
   (case payload-type
     "shortcut"                                              ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal]/shortcut; blocks:" (modal-view-payload "Broadcast" blocks-broadcast-1))
-        (slack/views-open! trigger_id (modal-view-payload "Broadcast" blocks-broadcast-1)))
+    (do (println "[handle-modal]/shortcut; blocks:" [:modal {:title "Broadcast"
+                                                             :blocks blocks-broadcast-1}])
+        (slack/views-open! trigger_id [:modal {:title "Broadcast"
+                                               :blocks blocks-broadcast-1}]))
 
     "block_actions"                                         ; User acted on existing modal
     ;; Branch on specifics of given action
     (case action_id
       "broadcast1:compose"
-      (slack/views-update! view_id (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                          :submit {:type "plain_text",
-                                                   :text "Submit"}))
+      (slack/views-update! view_id [:modal {:title "Compose Broadcast"
+                                            :blocks blocks-broadcast-2
+                                            :submit {:type "plain_text",
+                                                     :text "Submit"}}])
 
       ;; TODO FIXME
       #_"broadcast2:channel-select"
       #_(slack/views-push! (j/get-in payload ["container" "view_id"])
-                           (assoc (modal-view-payload "Compose Broadcast" blocks-broadcast-2)
-                                  :submit {:type "plain_text", :text "Submit"})))
+                           [:modal {:title "Compose Broadcast"
+                                    :blocks blocks-broadcast-2
+                                    :submit [:plain_text "Submit"]}]))
 
     "view_submission"                                       ; "Submit" button pressed
     ;; In the future we will need to branch on other data
@@ -175,7 +175,8 @@
                                                              :sb-input1
                                                              :broadcast2:text-input
                                                              :value]))]
-      (request-updates! message-text channel-ids))))
+      (request-updates! message-text channel-ids))
+    (println [:unhandled-modal payload-type])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -183,7 +184,7 @@
 
 (defn response [body]
   (p/let [body-resolved body]
-    (println :responding-with body-resolved)
+    (prn :responding-with body-resolved)
     (p/resolve #js {:statusCode 200 :body (clj->js body-resolved)})))
 
 (j/defn parse-body [^:js {:as event
@@ -218,7 +219,7 @@
           nil)
 
         ;; Slack Event
-        :event (prn "NOT IMPLEMENTED")
+        :event (slack-events/handle! (:event body))
 
         {:action "broadcast update request to project channels"
          :channels (request-updates! (-> (get-in body [:event :user])
