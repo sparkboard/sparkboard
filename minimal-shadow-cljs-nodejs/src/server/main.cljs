@@ -16,17 +16,16 @@
                    :sparkboard/users nil}))
 
 (comment
-
   ;; these requests don't block
 
-  (slack/get! "users.list"
-              ;; FIXME detect and log errors
-              (fn [rsp] (swap! db #(assoc % :slack/users-raw (js->clj (j/get rsp :members))))))
+  (p/let [rsp (slack/get+ "users.list")]
+    ;; FIXME detect and log errors
+    (swap! db #(assoc % :slack/users-raw (js->clj (j/get rsp :members)))))
 
-  (slack/get! "channels.list"
-              ;; FIXME detect and log errors
-              (fn [rsp] (swap! db #(assoc % :slack/channels-raw (js->clj (j/get rsp :channels)
-                                                                         :keywordize-keys true))))))
+  (p/let [rsp (slack/get+ "channels.list")]
+    ;; FIXME detect and log errors
+    (swap! db #(assoc % :slack/channels-raw (js->clj (j/get rsp :channels)
+                                                     :keywordize-keys true)))))
 
 (comment
   (reset! db {:slack/users nil
@@ -72,12 +71,12 @@
 (def project-channel-names ;; FIXME
   (map :name_normalized (:slack/channels-raw @db)))
 
-(defn send-slack-blocks! [blocks channel]
-  (slack/post-query-string! "chat.postMessage"
-                            {:channel channel ;; id or name
-                             :blocks (clj->json blocks)}
-                            ;; TODO better callback
-                            (fn [rsp] (println "slack blocks response:" rsp))))
+(defn send-slack-blocks+ [blocks channel]
+  (p/->> (slack/post-query-string+ "chat.postMessage"
+                                   {:channel channel        ;; id or name
+                                    :blocks (clj->json blocks)})
+         ;; TODO better callback
+         (println "slack blocks response:")))
 
 (defn send-slack-msg+ [msg channel]
   (slack/post-query-string+ "chat.postMessage"

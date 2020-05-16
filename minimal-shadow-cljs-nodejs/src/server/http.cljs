@@ -1,14 +1,19 @@
 (ns server.http
   "HTTP verbs, via node-fetch"
-  (:require ["node-fetch" :as node-fetch]))
+  (:require ["node-fetch" :as node-fetch]
+            [applied-science.js-interop :as j]
+            [kitchen-async.promise :as p]))
 
-(defn fetch+ [decode-fn url opts]
-  (-> (node-fetch url opts)
-      (.then (fn [^js/Response res] (if (.-ok res)
-                                     (decode-fn res)
-                                     (throw (ex-info "Invalid network request"
-                                                     {:status (.-status res)})))))))
+(defn assert-ok [^js/Response res]
+  (when-not (.-ok res)
+    (throw (ex-info "Invalid network request"
+                    {:status (.-status res)})))
+  res)
 
-(defn decode-json [^js/Response resp] (.json resp))
+(defn fetch+ [url opts]
+  (p/-> (node-fetch url opts)
+        (assert-ok)))
 
-(def ^js/Promise fetch-json+ (partial fetch+ decode-json))
+(defn fetch-json+ [url opts]
+  (p/-> (fetch+ url opts)
+        (j/call :json)))
