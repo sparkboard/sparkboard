@@ -1,12 +1,26 @@
-(ns server.slack.screens)
+(ns server.slack.screens
+  (:require ["moment" :as moment]
+            [applied-science.js-interop :as j]))
 
-(def home
+(def main-menu
   [:section
    {:accessory [:button {:style "primary",
                          :action_id "admin:team-broadcast"
                          :value "click_me_123"}
                 "Compose"]}
    "*Team Broadcast*\nSend a message to all teams."])
+
+(defn home []
+  [:home
+   main-menu
+   [:divider]
+   [:section
+    (str "_Last updated:_ "
+         (j/call (moment) :format "MMM D, h:mm:ss a"))]])
+
+(def shortcut-modal
+  [:modal {:title "Broadcast"
+           :blocks [main-menu]}])
 
 (def team-broadcast-blocks
   (list

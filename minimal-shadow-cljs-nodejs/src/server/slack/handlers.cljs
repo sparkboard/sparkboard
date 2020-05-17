@@ -38,8 +38,7 @@
                                     {:user_id user
                                      :view
                                      (blocks/to-json
-                                       [:home
-                                        slack-screens/home])})
+                                       (screens/home))})
           [:unhandled-event event-type])
         prn))
 
@@ -59,10 +58,8 @@
   (case payload-type
     "shortcut"                                              ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal]/shortcut; blocks:" [:modal {:title "Broadcast"
-                                                             :blocks screens/home}])
-        (slack/views-open! trigger_id [:modal {:title "Broadcast"
-                                               :blocks [screens/home]}]))
+    (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal )
+        (slack/views-open! trigger_id screens/shortcut-modal))
 
     "block_actions"                                         ; User acted on existing modal
     ;; Branch on specifics of given action
