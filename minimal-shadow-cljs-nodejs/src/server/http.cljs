@@ -2,10 +2,12 @@
   "HTTP verbs, via node-fetch"
   (:require ["node-fetch" :as node-fetch]
             [applied-science.js-interop :as j]
-            [kitchen-async.promise :as p]))
+            [kitchen-async.promise :as p]
+            [cljs.pprint :as pp]))
 
 (defn assert-ok [^js/Response res]
   (when-not (.-ok res)
+    (pp/pprint [:http/error (js->clj res)])
     (throw (ex-info "Invalid network request"
                     {:status (.-status res)})))
   res)

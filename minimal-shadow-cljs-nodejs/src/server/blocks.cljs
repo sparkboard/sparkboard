@@ -1,5 +1,5 @@
 (ns server.blocks
-  (:require [clojure.string :as str]))
+  (:require [cljs.pprint :as pp]))
 
 (declare parse)
 
@@ -52,24 +52,31 @@
     (update form 1 parse)
     form))
 
+(defn hiccup? [form] (and (vector? form) (keyword? (first form))))
+
 (defn parse
-  ([a b & more]
-   (parse (into [a b] more)))
-  ([form]
-   (cond (and (vector? form) (keyword? (first form)))
-         (let [tag (first form)
-               props? (has-props? form)
-               resolver (or (resolvers tag) (resolvers ::default))
-               props (when props? (parse (nth form 1)))
-               body (drop (if props? 2 1) form)]
-           (parse (resolver tag props body)))
-         (sequential? form) (map parse form)
-         (map? form) (reduce-kv (fn [m k v]
-                                  (assoc m k (parse v))) {} form)
-         :else form)))
+  [form]
+  (cond (hiccup? form)
+        (let [tag (first form)
+              props? (has-props? form)
+              resolver (or (resolvers tag) (resolvers ::default))
+              props (when props? (parse (nth form 1)))
+              body (drop (if props? 2 1) form)]
+          (parse (resolver tag props body)))
+        (sequential? form) (reduce (fn [out child]
+                                     (let [child (parse child)]
+                                       ((if (sequential? child) into conj) out child))) [] form)
+        (map? form) (reduce-kv (fn [m k v]
+                                 (assoc m k (parse v))) {} form)
+        :else form))
+
+(comment
+  ;; flatten sequences
+  (= [1 2] (:text (parse [:section [(map identity [1 2])]])))
+  )
 
 (def to-js (comp clj->js parse))
-(def to-json (comp js/JSON.stringify to-js))
+(def to-json (comp js/JSON.stringify #(doto % pp/pprint) to-js))
 
 (comment
 

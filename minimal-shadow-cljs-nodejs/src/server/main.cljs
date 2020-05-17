@@ -2,232 +2,94 @@
   "AWS Lambda <--> Slack API
 
   Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
-  (:require [applied-science.js-interop :as j]
-            [clojure.string :as string]
+  (:require ["aws-serverless-express" :as aws-express]
+            ["aws-serverless-express/middleware" :as aws-middleware]
+            ["body-parser" :as body-parser]
+            ["express" :as express]
+            [applied-science.js-interop :as j]
+            [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
-            [server.blocks :as blocks]
             [server.common :refer [clj->json decode-base64 parse-json json->clj]]
-            [server.slack :as slack]
-            [server.slack-events :as slack-events]
-            [cljs.pprint :as pp]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Pseudo-database
-(defonce db (atom {:slack/users nil
-                   :sparkboard/users nil}))
-
-(comment
-  ;; these requests don't block
-
-  (p/let [rsp (slack/get+ "users.list")]
-    ;; FIXME detect and log errors
-    (swap! db #(assoc % :slack/users-raw (js->clj (j/get rsp :members)))))
-
-  (p/let [rsp (slack/get+ "channels.list")]
-    ;; FIXME detect and log errors
-    (swap! db #(assoc % :slack/channels-raw (js->clj (j/get rsp :channels)
-                                                     :keywordize-keys true)))))
-
-(comment
-  (reset! db {:slack/users nil
-              :sparkboard/users nil})
-
-  (:slack/users-raw @db)
-
-  (map :name_normalized (:slack/channels-raw @db))
-  (map :id (:slack/channels-raw @db))
-
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Working with Slack data/requests
-
-(defn from-slack? [event] ;; FIXME ran into trouble with
-  ;; goog.crypt.Sha256 so using a hack for
-  ;; now. TODO implement HMAC check per
-  ;; https://api.slack.com/authentication/verifying-requests-from-slack
-  (= (j/get-in event [:headers :user-agent])
-     "Slackbot 1.0 (+https://api.slack.com/robots)")
-  ;; TODO
-  ;; 1. Check X-Slack-Signature HTTP header
-  #_  (let [s (string/join ":" [(j/get evt :version)
-                                (j/get-in evt [:headers :x-slack-request-timestamp])
-                                (j/get evt :body)])]))
-
-(defn slack-user [slack-user-id]
-  (let [users-by-id (:slack/users-by-id
-                     (swap! db #(assoc % :slack/users-by-id
-                                       (group-by (fn [usr] (get usr "id"))
-                                                 (:slack/users-raw @db)))))]
-    (first (get users-by-id slack-user-id))))
-
-(comment
-  (slack-user "U012E480NTB")
-
-  )
-
-(defn sparkboard-admin? [slack-username] ;; FIXME
-  true)
-
-(def project-channel-names ;; FIXME
-  (map :name_normalized (:slack/channels-raw @db)))
-
-(defn send-slack-blocks+ [blocks channel]
-  (p/->> (slack/post-query-string+ "chat.postMessage"
-                                   {:channel channel        ;; id or name
-                                    :blocks (blocks/to-json blocks)})
-         ;; TODO better callback
-         (println "slack blocks response:")))
-
-(defn send-slack-msg+ [msg channel]
-  (slack/post-query-string+ "chat.postMessage"
-                            {:channel channel               ;; id or name
-                             :text msg}))
-
-(def blocks-broadcast-1
-  (list
-    [:divider]
-    [:section
-     {:accessory [:button {:style "primary",
-                           :action_id "broadcast1:compose"
-                           :value "click_me_123"}
-                  "Compose"]}
-     "*Team Broadcast*\nSend a message to all teams."]))
-
-(def blocks-broadcast-2
-  (list
-    [:section "Send a prompt to *all projects*."]
-    [:divider]
-    [:section
-     {:block_id "sb-section1"
-      :accessory [:conversations_select
-                  {:placeholder [:plain_text "Select a channel..."],
-                   :action_id "broadcast2:channel-select"
-                   :filter {:include ["public" "private"]}}]}
-     "*Post responses to channel:*"]
-    [:input
-     {:block_id "sb-input1"
-      :element [:plain_text_input
-                {:multiline true,
-                 :action_id "broadcast2:text-input"
-                 :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}],
-      :label [:plain_text "Message:"]}]))
-
-(defn request-updates! [msg channels]
-  ;; TODO
-  ;; Write broadcast to Firebase
-  (p/all
-    (map (partial send-slack-msg+ msg) channels)))
-
-(defn decode-text-input [s]
-  ;; Slack appears to use some (?) of
-  ;; `application/x-www-form-urlencoded` for at least multiline text
-  ;; input, specifically replacing spaces with `+`
-  (string/replace s "+" " "))
-
-(comment
-  (parse-json (blocks/to-json [:modal {:title [:plain_text "Broadcast"]
-                                       :blocks blocks-broadcast-1}]))
-
-  )
-
-(defn handle-modal! [{payload-type :type
-                      :keys [trigger_id]
-                      [{:keys [action_id]}] :actions
-                      {:keys [view_id]} :container
-                      :as payload}]
-  (case payload-type
-    "shortcut"                                              ; Slack "Global shortcut".
-    ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal]/shortcut; blocks:" [:modal {:title "Broadcast"
-                                                             :blocks blocks-broadcast-1}])
-        (slack/views-open! trigger_id [:modal {:title "Broadcast"
-                                               :blocks blocks-broadcast-1}]))
-
-    "block_actions"                                         ; User acted on existing modal
-    ;; Branch on specifics of given action
-    (case action_id
-      "broadcast1:compose"
-      (slack/views-update! view_id [:modal {:title "Compose Broadcast"
-                                            :blocks blocks-broadcast-2
-                                            :submit {:type "plain_text",
-                                                     :text "Submit"}}])
-
-      ;; TODO FIXME
-      #_"broadcast2:channel-select"
-      #_(slack/views-push! (j/get-in payload ["container" "view_id"])
-                           [:modal {:title "Compose Broadcast"
-                                    :blocks blocks-broadcast-2
-                                    :submit [:plain_text "Submit"]}]))
-
-    "view_submission"                                       ; "Submit" button pressed
-    ;; In the future we will need to branch on other data
-    (p/let [channel-ids (p/-> (slack/get+ "channels.list")
-                              (j/get :channels)
-                              (->> (keep (j/fn [^:js {:keys [is_member id]}]
-                                           ;; TODO
-                                           ;; ensure bot joins team-channels when they are created
-                                           (when is_member id)))))
-            message-text (decode-text-input (get-in payload [:view
-                                                             :state
-                                                             :values
-                                                             :sb-input1
-                                                             :broadcast2:text-input
-                                                             :value]))]
-      (request-updates! message-text channel-ids))
-    (println [:unhandled-modal payload-type])))
-
+            [server.slack.db :as slack-db]
+            [server.slack.handlers :as handlers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
 
-(defn response [body]
-  (p/let [body-resolved body]
-    (prn :responding-with body-resolved)
-    (p/resolve #js {:statusCode 200 :body (clj->js body-resolved)})))
+(defn body->clj [body]
+  (let [body (js->clj body :keywordize-keys true)]
+    (cond-> body
+      (:payload body)                                       ;; special case for Slack including a json-string as url-encoded body
+      (update :payload json->clj))))
 
-(j/defn parse-body [^:js {:as event
-                          :keys [body]
-                          {:keys [Content-Type]} :headers}]
-  (case Content-Type
-    "application/x-www-form-urlencoded" (uri/query-string->map (do #_decode-base64 body))
-    "application/json" (js->clj (js/JSON.parse body) :keywordize-keys true)
-    body))
-
-(defn handler [event _context]
+(j/defn handler*
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
-  (let [body (parse-body event)
-        request-type (cond (:challenge body) :challenge
+  [^:js {:as req :keys [body]} ^js res]
+  (let [request-type (cond (:challenge body) :challenge
                            (:event body) :event
                            (:payload body) :interaction)]
     (pp/pprint ["[handler] request-type:" request-type])
     (pp/pprint ["[handler] body:" body])
     ;(pp/pprint ["[handler] event:" event])
 
-    (response
-      (case request-type
-        ;; Slack API: identification challenge
-        :challenge
-        (:challenge body)
+    (p/try (p/let [response (case request-type
+                              ;; Slack API: identification challenge
+                              :challenge
+                              (:challenge body)
 
-        ;; Slack Interaction (e.g. global shortcut)
-        :interaction
-        (p/let [action-result (handle-modal! (json->clj (:payload body)))]
-          (println :action-result action-result)
-          nil)
+                              ;; Slack Interaction (e.g. global shortcut)
+                              :interaction
+                              (handlers/handle-interaction! (:payload body))
 
-        ;; Slack Event
-        :event (slack-events/handle! (:event body))
+                              ;; Slack Event
+                              :event
+                              (handlers/handle-event! (:event body))
 
-        {:action "broadcast update request to project channels"
-         :channels (request-updates! (-> (get-in body [:event :user])
-                                         slack-user
-                                         (get "name"))
-                                     (map :id (:slack/channels-raw @db)))}))))
+                              ;; "broadcast update request to project channels"
+                              (handlers/request-updates! (-> (get-in body [:event :user])
+                                                             slack-db/slack-user
+                                                             (get "name"))
+                                                         (map :id (:slack/channels-raw @slack-db/db))))]
+             (prn [request-type :response] response)
+             (.send res))
+           (p/catch js/Error e
+             (pp/pprint [:error e])
+             (-> res (.status 500) (.send "Server error"))))))
+
+(def app
+  (doto ^js (express)
+    ;; (.use (aws-middleware/eventContext))
+    (.use (body-parser/json))
+    (.use (body-parser/urlencoded #js{:extended true}))
+    (.use (fn [req res next]
+            (j/update! req :body body->clj)
+            (next)))
+    (.use "*" (fn [req res next] (#'handler* req res next)))))
+
+(def server (aws-express/createServer app))
+
+(def handler (fn [event context] (aws-express/proxy server event context)))
+
+(def dev-port 3000)
+(defonce dev-server (atom nil))
+
+(defn dev-stop []
+  (some-> @dev-server (j/call :close))
+  (reset! dev-server nil))
+
+(defn dev-start []
+  (dev-stop)
+  (reset! dev-server (j/call app :listen (doto 3000
+                                           (->> (prn :started-server))))))
+
+(comment
+  (when goog/DEBUG
+    (dev-start)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
+
   (parse-json (:payload (uri/query-string->map (decode-base64 "cGF5bG9hZD0lN0IlMjJ0eXBlJTIyJTNBJTIyc2hvcnRjdXQlMjIlMkMlMjJ0b2tlbiUyMiUzQSUyMjJHSTVkSHNOYWJ4ZmZLc2N2eEszbkJ3aCUyMiUyQyUyMmFjdGlvbl90cyUyMiUzQSUyMjE1ODk1NTI5NDEuMjQ0ODQ4JTIyJTJDJTIydGVhbSUyMiUzQSU3QiUyMmlkJTIyJTNBJTIyVDAxME1HVlQ0VFYlMjIlMkMlMjJkb21haW4lMjIlM0ElMjJzcGFya2JvYXJkLWFwcCUyMiU3RCUyQyUyMnVzZXIlMjIlM0ElN0IlMjJpZCUyMiUzQSUyMlUwMTJFNDgwTlRCJTIyJTJDJTIydXNlcm5hbWUlMjIlM0ElMjJkYXZlLmxpZXBtYW5uJTIyJTJDJTIydGVhbV9pZCUyMiUzQSUyMlQwMTBNR1ZUNFRWJTIyJTdEJTJDJTIyY2FsbGJhY2tfaWQlMjIlM0ElMjJzcGFya2JvYXJkJTIyJTJDJTIydHJpZ2dlcl9pZCUyMiUzQSUyMjExMzk0Mzg2ODYzMDUuMTAyMTU3MzkyMjk0Ny5kNDhhNDExNDBmMjJhMjc4YTlmNGUxZTVkNDliMDBjYSUyMiU3RA=="))))
   )

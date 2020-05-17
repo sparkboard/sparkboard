@@ -1,11 +1,23 @@
 (ns server.slack
   "Slack API"
   (:require [applied-science.js-interop :as j]
+            [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
             [server.blocks :as blocks]
             [server.common :refer [clj->json config]]
-            [server.http :as http]
-            [kitchen-async.promise :as p]))
+            [server.http :as http]))
+
+(defn from-slack? [event]                                   ;; FIXME ran into trouble with
+  ;; goog.crypt.Sha256 so using a hack for
+  ;; now. TODO implement HMAC check per
+  ;; https://api.slack.com/authentication/verifying-requests-from-slack
+  (= (j/get-in event [:headers :user-agent])
+     "Slackbot 1.0 (+https://api.slack.com/robots)")
+  ;; TODO
+  ;; 1. Check X-Slack-Signature HTTP header
+  #_(let [s (string/join ":" [(j/get evt :version)
+                              (j/get-in evt [:headers :x-slack-request-timestamp])
+                              (j/get evt :body)])]))
 
 (def base-uri "https://slack.com/api/")
 (def bot-token (-> config :slack :bot-user-oauth-token))
@@ -49,6 +61,7 @@
   (p/->> (post-query-string+ "views.open"
                              {:trigger_id trigger-id
                               :view (blocks/to-json blocks)})
+         (http/assert-ok)
          ;; TODO better callback
          (println "slack views.open response:")))
 
