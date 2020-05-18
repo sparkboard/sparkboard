@@ -19,7 +19,7 @@ In terminal, in directory target/
 
 https://ngrok.com/download
 
-run `ngrok http 3000` to expose port 3000 to the world.
+run `ngrok http 3000 -subdomain=A_SUBDOMAIN` to expose port 3000 to the world.
 ngrok will show you a URL, which you can paste into the Slack API settings pages for your app.
 
 #### Slack app settings
