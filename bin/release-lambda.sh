@@ -1,16 +1,19 @@
 #! /bin/bash
 
-STACK="sparkboard-lambda-$1"
+# usage:
+# bin/release-lambda.sh <dev, staging, prod>
+
+# validate environment
+ENV=$(bin/bb -i "(#{\"dev\" \"staging\" \"prod\"} \"$1\")")
+if [ "$ENV" == "" ]; then echo "must provide valid environment" && exit; fi
+
+# install lambda deps
+cd lambda && yarn install && cd ..
+
+# compile
 yarn shadow-cljs release lambda
+
+# package and deploy
+STACK="sparkboard-lambda-$1"
 sam build
 sam deploy --stack-name "$STACK" --s3-prefix s3_prefix = "$STACK"
-
-#rm -f archive.zip
-#zip -r archive.zip .aws-sam/build/SlackHandler/target/main.js .aws-sam/build/SlackHandler/node_modules/
-
-# TODO send to s3 or lambda
-
-# restore node_modules
-
-
-# TODO https://stackoverflow.com/questions/34437900/how-to-load-npm-modules-in-aws-lambda/53450086#53450086
