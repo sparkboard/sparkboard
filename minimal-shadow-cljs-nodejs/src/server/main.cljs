@@ -52,8 +52,8 @@
                                                              slack-db/slack-user
                                                              (get "name"))
                                                          (map :id (:slack/channels-raw @slack-db/db))))]
-             (prn [request-type :response] response)
-             (.send res))
+
+             (.send res (when (string? response) response)))
            (p/catch js/Error e
              (pp/pprint [:error e])
              (-> res (.status 500) (.send "Server error"))))))
