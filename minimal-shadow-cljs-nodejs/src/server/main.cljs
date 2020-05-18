@@ -27,36 +27,30 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (let [request-type (cond (:challenge body) :challenge
-                           (:event body) :event
-                           (:payload body) :interaction)]
-    (pp/pprint ["[handler] request-type:" request-type])
-    (pp/pprint ["[handler] body:" body])
-    ;(pp/pprint ["[handler] event:" event])
+  (pp/pprint ["[handler] body:" body])
 
-    (p/try (p/let [response (case request-type
-                              ;; Slack API: identification challenge
-                              :challenge
-                              (:challenge body)
+  (p/try (p/let [response (cond
+                            ;; Slack API: identification challenge
+                            (:challenge body) (:challenge body)
 
-                              ;; Slack Interaction (e.g. global shortcut)
-                              :interaction
-                              (handlers/handle-interaction! (:payload body))
+                            ;; Slack Interaction (e.g. global shortcut)
+                            (:payload body) (handlers/handle-interaction! (:payload body))
 
-                              ;; Slack Event
-                              :event
-                              (handlers/handle-event! (:event body))
+                            ;; Slack Event
+                            (:event body)
+                            (handlers/handle-event! (:event body))
 
-                              ;; "broadcast update request to project channels"
-                              (handlers/request-updates! (-> (get-in body [:event :user])
-                                                             slack-db/slack-user
-                                                             (get "name"))
-                                                         (map :id (:slack/channels-raw @slack-db/db))))]
+                            ;; "broadcast update request to project channels"
+                            :else
+                            (handlers/request-updates! (-> (get-in body [:event :user])
+                                                           slack-db/slack-user
+                                                           (get "name"))
+                                                       (map :id (:slack/channels-raw @slack-db/db))))]
 
-             (.send res (when (string? response) response)))
-           (p/catch js/Error e
-             (pp/pprint [:error e])
-             (-> res (.status 500) (.send "Server error"))))))
+           (.send res (when (string? response) response)))
+         (p/catch js/Error e
+           (pp/pprint [:error e])
+           (-> res (.status 500) (.send "Server error")))))
 
 (def app
   (doto ^js (express)

@@ -1,6 +1,7 @@
 (ns server.slack.screens
   (:require ["moment" :as moment]
-            [applied-science.js-interop :as j]))
+            [applied-science.js-interop :as j]
+            [server.blocks :as blocks]))
 
 (def main-menu
   [:section
@@ -45,3 +46,7 @@
   [:modal {:title [:plain_text "Compose Broadcast"]
            :blocks team-broadcast-blocks
            :submit [:plain_text "Submit"]}])
+
+(comment
+  (blocks/parse team-broadcast-modal-compose)
+  (blocks/parse [:md "hi"]))

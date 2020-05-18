@@ -1,13 +1,11 @@
 (ns server.blocks
-  (:require [cljs.pprint :as pp]))
+  (:require [cljs.pprint :as pp]
+            [clojure.string :as str]))
 
 (declare parse)
 
-(defn wrap-string
-  ([k]
-   (fn [s] (wrap-string k s)))
-  ([k s]
-   (if (string? s) [k s] s)))
+(defn wrap-string [k s]
+  (if (string? s) [k s] s))
 
 (defn update-some [m updaters]
   (reduce-kv (fn [m k update-fn]
@@ -15,32 +13,43 @@
                  (update m k update-fn)
                  m)) m updaters))
 
-(def resolvers
-  {:button (fn [tag props [text]]
-             (-> {:type "button"}
-                 (merge (when text {:text text}) props)
-                 (update-some {:text (wrap-string :plain_text)})))
-   :plain_text (fn [tag props [text]]
-                 (merge {:type "plain_text"
-                         :emoji true
-                         :text text} props))
-   :md (fn [tag props [text]]
-         (merge {:type "mrkdwn"
-                 :text text} props))
-   :section (fn [tag props [text]]
-              (-> {:type "section"}
-                  (merge (when text {:text text}) props)
-                  (update-some {:text (wrap-string :md)})))
-   :home (fn [tag props children]
-           (merge {:type "home"
-                   :blocks children} props))
-   ::default (fn [tag props children]
-               (assert (empty? children) (str "Children are ignored for tag: " tag ", props: " props))
-               (merge {:type (name tag)} props))
-   :modal (fn [tag props body]
-            (-> (merge {:type "modal"
-                        :blocks body} props)
-                (update-some {:title (wrap-string :plain_text)})))})
+(def type-string (comp #(str/replace % "-" "_") name))
+
+(def schema
+  "hiccup->block metadata. Supports:
+
+  :child    -> key for single child
+  :children -> key for list of children
+  :props    -> map of default props
+  :type     -> value for type (default: tag)"
+
+  {"button" {:child :text
+             :update-props {:text (partial wrap-string :plain_text)}}
+   "plain_text" {:child :text
+                 :props {:emoji true}}
+   "md" {:child :text
+         :type "mrkdwn"}
+   "section" {:child :text
+              :update-props {:text (partial wrap-string :md)}}
+   "home" {:children :blocks}
+   "modal" {:children :blocks
+            :update-props {:title (partial wrap-string :plain_text)}}})
+
+(defn apply-schema [tag props body]
+  (let [tag-type (type-string tag)
+        {:as tag-schema
+         :keys [child children update-props]} (schema tag-type)
+        children? (seq body)]
+    (when (and (not (or child children)) children?)
+      (throw (js/Error. (str "Tag does not support children: " tag ", props: " props))))
+    (when child (assert (<= (count body) 1)))
+
+    (merge (-> (:props tag-schema)
+               (assoc :type (or (:type tag-schema) tag-type))
+               (cond-> child (assoc child (first body)))
+               (cond-> children (assoc children body))
+               (merge props)
+               (cond-> update-props (update-some update-props))))))
 
 (defn has-props? [form]
   (map? (nth form 1 nil)))
@@ -59,10 +68,9 @@
   (cond (hiccup? form)
         (let [tag (first form)
               props? (has-props? form)
-              resolver (or (resolvers tag) (resolvers ::default))
               props (when props? (parse (nth form 1)))
               body (drop (if props? 2 1) form)]
-          (parse (resolver tag props body)))
+          (parse (apply-schema tag props body)))
         (sequential? form) (reduce (fn [out child]
                                      (let [child (parse child)]
                                        ((if (sequential? child) into conj) out child))) [] form)
@@ -87,8 +95,9 @@
       [:md "Hello"]
       [:button "What"]))
 
-  (parse [:home
-          [:section [:md "Hello, _friend_."]]])
+  (parse
+    [:home
+     [:section "Hello, _friend_."]])
 
   (parse
     [:section
