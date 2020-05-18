@@ -16,6 +16,10 @@
        (catch js/Error e
            e)))
 
+(defn json->clj [json]
+  (-> (js/JSON.parse json)
+      (js->clj :keywordize-keys true)))
+
 (defn decode-base64 [s]
   (.toString (.from js/Buffer s "base64")))
 
