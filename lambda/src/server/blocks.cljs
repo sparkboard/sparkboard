@@ -18,10 +18,10 @@
 (def schema
   "hiccup->block metadata. Supports:
 
-  :child    -> key for single child
-  :children -> key for list of children
-  :props    -> map of default props
-  :type     -> value for type (default: tag)"
+  :child (kw)    -> puts single child element at this key
+  :children (kw) -> puts list of children at this key
+  :props (map)   -> map of default props
+  :type (string) -> uses this as the block type (instead of the tag's name)"
 
   {"button" {:child :text
              :update-props {:text (partial wrap-string :plain_text)}}

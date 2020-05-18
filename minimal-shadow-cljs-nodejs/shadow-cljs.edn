@@ -1,6 +1,0 @@
-{:deps true
- :nrepl {:write-port-file true}
- :builds {:app {:target :node-library
-                :exports {:handler server.main/handler}
-                :output-dir "target"
-                :output-to "target/main.js"}}}

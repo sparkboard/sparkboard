@@ -1,7 +1,10 @@
 {:deps true
+ :paths ["src"
+         "lambda/src"]
  :dev-http {1245 "public"}
+ :nrepl {:write-port-file true}
  :builds
- {:app
+ {:web
   {:target :browser
    :modules {:app {:init-fn org.sparkboard.client/init}}
    :output-dir "public/js/compiled"
@@ -14,4 +17,10 @@
                                     :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
                                     :scripts/body [{:src "/js/compiled/app.js"}]
                                     :body [:div#web]})})]
-   :devtools {:preloads [triple.view.react.preload]}}}}
+   :devtools {:preloads [triple.view.react.preload]}}
+  :lambda
+  {:target :node-library
+   :exports {:handler server.main/handler}
+   :output-to "lambda/target/main.js"
+   :js-options
+   {:js-package-dirs ["lambda/node_modules"]}}}}
