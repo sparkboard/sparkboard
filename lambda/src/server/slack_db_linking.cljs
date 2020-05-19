@@ -31,7 +31,6 @@
 ;; Create link entries
 
 (defn link-workspace-to-board!
-  "Links slack workspace to sparkboard board, returns board"
   [workspace-id board-id]
   (fire/put+ (str "/slack-workspace/" workspace-id)
              {:body {:board-id board-id}}))
