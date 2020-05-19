@@ -4,7 +4,6 @@
     <option name="projectFiles">
       <list>
         <option value="file://$PROJECT_DIR$/deps.edn" />
-        <option value="file://$PROJECT_DIR$/minimal-shadow-cljs-nodejs/deps.edn" />
       </list>
     </option>
   </component>

@@ -1,6 +1,5 @@
 (ns server.slack.screens
-  (:require ["moment" :as moment]
-            [applied-science.js-interop :as j]
+  (:require [applied-science.js-interop :as j]
             [server.blocks :as blocks]))
 
 (def main-menu
@@ -17,7 +16,9 @@
    [:divider]
    [:section
     (str "_Last updated:_ "
-         (j/call (moment) :format "MMM D, h:mm:ss a"))]])
+         (-> (js/Date.)
+             (.toLocaleString "en-US" #js{:dateStyle "medium"
+                                          :timeStyle "medium"})))]])
 
 (def shortcut-modal
   [:modal {:title "Broadcast"
