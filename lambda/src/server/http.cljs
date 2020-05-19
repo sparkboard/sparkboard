@@ -13,9 +13,9 @@
   res)
 
 (defn fetch+ [url opts]
-  (p/-> (node-fetch url opts)
+  (p/-> (node-fetch url (clj->js opts))
         (assert-ok)))
 
 (defn fetch-json+ [url opts]
-  (p/-> (fetch+ url opts)
+  (p/-> (fetch+ url (clj->js opts))
         (j/call :json)))

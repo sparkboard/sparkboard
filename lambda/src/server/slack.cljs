@@ -27,8 +27,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Direct HTTP calls
-(defn get+ [family-method]
-  (http/fetch-json+ (str base-uri family-method)
+(defn get+ [family-method & [{:keys [query]}]]
+  (http/fetch-json+ (str base-uri family-method
+                         (when query
+                           (str "?" (uri/map->query-string query))))
                     (j/lit {:method "GET"
                             :Content-Type "application/json; charset=utf-8"
                             :headers {:Authorization (str "Bearer " bot-token)}})))
