@@ -100,7 +100,8 @@
   (p/let [{:keys [board-id]} (linked-workspace workspace-id)
           {:keys [account-id]} (linked-user slack-user-id)]
     ;; TODO
-    ;; ask Sparkboard if account is admin of board
+    ;; ask Sparkboard if account is admin of board,
+    ;; OR rely on Slack admin status?
     ))
 
 (defn linking-url-for-slack-id [workspace-id user-id]
