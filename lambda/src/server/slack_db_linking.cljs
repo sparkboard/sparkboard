@@ -17,6 +17,7 @@
   "Returns slack user id for the given email address, if found"
   [email]
   (p/let [res (slack/get+ "users.lookupByEmail" {:query {:email email}})]
+    ;; UNCLEAR: how does Slack know what workspace we are interested in?
     (when (j/get res :ok)
       ;; user contains team_id, id, is_admin
       (j/get res :user))))

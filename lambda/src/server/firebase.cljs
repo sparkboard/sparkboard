@@ -38,12 +38,3 @@
 
 (defn obj->list [id-key m]
   (map->list id-key (js->clj m :keywordize-keys true)))
-
-(comment
-  (p/->
-    (workspace->board "abc")
-    prn)
-
-  (p/->
-    (board->workspace "demo")
-    prn))
