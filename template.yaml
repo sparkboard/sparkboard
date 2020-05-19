@@ -12,14 +12,60 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: ./lambda
-      Handler: target/main.handler
+      Handler: target/main.slackHandler
       Runtime: nodejs12.x
+      Policies:
+        # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - SNSPublishMessagePolicy:
+            TopicName: !Ref DeferredTaskTopic
+      Environment:
+        Variables:
+          DEFERRED_TASK_TOPIC_ARN: !Ref DeferredTaskTopic
       Events:
         SlackRequest:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /
             Method: post
+
+  # https://github.com/dsandor/example-lambda-sns/blob/master/template.yaml
+  DeferredTaskHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./lambda
+      Handler: target/main.deferredTaskHandler
+      Runtime: nodejs12.x
+  DeferredTaskTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: lambda
+          Endpoint: !GetAtt DeferredTaskHandler.Arn
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
+  # https://stackoverflow.com/questions/32465505/cant-create-a-sns-event-source-on-a-lambda-function-using-cloudformation
+  DeferredTaskPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DeferredTaskHandler.Arn
+      Action: lambda:InvokeFunction
+      Principal: "sns.amazonaws.com"
+      SourceArn: !Ref DeferredTaskTopic
+
+  # https://github.com/aws-samples/aws-serverless-sns-fanout/blob/master/template.yml
+  DeferredTaskTopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      Topics:
+        - !Ref DeferredTaskTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'sns:Publish'
+            Resource: !Ref DeferredTaskTopic
+            Principal:
+              AWS: '*'
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function

@@ -20,7 +20,8 @@
    :devtools {:preloads [triple.view.react.preload]}}
   :lambda
   {:target :node-library
-   :exports {:handler server.main/handler}
+   :exports {:slackHandler server.main/slack-handler
+             :deferredTaskHandler server.main/deferred-task-handler}
    :output-to "lambda/target/main.js"
    :js-options
    {:js-package-dirs ["lambda/node_modules"]}}}}

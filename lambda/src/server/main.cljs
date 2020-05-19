@@ -12,7 +12,8 @@
             [lambdaisland.uri :as uri]
             [server.common :refer [clj->json decode-base64 parse-json json->clj]]
             [server.slack.db :as slack-db]
-            [server.slack.handlers :as handlers]))
+            [server.slack.handlers :as handlers]
+            [server.common :as common]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
@@ -64,7 +65,13 @@
 
 (def server (aws-express/createServer app))
 
-(def handler (fn [event context] (aws-express/proxy server event context)))
+(def slack-handler
+  (fn [event context]
+    (aws-express/proxy server event context)))
+
+(j/defn deferred-task-handler [^:js {:as event [Record] :Records} context]
+  (p/resolve
+    (handlers/handle-deferred-task (j/get-in Record [:Sns :Message]) event context)))
 
 (def dev-port 3000)
 (defonce dev-server (atom nil))
