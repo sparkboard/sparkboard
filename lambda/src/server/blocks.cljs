@@ -1,17 +1,12 @@
 (ns server.blocks
   (:require [cljs.pprint :as pp]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [server.common :as common]))
 
 (declare parse)
 
 (defn wrap-string [k s]
   (if (string? s) [k s] s))
-
-(defn update-some [m updaters]
-  (reduce-kv (fn [m k update-fn]
-               (if (contains? m k)
-                 (update m k update-fn)
-                 m)) m updaters))
 
 (def type-string (comp #(str/replace % "-" "_") name))
 
@@ -49,7 +44,7 @@
                (cond-> child (assoc child (first body)))
                (cond-> children (assoc children body))
                (merge props)
-               (cond-> update-props (update-some update-props))))))
+               (cond-> update-props (common/update-some update-props))))))
 
 (defn has-props? [form]
   (map? (nth form 1 nil)))
