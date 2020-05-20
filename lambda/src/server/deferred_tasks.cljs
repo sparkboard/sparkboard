@@ -2,12 +2,13 @@
   (:require ["aws-sdk" :as aws]
             [applied-science.js-interop :as j]
             [kitchen-async.promise :as p]
-            [server.common :as common]))
+            [server.common :as common])
+  (:require-macros [server.deferred-tasks :refer [alias!]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Task registry
 
-(defonce registry (atom {}))
+(def registry (atom {}))
 
 (defn register!
   "Registers a task handler, to be called with [payload, event, context]
@@ -15,19 +16,19 @@
   [k f]
   (swap! registry assoc k f))
 
-(defn alias!
+(defn alias*
   "Registers an existing function, to be called with args passed to the payload"
   [k f]
   (register! k (fn [[k :as message] _ _]
                  (apply f (rest message)))))
 
-(register!
-  ::default
-  (fn [[k & data] _ _]
-    (prn (str "No handler registered for " k ". Invoked with: " data))))
+(defn default [[k & args] _ _]
+  (prn (str "No handler registered for " k ". Invoked with: " args)))
+
+(register! `default default)
 
 (defn invoke-task [[k :as message] event context]
-  (let [message-handler (or (@registry k) (@registry ::default))]
+  (let [message-handler (or (@registry k) (@registry `default))]
     (message-handler message event context)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

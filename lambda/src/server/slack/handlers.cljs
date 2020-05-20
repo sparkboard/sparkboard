@@ -34,14 +34,14 @@
            (p/all)
            (map http/assert-ok))))
 
-(tasks/alias! ::request-updates request-updates!)
+(tasks/register-var! `request-updates!)
 
 (defn handle-event! [{:as event
                       event-type :type
                       :keys [user channel tab]}]
   (case event-type
     "app_home_opened"
-    {:task [::slack/post-query-string "views.publish"
+    {:task [`slack/post-query-string+ "views.publish"
             {:user_id user
              :view
              (blocks/to-json
@@ -63,15 +63,15 @@
   (case payload-type
 
     ; Slack "Global shortcut"
-    "shortcut" {:task [::slack/views-open trigger_id screens/shortcut-modal]}
+    "shortcut" {:task [`slack/views-open! trigger_id screens/shortcut-modal]}
 
     ; User acted on existing view
     "block_actions"
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" {:task [::slack/views-update view_id screens/team-broadcast-modal-compose]}
-        "home" {:task [::slack/views-open trigger_id screens/team-broadcast-modal-compose]})
+        "modal" {:task [`slack/views-update! view_id screens/team-broadcast-modal-compose]}
+        "home" {:task [`slack/views-open! trigger_id screens/team-broadcast-modal-compose]})
 
       ;; TODO FIXME
       #_"broadcast2:channel-select"
@@ -84,7 +84,7 @@
     ; "Submit" button pressed
     "view_submission"
     ;; In the future we will need to branch on other data
-    {:task [::request-updates (decode-text-input (get-in payload [:view
+    {:task [`request-updates! (decode-text-input (get-in payload [:view
                                                                   :state
                                                                   :values
                                                                   :sb-input1
