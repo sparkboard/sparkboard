@@ -24,7 +24,7 @@
 (defn request-updates! [msg channels]
   ;; TODO
   ;; Write broadcast to Firebase
-  (p/->> (map (partial send-slack-msg+ msg) channels)
+  (p/->> (map (partial send-slack-blocks+ (screens/team-broadcast-message msg)) channels)
          (p/all)
          (map http/assert-ok)))
 
