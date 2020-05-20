@@ -7,8 +7,8 @@
 
 if [ "$1" == "" ]; then echo "must pass an environment name (eg. dev, staging, prod, matt, dave, ...)" && exit; fi
 
-# install lambda deps
-cd lambda && yarn install && cd ..
+# install deps
+yarn install
 
 # compile
 yarn shadow-cljs release lambda
