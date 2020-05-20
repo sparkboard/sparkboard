@@ -28,25 +28,23 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (let [{:as result
-         :keys [response
-                task]} (cond
-                         ;; Slack API: identification challenge
-                         (:challenge body) {:response (:challenge body)}
+  (p/let [{:as result
+           :keys [response
+                  task]} (cond
+                           ;; Slack API: identification challenge
+                           (:challenge body) {:response (:challenge body)}
 
-                         ;; Slack Interaction (e.g. global shortcut)
-                         (:payload body) (handlers/handle-interaction! (:payload body))
+                           ;; Slack Interaction (e.g. global shortcut)
+                           (:payload body) (handlers/handle-interaction! (:payload body))
 
-                         ;; Slack Event
-                         (:event body) (handlers/handle-event! (:event body)))]
+                           ;; Slack Event
+                           (:event body) (handlers/handle-event! (:event body)))]
+
     (assert (or (map? result) (nil? result)))
+    (pp/pprint [(if result ::handled ::not-handled) body])
+    (when task (tasks/publish! task))
 
-    (pp/pprint (if result
-                 [::handled body]
-                 [::not-handled body]))
-    (p/do
-      (when task (tasks/publish! task))
-      (.send res response))))
+    (.send res response)))
 
 (def app
   (doto ^js (express)
