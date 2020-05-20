@@ -4,10 +4,10 @@
             [clojure.string :as str]
             [kitchen-async.promise :as p]
             [server.blocks :as blocks]
+            [server.deferred-tasks :as tasks]
             [server.http :as http]
             [server.slack :as slack]
-            [server.slack.screens :as screens]
-            [server.slack.screens :as slack-screens]))
+            [server.slack.screens :as screens]))
 
 (defn send-slack-blocks+ [blocks channel]
   (p/->> (slack/post-query-string+ "chat.postMessage"
@@ -28,17 +28,18 @@
          (p/all)
          (map http/assert-ok)))
 
+(tasks/alias! ::request-updates request-updates!)
+
 (defn handle-event! [{:as event
                       event-type :type
                       :keys [user channel tab]}]
-  (pp/pprint [::event event])
   (p/-> (case event-type
           "app_home_opened"
-          (slack/post-query-string+ "views.publish"
-                                    {:user_id user
-                                     :view
-                                     (blocks/to-json
-                                       (screens/home))})
+          (tasks/publish! [::slack/post-query-string "views.publish"
+                          {:user_id user
+                           :view
+                           (blocks/to-json
+                             (screens/home))}])
           [:unhandled-event event-type])
         prn))
 
@@ -58,16 +59,16 @@
   (case payload-type
     "shortcut"                                              ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal )
-        (slack/views-open! trigger_id screens/shortcut-modal))
+    (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal)
+        (tasks/publish! [::slack/views-open trigger_id screens/shortcut-modal]))
 
     "block_actions"                                         ; User acted on existing modal
     ;; Branch on specifics of given action
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" (slack/views-update! view_id screens/team-broadcast-modal-compose)
-        "home" (slack/views-open! trigger_id screens/team-broadcast-modal-compose))
+        "modal" (tasks/publish! [::slack/views-update view_id screens/team-broadcast-modal-compose])
+        "home" (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-modal-compose]))
 
       ;; TODO FIXME
       #_"broadcast2:channel-select"
@@ -82,14 +83,14 @@
     (p/let [channel-ids (p/-> (slack/get+ "channels.list")
                               (j/get :channels)
                               (->> (keep (j/fn [^:js {:keys [is_member id]}]
-                                               ;; TODO
-                                               ;; ensure bot joins team-channels when they are created
-                                               (when is_member id)))))
+                                           ;; TODO
+                                           ;; ensure bot joins team-channels when they are created
+                                           (when is_member id)))))
             message-text (decode-text-input (get-in payload [:view
                                                              :state
                                                              :values
                                                              :sb-input1
                                                              :broadcast2:text-input
                                                              :value]))]
-           (request-updates! message-text channel-ids))
+      (tasks/publish! [::request-updates message-text channel-ids]))
     (println [:unhandled-modal payload-type])))

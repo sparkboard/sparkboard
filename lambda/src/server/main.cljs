@@ -1,7 +1,6 @@
 (ns server.main
-  "AWS Lambda <--> Slack API
-
-  Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
+  "AWS Lambda <--> Slack API"
+  ;; adapted from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs
   (:require ["aws-serverless-express" :as aws-express]
             ["aws-serverless-express/middleware" :as aws-middleware]
             ["body-parser" :as body-parser]
@@ -10,7 +9,9 @@
             [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
+            [server.common :as common]
             [server.common :refer [clj->json decode-base64 parse-json json->clj]]
+            [server.deferred-tasks :as tasks]
             [server.slack.db :as slack-db]
             [server.slack.handlers :as handlers]))
 
@@ -38,14 +39,7 @@
 
                             ;; Slack Event
                             (:event body)
-                            (handlers/handle-event! (:event body))
-
-                            ;; "broadcast update request to project channels"
-                            :else
-                            (handlers/request-updates! (-> (get-in body [:event :user])
-                                                           slack-db/slack-user
-                                                           (get "name"))
-                                                       (map :id (:slack/channels-raw @slack-db/db))))]
+                            (handlers/handle-event! (:event body)))]
 
            (.send res (when (string? response) response)))
          (p/catch js/Error e
@@ -64,7 +58,11 @@
 
 (def server (aws-express/createServer app))
 
-(def handler (fn [event context] (aws-express/proxy server event context)))
+(def slack-handler
+  (fn [event context]
+    (aws-express/proxy server event context)))
+
+(def deferred-task-handler tasks/handler)
 
 (def dev-port 3000)
 (defonce dev-server (atom nil))
