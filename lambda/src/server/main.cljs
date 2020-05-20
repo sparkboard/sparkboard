@@ -1,7 +1,6 @@
 (ns server.main
-  "AWS Lambda <--> Slack API
-
-  Original template from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs"
+  "AWS Lambda <--> Slack API"
+  ;; adapted from https://github.com/minimal-xyz/minimal-shadow-cljs-nodejs
   (:require ["aws-serverless-express" :as aws-express]
             ["aws-serverless-express/middleware" :as aws-middleware]
             ["body-parser" :as body-parser]
@@ -10,10 +9,11 @@
             [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
+            [server.common :as common]
             [server.common :refer [clj->json decode-base64 parse-json json->clj]]
+            [server.deferred-tasks :as tasks]
             [server.slack.db :as slack-db]
-            [server.slack.handlers :as handlers]
-            [server.common :as common]))
+            [server.slack.handlers :as handlers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
@@ -69,9 +69,7 @@
   (fn [event context]
     (aws-express/proxy server event context)))
 
-(j/defn deferred-task-handler [^:js {:as event [Record] :Records} context]
-  (p/resolve
-    (handlers/handle-deferred-task (j/get-in Record [:Sns :Message]) event context)))
+(def deferred-task-handler tasks/handler)
 
 (def dev-port 3000)
 (defonce dev-server (atom nil))

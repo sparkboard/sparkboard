@@ -80,3 +80,6 @@ Outputs:
   SlackHandlerIamRole:
     Description: "Implicit IAM Role created for Slack function"
     Value: !GetAtt SlackHandlerRole.Arn
+
+# put shared functionality/dependencies in a layer?
+# https://docs.aws.amazon.com/serverlessrepo/latest/devguide/sharing-lambda-layers.html

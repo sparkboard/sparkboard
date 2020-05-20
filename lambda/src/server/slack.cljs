@@ -5,7 +5,8 @@
             [lambdaisland.uri :as uri]
             [server.blocks :as blocks]
             [server.common :refer [clj->json config]]
-            [server.http :as http]))
+            [server.http :as http]
+            [server.deferred-tasks :as tasks]))
 
 (defn from-slack? [event]                                   ;; FIXME ran into trouble with
   ;; goog.crypt.Sha256 so using a hack for
@@ -43,7 +44,7 @@
                             :headers {:Authorization (str "Bearer " bot-token)}
                             :body (clj->js body) #_(.stringify js/JSON (clj->js body))})))
 
-
+(tasks/alias! ::post post+)
 
 (defn post-query-string+ [family-method query-params]
   ;; This fn is a hack to work around broken JSON bodies in Slack's API
@@ -51,6 +52,8 @@
                     (j/lit {:method "post"
                             :Content-Type "application/json; charset=utf-8"
                             :headers {:Authorization (str "Bearer " bot-token)}})))
+
+(tasks/alias! ::post-query-string post-query-string+)
 
 (comment
   (p/-> (get+ "users.list")
@@ -67,9 +70,13 @@
          ;; TODO better callback
          (println "slack views.open response:")))
 
+(tasks/alias! ::open views-open!)
+
 (defn views-update! [view-id blocks]
   (p/->> (post-query-string+ "views.update"
                              {:view_id view-id
                               :view (blocks/to-json blocks)})
          ;; TODO better callback
          (println "slack views.update response:")))
+
+(tasks/alias! ::update views-update!)
