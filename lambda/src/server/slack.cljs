@@ -70,7 +70,7 @@
          ;; TODO better callback
          (println "slack views.open response:")))
 
-(tasks/alias! ::open views-open!)
+(tasks/alias! ::views-open views-open!)
 
 (defn views-update! [view-id blocks]
   (p/->> (post-query-string+ "views.update"
@@ -79,4 +79,4 @@
          ;; TODO better callback
          (println "slack views.update response:")))
 
-(tasks/alias! ::update views-update!)
+(tasks/alias! ::views-update views-update!)

@@ -28,18 +28,18 @@
          (p/all)
          (map http/assert-ok)))
 
+(tasks/alias! ::request-updates request-updates!)
+
 (defn handle-event! [{:as event
                       event-type :type
                       :keys [user channel tab]}]
-  (pp/pprint [::event event])
-  (tasks/invoke! [:event event])                            ;; just testing
   (p/-> (case event-type
           "app_home_opened"
-          (slack/post-query-string+ "views.publish"
-                                    {:user_id user
-                                     :view
-                                     (blocks/to-json
-                                       (screens/home))})
+          (tasks/invoke! [::slack/post-query-string "views.publish"
+                          {:user_id user
+                           :view
+                           (blocks/to-json
+                             (screens/home))}])
           [:unhandled-event event-type])
         prn))
 
@@ -60,15 +60,15 @@
     "shortcut"                                              ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
     (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal)
-        (slack/views-open! trigger_id screens/shortcut-modal))
+        (tasks/invoke! [::slack/views-open trigger_id screens/shortcut-modal]))
 
     "block_actions"                                         ; User acted on existing modal
     ;; Branch on specifics of given action
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" (slack/views-update! view_id screens/team-broadcast-modal-compose)
-        "home" (slack/views-open! trigger_id screens/team-broadcast-modal-compose))
+        "modal" (tasks/invoke! [::slack/views-update view_id screens/team-broadcast-modal-compose])
+        "home" (tasks/invoke! [::slack/views-open trigger_id screens/team-broadcast-modal-compose]))
 
       ;; TODO FIXME
       #_"broadcast2:channel-select"
@@ -92,5 +92,5 @@
                                                              :sb-input1
                                                              :broadcast2:text-input
                                                              :value]))]
-      (request-updates! message-text channel-ids))
+      (tasks/invoke! [::request-updates message-text channel-ids]))
     (println [:unhandled-modal payload-type])))

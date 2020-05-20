@@ -39,14 +39,7 @@
 
                             ;; Slack Event
                             (:event body)
-                            (handlers/handle-event! (:event body))
-
-                            ;; "broadcast update request to project channels"
-                            :else
-                            (handlers/request-updates! (-> (get-in body [:event :user])
-                                                           slack-db/slack-user
-                                                           (get "name"))
-                                                       (map :id (:slack/channels-raw @slack-db/db))))]
+                            (handlers/handle-event! (:event body)))]
 
            (.send res (when (string? response) response)))
          (p/catch js/Error e

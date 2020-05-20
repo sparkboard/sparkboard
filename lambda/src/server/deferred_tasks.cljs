@@ -27,6 +27,7 @@
     (prn (str "No handler registered for " k ". Invoked with: " data))))
 
 (defn invoke-task [[k :as message] event context]
+  (prn :invoke-task message)
   (let [message-handler (or (@registry k) (@registry ::default))]
     (message-handler message event context)))
 
@@ -43,6 +44,7 @@
   "Sends `payload` to `handle-deferred-task` in a newly invoked lambda"
   [payload]
   ;; https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/sns-examples-publishing-messages.html
+  (prn :invoke! (first payload))
   (if aws?
     (.publish ^js @SNS
               (j/obj :Message (common/write-transit payload)
@@ -54,7 +56,8 @@
     (p/do (p/timeout 200)
           (invoke-task (-> payload
                            common/write-transit
-                           common/read-transit) nil nil))))
+                           common/read-transit) nil nil)))
+  nil)
 
 (j/defn handler [^:js {:as event [Record] :Records} context]
   (p/resolve
