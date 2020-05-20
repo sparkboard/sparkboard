@@ -39,7 +39,7 @@
 (def aws? (or (common/env-var :LAMBDA_TASK_ROOT)
               (common/env-var :AWS_EXECUTION_ENV)))
 
-(defn schedule!
+(defn publish!
   "Sends `payload` to `handle-deferred-task` in a newly invoked lambda"
   [payload]
   ;; https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/sns-examples-publishing-messages.html

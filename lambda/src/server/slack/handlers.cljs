@@ -35,7 +35,7 @@
                       :keys [user channel tab]}]
   (p/-> (case event-type
           "app_home_opened"
-          (tasks/schedule! [::slack/post-query-string "views.publish"
+          (tasks/publish! [::slack/post-query-string "views.publish"
                           {:user_id user
                            :view
                            (blocks/to-json
@@ -60,15 +60,15 @@
     "shortcut"                                              ; Slack "Global shortcut".
     ;; Show initial modal of action options (currently just Compose button).
     (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal)
-        (tasks/schedule! [::slack/views-open trigger_id screens/shortcut-modal]))
+        (tasks/publish! [::slack/views-open trigger_id screens/shortcut-modal]))
 
     "block_actions"                                         ; User acted on existing modal
     ;; Branch on specifics of given action
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" (tasks/schedule! [::slack/views-update view_id screens/team-broadcast-modal-compose])
-        "home" (tasks/schedule! [::slack/views-open trigger_id screens/team-broadcast-modal-compose]))
+        "modal" (tasks/publish! [::slack/views-update view_id screens/team-broadcast-modal-compose])
+        "home" (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-modal-compose]))
 
       ;; TODO FIXME
       #_"broadcast2:channel-select"
@@ -92,5 +92,5 @@
                                                              :sb-input1
                                                              :broadcast2:text-input
                                                              :value]))]
-      (tasks/schedule! [::request-updates message-text channel-ids]))
+      (tasks/publish! [::request-updates message-text channel-ids]))
     (println [:unhandled-modal payload-type])))
