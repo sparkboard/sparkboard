@@ -1,5 +1,7 @@
 {
+    "private": true,
     "license": "UNLICENSED",
+    "workspaces": ["lambda"],
     "dependencies": {
         "firebase": "^7.14.1",
         "md5": "2.2.1",
