@@ -4,11 +4,11 @@
 # bin/release-lambda.sh <dev, staging, prod>
 
 # validate environment
-ENV=$(bin/bb -i "(#{\"dev\" \"staging\" \"prod\"} \"$1\")")
-if [ "$ENV" == "" ]; then echo "must provide valid environment" && exit; fi
 
-# install lambda deps
-cd lambda && yarn install && cd ..
+if [ "$1" == "" ]; then echo "must pass an environment name (eg. dev, staging, prod, matt, dave, ...)" && exit; fi
+
+# install deps
+yarn install
 
 # compile
 yarn shadow-cljs release lambda

@@ -9,5 +9,8 @@
         "express": "^4.17.1",
         "jwt-simple": "^0.5.6",
         "node-fetch": "^2.6.0"
+    },
+    "devDependencies": {
+        "aws-sdk": "^2.680.0"
     }
 }

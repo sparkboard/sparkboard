@@ -1,11 +1,25 @@
 (ns server.common
   (:require [applied-science.js-interop :as j]
             [cljs.reader]
+            [cognitect.transit :as transit]
             [shadow.resource :as rc]))
 
+(defn env-var [k]
+  (j/get-in js/process [:env (name k)]))
+
 (def config (cljs.reader/read-string
-              (or (j/get js/process.env :SPARKBOARD_CONFIG)
+              (or (env-var :SPARKBOARD_CONFIG)
                   (rc/inline "/.local.config.edn"))))
+
+(def reader (transit/reader :json))
+
+(defn read-transit [x]
+  (transit/read reader x))
+
+(def writer (transit/writer :json))
+
+(defn write-transit [x]
+  (transit/write writer x))
 
 (defn parse-json [maybe-json]
   (try (.parse js/JSON maybe-json)
