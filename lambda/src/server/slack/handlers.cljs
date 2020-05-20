@@ -21,27 +21,32 @@
                             {:channel channel               ;; id or name
                              :text msg}))
 
-(defn request-updates! [msg channels]
+(defn request-updates! [msg]
   ;; TODO
   ;; Write broadcast to Firebase
-  (p/->> (map (partial send-slack-msg+ msg) channels)
-         (p/all)
-         (map http/assert-ok)))
+  (p/let [channels (p/-> (slack/get+ "channels.list")
+                         (j/get :channels)
+                         (->> (keep (j/fn [^:js {:keys [is_member id]}]
+                                      ;; TODO
+                                      ;; ensure bot joins team-channels when they are created
+                                      (when is_member id)))))]
+    (p/->> (map (partial send-slack-msg+ msg) channels)
+           (p/all)
+           (map http/assert-ok))))
 
 (tasks/alias! ::request-updates request-updates!)
 
 (defn handle-event! [{:as event
                       event-type :type
                       :keys [user channel tab]}]
-  (p/-> (case event-type
-          "app_home_opened"
-          (tasks/publish! [::slack/post-query-string "views.publish"
-                          {:user_id user
-                           :view
-                           (blocks/to-json
-                             (screens/home))}])
-          [:unhandled-event event-type])
-        prn))
+  (case event-type
+    "app_home_opened"
+    {:task [::slack/post-query-string "views.publish"
+            {:user_id user
+             :view
+             (blocks/to-json
+               (screens/home))}]}
+    nil))
 
 (defn decode-text-input [s]
   ;; Slack appears to use some (?) of
@@ -55,20 +60,18 @@
                             {view-type :type} :view
                             {:as container :keys [view_id]} :container
                             :as payload}]
-  (pp/pprint [:interaction-payload container])
   (case payload-type
-    "shortcut"                                              ; Slack "Global shortcut".
-    ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal)
-        (tasks/publish! [::slack/views-open trigger_id screens/shortcut-modal]))
 
-    "block_actions"                                         ; User acted on existing modal
-    ;; Branch on specifics of given action
+    ; Slack "Global shortcut"
+    "shortcut" {:task [::slack/views-open trigger_id screens/shortcut-modal]}
+
+    ; User acted on existing view
+    "block_actions"
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" (tasks/publish! [::slack/views-update view_id screens/team-broadcast-modal-compose])
-        "home" (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-modal-compose]))
+        "modal" {:task [::slack/views-update view_id screens/team-broadcast-modal-compose]}
+        "home" {:task [::slack/views-open trigger_id screens/team-broadcast-modal-compose]})
 
       ;; TODO FIXME
       #_"broadcast2:channel-select"
@@ -78,19 +81,13 @@
                                     :submit [:plain_text "Submit"]}])
       (println [:unhandled-block-action action_id]))
 
-    "view_submission"                                       ; "Submit" button pressed
+    ; "Submit" button pressed
+    "view_submission"
     ;; In the future we will need to branch on other data
-    (p/let [channel-ids (p/-> (slack/get+ "channels.list")
-                              (j/get :channels)
-                              (->> (keep (j/fn [^:js {:keys [is_member id]}]
-                                           ;; TODO
-                                           ;; ensure bot joins team-channels when they are created
-                                           (when is_member id)))))
-            message-text (decode-text-input (get-in payload [:view
-                                                             :state
-                                                             :values
-                                                             :sb-input1
-                                                             :broadcast2:text-input
-                                                             :value]))]
-      (tasks/publish! [::request-updates message-text channel-ids]))
-    (println [:unhandled-modal payload-type])))
+    {:task [::request-updates (decode-text-input (get-in payload [:view
+                                                                  :state
+                                                                  :values
+                                                                  :sb-input1
+                                                                  :broadcast2:text-input
+                                                                  :value]))]}
+    (println [:unhandled-event payload-type])))

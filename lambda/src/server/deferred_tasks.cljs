@@ -43,18 +43,19 @@
   "Sends `payload` to `handle-deferred-task` in a newly invoked lambda"
   [payload]
   ;; https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/sns-examples-publishing-messages.html
-  (if aws?
-    (.publish ^js @SNS
-              (j/obj :Message (common/write-transit payload)
-                     :TopicArn topic-arn)
-              (fn [err data]
-                (when err
-                  (js/console.error "error deferring task: " err))))
-    ;; for local dev, invoke task with round-tripped data after a delay
-    (p/do (p/timeout 200)
-          (invoke-task (-> payload
-                           common/write-transit
-                           common/read-transit) nil nil)))
+  (p/try (if aws?
+           (-> @SNS
+               (j/call :publish
+                       (j/obj :Message (common/write-transit payload)
+                              :TopicArn topic-arn))
+               (j/call :promise))
+           ;; for local dev, invoke task with round-tripped data after a delay
+           (p/do (p/timeout 200)
+                 (invoke-task (-> payload
+                                  common/write-transit
+                                  common/read-transit) nil nil)))
+         (p/catch js/Error e
+           (js/console.error "error deferring task: " e)))
   nil)
 
 (j/defn handler [^:js {:as event [Record] :Records} context]
