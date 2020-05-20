@@ -26,7 +26,6 @@
                               (j/get evt :body)])]))
 
 (def base-uri "https://slack.com/api/")
-(def bot-token (:bot-user-oauth-token slack-config))
 
 (def scopes ["channels:read"
              "chat:write"

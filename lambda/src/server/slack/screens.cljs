@@ -48,6 +48,18 @@
            :blocks team-broadcast-blocks
            :submit [:plain_text "Submit"]}])
 
+(defn team-broadcast-message [msg]
+  (list
+   [:section {:text {:type "mrkdwn" :text msg}}]
+   {:type "actions",
+    :elements [[:button {:style "primary"
+                         :text {:type "plain_text",
+                                :text "Post an Update",
+                                :emoji true},
+                         :action_id "user:team-broadcast-response"
+                         :value "click_me_123"}]]}))
+
+
 (comment
   (blocks/parse team-broadcast-modal-compose)
   (blocks/parse [:md "hi"]))
