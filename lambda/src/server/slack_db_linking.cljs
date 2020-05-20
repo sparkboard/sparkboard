@@ -2,25 +2,16 @@
   (:require [server.tokens :as tokens]
             [server.firebase :as fire]
             [kitchen-async.promise :as p]
-            [server.slack :as slack]
             [cljs.pprint :as pp]
             [applied-science.js-interop :as j]))
 
 ;; LINKING
 ;;
 ;; Firebase schema -
-;; /slack-channel/{id}   => {project-id, workspace-id}
-;; /slack-user/{id}      => {account-id, workspace-id}
-;; /slack-workspace/{id} => {board-id}
+;; /slack-channel/{id}   => {project-id, team-id}
+;; /slack-user/{id}      => {account-id, team-id}
+;; /slack-team/{id} => {board-id}
 
-(defn slack-user-by-email
-  "Returns slack user id for the given email address, if found"
-  [email]
-  (p/let [res (slack/get+ "users.lookupByEmail" {:query {:email email}})]
-    ;; UNCLEAR: how does Slack know what workspace we are interested in?
-    (when (j/get res :ok)
-      ;; user contains team_id, id, is_admin
-      (j/get res :user))))
 
 ;; TEAM ID
 ;; team - the team ID belonging to a target workspace. Useful when you know which
@@ -30,21 +21,27 @@
 
 ;; Create link entries
 
-(defn link-workspace-to-board!
-  [workspace-id board-id]
-  (fire/put+ (str "/slack-workspace/" workspace-id)
-             {:body {:board-id board-id}}))
+(defn link-team-to-board! [{:as entry
+                            :keys [slack/team-id
+                                   sparkboard/board-id
+                                   slack/bot-token]}]
+  (fire/put+ (str "/slack-team/" team-id)
+             {:body entry}))
 
 (defn link-channel-to-project!
-  [workspace-id channel-id project-id]
+  [{:keys [slack/team-id
+           slack/channel-id
+           sparkboard/project-id]}]
   (fire/put+ (str "/slack-channel/" channel-id)
-             {:body {:workspace-id workspace-id
+             {:body {:team-id team-id
                      :project-id project-id}}))
 
 (defn link-user-to-account!
-  [workspace-id user-id account-id]
+  [{:keys [slack/team-id
+           slack/user-id
+           sparkboard/account-id]}]
   (fire/put+ (str "/slack-user/" user-id)
-             {:body {:workspace-id workspace-id
+             {:body {:team-id team-id
                      :account-id account-id}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,62 +55,69 @@
 (defn linked-user [user-id]
   (fire/get+ (str "/slack-user/" user-id)))
 
-(defn linked-workspace [workspace-id]
-  (fire/get+ (str "/slack-workspace/" workspace-id)))
+(defn linked-team [team-id]
+  (fire/get+ (str "/slack-team/" team-id)))
+
+(defn team->token [team-id]
+
+  (p/let [entry (fire/get+ (str "/slack-team/" team-id "/bot-token"))]
+    (prn :ti team-id entry)
+    entry))
 
 ;; lookups by index
 
-(defn workspace->all-linked-channels [workspace-id]
+(defn team->all-linked-channels [team-id]
   (p/->> (fire/get+ (str "/slack-channel")
-                    {:query {:orderBy "workspace-id"
-                             :equalTo workspace-id}})
+                    {:query {:orderBy "team-id"
+                             :equalTo team-id}})
          (fire/obj->list :channel-id)))
 
-(defn project->channel [project-id]
+(defn project->linked-channel [project-id]
   (p/->> (fire/get+ (str "/slack-channel")
                     {:query {:orderBy "project-id"
                              :equalTo project-id
                              :limitToFirst 1}})
          (fire/obj->list :channel-id)))
 
-(defn account->all-slack-users [account-id]
+(defn account->all-linked-users [account-id]
   (p/->> (fire/get+ (str "/slack-user")
                     {:query {:orderBy "account-id"
                              :equalTo account-id}})
          (fire/obj->list :user-id)))
 
-(defn account->workspace-user [workspace-id account-id]
-  (p/->> (account->all-slack-users account-id)
-         (filter #(= (:workspace-id %) workspace-id))
+(defn account->team-user [{:keys [slack/team-id
+                                  sparkboard/account-id]}]
+  (p/->> (account->all-linked-users account-id)
+         (filter #(= (:team-id %) team-id))
          first))
 
-(defn board->workspace [board-id]
-  (p/->> (fire/get+ "/slack-workspace"
+(defn board->team [board-id]
+  (p/->> (fire/get+ "/slack-team"
                     {:query
                      {:orderBy "board-id"
                       :startAt board-id
                       :limitToFirst 1}})
-         (fire/obj->list :workspace-id)
+         (fire/obj->list :team-id)
          first))
 
-(defn user-is-board-admin? [slack-user-id workspace-id]
-  (p/let [{:keys [board-id]} (linked-workspace workspace-id)
+(defn user-is-board-admin? [slack-user-id team-id]
+  (p/let [{:keys [board-id]} (linked-team team-id)
           {:keys [account-id]} (linked-user slack-user-id)]
     ;; TODO
     ;; ask Sparkboard if account is admin of board,
     ;; OR rely on Slack admin status?
     ))
 
-(defn linking-url-for-slack-id [workspace-id user-id]
-  (let [{:keys [board-id]} (linked-workspace workspace-id)
+(defn linking-url-for-slack-id [team-id user-id]
+  (let [{:keys [board-id]} (linked-team team-id)
         {:keys [domain]} (fire/get+ (str "/settings/" board-id "/domain"))
         token (tokens/firebase-encode {:user-id user-id
-                                       :workspace-id workspace-id})]
+                                       :team-id team-id})]
     ;; TODO
     ;; create `link-account` endpoint that prompts the user to sign in
     ;; and then shows confirmation screen, before creating the entry
     ;; /slack-user/{user-id} => {:account-id <account-id>
-    ;;                           :workspace-id workspace-id}
+    ;;                           :team-id team-id}
     (str "https://" domain "/link-account/slack?token=" token)))
 
 (comment
@@ -121,31 +125,34 @@
   (defn then-print [& xs]
     (p/then (p/all xs) (comp pp/pprint js->clj)))
 
-  (fire/put+ (str "/slack-workspace/" "WS1" "/parent")
+  (fire/put+ (str "/slack-team/" "WS1" "/parent")
              {:body "demo"})
 
   ;; create mock linkages
   (then-print
-    (link-workspace-to-board! "workspace-1" "board-1")
-    (link-channel-to-project! "workspace-1" "channel-1" "project-1")
-    (link-user-to-account! "workspace-1" "user-1" "account-1"))
+    (link-team-to-board! {:slack/team-id "team-1"
+                          :sparkboard/board-id "board-1"
+                          :slack/token "<TOKEN>"})
+    (link-channel-to-project!
+      {:slack/team-id "team-1"
+       :slack/channel-id "channel-1"
+       :sparkboard/project-id "project-1"})
+    (link-user-to-account! {:slack/team-id "team-1"
+                            :slack/user-id "user-1"
+                            :sparkboard/account-id "account-1"}))
 
   ;; all direct lookups
   (then-print
     (linked-channel "channel-1")
     (linked-user "user-1")
-    (linked-workspace "workspace-1"))
+    (linked-team "team-1"))
 
   ;; indexed lookups
   (then-print
-    (project->channel "project-1")
-    (account->all-slack-users "account-1")
-    (account->workspace-user "workspace-1" "account-1")
-    (board->workspace "board-1")
-    (workspace->all-linked-channels "workspace-1"))
+    (project->linked-channel "project-1")
+    (account->team-user "team-1" "account-1")
+    (board->team "board-1")
 
-  ;; other lookups
-  (then-print
-    (slack-user-by-email "mhuebert@gmail.com"))
-
+    (account->all-linked-users "account-1")
+    (team->all-linked-channels "team-1"))
   )

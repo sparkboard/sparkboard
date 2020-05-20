@@ -1,6 +1,12 @@
 AWS Lambda with node.js + shadow-cljs
 ----
 
+### URLs
+
+Dev: https://bycqw7pf9k.execute-api.us-east-1.amazonaws.com/Prod
+Staging: https://xztdh6w28b.execute-api.us-east-1.amazonaws.com/Prod
+Prod:
+
 ### CIDER
 
     cider-jack-in-cljs
