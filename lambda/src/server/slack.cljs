@@ -104,21 +104,28 @@
   (let [host (j/get headers :host)]
     (str "https://" host (str/replace url #"/slack.*" ""))))
 
-(j/defn install-redirect [^:js {:as req :keys [query]} res next]
+(j/defn install-redirect
+  "Users navigate to /slack/install to add this app to a Slack team.
+
+   They are sent to this URL from Sparkboard, which adds a `state`
+   query parameter - a signed token with a payload containing the user's
+   account-id and board-id from Sparkboard.
+
+   This is how we verify who the user is, and what board to connect the
+   app to (a board for which the user must be an admin)"
+  [^:js {:as req :keys [query]} res next]
   (.redirect res
              (str "https://slack.com/oauth/v2/authorize?"
                   (uri/map->query-string
                     {:scope (str/join "," scopes)
                      :client_id (:client-id slack-config)
                      :redirect_uri (str (req-origin req) "/slack/oauth-redirect")
-                     :state (or (:state query)
-                                (tokens/firebase-encode {:start-time (js/Date.now)
-                                                         :board-id (:board-id query)}))
-
-                     }))))
+                     ;; the `state` query parameter - a signed token from Sparkboard
+                     :state (:state query)}))))
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
+        ;; `state` is
         {:keys [board-id account-id]} (tokens/firebase-decode state)]
     (assert (and board-id account-id) "token must include board-id and account-id")
 
