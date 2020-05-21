@@ -30,7 +30,7 @@
                                       ;; TODO
                                       ;; ensure bot joins team-channels when they are created
                                       (when is_member id)))))]
-    (p/->> (map (partial send-slack-msg+ msg) channels)
+    (p/->> (map (partial send-slack-blocks+ (screens/team-broadcast-message msg)) channels)
            (p/all)
            (map http/assert-ok))))
 
