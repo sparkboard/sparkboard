@@ -35,8 +35,11 @@
 (defn link-team-to-board! [{:as entry
                             :keys [slack/team-id
                                    sparkboard/board-id]}]
-  (fire/put+ (str "/slack-team/" team-id "/board-id/")
-             {:body board-id}))
+  (p/let [path (str "/slack-team/" team-id "/board-id/")
+          existing-board (fire/get+ path)]
+    (cond (nil? existing-board) (fire/put+ path {:body board-id})
+          (= existing-board board-id) nil
+          :else (throw (js/Error. "This Slack team is already linked to a board.")))))
 
 (defn link-channel-to-project!
   [{:keys [slack/team-id
