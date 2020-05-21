@@ -36,7 +36,7 @@
            (p/all)
            (map http/assert-ok))))
 
-(tasks/register-var! `request-updates!)
+(tasks/register! `request-updates! request-updates!)
 
 (defn handle-event! [token {:as event
                             event-type :type
@@ -63,8 +63,8 @@
                                   {view-type :type} :view
                                   {:as container :keys [view_id]} :container
                                   :as payload}]
+  (println "payload type:" payload-type)
   (case payload-type
-
     ; Slack "Global shortcut"
     "shortcut" {:task [`slack/views-open! token trigger_id screens/shortcut-modal]}
 
@@ -98,11 +98,12 @@
 
     ; "Submit" button pressed
     "view_submission"
-    ;; In the future we will need to branch on other data
-    {:task [`request-updates! token (decode-text-input (get-in payload [:view
-                                                                        :state
-                                                                        :values
-                                                                        :sb-input1
-                                                                        :broadcast2:text-input
-                                                                        :value]))]}
+    (do (println "view_submission: payload:" payload)
+      ;; In the future we will need to branch on other data
+      {:task [`request-updates! token (decode-text-input (get-in payload [:view
+                                                                          :state
+                                                                          :values
+                                                                          :sb-input1
+                                                                          :broadcast2:text-input
+                                                                          :value]))]})
     (println [:unhandled-event payload-type])))

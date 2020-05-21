@@ -107,6 +107,27 @@
                      :element {:type "plain_text_input", :multiline true}}]
            :submit [:plain_text "Send"]}])
 
+(def team-broadcast-response-msg
+  [{:type "divider"}
+   {:type "section",
+    :text {:type "mrkdwn", :text "_Project:_ *Diabetes Monitor*"}} ; FIXME
+   {:type "section",
+    :text {:type "plain_text",
+                                        ; FIXME
+           :text "Our team has finished step 1 of the prototype and we are now starting on ...blah...",
+           :emoji true}}
+   {:type "actions",
+    :elements [{:type "button",
+                :text {:type "plain_text",
+                       :text "Go to channel", ; FIXME
+                       :emoji true},
+                :value "click_me_123"}
+               {:type "button",
+                :text {:type "plain_text",
+                       :text "View project",
+                       :emoji true}
+                :value "click_me_123"}]}])
+
 (comment
   (blocks/parse team-broadcast-modal-compose)
   (blocks/parse [:md "hi"]))
