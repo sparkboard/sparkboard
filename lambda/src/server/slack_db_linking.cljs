@@ -103,7 +103,7 @@
   (p/->> (fire/get+ "/slack-team"
                     {:query
                      {:orderBy "board-id"
-                      :startAt board-id
+                      :equalTo board-id
                       :limitToFirst 1}})
          (fire/obj->list :team-id)
          first))
