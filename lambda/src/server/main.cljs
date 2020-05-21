@@ -30,31 +30,29 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (if (:challenge body)
-    (.send res (:challenge body))
-    (p/let [[kind data team-id] (cond (:payload body) [:interaction (:payload body) (-> body :payload :team :id)]
-                                      (:event body) [:event (:event body) (:team_id body)]
-                                      (:challenge body) [:challenge (:challenge body) nil])
-            token (some-> team-id slack-db/team->token)
-            {:as result
-             :keys [response
-                    task]} (case kind
-                             ;; Slack API: identification challenge
-                             :challenge {:response data}
+  (p/let [[kind data team-id] (cond (:payload body) [:interaction (:payload body) (-> body :payload :team :id)]
+                                    (:event body) [:event (:event body) (:team_id body)]
+                                    (:challenge body) [:challenge (:challenge body) nil])
+          token (some-> team-id slack-db/team->token)
+          {:as result
+           :keys [response
+                  task]} (case kind
+                           ;; Slack API: identification challenge
+                           :challenge {:response data}
 
-                             ;; Slack Interaction (e.g. global shortcut)
-                             :interaction (handlers/handle-interaction! token data)
+                           ;; Slack Interaction (e.g. global shortcut)
+                           :interaction (handlers/handle-interaction! token data)
 
-                             ;; Slack Event
-                             :event (handlers/handle-event! token data))]
+                           ;; Slack Event
+                           :event (handlers/handle-event! token data))]
 
-      (assert (or (map? result) (nil? result)))
-      (pp/pprint [(if result ::handled ::not-handled) body])
-      (when task
-        (pp/pprint task)
-        (tasks/publish! task))
+    (assert (or (map? result) (nil? result)))
+    (pp/pprint [(if result ::handled ::not-handled) body])
+    (when task
+      (pp/pprint task)
+      (tasks/publish! task))
 
-      (.send res response))))
+    (.send res response)))
 
 (def app
   (doto ^js (express)
