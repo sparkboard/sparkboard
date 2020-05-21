@@ -3,7 +3,7 @@
             [applied-science.js-interop :as j]
             [kitchen-async.promise :as p]
             [server.common :as common])
-  (:require-macros [server.deferred-tasks :refer [alias!]]))
+  (:require-macros server.deferred-tasks))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Task registry
