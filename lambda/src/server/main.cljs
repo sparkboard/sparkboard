@@ -30,12 +30,16 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (p/let [[kind data props] (cond (:payload body) [:interaction (:payload body) #:slack{:team-id (-> body :payload :team :id)
-                                                                                        :user-id (-> body :payload :user :id)
-                                                                                        :app-id (-> body :payload :api_app_id)}]
-                                  (:event body) [:event (:event body) #:slack{:team-id (:team_id body)
-                                                                              :user-id (-> body :event :user)
-                                                                              :app-id (:api_app_id body)}]
+  (p/let [[kind data props] (cond (:payload body) [:interaction
+                                                   (:payload body)
+                                                   #:slack{:team-id (-> body :payload :team :id)
+                                                           :user-id (-> body :payload :user :id)
+                                                           :app-id (-> body :payload :api_app_id)}]
+                                  (:event body) [:event
+                                                 (:event body)
+                                                 #:slack{:team-id (:team_id body)
+                                                         :user-id (-> body :event :user)
+                                                         :app-id (:api_app_id body)}]
                                   (:challenge body) [:challenge (:challenge body) nil])
           token (when (:slack/team-id props)
                   (slack-db/team->token props))
