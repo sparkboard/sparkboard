@@ -28,8 +28,7 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (pp/pprint ["[handler] body:" body])
-
+  #_ (pp/pprint ["[handler] body:" body])
   (p/try (p/let [response (cond
                             ;; Slack API: identification challenge
                             (:challenge body) (:challenge body)

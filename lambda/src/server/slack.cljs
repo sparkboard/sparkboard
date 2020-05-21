@@ -62,7 +62,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [trigger-id blocks]
-  (println "[views-open!] JSON blocks:" (blocks/to-json blocks))
+  #_ (println "[views-open!] JSON blocks:" (blocks/to-json blocks))
   (p/->> (post-query-string+ "views.open"
                              {:trigger_id trigger-id
                               :view (blocks/to-json blocks)})

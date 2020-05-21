@@ -59,6 +59,53 @@
                          :action_id "user:team-broadcast-response"
                          :value "click_me_123"}]]}))
 
+(def team-broadcast-response
+  [:modal {:title [:plain_text "Project Update"]
+           :blocks (list
+                    {:type "actions",
+                     :elements [[:button {:text {:type "plain_text",
+                                                 :text "Describe current status",
+                                                 :emoji true},
+                                          :action_id "user:team-broadcast-response-status"
+                                          :value "click_me_123"}]
+                                [:button {:text {:type "plain_text",
+                                                 :text "Share achievement",
+                                                 :emoji true},
+                                          :action_id "user:team-broadcast-response-achievement"
+                                          :value "click_me_456"}]
+                                [:button {:text {:type "plain_text",
+                                                 :text "Ask for help",
+                                                 :emoji true},
+                                          :action_id "user:team-broadcast-response-help"
+                                          :value "click_me_789"}]]})
+           :submit [:plain_text "Send"]}])
+
+(def team-broadcast-response-status
+  [:modal {:title [:plain_text "Describe Current Status"]
+           :blocks [{:type "input",
+                     :label {:type "plain_text",
+                             :text "Tell us what you've been working on:",
+                             :emoji true},
+                     :element {:type "plain_text_input", :multiline true}}]
+           :submit [:plain_text "Send"]}])
+
+(def team-broadcast-response-achievement
+  [:modal {:title [:plain_text "Share Achievement"]
+           :blocks [{:type "input",
+                     :label {:type "plain_text",
+                             :text "Tell us about the milestone you reached:",
+                             :emoji true},
+                     :element {:type "plain_text_input", :multiline true}}]
+           :submit [:plain_text "Send"]}])
+
+(def team-broadcast-response-help
+  [:modal {:title [:plain_text "Request for Help"]
+           :blocks [{:type "input",
+                     :label {:type "plain_text",
+                             :text "Let us know what you could use help with. We'll try to lend a hand.",
+                             :emoji true},
+                     :element {:type "plain_text_input", :multiline true}}]
+           :submit [:plain_text "Send"]}])
 
 (comment
   (blocks/parse team-broadcast-modal-compose)

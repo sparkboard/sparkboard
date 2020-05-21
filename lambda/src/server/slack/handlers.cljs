@@ -67,9 +67,21 @@
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" (tasks/publish! [::slack/views-update view_id screens/team-broadcast-modal-compose])
-        "home" (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-modal-compose]))
+        "home"  (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-modal-compose])
+        "modal" (tasks/publish! [::slack/views-update view_id screens/team-broadcast-modal-compose]))
 
+      "user:team-broadcast-response"
+      (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-response])
+
+      "user:team-broadcast-response-status"
+      (tasks/publish! [::slack/views-update view_id screens/team-broadcast-response-status])
+
+      "user:team-broadcast-response-achievement"
+      (tasks/publish! [::slack/views-update view_id screens/team-broadcast-response-achievement])
+
+      "user:team-broadcast-response-help"
+      (tasks/publish! [::slack/views-update view_id screens/team-broadcast-response-help])
+      
       ;; TODO FIXME
       #_"broadcast2:channel-select"
       #_(slack/views-push! (j/get-in payload ["container" "view_id"])

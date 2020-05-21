@@ -8,8 +8,8 @@
   (j/get-in js/process [:env (name k)]))
 
 (def config (cljs.reader/read-string
-              (or (env-var :SPARKBOARD_CONFIG)
-                  (rc/inline "/.local.config.edn"))))
+             (or (rc/inline "/.local.config.edn")
+                 (env-var :SPARKBOARD_CONFIG))))
 
 (def reader (transit/reader :json))
 
