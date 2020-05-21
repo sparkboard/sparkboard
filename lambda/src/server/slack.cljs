@@ -125,7 +125,6 @@
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
-        ;; `state` is
         {:keys [board-id account-id]} (tokens/firebase-decode state)]
     (assert (and board-id account-id) "token must include board-id and account-id")
 
