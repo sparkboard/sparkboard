@@ -10,22 +10,22 @@
 
 (def registry (atom {}))
 
-(defn register!
+(defn register-raw!
   "Registers a task handler, to be called with [payload, event, context]
    where payload is a vector of [<task-keyword> & args]"
   [k f]
   (swap! registry assoc k f))
 
-(defn alias*
-  "Registers an existing function, to be called with args passed to the payload"
+(defn register-handler*
+  "Registers a task handler to be called with the args passed to the payload"
   [k f]
-  (register! k (fn [[k :as message] _ _]
+  (register-raw! k (fn [[k :as message] _ _]
                  (apply f (rest message)))))
 
 (defn default [[k & args] _ _]
   (prn (str "No handler registered for " k ". Invoked with: " args)))
 
-(register! `default default)
+(register-raw! `default default)
 
 (defn invoke-task [[k :as message] event context]
   (let [message-handler (or (@registry k) (@registry `default))]

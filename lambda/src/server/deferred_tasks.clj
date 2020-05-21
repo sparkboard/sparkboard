@@ -1,5 +1,5 @@
 (ns server.deferred-tasks)
 
-(defmacro register-var! [sym]
+(defmacro register-handler! [sym]
   {:pre [(and (list? sym) (= 'quote (first sym)))]}
-  `(~'server.deferred-tasks/alias* ~sym ~(second sym)))
+  `(~'server.deferred-tasks/register-handler* ~sym ~(second sym)))

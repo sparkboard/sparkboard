@@ -56,7 +56,7 @@
                         :headers #js{:Authorization (str "Bearer " token)}
                         :body (clj->js body) #_(.stringify js/JSON (clj->js body))}))
 
-(tasks/register! `post+ post+)
+(tasks/register-handler! `post+)
 
 (comment
   (p/-> (get+ "users.list")
@@ -74,7 +74,7 @@
          ;; TODO better callback
          (println "slack views.open response:")))
 
-(tasks/register! `views-open! views-open!)
+(tasks/register-handler! `views-open!)
 
 (defn views-update! [token view-id blocks]
   (p/->> (post+ "views.update"
@@ -84,7 +84,7 @@
          ;; TODO better callback
          (println "slack views.update response:")))
 
-(tasks/register! `views-update! views-update!)
+(tasks/register-handler! `views-update!)
 
 
 (defn slack-user-by-email
