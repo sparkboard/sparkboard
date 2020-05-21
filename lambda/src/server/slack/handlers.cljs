@@ -36,7 +36,7 @@
            (p/all)
            (map http/assert-ok))))
 
-(tasks/register-var! `request-updates!)
+(tasks/register! `request-updates! request-updates!)
 
 (defn handle-event! [{:as props
                       :keys [slack/token]} {:as event
