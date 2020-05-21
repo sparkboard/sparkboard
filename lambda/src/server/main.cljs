@@ -12,7 +12,9 @@
             [server.common :as common]
             [server.common :refer [clj->json decode-base64 parse-json json->clj]]
             [server.deferred-tasks :as tasks]
-            [server.slack.db :as slack-db]
+            [server.slack :as slack]
+            [server.slack.db :as mock-db]
+            [server.slack-db-linking :as slack-db]
             [server.slack.handlers :as handlers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28,21 +30,27 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (p/let [{:as result
+  (p/let [[kind data team-id] (cond (:payload body) [:interaction (:payload body) (-> body :payload :team :id)]
+                                    (:event body) [:event (:event body) (:team_id body)]
+                                    (:challenge body) [:challenge (:challenge body) nil])
+          token (some-> team-id slack-db/team->token)
+          {:as result
            :keys [response
-                  task]} (cond
+                  task]} (case kind
                            ;; Slack API: identification challenge
-                           (:challenge body) {:response (:challenge body)}
+                           :challenge {:response data}
 
                            ;; Slack Interaction (e.g. global shortcut)
-                           (:payload body) (handlers/handle-interaction! (:payload body))
+                           :interaction (handlers/handle-interaction! token data)
 
                            ;; Slack Event
-                           (:event body) (handlers/handle-event! (:event body)))]
+                           :event (handlers/handle-event! token data))]
 
     (assert (or (map? result) (nil? result)))
     (pp/pprint [(if result ::handled ::not-handled) body])
-    (when task (tasks/publish! task))
+    (when task
+      (pp/pprint task)
+      (tasks/publish! task))
 
     (.send res response)))
 
@@ -53,8 +61,13 @@
     (.use (body-parser/urlencoded #js{:extended true}))
     (.use (fn [req res next]
             (j/update! req :body body->clj)
+            (j/update! req :query js->clj :keywordize-keys true)
             (next)))
-    (.use "*" (fn [req res next] (#'handler* req res next)))))
+
+    (.get "/slack/install" slack/install-redirect)
+    (.get "/slack/oauth-redirect" slack/oauth-redirect)
+
+    (.post "*" (fn [req res next] (#'handler* req res next)))))
 
 (def server (aws-express/createServer app))
 
@@ -71,7 +84,7 @@
   (some-> @dev-server (j/call :close))
   (reset! dev-server nil))
 
-(defn dev-start []
+(defn ^:dev/after-load dev-start []
   (dev-stop)
   (reset! dev-server (j/call app :listen (doto 3000
                                            (->> (prn :started-server))))))
