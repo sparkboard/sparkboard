@@ -28,7 +28,8 @@
               :update-props {:text (partial wrap-string :md)}}
    "home" {:children :blocks}
    "modal" {:children :blocks
-            :update-props {:title (partial wrap-string :plain_text)}}})
+            :update-props {:title (partial wrap-string :plain_text)}}
+   "actions" {:children :elements}})
 
 (defn apply-schema [tag props body]
   (let [tag-type (type-string tag)

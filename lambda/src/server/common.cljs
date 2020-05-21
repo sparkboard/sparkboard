@@ -2,7 +2,8 @@
   (:require [applied-science.js-interop :as j]
             [cljs.reader]
             [cognitect.transit :as transit]
-            [shadow.resource :as rc]))
+            [shadow.resource :as rc]
+            [clojure.string :as str]))
 
 (defn env-var [k]
   (j/get-in js/process [:env (name k)]))
@@ -52,3 +53,6 @@
 
 (def firebase-database-secret (:firebase/database-secret config))
 
+(j/defn lambda-root-url [^:js {:keys [headers url query]}]
+  (let [host (j/get headers :host)]
+    (str "https://" host (str/replace url #"(/slack.*)|/$" ""))))

@@ -99,12 +99,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Oauth flow
 
-(j/defn req-origin [^:js {:keys [headers url query]
-                          {:keys [encrypted]} :connection}]
-  (let [host (j/get headers :host)]
-    (str "https://" host (str/replace url #"/slack.*" ""))))
-
-(j/defn install-redirect
+(j/defn oauth-install-redirect
   "Users navigate to /slack/install to add this app to a Slack team.
 
    They are sent to this URL from Sparkboard, which adds a `state`
@@ -119,20 +114,21 @@
                   (uri/map->query-string
                     {:scope (str/join "," scopes)
                      :client_id (:client-id slack-config)
-                     :redirect_uri (str (req-origin req) "/slack/oauth-redirect")
+                     :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")
                      ;; the `state` query parameter - a signed token from Sparkboard
                      :state (:state query)}))))
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
-        {:keys [board-id account-id]} (tokens/firebase-decode state)]
-    (assert (and board-id account-id) "token must include board-id and account-id")
+        {:keys [board-id account-id only-install]} (tokens/firebase-decode state)]
+    (assert (or (and board-id account-id)
+                only-install) "token must include board-id and account-id")
 
     (p/let [response (post+ "oauth.v2.access"
                             {:query {:code code
                                      :client_id (:client-id slack-config)
                                      :client_secret (:client-secret slack-config)
-                                     :redirect_uri (str (req-origin req) "/slack/oauth-redirect")}})]
+                                     :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})]
       (j/let [^:js {:keys [app_id
                            bot_user_id
                            access_token]
@@ -147,18 +143,28 @@
           (p/all
             [(slack-db/link-team-to-board!
                {:slack/team-id team-id
+                :slack/app-id app_id
                 :slack/bot-token access_token
                 :slack/bot-user-id bot_user_id
                 :slack/team-name team-name
                 :sparkboard/board-id board-id})
 
-             (slack-db/link-user-to-account!
-               {:slack/team-id team-id
-                :slack/user-id user-id
-                :sparkboard/account-id account-id})])
+             (when account-id
+               (slack-db/link-user-to-account!
+                 {:slack/team-id team-id
+                  :slack/user-id user-id
+                  :sparkboard/account-id account-id}))])
 
           (.redirect res (str "slack://open?"
                               (uri/map->query-string
                                 {:team team-id
                                  :id app_id
                                  :tab "home"}))))))))
+
+(defn only-install-link [lambda-root]
+  ;; link that will let a user install app without linking to a board
+  (str lambda-root "/slack/install?state=" (tokens/firebase-encode {:only-install true})))
+
+(comment
+
+  (only-install-link "https://slack-matt.ngrok.io"))
