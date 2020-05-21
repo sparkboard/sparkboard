@@ -30,10 +30,21 @@
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
   [^:js {:as req :keys [body]} ^js res]
-  (p/let [[kind data team-id] (cond (:payload body) [:interaction (:payload body) (-> body :payload :team :id)]
-                                    (:event body) [:event (:event body) (:team_id body)]
-                                    (:challenge body) [:challenge (:challenge body) nil])
-          token (some-> team-id slack-db/team->token)
+  (p/let [[kind data props] (cond (:payload body) [:interaction
+                                                   (:payload body)
+                                                   #:slack{:team-id (-> body :payload :team :id)
+                                                           :user-id (-> body :payload :user :id)
+                                                           :app-id (-> body :payload :api_app_id)}]
+                                  (:event body) [:event
+                                                 (:event body)
+                                                 #:slack{:team-id (:team_id body)
+                                                         :user-id (-> body :event :user)
+                                                         :app-id (:api_app_id body)}]
+                                  (:challenge body) [:challenge (:challenge body) nil])
+          token (when (:slack/team-id props)
+                  (slack-db/team->token props))
+          props (merge props {:lambda/req req
+                              :slack/token token})
           {:as result
            :keys [response
                   task]} (case kind
@@ -41,17 +52,16 @@
                            :challenge {:response data}
 
                            ;; Slack Interaction (e.g. global shortcut)
-                           :interaction (handlers/handle-interaction! token data)
+                           :interaction (handlers/handle-interaction! props data)
 
                            ;; Slack Event
-                           :event (handlers/handle-event! token data))]
+                           :event (handlers/handle-event! props data))]
 
     (assert (or (map? result) (nil? result)))
-    (pp/pprint [(if result ::handled ::not-handled) body])
+    ;(pp/pprint [(if result ::handled ::not-handled) body])
     (when task
       (pp/pprint task)
       (tasks/publish! task))
-
     (.send res response)))
 
 (def app
@@ -64,7 +74,7 @@
             (j/update! req :query js->clj :keywordize-keys true)
             (next)))
 
-    (.get "/slack/install" slack/install-redirect)
+    (.get "/slack/install" slack/oauth-install-redirect)
     (.get "/slack/oauth-redirect" slack/oauth-redirect)
 
     (.post "*" (fn [req res next] (#'handler* req res next)))))

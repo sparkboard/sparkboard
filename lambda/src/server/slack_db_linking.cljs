@@ -21,12 +21,25 @@
 
 ;; Create link entries
 
+(defn install-app! [{:as entry
+                     :keys [slack/team-id
+                            slack/team-name
+                            slack/bot-token
+                            slack/bot-user-id
+                            slack/app-id]}]
+  (fire/patch+ (str "/slack-team/" team-id)
+               {:body {(str "/app/" app-id) {:bot-token bot-token
+                                             :bot-user-id bot-user-id}
+                       :team-name team-name}}))
+
 (defn link-team-to-board! [{:as entry
                             :keys [slack/team-id
-                                   sparkboard/board-id
-                                   slack/bot-token]}]
-  (fire/put+ (str "/slack-team/" team-id)
-             {:body entry}))
+                                   sparkboard/board-id]}]
+  (p/let [path (str "/slack-team/" team-id "/board-id/")
+          existing-board (fire/get+ path)]
+    (cond (nil? existing-board) (fire/put+ path {:body board-id})
+          (= existing-board board-id) nil
+          :else (throw (js/Error. "This Slack team is already linked to a board.")))))
 
 (defn link-channel-to-project!
   [{:keys [slack/team-id
@@ -58,11 +71,9 @@
 (defn linked-team [team-id]
   (fire/get+ (str "/slack-team/" team-id)))
 
-(defn team->token [team-id]
-
-  (p/let [entry (fire/get+ (str "/slack-team/" team-id "/bot-token"))]
-    (prn :ti team-id entry)
-    entry))
+(defn team->token [{:slack/keys [app-id team-id]}]
+  {:pre [(and app-id team-id)]}
+  (fire/get+ (str "/slack-team/" team-id "/app/" app-id "/bot-token")))
 
 ;; lookups by index
 
@@ -95,7 +106,7 @@
   (p/->> (fire/get+ "/slack-team"
                     {:query
                      {:orderBy "board-id"
-                      :startAt board-id
+                      :equalTo board-id
                       :limitToFirst 1}})
          (fire/obj->list :team-id)
          first))
@@ -131,8 +142,7 @@
   ;; create mock linkages
   (then-print
     (link-team-to-board! {:slack/team-id "team-1"
-                          :sparkboard/board-id "board-1"
-                          :slack/token "<TOKEN>"})
+                          :sparkboard/board-id "board-1"})
     (link-channel-to-project!
       {:slack/team-id "team-1"
        :slack/channel-id "channel-1"
@@ -155,4 +165,9 @@
 
     (account->all-linked-users "account-1")
     (team->all-linked-channels "team-1"))
+
+  (then-print
+    (link-team-to-board!
+      {:slack/team-id "T014098L9FD"
+       :sparkboard/board-id "demo"}))
   )

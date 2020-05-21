@@ -56,7 +56,7 @@
                         :headers #js{:Authorization (str "Bearer " token)}
                         :body (clj->js body) #_(.stringify js/JSON (clj->js body))}))
 
-(tasks/register! `post+ post+)
+(tasks/register-handler! `post+)
 
 (comment
   (p/-> (get+ "users.list")
@@ -74,7 +74,7 @@
          ;; TODO better callback
          (println "slack views.open response:")))
 
-(tasks/register! `views-open! views-open!)
+(tasks/register-handler! `views-open!)
 
 (defn views-update! [token view-id blocks]
   (p/->> (post+ "views.update"
@@ -84,8 +84,7 @@
          ;; TODO better callback
          (println "slack views.update response:")))
 
-(tasks/register! `views-update! views-update!)
-
+(tasks/register-handler! `views-update!)
 
 (defn slack-user-by-email
   "Returns slack user id for the given email address, if found"
@@ -99,12 +98,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Oauth flow
 
-(j/defn req-origin [^:js {:keys [headers url query]
-                          {:keys [encrypted]} :connection}]
-  (let [host (j/get headers :host)]
-    (str "https://" host (str/replace url #"/slack.*" ""))))
-
-(j/defn install-redirect
+(j/defn oauth-install-redirect
   "Users navigate to /slack/install to add this app to a Slack team.
 
    They are sent to this URL from Sparkboard, which adds a `state`
@@ -113,52 +107,73 @@
 
    This is how we verify who the user is, and what board to connect the
    app to (a board for which the user must be an admin)"
-  [^:js {:as req :keys [query]} res next]
-  (.redirect res
-             (str "https://slack.com/oauth/v2/authorize?"
-                  (uri/map->query-string
-                    {:scope (str/join "," scopes)
-                     :client_id (:client-id slack-config)
-                     :redirect_uri (str (req-origin req) "/slack/oauth-redirect")
-                     ;; the `state` query parameter - a signed token from Sparkboard
-                     :state (:state query)}))))
+  [^:js {:as req :keys [query]} ^js res next]
+  (p/let [{:keys [team-id board-id]} (tokens/firebase-decode (:state query))
+          error (when board-id
+                  (p/let [entry (slack-db/board->team board-id)]
+                    (when (and entry (not= board-id (:board-id entry)))
+                      (str "This board is already linked to the Slack team " (:team-name entry)))))]
+    (if error
+      (-> res (.status 400) (.send error))
+      (.redirect res
+                 (str "https://slack.com/oauth/v2/authorize?"
+                      (uri/map->query-string
+                        {:scope (str/join "," scopes)
+                         :team team-id
+                         :client_id (:client-id slack-config)
+                         :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")
+                         ;; the `state` query parameter - a signed token from Sparkboard
+                         :state (:state query)}))))))
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
-        {:keys [board-id account-id]} (tokens/firebase-decode state)]
-    (assert (and board-id account-id) "token must include board-id and account-id")
-
+        {:keys [board-id account-id only-install]} (tokens/firebase-decode state)]
+    (assert (or (and board-id account-id)
+                only-install) "token must include board-id and account-id")
     (p/let [response (post+ "oauth.v2.access"
                             {:query {:code code
                                      :client_id (:client-id slack-config)
                                      :client_secret (:client-secret slack-config)
-                                     :redirect_uri (str (req-origin req) "/slack/oauth-redirect")}})]
+                                     :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})]
       (j/let [^:js {:keys [app_id
                            bot_user_id
                            access_token]
                     {team-id :id team-name :name} :team
                     {user-id :id} :authed_user} response]
-        (prn :app-id app_id :response response)
         (p/let [user-response (get+ "users.info" {:query {:user user-id}
                                                   :token access_token})]
           (assert (j/get-in user-response [:user :is_admin])
                   "Only an admin can install the Sparkboard app")
+          (p/try
+            (when board-id
+              (slack-db/link-team-to-board!
+                {:slack/team-id team-id
+                 :sparkboard/board-id board-id}))
+            (p/all
+              [(slack-db/install-app!
+                 {:slack/team-id team-id
+                  :slack/team-name team-name
+                  :slack/app-id app_id
+                  :slack/bot-token access_token
+                  :slack/bot-user-id bot_user_id})
+               (when account-id
+                 (slack-db/link-user-to-account!
+                   {:slack/team-id team-id
+                    :slack/user-id user-id
+                    :sparkboard/account-id account-id}))])
+            (.redirect res (str "slack://open?"
+                                (uri/map->query-string
+                                  {:team team-id
+                                   :id app_id
+                                   :tab "home"})))
+            (p/catch js/Error ^js e
+              (.send res 400 (.-message e)))))))))
 
-          (p/all
-            [(slack-db/link-team-to-board!
-               {:slack/team-id team-id
-                :slack/bot-token access_token
-                :slack/bot-user-id bot_user_id
-                :slack/team-name team-name
-                :sparkboard/board-id board-id})
+(defn only-install-link [team-id lambda-root]
+  ;; link that will let a user install app without linking to a board
+  (str lambda-root "/slack/install?state=" (tokens/firebase-encode {:only-install true
+                                                                    :team-id team-id})))
 
-             (slack-db/link-user-to-account!
-               {:slack/team-id team-id
-                :slack/user-id user-id
-                :sparkboard/account-id account-id})])
+(comment
 
-          (.redirect res (str "slack://open?"
-                              (uri/map->query-string
-                                {:team team-id
-                                 :id app_id
-                                 :tab "home"}))))))))
+  (only-install-link nil "https://slack-matt.ngrok.io"))
