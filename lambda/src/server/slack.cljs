@@ -109,21 +109,22 @@
    This is how we verify who the user is, and what board to connect the
    app to (a board for which the user must be an admin)"
   [^:js {:as req :keys [query]} res next]
-  (.redirect res
-             (str "https://slack.com/oauth/v2/authorize?"
-                  (uri/map->query-string
-                    {:scope (str/join "," scopes)
-                     :client_id (:client-id slack-config)
-                     :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")
-                     ;; the `state` query parameter - a signed token from Sparkboard
-                     :state (:state query)}))))
+  (let [{:keys [team-id]} (tokens/firebase-decode (:state query))]
+    (.redirect res
+               (str "https://slack.com/oauth/v2/authorize?"
+                    (uri/map->query-string
+                      {:scope (str/join "," scopes)
+                       :team team-id
+                       :client_id (:client-id slack-config)
+                       :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")
+                       ;; the `state` query parameter - a signed token from Sparkboard
+                       :state (:state query)})))))
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
         {:keys [board-id account-id only-install]} (tokens/firebase-decode state)]
     (assert (or (and board-id account-id)
                 only-install) "token must include board-id and account-id")
-
     (p/let [response (post+ "oauth.v2.access"
                             {:query {:code code
                                      :client_id (:client-id slack-config)
@@ -161,10 +162,11 @@
                                  :id app_id
                                  :tab "home"}))))))))
 
-(defn only-install-link [lambda-root]
+(defn only-install-link [team-id lambda-root]
   ;; link that will let a user install app without linking to a board
-  (str lambda-root "/slack/install?state=" (tokens/firebase-encode {:only-install true})))
+  (str lambda-root "/slack/install?state=" (tokens/firebase-encode {:only-install true
+                                                                    :team-id team-id})))
 
 (comment
 
-  (only-install-link "https://slack-matt.ngrok.io"))
+  (only-install-link nil "https://slack-matt.ngrok.io"))

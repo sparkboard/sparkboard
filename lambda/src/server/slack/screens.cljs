@@ -4,7 +4,7 @@
             [server.common :as common]
             [server.slack :as slack]))
 
-(defn main-menu [{:as props :keys [lambda/req]}]
+(defn main-menu [{:as props :keys [lambda/req slack/team-id]}]
   (list
     [:section
      {:accessory [:button {:style "primary",
@@ -16,6 +16,7 @@
     [:section "Admin actions"]
     [:actions
      [:button {:url (slack/only-install-link
+                      team-id
                       (common/lambda-root-url req))} "Reinstall App"]]))
 
 (defn home [props]
