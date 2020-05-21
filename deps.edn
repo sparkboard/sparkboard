@@ -2,6 +2,8 @@
          "lambda/src"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
 
+        org.sparkboard/lambda {:local/root "lambda"}
+
         ;; juxt on postgres
         juxt/crux-core {:mvn/version "20.03-1.8.0-alpha"}
         juxt/crux-jdbc {:mvn/version "20.03-1.8.0-alpha"}
@@ -31,9 +33,4 @@
 
         ;; schema
         metosin/malli {:mvn/version "0.0.1-SNAPSHOT"}
-
-
-        applied-science/js-interop {:mvn/version "0.2.7"}
-        lambdaisland/uri {:mvn/version "1.3.45"}
-        com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         }}

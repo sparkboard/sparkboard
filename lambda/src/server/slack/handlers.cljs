@@ -9,39 +9,47 @@
             [server.slack :as slack]
             [server.slack.screens :as screens]))
 
-(defn send-slack-blocks+ [blocks channel]
-  (p/->> (slack/post-query-string+ "chat.postMessage"
-                                   {:channel channel        ;; id or name
-                                    :blocks (blocks/to-json blocks)})
+(defn send-slack-blocks+ [token blocks channel]
+  (p/->> (slack/post+ "chat.postMessage"
+                      {:query {:channel channel             ;; id or name
+                               :blocks (blocks/to-json blocks)}
+                       :token token})
          ;; TODO better callback
          (println "slack blocks response:")))
 
-(defn send-slack-msg+ [msg channel]
-  (slack/post-query-string+ "chat.postMessage"
-                            {:channel channel               ;; id or name
-                             :text msg}))
+(defn send-slack-msg+ [token msg channel]
+  (slack/post+ "chat.postMessage"
+               {:query {:channel channel                    ;; id or name
+                        :text msg}
+                :token token}))
 
-(defn request-updates! [msg channels]
+(defn request-updates! [token msg]
   ;; TODO
   ;; Write broadcast to Firebase
-  (p/->> (map (partial send-slack-blocks+ (screens/team-broadcast-message msg)) channels)
-         (p/all)
-         (map http/assert-ok)))
+  (p/let [channels (p/-> (slack/get+ "channels.list" {:token token})
+                         (j/get :channels)
+                         (->> (keep (j/fn [^:js {:keys [is_member id]}]
+                                      ;; TODO
+                                      ;; ensure bot joins team-channels when they are created
+                                      (when is_member id)))))]
+    (p/->> (map (partial send-slack-blocks+ token (screens/team-broadcast-message msg)) channels)
+           (p/all)
+           (map http/assert-ok))))
 
-(tasks/alias! ::request-updates request-updates!)
+(tasks/register-var! `request-updates!)
 
-(defn handle-event! [{:as event
-                      event-type :type
-                      :keys [user channel tab]}]
-  (p/-> (case event-type
-          "app_home_opened"
-          (tasks/publish! [::slack/post-query-string "views.publish"
-                          {:user_id user
-                           :view
-                           (blocks/to-json
-                             (screens/home))}])
-          [:unhandled-event event-type])
-        prn))
+(defn handle-event! [token {:as event
+                            event-type :type
+                            :keys [user channel tab]}]
+  (case event-type
+    "app_home_opened"
+    {:task [`slack/post+ "views.publish"
+            {:token token
+             :query {:user_id user
+                     :view
+                     (blocks/to-json
+                       (screens/home))}}]}
+    nil))
 
 (defn decode-text-input [s]
   ;; Slack appears to use some (?) of
@@ -49,38 +57,36 @@
   ;; input, specifically replacing spaces with `+`
   (str/replace s "+" " "))
 
-(defn handle-interaction! [{payload-type :type
-                            :keys [trigger_id]
-                            [{:keys [action_id]}] :actions
-                            {view-type :type} :view
-                            {:as container :keys [view_id]} :container
-                            :as payload}]
-  (pp/pprint [:interaction-payload container])
+(defn handle-interaction! [token {payload-type :type
+                                  :keys [trigger_id]
+                                  [{:keys [action_id]}] :actions
+                                  {view-type :type} :view
+                                  {:as container :keys [view_id]} :container
+                                  :as payload}]
   (case payload-type
-    "shortcut"                                              ; Slack "Global shortcut".
-    ;; Show initial modal of action options (currently just Compose button).
-    (do (println "[handle-modal]/shortcut; blocks:" screens/shortcut-modal)
-        (tasks/publish! [::slack/views-open trigger_id screens/shortcut-modal]))
 
-    "block_actions"                                         ; User acted on existing modal
-    ;; Branch on specifics of given action
+    ; Slack "Global shortcut"
+    "shortcut" {:task [`slack/views-open! token trigger_id screens/shortcut-modal]}
+
+    ; User acted on existing view
+    "block_actions"
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "home"  (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-modal-compose])
-        "modal" (tasks/publish! [::slack/views-update view_id screens/team-broadcast-modal-compose]))
+        "home"  {:task [`slack/views-open!   token trigger_id screens/team-broadcast-modal-compose]})
+        "modal" {:task [`slack/views-update! token view_id    screens/team-broadcast-modal-compose]}
 
       "user:team-broadcast-response"
-      (tasks/publish! [::slack/views-open trigger_id screens/team-broadcast-response])
+      (tasks/publish! {:task [`slack/views-open! token trigger_id screens/team-broadcast-response]})
 
       "user:team-broadcast-response-status"
-      (tasks/publish! [::slack/views-update view_id screens/team-broadcast-response-status])
+      (tasks/publish! {:task [`slack/views-update! token view_id screens/team-broadcast-response-status]})
 
       "user:team-broadcast-response-achievement"
-      (tasks/publish! [::slack/views-update view_id screens/team-broadcast-response-achievement])
+      (tasks/publish! {:task [`slack/views-update! token view_id screens/team-broadcast-response-achievement]})
 
       "user:team-broadcast-response-help"
-      (tasks/publish! [::slack/views-update view_id screens/team-broadcast-response-help])
+       (tasks/publish! {:task [`slack/views-update! token view_id screens/team-broadcast-response-help]})
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
@@ -90,19 +96,13 @@
                                     :submit [:plain_text "Submit"]}])
       (println [:unhandled-block-action action_id]))
 
-    "view_submission"                                       ; "Submit" button pressed
+    ; "Submit" button pressed
+    "view_submission"
     ;; In the future we will need to branch on other data
-    (p/let [channel-ids (p/-> (slack/get+ "channels.list")
-                              (j/get :channels)
-                              (->> (keep (j/fn [^:js {:keys [is_member id]}]
-                                           ;; TODO
-                                           ;; ensure bot joins team-channels when they are created
-                                           (when is_member id)))))
-            message-text (decode-text-input (get-in payload [:view
-                                                             :state
-                                                             :values
-                                                             :sb-input1
-                                                             :broadcast2:text-input
-                                                             :value]))]
-      (tasks/publish! [::request-updates message-text channel-ids]))
-    (println [:unhandled-modal payload-type])))
+    {:task [`request-updates! token (decode-text-input (get-in payload [:view
+                                                                        :state
+                                                                        :values
+                                                                        :sb-input1
+                                                                        :broadcast2:text-input
+                                                                        :value]))]}
+    (println [:unhandled-event payload-type])))

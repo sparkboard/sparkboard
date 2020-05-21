@@ -2,12 +2,13 @@
   (:require ["aws-sdk" :as aws]
             [applied-science.js-interop :as j]
             [kitchen-async.promise :as p]
-            [server.common :as common]))
+            [server.common :as common])
+  (:require-macros [server.deferred-tasks :refer [alias!]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Task registry
 
-(defonce registry (atom {}))
+(def registry (atom {}))
 
 (defn register!
   "Registers a task handler, to be called with [payload, event, context]
@@ -15,19 +16,19 @@
   [k f]
   (swap! registry assoc k f))
 
-(defn alias!
+(defn alias*
   "Registers an existing function, to be called with args passed to the payload"
   [k f]
   (register! k (fn [[k :as message] _ _]
                  (apply f (rest message)))))
 
-(register!
-  ::default
-  (fn [[k & data] _ _]
-    (prn (str "No handler registered for " k ". Invoked with: " data))))
+(defn default [[k & args] _ _]
+  (prn (str "No handler registered for " k ". Invoked with: " args)))
+
+(register! `default default)
 
 (defn invoke-task [[k :as message] event context]
-  (let [message-handler (or (@registry k) (@registry ::default))]
+  (let [message-handler (or (@registry k) (@registry `default))]
     (message-handler message event context)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43,18 +44,19 @@
   "Sends `payload` to `handle-deferred-task` in a newly invoked lambda"
   [payload]
   ;; https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/sns-examples-publishing-messages.html
-  (if aws?
-    (.publish ^js @SNS
-              (j/obj :Message (common/write-transit payload)
-                     :TopicArn topic-arn)
-              (fn [err data]
-                (when err
-                  (js/console.error "error deferring task: " err))))
-    ;; for local dev, invoke task with round-tripped data after a delay
-    (p/do (p/timeout 200)
-          (invoke-task (-> payload
-                           common/write-transit
-                           common/read-transit) nil nil)))
+  (p/try (if aws?
+           (-> @SNS
+               (j/call :publish
+                       (j/obj :Message (common/write-transit payload)
+                              :TopicArn topic-arn))
+               (j/call :promise))
+           ;; for local dev, invoke task with round-tripped data after a delay
+           (p/do (p/timeout 200)
+                 (invoke-task (-> payload
+                                  common/write-transit
+                                  common/read-transit) nil nil)))
+         (p/catch js/Error e
+           (js/console.error "error deferring task: " e)))
   nil)
 
 (j/defn handler [^:js {:as event [Record] :Records} context]

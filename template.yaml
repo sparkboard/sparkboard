@@ -16,14 +16,20 @@ Resources:
       Runtime: nodejs12.x
       Policies:
         # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        # I don't know why we need both this & DeferredTaskTopicPolicy, but we do
         - SNSPublishMessagePolicy:
-            TopicName: !Ref DeferredTaskTopic
+            TopicName: !GetAtt DeferredTaskTopic.TopicName
       Environment:
         Variables:
           DEFERRED_TASK_TOPIC_ARN: !Ref DeferredTaskTopic
       Events:
-        SlackRequest:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        Get:
+          Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /{any+}
+            Method: get
+        Post:
+          Type: Api
           Properties:
             Path: /
             Method: post
@@ -44,7 +50,7 @@ Resources:
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
   # https://stackoverflow.com/questions/32465505/cant-create-a-sns-event-source-on-a-lambda-function-using-cloudformation
-  DeferredTaskPermission:
+  DeferredTaskTopicPermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt DeferredTaskHandler.Arn
