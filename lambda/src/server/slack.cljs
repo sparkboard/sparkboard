@@ -44,7 +44,7 @@
                             :headers {:Authorization (str "Bearer " bot-token)}
                             :body (clj->js body) #_(.stringify js/JSON (clj->js body))})))
 
-(tasks/alias! ::post post+)
+(tasks/register-var! `post+)
 
 (defn post-query-string+ [family-method query-params]
   ;; This fn is a hack to work around broken JSON bodies in Slack's API
@@ -53,7 +53,7 @@
                             :Content-Type "application/json; charset=utf-8"
                             :headers {:Authorization (str "Bearer " bot-token)}})))
 
-(tasks/alias! ::post-query-string post-query-string+)
+(tasks/register-var! `post-query-string+)
 
 (comment
   (p/-> (get+ "users.list")
@@ -70,7 +70,7 @@
          ;; TODO better callback
          (println "slack views.open response:")))
 
-(tasks/alias! ::views-open views-open!)
+(tasks/register-var! `views-open!)
 
 (defn views-update! [view-id blocks]
   (p/->> (post-query-string+ "views.update"
@@ -79,4 +79,4 @@
          ;; TODO better callback
          (println "slack views.update response:")))
 
-(tasks/alias! ::views-update views-update!)
+(tasks/register-var! `views-update!)
