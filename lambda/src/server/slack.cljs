@@ -134,21 +134,21 @@
                            access_token]
                     {team-id :id team-name :name} :team
                     {user-id :id} :authed_user} response]
-        (prn :app-id app_id :response response)
         (p/let [user-response (get+ "users.info" {:query {:user user-id}
                                                   :token access_token})]
           (assert (j/get-in user-response [:user :is_admin])
                   "Only an admin can install the Sparkboard app")
-
           (p/all
-            [(slack-db/link-team-to-board!
+            [(slack-db/install-app!
                {:slack/team-id team-id
+                :slack/team-name team-name
                 :slack/app-id app_id
                 :slack/bot-token access_token
-                :slack/bot-user-id bot_user_id
-                :slack/team-name team-name
-                :sparkboard/board-id board-id})
-
+                :slack/bot-user-id bot_user_id})
+             (when board-id
+               (slack-db/link-team-to-board!
+                 {:slack/team-id team-id
+                  :sparkboard/board-id board-id}))
              (when account-id
                (slack-db/link-user-to-account!
                  {:slack/team-id team-id

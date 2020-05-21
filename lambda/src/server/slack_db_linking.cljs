@@ -21,17 +21,22 @@
 
 ;; Create link entries
 
+(defn install-app! [{:as entry
+                     :keys [slack/team-id
+                            slack/team-name
+                            slack/bot-token
+                            slack/bot-user-id
+                            slack/app-id]}]
+  (fire/patch+ (str "/slack-team/" team-id)
+               {:body {(str "/app/" app-id) {:bot-token bot-token
+                                             :bot-user-id bot-user-id}
+                       :team-name team-name}}))
+
 (defn link-team-to-board! [{:as entry
                             :keys [slack/team-id
-                                   sparkboard/board-id
-                                   slack/bot-token
-                                   slack/bot-user-id
-                                   slack/app-id]}]
-  (fire/patch+ (str "/slack-team/" team-id)
-               {:body (merge {(str "app/" app-id) {:bot-token bot-token
-                                                   :bot-user-id bot-user-id}}
-                             (when board-id
-                               {:board-id board-id}))}))
+                                   sparkboard/board-id]}]
+  (fire/put+ (str "/slack-team/" team-id "/board-id/")
+             {:body board-id}))
 
 (defn link-channel-to-project!
   [{:keys [slack/team-id
@@ -134,8 +139,7 @@
   ;; create mock linkages
   (then-print
     (link-team-to-board! {:slack/team-id "team-1"
-                          :sparkboard/board-id "board-1"
-                          :slack/token "<TOKEN>"})
+                          :sparkboard/board-id "board-1"})
     (link-channel-to-project!
       {:slack/team-id "team-1"
        :slack/channel-id "channel-1"
@@ -158,4 +162,9 @@
 
     (account->all-linked-users "account-1")
     (team->all-linked-channels "team-1"))
+
+  (then-print
+    (link-team-to-board!
+      {:slack/team-id "T014098L9FD"
+       :sparkboard/board-id "demo"}))
   )
