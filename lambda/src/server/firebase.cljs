@@ -19,19 +19,17 @@
                  uri/map->query-string))
     (->> (prn :json-url))))
 
-(defn get+ [path & [opts]]
-  (http/fetch-json+ (json-url path opts)
-                    {:method "GET"}))
+(defn req-fn [method]
+  (fn [path & [{:as opts :keys [body]}]]
+    (http/fetch-json+ (json-url path opts)
+                      (-> {:method method}
+                          (cond-> body (assoc :body (common/clj->json body)))
+                          (clj->js)))))
 
-(defn put+ [path & [opts]]
-  (http/fetch-json+ (json-url path opts)
-                    (clj->js {:method "PUT"
-                              :body (some-> (:body opts) common/clj->json)})))
-
-(defn post+ [path & [opts]]
-  (http/fetch-json+ (doto (json-url path opts) prn)
-                    {:method "POST"
-                     :body (some-> (:body opts) common/clj->json)}))
+(def get+ (req-fn "GET"))
+(def put+ (req-fn "PUT"))
+(def post+ (req-fn "POST"))
+(def patch+ (req-fn "PATCH"))
 
 (defn map->list [id-key m]
   (reduce-kv (fn [out key value] (conj out (assoc value id-key (name key)))) [] m))

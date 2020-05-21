@@ -1,28 +1,36 @@
 (ns server.slack.screens
   (:require [applied-science.js-interop :as j]
-            [server.blocks :as blocks]))
+            [server.blocks :as blocks]
+            [server.common :as common]
+            [server.slack :as slack]))
 
-(def main-menu
-  [:section
-   {:accessory [:button {:style "primary",
-                         :action_id "admin:team-broadcast"
-                         :value "click_me_123"}
-                "Compose"]}
-   "*Team Broadcast*\nSend a message to all teams."])
+(defn main-menu [{:as props :keys [lambda/req slack/team-id]}]
+  (list
+    [:section
+     {:accessory [:button {:style "primary",
+                           :action_id "admin:team-broadcast"
+                           :value "click_me_123"}
+                  "Compose"]}
+     "*Team Broadcast*\nSend a message to all teams."]
+    [:divider]
+    [:section "Admin actions"]
+    [:actions
+     [:button {:url (slack/only-install-link
+                      team-id
+                      (common/lambda-root-url req))} "Reinstall App"]]))
 
-(defn home []
+(defn home [props]
   [:home
-   main-menu
-   [:divider]
+   (main-menu props)
    [:section
     (str "_Last updated:_ "
          (-> (js/Date.)
              (.toLocaleString "en-US" #js{:dateStyle "medium"
                                           :timeStyle "medium"})))]])
 
-(def shortcut-modal
+(defn shortcut-modal [props]
   [:modal {:title "Broadcast"
-           :blocks [main-menu]}])
+           :blocks (main-menu props)}])
 
 (def team-broadcast-blocks
   (list
@@ -50,14 +58,14 @@
 
 (defn team-broadcast-message [msg]
   (list
-   [:section {:text {:type "mrkdwn" :text msg}}]
-   {:type "actions",
-    :elements [[:button {:style "primary"
-                         :text {:type "plain_text",
-                                :text "Post an Update",
-                                :emoji true},
-                         :action_id "user:team-broadcast-response"
-                         :value "click_me_123"}]]}))
+    [:section {:text {:type "mrkdwn" :text msg}}]
+    {:type "actions",
+     :elements [[:button {:style "primary"
+                          :text {:type "plain_text",
+                                 :text "Post an Update",
+                                 :emoji true},
+                          :action_id "user:team-broadcast-response"
+                          :value "click_me_123"}]]}))
 
 
 (comment

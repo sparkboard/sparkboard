@@ -38,9 +38,10 @@
 
 (tasks/register-var! `request-updates!)
 
-(defn handle-event! [token {:as event
-                            event-type :type
-                            :keys [user channel tab]}]
+(defn handle-event! [{:as props
+                      :keys [slack/token]} {:as event
+                                            event-type :type
+                                            :keys [user channel tab]}]
   (case event-type
     "app_home_opened"
     {:task [`slack/post+ "views.publish"
@@ -48,7 +49,7 @@
              :query {:user_id user
                      :view
                      (blocks/to-json
-                       (screens/home))}}]}
+                       (screens/home props))}}]}
     nil))
 
 (defn decode-text-input [s]
@@ -57,16 +58,17 @@
   ;; input, specifically replacing spaces with `+`
   (str/replace s "+" " "))
 
-(defn handle-interaction! [token {payload-type :type
-                                  :keys [trigger_id]
-                                  [{:keys [action_id]}] :actions
-                                  {view-type :type} :view
-                                  {:as container :keys [view_id]} :container
-                                  :as payload}]
+(defn handle-interaction! [{:as props
+                            :keys [slack/token]} {payload-type :type
+                                                  :keys [trigger_id]
+                                                  [{:keys [action_id]}] :actions
+                                                  {view-type :type} :view
+                                                  {:as container :keys [view_id]} :container
+                                                  :as payload}]
   (case payload-type
 
     ; Slack "Global shortcut"
-    "shortcut" {:task [`slack/views-open! token trigger_id screens/shortcut-modal]}
+    "shortcut" {:task [`slack/views-open! token trigger_id (screens/shortcut-modal props)]}
 
     ; User acted on existing view
     "block_actions"
