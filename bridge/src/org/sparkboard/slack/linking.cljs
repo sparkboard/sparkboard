@@ -132,6 +132,9 @@
     ;;                           :team-id team-id}
     (str "https://" domain "/link-account/slack?token=" token)))
 
+(defn deep-link-to-home [app-id team-id]
+  (str "https://slack.com/app_redirect?team=" team-id "&app=" app-id))
+
 (comment
 
   (defn then-print [& xs]
@@ -172,3 +175,4 @@
       {:slack/team-id "T014098L9FD"
        :sparkboard/board-id "demo"}))
   )
+

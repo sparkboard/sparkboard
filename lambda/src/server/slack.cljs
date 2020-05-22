@@ -135,8 +135,8 @@
                                      :client_id (:client-id slack-config)
                                      :client_secret (:client-secret slack-config)
                                      :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})]
-      (j/let [^:js {:keys [app_id
-                           bot_user_id
+      (j/let [^:js {app-id :app_id
+                    :keys [bot_user_id
                            access_token]
                     {team-id :id team-name :name} :team
                     {user-id :id} :authed_user} response]
@@ -153,7 +153,7 @@
               [(slack-db/install-app!
                  {:slack/team-id team-id
                   :slack/team-name team-name
-                  :slack/app-id app_id
+                  :slack/app-id app-id
                   :slack/bot-token access_token
                   :slack/bot-user-id bot_user_id})
                (when account-id
@@ -161,10 +161,7 @@
                    {:slack/team-id team-id
                     :slack/user-id user-id
                     :sparkboard/account-id account-id}))])
-            (.redirect res (str "https://slack.com/app_redirect?"
-                                (uri/map->query-string
-                                  {:team team-id
-                                   :app app_id})))
+            (.redirect res (slack-db/deep-link-to-home app-id team-id))
             (p/catch js/Error ^js e
               (.send res 400 (.-message e)))))))))
 
