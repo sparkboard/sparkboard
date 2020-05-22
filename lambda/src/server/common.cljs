@@ -9,8 +9,8 @@
   (j/get-in js/process [:env (name k)]))
 
 (def config (cljs.reader/read-string
-             (or (rc/inline "/.local.config.edn")
-                 (env-var :SPARKBOARD_CONFIG))))
+             (or (env-var :SPARKBOARD_CONFIG)
+                 (rc/inline "/.local.config.edn"))))
 
 (def reader (transit/reader :json))
 
@@ -25,7 +25,7 @@
 (defn parse-json [maybe-json]
   (try (.parse js/JSON maybe-json)
        (catch js/Error e
-           e)))
+         e)))
 
 (defn json->clj [json]
   (-> (js/JSON.parse json)
