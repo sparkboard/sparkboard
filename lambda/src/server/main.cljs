@@ -9,8 +9,7 @@
             [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
-            [server.common :as common]
-            [server.common :refer [clj->json decode-base64 parse-json json->clj]]
+            [server.common :as common :refer [clj->json config decode-base64 json->clj parse-json]]
             [server.deferred-tasks :as tasks]
             [server.slack :as slack]
             [server.slack.db :as mock-db]
@@ -33,8 +32,7 @@
   (p/let [[kind data props] (cond (:payload body) [:interaction
                                                    (:payload body)
                                                    #:slack{:team-id (-> body :payload :team :id)
-                                                           :user-id (-> body :payload :user :id)
-                                                           :app-id (-> body :payload :api_app_id)}]
+                                                           :user-id (-> body :payload :user :id)}]
                                   (:event body) [:event
                                                  (:event body)
                                                  #:slack{:team-id (:team_id body)
@@ -42,7 +40,7 @@
                                                          :app-id (:api_app_id body)}]
                                   (:challenge body) [:challenge (:challenge body) nil])
           token (when (:slack/team-id props)
-                  (slack-db/team->token props))
+                  (slack-db/team->token (-> config :slack :app-id) (:slack/team-id props)))
           props (merge props {:lambda/req req
                               :slack/token token})
           {:as result
@@ -60,7 +58,7 @@
     (assert (or (map? result) (nil? result)))
     ;(pp/pprint [(if result ::handled ::not-handled) body])
     (when task
-      (pp/pprint task)
+      (pp/pprint (str "[handler*] task: " task))
       (tasks/publish! task))
     (.send res response)))
 

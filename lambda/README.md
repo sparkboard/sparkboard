@@ -23,10 +23,13 @@ Enter the repl:
 
 ### CIDER
 
-    cider-jack-in-cljs
-    shadow
-    :app
-    y
+1. in terminal, `shadow-cljs server`
+3. from an emacs ClojureScript buffer, `M-x cider-connect`; select `localhost` and enter the nrepl port reported from (1) when prompted
+3. in the newly created CIDER REPL, `(shadow/watch :lambda)`
+5. in another terminal window, `node lambda/target/main.js`
+6. back in the CIDER REPL, `(shadow/repl :lambda)`
+9. in one more terminal, expose my localhost to the outside world with `ngrok http 3000 -subdomain <consistent subdomain matching Slack config>`
+
 
 ### Cursive
 

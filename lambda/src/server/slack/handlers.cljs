@@ -58,15 +58,14 @@
   ;; input, specifically replacing spaces with `+`
   (str/replace s "+" " "))
 
-(defn handle-interaction! [{:as props
-                            :keys [slack/token]} {payload-type :type
-                                                  :keys [trigger_id]
-                                                  [{:keys [action_id]}] :actions
-                                                  {view-type :type} :view
-                                                  {:as container :keys [view_id]} :container
-                                                  :as payload}]
+(defn handle-interaction! [{:as props :keys [slack/token]}
+                           {payload-type :type
+                            :keys [trigger_id]
+                            [{:keys [action_id]}] :actions
+                            {view-type :type} :view
+                            {:as container :keys [view_id]} :container
+                            :as payload}]
   (case payload-type
-
     ; Slack "Global shortcut"
     "shortcut" {:task [`slack/views-open! token trigger_id (screens/shortcut-modal props)]}
 
@@ -75,9 +74,21 @@
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "modal" {:task [`slack/views-update! token view_id screens/team-broadcast-modal-compose]}
-        "home" {:task [`slack/views-open! token trigger_id screens/team-broadcast-modal-compose]})
+        "home"  {:task [`slack/views-open!   token trigger_id screens/team-broadcast-modal-compose]}
+        "modal" {:task [`slack/views-update! token view_id    screens/team-broadcast-modal-compose]})
 
+      "user:team-broadcast-response"
+      {:task [`slack/views-open! token trigger_id screens/team-broadcast-response]}
+      
+      "user:team-broadcast-response-status"
+      {:task [`slack/views-update! token view_id screens/team-broadcast-response-status]}
+
+      "user:team-broadcast-response-achievement"
+      {:task [`slack/views-update! token view_id screens/team-broadcast-response-achievement]}
+
+      "user:team-broadcast-response-help"
+       {:task [`slack/views-update! token view_id screens/team-broadcast-response-help]}
+      
       ;; TODO FIXME
       #_"broadcast2:channel-select"
       #_(slack/views-push! (j/get-in payload ["container" "view_id"])
@@ -88,11 +99,12 @@
 
     ; "Submit" button pressed
     "view_submission"
-    ;; In the future we will need to branch on other data
-    {:task [`request-updates! token (decode-text-input (get-in payload [:view
-                                                                        :state
-                                                                        :values
-                                                                        :sb-input1
-                                                                        :broadcast2:text-input
-                                                                        :value]))]}
+    (do (println "view_submission: payload:" payload)
+      ;; In the future we will need to branch on other data
+      {:task [`request-updates! token (decode-text-input (get-in payload [:view
+                                                                          :state
+                                                                          :values
+                                                                          :sb-input1
+                                                                          :broadcast2:text-input
+                                                                          :value]))]})
     (println [:unhandled-event payload-type])))

@@ -65,7 +65,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [token trigger-id blocks]
-  (println "[views-open!] JSON blocks:" (blocks/to-json blocks))
+  #_ (println "[views-open!] JSON blocks:" (blocks/to-json blocks))
   (p/->> (post+ "views.open"
                 {:query {:trigger_id trigger-id
                          :view (blocks/to-json blocks)}
@@ -85,7 +85,6 @@
          (println "slack views.update response:")))
 
 (tasks/register-handler! `views-update!)
-
 
 (defn slack-user-by-email
   "Returns slack user id for the given email address, if found"
@@ -177,5 +176,4 @@
                                                                  :team-id team-id})))
 
 (comment
-
   (only-install-link {:lambda/root "https://slack-matt.ngrok.io"}))
