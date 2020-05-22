@@ -16,8 +16,8 @@
     [:section "Admin actions"]
     [:actions
      [:button {:url (slack/only-install-link
-                      team-id
-                      (common/lambda-root-url req))} "Reinstall App"]]))
+                      {:slack/team-id team-id
+                       :lambda/root (common/lambda-root-url req)})} "Reinstall App"]]))
 
 (defn home [props]
   [:home

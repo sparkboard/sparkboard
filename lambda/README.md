@@ -1,11 +1,23 @@
-AWS Lambda with node.js + shadow-cljs
+Sparkboard lambdas
 ----
 
-### URLs
+## Dev
 
-Dev: https://bycqw7pf9k.execute-api.us-east-1.amazonaws.com/Prod
-Staging: https://xztdh6w28b.execute-api.us-east-1.amazonaws.com/Prod
-Prod:
+This can all be done from this repo's root directory.
+
+## Environment vars
+
+Create `lambda/src/.local.config.edn` - get the initial contents from Matt.
+(You will update this with your own Slack app config if developing locally.)
+
+## Shadow-cljs
+
+Start a shadow-cljs JVM process:
+```
+shadow-cljs server
+```
+
+Enter the repl:
 
 ### CIDER
 
@@ -14,47 +26,56 @@ Prod:
     :app
     y
 
-In terminal, in directory target/
-   
-    node main.js
+### Cursive
 
+Start a remote nrepl session with the port in `.nrepl-port`
 
-## Testing locally
+----
 
-### Install ngrok
-
-https://ngrok.com/download
-
-run `ngrok http 3000 -subdomain=A_SUBDOMAIN` to expose port 3000 to the world.
-ngrok will show you a URL, which you can paste into the Slack API settings pages for your app.
-
-#### Slack app settings
-
-You should create a new Slack app for local testing, and add it to a Slack workspace for testing purposes.
-Then add a `:slack` entry in `.local.config.edn` as follows:
+Start watching the build:
 
 ```
-{...
- :slack
- {:app-id "XX"
-  :client-id "XX"
-  :client-secret "XX"
-  :signing-secret "XX"
-  :verification-token "XX"
-  :bot-user-oauth-token "XX"}}
- ```
+# in your repl
+(shadow/watch :lambda)
+```
+(also possible through the shadow UI at http://localhost:9630)
 
-### Local testing via simple express-server
+Start the local node server:
 
-run `server.main/dev-start` from within a connected node repl. Depending on how you start
-your repl, it will live-reload (if you run `shadow/watch :app` and then `node target/main.js`)
-or only update via REPL eval (if you run `(shadow/node-repl)` after connecting via nrepl)
+```
+node lambda/target/main.js
+```
+
+## Serving Slack requests locally
+
+1. Install http://ngrok.io/
+2. `ngrok http 3000 and copy the https url ngrok prints.
+3. Create/update a Slack app with the above https url
+    entered under "Interactivity & Shortcuts", "Event Subscriptions", and
+    "OAuth & Permissions > Redirect URLs".
+4. Update `lambda/src/.local.config.edn` with your Slack app's config.
+4. Navigate to `YOUR_NGROK_URL/slack/install-local` and pick a Slack workspace
+to install your dev app to.
+
+## Release
+
+```
+bin/release <dev/staging/prod/other-tag>
+```
+
+### URLs
+
+Dev: https://bycqw7pf9k.execute-api.us-east-1.amazonaws.com/Prod
+Staging: https://xztdh6w28b.execute-api.us-east-1.amazonaws.com/Prod
+Prod: https://sstwt0eqqb.execute-api.us-east-1.amazonaws.com/Prod
 
 ### Local testing: SAM
 
 This will run a mock lambda runtime on your machine. It is much slower than using the express-server
 approach and many requests will not return fast enough to satisfy Slack. However, it will be a more
 realistic approximation of the prod environment. (Unsure of the usefulness of that.)
+
+First, set `server.dev-server/ENABLED?` to false to stop the dev server.
 
 #### Install AWS SAM:
 
@@ -71,57 +92,3 @@ start the lambda:
 ```
 sam local start-api
 ```
-
-start ngrok:
-```
-ngrok http 3000
-```
-
-Go to api.slack.com and update the URLs in Features > `Interactivity & Shortcuts` & `Event Subscriptions`
-----
-
-Below is original instructions for quickstart Node.js shadow-cljs project.
-
-
-### Develop
-
-Watch compile with with hot reloading:
-
-```bash
-yarn
-yarn shadow-cljs watch app
-```
-
-Start program:
-
-```bash
-node target/main.js
-```
-
-### REPL
-
-Start a REPL connected to current running program, `app` for the `:build-id`:
-
-```bash
-yarn shadow-cljs cljs-repl app
-```
-
-### Build
-
-```bash
-shadow-cljs release app
-```
-
-Compiles to `target/main.js`.
-
-You may find more configurations on http://doc.shadow-cljs.org/ .
-
-### Steps
-
-* add `shadow-cljs.edn` to config compilation
-* compile ClojureScript
-* run `node target/main.js` to start app and connect reload server
-
-### License
-
-MIT

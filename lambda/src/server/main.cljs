@@ -77,9 +77,15 @@
     (.get "/slack/install" slack/oauth-install-redirect)
     (.get "/slack/oauth-redirect" slack/oauth-redirect)
 
+    (cond-> (not tasks/aws?)
+            (.get "/slack/install-local"
+                  (fn [req res next]
+                    (.redirect res (slack/only-install-link)))))
+
     (.post "*" (fn [req res next] (#'handler* req res next)))))
 
 (def server (aws-express/createServer app))
+
 
 (def slack-handler
   (fn [event context]
