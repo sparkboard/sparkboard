@@ -6,7 +6,8 @@
             [lambdaisland.uri :as uri]
             [org.sparkboard.firebase-tokens :as tokens]
             [org.sparkboard.http :as http]
-            [org.sparkboard.slack.linking :as slack-db]
+            [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.slack.browser :as slack-browser]
             [server.blocks :as blocks]
             [server.common :as common]
             [server.deferred-tasks :as tasks]))
@@ -161,7 +162,7 @@
                    {:slack/team-id team-id
                     :slack/user-id user-id
                     :sparkboard/account-id account-id}))])
-            (.redirect res (slack-db/deep-link-to-home app-id team-id))
+            (.redirect res (slack-browser/deep-link-to-home app-id team-id))
             (p/catch js/Error ^js e
               (.send res 400 (.-message e)))))))))
 

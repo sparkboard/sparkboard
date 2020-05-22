@@ -1,4 +1,4 @@
-(ns org.sparkboard.slack.linking
+(ns org.sparkboard.slack.slack-db
   (:require [applied-science.js-interop :as j]
             [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
@@ -131,9 +131,6 @@
     ;; /slack-user/{user-id} => {:account-id <account-id>
     ;;                           :team-id team-id}
     (str "https://" domain "/link-account/slack?token=" token)))
-
-(defn deep-link-to-home [app-id team-id]
-  (str "https://slack.com/app_redirect?team=" team-id "&app=" app-id))
 
 (comment
 

@@ -14,7 +14,7 @@
             [server.deferred-tasks :as tasks]
             [server.slack :as slack]
             [server.slack.db :as mock-db]
-            [org.sparkboard.slack.linking :as slack-db]
+            [org.sparkboard.slack.slack-db :as slack-db]
             [server.slack.handlers :as handlers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
