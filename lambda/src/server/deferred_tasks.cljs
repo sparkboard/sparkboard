@@ -8,7 +8,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Task registry
 
-(def registry (atom {}))
+(defonce registry (atom {}))
 
 (defn register-raw!
   "Registers a task handler, to be called with [payload, event, context]
