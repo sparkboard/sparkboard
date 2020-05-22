@@ -71,7 +71,7 @@
 (defn linked-team [team-id]
   (fire/get+ (str "/slack-team/" team-id)))
 
-(defn team->token [{:slack/keys [app-id team-id]}]
+(defn team->token [app-id team-id]
   {:pre [(and app-id team-id)]}
   (fire/get+ (str "/slack-team/" team-id "/app/" app-id "/bot-token")))
 
