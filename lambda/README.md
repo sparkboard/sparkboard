@@ -9,6 +9,8 @@ This can all be done from this repo's root directory.
 
 Create `lambda/src/.local.config.edn` - get the initial contents from Matt.
 (You will update this with your own Slack app config if developing locally.)
+This file is in `.gitignore` -- make sure it is named correctly and never
+checked in to source control!
 
 ## Shadow-cljs
 
