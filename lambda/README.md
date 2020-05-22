@@ -48,16 +48,24 @@ Start the local node server:
 node lambda/target/main.js
 ```
 
-## Serving Slack requests locally
+When you start this process you should see `:started-server 3000` in the console, repeated
+whenever you save a change, unless you are using SAM (see below).
+
+## Receive Slack events with your local server
+
+Slack uses webhooks to tell us when events happen, so we need to expose our local server
+to the internet.
 
 1. Install http://ngrok.io/
-2. `ngrok http 3000 and copy the https url ngrok prints.
-3. Create/update a Slack app with the above https url
-    entered under "Interactivity & Shortcuts", "Event Subscriptions", and
-    "OAuth & Permissions > Redirect URLs".
-4. Update `lambda/src/.local.config.edn` with your Slack app's config.
-4. Navigate to `YOUR_NGROK_URL/slack/install-local` and pick a Slack workspace
-to install your dev app to.
+1. `ngrok http 3000 and copy the https url ngrok prints.
+1. Create/update a Slack app and paste the above `https` url
+    into the relevant fields in "Interactivity & Shortcuts", "Event Subscriptions", and
+    "OAuth & Permissions > Redirect URLs" in the Slack settings for your app.
+1. Enable "App Distribution" for your app.
+1. Update `lambda/src/.local.config.edn` with your Slack app's config.
+1. Navigate to `https://YOUR_NGROK_SUBDOMAIN.ngrok.io/slack/install-local` and pick a Slack workspace
+to install your dev app to. If all goes well, you will be asked to grant permissions to your app,
+and then redirected to your app's home tab in Slack.
 
 ## Release
 
@@ -65,21 +73,24 @@ to install your dev app to.
 bin/release <dev/staging/prod/other-tag>
 ```
 
-### URLs
+Deployed lambda roots are as follows:
 
 Dev: https://bycqw7pf9k.execute-api.us-east-1.amazonaws.com/Prod
 Staging: https://xztdh6w28b.execute-api.us-east-1.amazonaws.com/Prod
 Prod: https://sstwt0eqqb.execute-api.us-east-1.amazonaws.com/Prod
 
+(Yes, they all end in 'Prod', this is a weird SAM thing.)
+
 ### Local testing: SAM
 
+Instead of the local dev server, you can simulate a lambda environment using [SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html).
 This will run a mock lambda runtime on your machine. It is much slower than using the express-server
 approach and many requests will not return fast enough to satisfy Slack. However, it will be a more
-realistic approximation of the prod environment. (Unsure of the usefulness of that.)
+realistic approximation of the prod environment.
 
-First, set `server.dev-server/ENABLED?` to false to stop the dev server.
+First, set `server.dev-server/ENABLED?` to false to prevent the dev server from running.
 
-#### Install AWS SAM:
+Then, install AWS SAM:
 
 ```
 brew tap aws/tap
@@ -88,9 +99,8 @@ brew install aws-sam-cli
 
 Set up [AWS credentials](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-set-up-credentials.html)
 
-#### Get started
+Start the lambda:
 
-start the lambda:
 ```
 sam local start-api
 ```
