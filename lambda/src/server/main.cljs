@@ -39,9 +39,8 @@
                                                          :user-id (-> body :event :user)
                                                          :app-id (:api_app_id body)}]
                                   (:challenge body) [:challenge (:challenge body) nil])
-          token (if (and (:slack/team-id props) (:slack/app-id props))
-                  (slack-db/team->token (:slack/app-id props) (:slack/team-id props))
-                  (-> config :slack :bot-user-oauth-token))
+          token (when (:slack/team-id props)
+                  (slack-db/team->token (-> config :slack :app-id) (:slack/team-id props)))
           props (merge props {:lambda/req req
                               :slack/token token})
           {:as result
