@@ -5,7 +5,7 @@
             [kitchen-async.promise :as p]
             [server.blocks :as blocks]
             [server.deferred-tasks :as tasks]
-            [server.http :as http]
+            [org.sparkboard.http :as http]
             [server.slack :as slack]
             [server.slack.screens :as screens]))
 

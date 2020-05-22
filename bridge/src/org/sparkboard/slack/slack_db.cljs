@@ -1,11 +1,11 @@
-(ns server.slack-db-linking
-  (:require [server.tokens :as tokens]
-            [server.firebase :as fire]
-            [kitchen-async.promise :as p]
+(ns org.sparkboard.slack.slack-db
+  (:require [applied-science.js-interop :as j]
             [cljs.pprint :as pp]
-            [applied-science.js-interop :as j]))
+            [kitchen-async.promise :as p]
+            [org.sparkboard.firebase-rest :as fire]
+            [org.sparkboard.firebase-tokens :as tokens]))
 
-;; LINKING
+;; Read & write links between Slack and Sparkboard
 ;;
 ;; Firebase schema -
 ;; /slack-channel/{id}   => {project-id, team-id}
@@ -122,8 +122,9 @@
 (defn linking-url-for-slack-id [team-id user-id]
   (let [{:keys [board-id]} (linked-team team-id)
         {:keys [domain]} (fire/get+ (str "/settings/" board-id "/domain"))
-        token (tokens/firebase-encode {:user-id user-id
-                                       :team-id team-id})]
+        token (tokens/encode
+                {:user-id user-id
+                 :team-id team-id})]
     ;; TODO
     ;; create `link-account` endpoint that prompts the user to sign in
     ;; and then shows confirmation screen, before creating the entry
@@ -131,7 +132,24 @@
     ;;                           :team-id team-id}
     (str "https://" domain "/link-account/slack?token=" token)))
 
+(defn get-install-link
+  "Returns a link that will lead user to install/reinstall app to a workspace"
+  [& [{:as params
+       :keys [lambda/root
+              lambda/local?
+              sparkboard/board-id
+              sparkboard/account-id
+              slack/team-id]}]]
+  {:pre [(or local?                                         ;; dev
+             team-id                                        ;; reinstall
+             (and board-id account-id)                      ;; new install + link board
+             )]}
+  (str root "/slack/install?state=" (tokens/encode (dissoc params :lambda/root))))
+
 (comment
+
+  (get-install-link {:lambda/root "https://slack-matt.ngrok.io"
+                     :lambda/local? true})
 
   (defn then-print [& xs]
     (p/then (p/all xs) (comp pp/pprint js->clj)))

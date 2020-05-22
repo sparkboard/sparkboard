@@ -2,7 +2,7 @@
   (:require [applied-science.js-interop :as j]
             [server.blocks :as blocks]
             [server.common :as common]
-            [server.slack :as slack]))
+            [org.sparkboard.slack.slack-db :as slack-db]))
 
 (defn main-menu [{:as props :keys [lambda/req slack/team-id]}]
   (list
@@ -15,7 +15,7 @@
     [:divider]
     [:section "Admin actions"]
     [:actions
-     [:button {:url (slack/only-install-link
+     [:button {:url (slack-db/get-install-link
                       {:slack/team-id team-id
                        :lambda/root (common/lambda-root-url req)})} "Reinstall App"]]))
 

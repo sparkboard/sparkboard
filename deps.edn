@@ -1,8 +1,8 @@
-{:paths ["src"
-         "lambda/src"]
+{:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
 
         org.sparkboard/lambda {:local/root "lambda"}
+        org.sparkboard/bridge {:local/root "bridge"}
 
         ;; juxt on postgres
         juxt/crux-core {:mvn/version "20.03-1.8.0-alpha"}

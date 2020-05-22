@@ -3,6 +3,8 @@
   <component name="DepsProjectsManager">
     <option name="projectFiles">
       <list>
+        <option value="file://$PROJECT_DIR$/bridge/deps.edn" />
+        <option value="file://$PROJECT_DIR$/lambda/deps.edn" />
         <option value="file://$PROJECT_DIR$/deps.edn" />
       </list>
     </option>

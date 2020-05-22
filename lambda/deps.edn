@@ -1,4 +1,9 @@
 {:deps
  {applied-science/js-interop {:mvn/version "0.2.7"}
   lambdaisland/uri {:mvn/version "1.3.45"}
-  com.cognitect/transit-cljs {:mvn/version "0.8.264"}}}
+  mhuebert/kitchen-async {:mvn/version "0.1.0"}
+  org.sparkboard/bridge {:local/root "../bridge"}}
+ :aliases
+ {:test
+  {:extra-deps
+   {org.clojure/clojurescript {:mvn/version "1.10.764"}}}}}

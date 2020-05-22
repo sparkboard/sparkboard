@@ -9,11 +9,12 @@
             [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
-            [server.common :as common :refer [clj->json config decode-base64 json->clj parse-json]]
+            [org.sparkboard.js-convert :refer [clj->json json->clj]]
+            [server.common :refer [config decode-base64 parse-json]]
             [server.deferred-tasks :as tasks]
             [server.slack :as slack]
             [server.slack.db :as mock-db]
-            [server.slack-db-linking :as slack-db]
+            [org.sparkboard.slack.slack-db :as slack-db]
             [server.slack.handlers :as handlers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -78,12 +79,11 @@
     (cond-> (not tasks/aws?)
             (.get "/slack/install-local"
                   (fn [req res next]
-                    (.redirect res (slack/only-install-link)))))
+                    (.redirect res (slack-db/get-install-link {:lambda/local? true})))))
 
     (.post "*" (fn [req res next] (#'handler* req res next)))))
 
 (def server (aws-express/createServer app))
-
 
 (def slack-handler
   (fn [event context]
