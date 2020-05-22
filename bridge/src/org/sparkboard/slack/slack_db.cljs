@@ -189,4 +189,3 @@
       {:slack/team-id "T014098L9FD"
        :sparkboard/board-id "demo"}))
   )
-

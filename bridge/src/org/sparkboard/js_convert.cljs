@@ -1,5 +1,4 @@
 (ns org.sparkboard.js-convert
-  (:refer-clojure :exclude [clj->js])
   (:require [cljs.core :as core]))
 
 ;; js<>clj conversion interop with namespaced keys retained
