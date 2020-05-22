@@ -58,13 +58,13 @@
   ;; input, specifically replacing spaces with `+`
   (str/replace s "+" " "))
 
-(defn handle-interaction! [{:as props
-                            :keys [slack/token]} {payload-type :type
-                                                  :keys [trigger_id]
-                                                  [{:keys [action_id]}] :actions
-                                                  {view-type :type} :view
-                                                  {:as container :keys [view_id]} :container
-                                                  :as payload}]
+(defn handle-interaction! [{:as props :keys [slack/token]}
+                           {payload-type :type
+                            :keys [trigger_id]
+                            [{:keys [action_id]}] :actions
+                            {view-type :type} :view
+                            {:as container :keys [view_id]} :container
+                            :as payload}]
   (case payload-type
     ; Slack "Global shortcut"
     "shortcut" {:task [`slack/views-open! token trigger_id (screens/shortcut-modal props)]}
@@ -78,16 +78,16 @@
         "modal" {:task [`slack/views-update! token view_id    screens/team-broadcast-modal-compose]})
 
       "user:team-broadcast-response"
-      (tasks/publish! {:task [`slack/views-open! token trigger_id screens/team-broadcast-response]})
-
+      {:task [`slack/views-open! token trigger_id screens/team-broadcast-response]}
+      
       "user:team-broadcast-response-status"
-      (tasks/publish! {:task [`slack/views-update! token view_id screens/team-broadcast-response-status]})
+      {:task [`slack/views-update! token view_id screens/team-broadcast-response-status]}
 
       "user:team-broadcast-response-achievement"
-      (tasks/publish! {:task [`slack/views-update! token view_id screens/team-broadcast-response-achievement]})
+      {:task [`slack/views-update! token view_id screens/team-broadcast-response-achievement]}
 
       "user:team-broadcast-response-help"
-       (tasks/publish! {:task [`slack/views-update! token view_id screens/team-broadcast-response-help]})
+       {:task [`slack/views-update! token view_id screens/team-broadcast-response-help]}
       
       ;; TODO FIXME
       #_"broadcast2:channel-select"
