@@ -165,7 +165,7 @@
             (.redirect res (str "https://slack.com/app_redirect?"
                                 (uri/map->query-string
                                   {:team team-id
-                                   :id app_id})))
+                                   :app app_id})))
             (p/catch js/Error ^js e
               (.send res 400 (.-message e)))))))))
 
