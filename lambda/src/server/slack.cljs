@@ -5,11 +5,10 @@
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
             [server.blocks :as blocks]
-            [server.common :as common :refer [clj->json]]
+            [server.common :as common]
             [server.deferred-tasks :as tasks]
             [server.http :as http]
-            [server.slack-db-linking :as slack-db]
-            [server.tokens :as tokens]))
+            [server.slack-db-linking :as slack-db]))
 
 (def slack-config (:slack common/config))
 
@@ -108,7 +107,7 @@
    This is how we verify who the user is, and what board to connect the
    app to (a board for which the user must be an admin)"
   [^:js {:as req :keys [query]} ^js res next]
-  (p/let [{:keys [team-id board-id]} (tokens/firebase-decode (:state query))
+  (p/let [{:keys [team-id board-id]} (common/decode-firebase-token (:state query))
           error (when board-id
                   (p/let [entry (slack-db/board->team board-id)]
                     (when (and entry (not= board-id (:board-id entry)))
@@ -127,7 +126,7 @@
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
-        {:keys [board-id account-id only-install]} (tokens/firebase-decode state)]
+        {:keys [board-id account-id only-install]} (common/decode-firebase-token state)]
     (assert (or (and board-id account-id)
                 only-install) "token must include board-id and account-id")
     (p/let [response (post+ "oauth.v2.access"
@@ -172,8 +171,9 @@
   [& [{:keys [slack/team-id
               lambda/root]}]]
   ;; link that will let a user install app without linking to a board
-  (str root "/slack/install?state=" (tokens/firebase-encode {:only-install true
-                                                                 :team-id team-id})))
+  (str root "/slack/install?state=" (common/encode-firebase-token
+                                      {:only-install true
+                                       :team-id team-id})))
 
 (comment
   (only-install-link {:lambda/root "https://slack-matt.ngrok.io"}))

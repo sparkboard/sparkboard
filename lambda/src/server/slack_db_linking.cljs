@@ -1,9 +1,9 @@
 (ns server.slack-db-linking
-  (:require [server.tokens :as tokens]
-            [server.firebase :as fire]
+  (:require [server.firebase :as fire]
             [kitchen-async.promise :as p]
             [cljs.pprint :as pp]
-            [applied-science.js-interop :as j]))
+            [applied-science.js-interop :as j]
+            [server.common :as common]))
 
 ;; LINKING
 ;;
@@ -122,8 +122,9 @@
 (defn linking-url-for-slack-id [team-id user-id]
   (let [{:keys [board-id]} (linked-team team-id)
         {:keys [domain]} (fire/get+ (str "/settings/" board-id "/domain"))
-        token (tokens/firebase-encode {:user-id user-id
-                                       :team-id team-id})]
+        token (common/encode-firebase-token
+                {:user-id user-id
+                 :team-id team-id})]
     ;; TODO
     ;; create `link-account` endpoint that prompts the user to sign in
     ;; and then shows confirmation screen, before creating the entry

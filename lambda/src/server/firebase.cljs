@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
+            [org.sparkboard.js-convert :refer [clj->json]]
             [server.common :as common]
             [server.http :as http]))
 
@@ -11,10 +12,10 @@
              ".json"
              "?"
              (-> query
-                 (common/update-some {:orderBy common/clj->json
-                                      :startAt common/clj->json
-                                      :endAt common/clj->json
-                                      :equalTo common/clj->json})
+                 (common/update-some {:orderBy clj->json
+                                      :startAt clj->json
+                                      :endAt clj->json
+                                      :equalTo clj->json})
                  (assoc :auth common/firebase-database-secret)
                  uri/map->query-string))
     (->> (prn :json-url))))
@@ -23,7 +24,7 @@
   (fn [path & [{:as opts :keys [body]}]]
     (http/fetch-json+ (json-url path opts)
                       (-> {:method method}
-                          (cond-> body (assoc :body (common/clj->json body)))
+                          (cond-> body (assoc :body (clj->json body)))
                           (clj->js)))))
 
 (def get+ (req-fn "GET"))

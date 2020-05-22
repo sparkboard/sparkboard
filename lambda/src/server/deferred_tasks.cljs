@@ -2,6 +2,7 @@
   (:require ["aws-sdk" :as aws]
             [applied-science.js-interop :as j]
             [kitchen-async.promise :as p]
+            [org.sparkboard.transit :as transit]
             [server.common :as common])
   (:require-macros server.deferred-tasks))
 
@@ -47,14 +48,14 @@
   (p/try (if aws?
            (-> @SNS
                (j/call :publish
-                       (j/obj :Message (common/write-transit payload)
+                       (j/obj :Message (transit/write payload)
                               :TopicArn topic-arn))
                (j/call :promise))
            ;; for local dev, invoke task with round-tripped data after a delay
            (p/do (p/timeout 200)
                  (invoke-task (-> payload
-                                  common/write-transit
-                                  common/read-transit) nil nil)))
+                                  transit/write
+                                  transit/read) nil nil)))
          (p/catch js/Error e
            (js/console.error "error deferring task: " e)))
   nil)
@@ -62,6 +63,6 @@
 (j/defn handler [^:js {:as event [Record] :Records} context]
   (p/resolve
     (invoke-task (-> (j/get-in Record [:Sns :Message])
-                     common/read-transit)
+                     transit/read)
                  event
                  context)))

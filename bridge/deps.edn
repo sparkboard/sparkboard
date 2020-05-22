@@ -1,0 +1,6 @@
+{:deps {applied-science/js-interop {:mvn/version "0.2.7"}
+        com.cognitect/transit-cljs {:mvn/version "0.8.264"}}
+ :aliases
+ {:test
+  {:extra-deps
+   {org.clojure/clojurescript {:mvn/version "1.10.764"}}}}}
