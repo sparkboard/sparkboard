@@ -87,22 +87,6 @@
 
 (def deferred-task-handler tasks/handler)
 
-(def dev-port 3000)
-(defonce dev-server (atom nil))
-
-(defn dev-stop []
-  (some-> @dev-server (j/call :close))
-  (reset! dev-server nil))
-
-(defn ^:dev/after-load dev-start []
-  (dev-stop)
-  (reset! dev-server (j/call app :listen (doto 3000
-                                           (->> (prn :started-server))))))
-
-(comment
-  (when goog/DEBUG
-    (dev-start)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
 
