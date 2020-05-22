@@ -6,10 +6,10 @@
             [lambdaisland.uri :as uri]
             [org.sparkboard.firebase-tokens :as tokens]
             [org.sparkboard.http :as http]
+            [org.sparkboard.slack.linking :as slack-db]
             [server.blocks :as blocks]
             [server.common :as common]
-            [server.deferred-tasks :as tasks]
-            [org.sparkboard.slack.linking :as slack-db]))
+            [server.deferred-tasks :as tasks]))
 
 (def slack-config (:slack common/config))
 
