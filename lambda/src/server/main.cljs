@@ -15,8 +15,8 @@
             [server.slack :as slack]
             [server.slack.db :as mock-db]
             [org.sparkboard.slack.slack-db :as slack-db]
-            [server.slack.handlers :as handlers]))
-
+            [server.slack.handlers :as handlers]
+            [server.common :as common]))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
 
@@ -76,7 +76,7 @@
     (.get "/slack/install" slack/oauth-install-redirect)
     (.get "/slack/oauth-redirect" slack/oauth-redirect)
 
-    (cond-> (not tasks/aws?)
+    (cond-> (not common/aws?)
             (.get "/slack/install-local"
                   (fn [req res next]
                     (.redirect res (slack-db/get-install-link {:lambda/local? true})))))

@@ -14,6 +14,9 @@
              (or (env-var :SPARKBOARD_CONFIG)
                  (rc/inline "/.local.config.edn"))))
 
+(def aws? (or (env-var :LAMBDA_TASK_ROOT)
+              (env-var :AWS_EXECUTION_ENV)))
+
 (defn parse-json [maybe-json]
   (try (.parse js/JSON maybe-json)
        (catch js/Error e
@@ -28,9 +31,9 @@
 (defn decode-base64 [s]
   (.toString (.from js/Buffer s "base64")))
 
-(j/defn lambda-root-url [^:js {:keys [headers url query]}]
-  (let [host (j/get headers :host)]
-    (str "https://" host (str/replace url #"(/slack.*)|/$" ""))))
+(def lambda-path-prefix (when aws? "/Prod"))                ;; better way to discover lambda root at runtime?
+(j/defn lambda-root-url [^:js {:keys [headers]}]
+  (str "https://" (j/get headers :host) lambda-path-prefix))
 
 (fire-config/set-firebase-config!
   (-> config

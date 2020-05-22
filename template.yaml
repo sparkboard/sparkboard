@@ -23,12 +23,17 @@ Resources:
         Variables:
           DEFERRED_TASK_TOPIC_ARN: !Ref DeferredTaskTopic
       Events:
-        Get:
+        GetRoot:
+          Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /
+            Method: get
+        GetAll:
           Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /{any+}
             Method: get
-        Post:
+        PostRoot:
           Type: Api
           Properties:
             Path: /
@@ -72,7 +77,6 @@ Resources:
             Resource: !Ref DeferredTaskTopic
             Principal:
               AWS: '*'
-
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM

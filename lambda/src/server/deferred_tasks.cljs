@@ -21,7 +21,7 @@
   "Registers a task handler to be called with the args passed to the payload"
   [k f]
   (register-raw! k (fn [[k :as message] _ _]
-                 (apply f (rest message)))))
+                     (apply f (rest message)))))
 
 (defn default [[k & args] _ _]
   (prn (str "No handler registered for " k ". Invoked with: " args)))
@@ -38,14 +38,11 @@
 (def topic-arn (common/env-var :DEFERRED_TASK_TOPIC_ARN))
 (def SNS (delay (new aws/SNS #js{:apiVersion "2010-03-31"})))
 
-(def aws? (or (common/env-var :LAMBDA_TASK_ROOT)
-              (common/env-var :AWS_EXECUTION_ENV)))
-
 (defn publish!
   "Sends `payload` to `handle-deferred-task` in a newly invoked lambda"
   [payload]
   ;; https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/sns-examples-publishing-messages.html
-  (p/try (if aws?
+  (p/try (if common/aws?
            (-> @SNS
                (j/call :publish
                        (j/obj :Message (transit/write payload)
