@@ -132,7 +132,24 @@
     ;;                           :team-id team-id}
     (str "https://" domain "/link-account/slack?token=" token)))
 
+(defn get-install-link
+  "Returns a link that will lead user to install/reinstall app to a workspace"
+  [& [{:as params
+       :keys [lambda/root
+              lambda/local?
+              sparkboard/board-id
+              sparkboard/account-id
+              slack/team-id]}]]
+  {:pre [(or local?                                         ;; dev
+             team-id                                        ;; reinstall
+             (and board-id account-id)                      ;; new install + link board
+             )]}
+  (str root "/slack/install?state=" (tokens/encode (dissoc params :lambda/root))))
+
 (comment
+
+  (get-install-link {:lambda/root "https://slack-matt.ngrok.io"
+                     :lambda/local? true})
 
   (defn then-print [& xs]
     (p/then (p/all xs) (comp pp/pprint js->clj)))

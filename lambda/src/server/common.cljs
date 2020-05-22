@@ -28,20 +28,14 @@
 (defn decode-base64 [s]
   (.toString (.from js/Buffer s "base64")))
 
-(def firebase-app-config
-  (js->clj (.parse js/JSON (:firebase/app-config config))
-           :keywordize-keys true))
-(def firebase-service-account (-> config :firebase/service-account json->clj))
-
-(def firebase-database-secret (:firebase/database-secret config))
-(def encode-firebase-token (partial tokens/encode firebase-service-account))
-(def decode-firebase-token (partial tokens/decode firebase-service-account))
-
 (j/defn lambda-root-url [^:js {:keys [headers url query]}]
   (let [host (j/get headers :host)]
     (str "https://" host (str/replace url #"(/slack.*)|/$" ""))))
 
 (fire-config/set-firebase-config!
-  {:firebase/app-config firebase-app-config
-   :firebase/database-secret firebase-database-secret
-   :firebase/service-account firebase-service-account})
+  (-> config
+      (select-keys [:firebase/app-config
+                    :firebase/database-secret
+                    :firebase/service-account])
+      (update :firebase/app-config json->clj)
+      (update :firebase/service-account json->clj)))

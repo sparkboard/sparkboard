@@ -79,7 +79,7 @@
     (cond-> (not tasks/aws?)
             (.get "/slack/install-local"
                   (fn [req res next]
-                    (.redirect res (slack/only-install-link)))))
+                    (.redirect res (slack-db/get-install-link {:lambda/local? true})))))
 
     (.post "*" (fn [req res next] (#'handler* req res next)))))
 

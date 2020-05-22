@@ -7,10 +7,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Firebase token encode/decode for secure communication with legacy services
 
-(def service-account (delay (:firebase/service-account @config)))
-
 (defn encode [claims]
-  {:pre [(map? claims)]}
+  {:pre [(or (map? claims) (object? claims))]}
   (let [now-seconds (-> (js/Date.now) (/ 1000))
         {:keys [private_key client_email]} (:firebase/service-account @config)]
     (jwt/encode (j/obj

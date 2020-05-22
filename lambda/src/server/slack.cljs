@@ -109,7 +109,8 @@
    This is how we verify who the user is, and what board to connect the
    app to (a board for which the user must be an admin)"
   [^:js {:as req :keys [query]} ^js res next]
-  (p/let [{:keys [team-id board-id]} (tokens/decode (:state query))
+  (p/let [{:keys [slack/team-id
+                  sparkboard/board-id]} (tokens/decode (:state query))
           error (when board-id
                   (p/let [entry (slack-db/board->team board-id)]
                     (when (and entry (not= board-id (:board-id entry)))
@@ -128,9 +129,14 @@
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
   (let [{:keys [code state]} query
-        {:keys [board-id account-id only-install]} (tokens/decode state)]
+        {:as token-claims
+         :keys [sparkboard/board-id
+                sparkboard/account-id
+                slack/team-id
+                lambda/local?]} (tokens/decode state)]
     (assert (or (and board-id account-id)
-                only-install) "token must include board-id and account-id")
+                team-id
+                local?) "token must include board-id and account-id")
     (p/let [response (post+ "oauth.v2.access"
                             {:query {:code code
                                      :client_id (:client-id slack-config)
@@ -143,9 +149,11 @@
                     {user-id :id} :authed_user} response]
         (p/let [user-response (get+ "users.info" {:query {:user user-id}
                                                   :token access_token})]
-          (assert (j/get-in user-response [:user :is_admin])
-                  "Only an admin can install the Sparkboard app")
           (p/try
+            (assert (j/get-in user-response [:user :is_admin])
+                    "Only an admin can install the Sparkboard app")
+            (when-let [token-team (:slack/team-id token-claims)]
+              (assert (= token-team team-id) "Reinstall must be to the same team"))
             (when board-id
               (slack-db/link-team-to-board!
                 {:slack/team-id team-id
@@ -165,14 +173,3 @@
             (.redirect res (slack-browser/deep-link-to-home app-id team-id))
             (p/catch js/Error ^js e
               (.send res 400 (.-message e)))))))))
-
-(defn only-install-link
-  [& [{:keys [slack/team-id
-              lambda/root]}]]
-  ;; link that will let a user install app without linking to a board
-  (str root "/slack/install?state=" (tokens/encode
-                                      {:only-install true
-                                       :team-id team-id})))
-
-(comment
-  (only-install-link {:lambda/root "https://slack-matt.ngrok.io"}))
