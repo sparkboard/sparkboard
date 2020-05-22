@@ -74,8 +74,8 @@
     (case action_id
       "admin:team-broadcast"
       (case view-type
-        "home"  {:task [`slack/views-open!   token trigger_id screens/team-broadcast-modal-compose]})
-        "modal" {:task [`slack/views-update! token view_id    screens/team-broadcast-modal-compose]}
+        "home"  {:task [`slack/views-open!   token trigger_id screens/team-broadcast-modal-compose]}
+        "modal" {:task [`slack/views-update! token view_id    screens/team-broadcast-modal-compose]})
 
       "user:team-broadcast-response"
       (tasks/publish! {:task [`slack/views-open! token trigger_id screens/team-broadcast-response]})
