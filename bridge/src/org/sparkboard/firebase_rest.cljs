@@ -13,7 +13,7 @@
                  m)) m updaters))
 
 (defn json-url [path & [{:keys [query]}]]
-  (doto (str (-> @config :firebase/app-config :databaseURL)
+  (doto (str (-> @config :firebase/app-config :databaseURL (str/replace #"/$" ""))
              (str/replace-first path #"^/*" "/")            ;; needs a single leading "/"
              ".json"
              "?"
