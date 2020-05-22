@@ -1,9 +1,10 @@
-(ns server.http
+(ns org.sparkboard.http
   "HTTP verbs, via node-fetch"
-  (:require ["node-fetch" :as node-fetch]
+  (:require ["isomorphic-unfetch" :as fetch]
             [applied-science.js-interop :as j]
+            [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
-            [cljs.pprint :as pp]))
+            [org.sparkboard.js-convert :refer [->clj]]))
 
 (defn assert-ok [^js/Response res]
   (when-not (.-ok res)
@@ -13,9 +14,14 @@
   res)
 
 (defn fetch+ [url opts]
-  (p/-> (node-fetch url (clj->js opts))
+  (p/-> (fetch url (clj->js opts))
         (assert-ok)))
 
 (defn fetch-json+ [url opts]
-  (p/-> (fetch+ url (clj->js opts))
+  (p/-> (fetch+ url opts)
         (j/call :json)))
+
+(defn fetch-clj+ [url opts]
+  (p/-> (fetch+ url opts)
+        (j/call :json)
+        ->clj))

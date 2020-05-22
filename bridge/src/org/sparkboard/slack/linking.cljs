@@ -1,11 +1,11 @@
-(ns server.slack-db-linking
-  (:require [server.firebase :as fire]
-            [kitchen-async.promise :as p]
+(ns org.sparkboard.slack.linking
+  (:require [applied-science.js-interop :as j]
             [cljs.pprint :as pp]
-            [applied-science.js-interop :as j]
-            [server.common :as common]))
+            [kitchen-async.promise :as p]
+            [org.sparkboard.firebase-rest :as fire]
+            [org.sparkboard.firebase-tokens :as tokens]))
 
-;; LINKING
+;; Read & write links between Slack and Sparkboard
 ;;
 ;; Firebase schema -
 ;; /slack-channel/{id}   => {project-id, team-id}
@@ -122,7 +122,7 @@
 (defn linking-url-for-slack-id [team-id user-id]
   (let [{:keys [board-id]} (linked-team team-id)
         {:keys [domain]} (fire/get+ (str "/settings/" board-id "/domain"))
-        token (common/encode-firebase-token
+        token (tokens/encode
                 {:user-id user-id
                  :team-id team-id})]
     ;; TODO

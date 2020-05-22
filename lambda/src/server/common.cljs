@@ -4,7 +4,8 @@
             [shadow.resource :as rc]
             [clojure.string :as str]
             [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
-            [org.sparkboard.firebase-tokens :as tokens]))
+            [org.sparkboard.firebase-tokens :as tokens]
+            [org.sparkboard.firebase-config :as fire-config]))
 
 (defn env-var [k]
   (j/get-in js/process [:env (name k)]))
@@ -39,3 +40,8 @@
 (j/defn lambda-root-url [^:js {:keys [headers url query]}]
   (let [host (j/get headers :host)]
     (str "https://" host (str/replace url #"(/slack.*)|/$" ""))))
+
+(fire-config/set-firebase-config!
+  {:firebase/app-config firebase-app-config
+   :firebase/database-secret firebase-database-secret
+   :firebase/service-account firebase-service-account})

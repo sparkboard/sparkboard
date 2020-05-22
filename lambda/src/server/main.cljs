@@ -14,7 +14,7 @@
             [server.deferred-tasks :as tasks]
             [server.slack :as slack]
             [server.slack.db :as mock-db]
-            [server.slack-db-linking :as slack-db]
+            [org.sparkboard.slack.linking :as slack-db]
             [server.slack.handlers :as handlers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -84,7 +84,6 @@
     (.post "*" (fn [req res next] (#'handler* req res next)))))
 
 (def server (aws-express/createServer app))
-
 
 (def slack-handler
   (fn [event context]

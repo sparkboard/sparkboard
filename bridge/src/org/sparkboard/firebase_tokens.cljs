@@ -1,27 +1,31 @@
 (ns org.sparkboard.firebase-tokens
   (:require ["jwt-simple" :as jwt]
-            [org.sparkboard.js-convert :refer [->js ->clj]]
-            [applied-science.js-interop :as j]))
+            [applied-science.js-interop :as j]
+            [org.sparkboard.firebase-config :refer [config]]
+            [org.sparkboard.js-convert :refer [->js ->clj]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Firebase token encode/decode for secure communication with legacy services
 
-(defn encode [service-account claims]
+(def service-account (delay (:firebase/service-account @config)))
+
+(defn encode [claims]
   {:pre [(map? claims)]}
-  (let [now-seconds (-> (js/Date.now) (/ 1000))]
+  (let [now-seconds (-> (js/Date.now) (/ 1000))
+        {:keys [private_key client_email]} (:firebase/service-account @config)]
     (jwt/encode (j/obj
                   :alg "RS256"
-                  :iss (:client_email service-account)
-                  :sub (:client_email service-account)
+                  :iss client_email
+                  :sub client_email
                   :aud "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit"
                   :iat now-seconds
                   :exp (+ now-seconds 3600)
                   :uid "lambda:slack"
                   :claims (->js claims))
-                (:private_key service-account))))
+                private_key)))
 
-(defn decode [service-account token]
-  (-> (jwt/decode token (:private_key service-account))
+(defn decode [token]
+  (-> (jwt/decode token (-> @config :firebase/service-account :private_key))
       (j/get :claims)
       (->clj)))
 
@@ -32,4 +36,4 @@
                  :there "world"
                  :hello/there "world"}]
     (= payload
-       (decode opts (encode opts payload)))))
+       (decode (encode payload)))))
