@@ -47,6 +47,16 @@ Resources:
       CodeUri: ./lambda
       Handler: target/main.deferredTaskHandler
       Runtime: nodejs12.x
+
+  # https://stackoverflow.com/questions/61015330/how-can-i-set-the-maximumretryattempt-for-aws-lambda-in-the-cloudformation-lambd
+  TaskHandlerInvokeConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName: !Ref TaskHandler
+      MaximumRetryAttempts: 0 # slack UI tasks should not be retried
+      Qualifier: $LATEST
+
+
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
