@@ -15,12 +15,11 @@ Resources:
       Tracing: Active
       Policies:
         # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
-        # I don't know why we need both this & TaskHandlerTopicPolicy, but we do
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt TaskHandlerTopic.TopicName
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TaskHandler
       Environment:
         Variables:
-          DEFERRED_TASK_TOPIC_ARN: !Ref TaskHandlerTopic
+          TASK_HANDLER: !Ref TaskHandler
       Events:
         GetRoot:
           Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -48,48 +47,6 @@ Resources:
       CodeUri: ./lambda
       Handler: target/main.deferredTaskHandler
       Runtime: nodejs12.x
-  TaskHandlerTopic:
-    Type: AWS::SNS::Topic
-  TaskHandlerSubscription:
-    Type: AWS::SNS::Subscription
-    Properties:
-      Protocol: lambda
-      TopicArn: !Ref TaskHandlerTopic
-      Endpoint: !GetAtt TaskHandler.Arn
-      DeliveryPolicy:
-        healthyRetryPolicy:
-          numRetries: 0 # Slack tasks must be invoked immediately or not at all
-          minDelayTarget: 10
-          maxDelayTarget: 30
-          numMinDelayRetries: 0
-          numMaxDelayRetries: 0
-          numNoDelayRetries: 0
-          backoffFunction: "exponential"
-
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
-  # https://stackoverflow.com/questions/32465505/cant-create-a-sns-event-source-on-a-lambda-function-using-cloudformation
-  TaskHandlerTopicPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt TaskHandler.Arn
-      Action: lambda:InvokeFunction
-      Principal: "sns.amazonaws.com"
-      SourceArn: !Ref TaskHandlerTopic
-
-  # https://github.com/aws-samples/aws-serverless-sns-fanout/blob/master/template.yml
-  TaskHandlerTopicPolicy:
-    Type: 'AWS::SNS::TopicPolicy'
-    Properties:
-      Topics:
-        - !Ref TaskHandlerTopic
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: 'sns:Publish'
-            Resource: !Ref TaskHandlerTopic
-            Principal:
-              AWS: '*'
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
@@ -97,12 +54,6 @@ Outputs:
   SlackApi:
     Description: "API Gateway endpoint URL for Slack function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
-  SlackHandler:
-    Description: "Slack Lambda Function ARN"
-    Value: !GetAtt SlackHandler.Arn
-  SlackHandlerIamRole:
-    Description: "Implicit IAM Role created for Slack function"
-    Value: !GetAtt SlackHandlerRole.Arn
 
 # put shared functionality/dependencies in a layer?
 # https://docs.aws.amazon.com/serverlessrepo/latest/devguide/sharing-lambda-layers.html

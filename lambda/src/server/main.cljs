@@ -16,7 +16,8 @@
             [server.slack.db :as mock-db]
             [org.sparkboard.slack.slack-db :as slack-db]
             [server.slack.handlers :as handlers]
-            [server.common :as common]))
+            [server.common :as common]
+            [server.perf :as perf]))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
 
@@ -29,49 +30,60 @@
 (j/defn handler*
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
-  [^:js {:as req :keys [body]} ^js res]
-  (p/let [[kind data props] (cond (:payload body) [:interaction
-                                                   (:payload body)
-                                                   #:slack{:team-id (-> body :payload :team :id)
-                                                           :user-id (-> body :payload :user :id)}]
-                                  (:event body) [:event
-                                                 (:event body)
-                                                 #:slack{:team-id (:team_id body)
-                                                         :user-id (-> body :event :user)
-                                                         :app-id (:api_app_id body)}]
-                                  (:challenge body) [:challenge (:challenge body) nil])
-          token (when (:slack/team-id props)
-                  (slack-db/team->token (-> config :slack :app-id) (:slack/team-id props)))
-          props (merge props {:lambda/req req
-                              :slack/token token})
-          {:as result
-           :keys [response
-                  task]} (case kind
-                           ;; Slack API: identification challenge
-                           :challenge {:response data}
+  [^:js {:as req :keys [body headers]} ^js res]
+  ;(tap> [:body body])
+  ;(tap> [:headers headers])
+  (perf/time-promise "handler*"
+    (p/let [[kind data props] (cond (:payload body) [:interaction
+                                                     (:payload body)
+                                                     #:slack{:team-id (-> body :payload :team :id)
+                                                             :user-id (-> body :payload :user :id)
+                                                             :ts (-> body :payload :actions first :action_ts (some-> perf/slack-ts-ms))}]
+                                    (:event body) [:event
+                                                   (:event body)
+                                                   #:slack{:team-id (:team_id body)
+                                                           :user-id (-> body :event :user)
+                                                           :app-id (:api_app_id body)
+                                                           :ts (-> body :event :event_ts perf/slack-ts-ms)}]
+                                    (:challenge body) [:challenge (:challenge body) nil])
+            token (when (:slack/team-id props)
+                    (perf/time-promise "slack-db/team->token"
+                      (slack-db/team->token (-> config :slack :app-id) (:slack/team-id props))))
+            props (merge props {:lambda/req req
+                                :slack/token token})
+            {:as result
+             :keys [response
+                    task]} (perf/time "build-response"
+                                      (case kind
+                                        ;; Slack API: identification challenge
+                                        :challenge {:response data}
 
-                           ;; Slack Interaction (e.g. global shortcut)
-                           :interaction (handlers/handle-interaction! props data)
+                                        ;; Slack Interaction (e.g. global shortcut)
+                                        :interaction (handlers/handle-interaction! props data)
 
-                           ;; Slack Event
-                           :event (handlers/handle-event! props data))]
-
-    (assert (or (map? result) (nil? result)))
-    ;(pp/pprint [(if result ::handled ::not-handled) body])
-    (when task
-      (pp/pprint (str "[handler*] task: " task))
-      (tasks/publish! task))
-    (.send res response)))
+                                        ;; Slack Event
+                                        :event (handlers/handle-event! props data)))]
+      (assert (or (map? result) (nil? result)))
+      ;(pp/pprint [(if result ::handled ::not-handled) body])
+      (when task
+        ;(perf/time "pprint-task" (pp/pprint (str "[handler*] task: " task)))
+        (perf/time-promise "tasks/publish!"
+          (tasks/invoke-lambda {:task task
+                                :slack/ts (:slack/ts props)
+                                :task-invoke/ts (js/Date.now)})))
+      (.send res response)
+      nil)))
 
 (def app
   (doto ^js (express)
-    ;; (.use (aws-middleware/eventContext))
+    (.use (perf/req-measure :parse-body))
     (.use (body-parser/json))
     (.use (body-parser/urlencoded #js{:extended true}))
     (.use (fn [req res next]
             (j/update! req :body body->clj)
             (j/update! req :query js->clj :keywordize-keys true)
             (next)))
+    (.use (perf/req-measure :parse-body))
 
     (.get "/slack/install" slack/oauth-install-redirect)
     (.get "/slack/oauth-redirect" slack/oauth-redirect)
@@ -89,7 +101,14 @@
   (fn [event context]
     (aws-express/proxy server event context)))
 
-(def deferred-task-handler tasks/handler)
+(def task-handler tasks/lambda-handler)
+
+(defn init []
+  (common/init-config)
+  (when common/aws?
+    (add-tap prn)))
+
+(defonce _ (init))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment

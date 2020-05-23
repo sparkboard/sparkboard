@@ -21,7 +21,7 @@
   :lambda
   {:target :node-library
    :exports {:slackHandler server.main/slack-handler
-             :deferredTaskHandler server.main/deferred-task-handler}
+             :deferredTaskHandler server.main/task-handler}
    :output-to "lambda/target/main.js"
    :devtools {:preloads [shadow.remote.runtime.cljs.node
                          server.dev-server]}
