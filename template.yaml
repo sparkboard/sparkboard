@@ -41,7 +41,7 @@ Resources:
   TaskHandler:
     Type: AWS::Serverless::Function
     Properties:
-      MemorySize: 256
+      MemorySize: 192
       Tracing: Active
       Timeout: 20
       CodeUri: ./lambda
