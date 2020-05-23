@@ -3,10 +3,6 @@ Transform: AWS::Serverless-2016-10-31
 Description: SAM Template for sparkboard-lambda
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-Globals:
-  Function:
-    Timeout: 5
-
 Resources:
   SlackHandler:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
@@ -14,14 +10,17 @@ Resources:
       CodeUri: ./lambda
       Handler: target/main.slackHandler
       Runtime: nodejs12.x
+      Timeout: 3
+      MemorySize: 256
+      Tracing: Active
       Policies:
         # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
-        # I don't know why we need both this & DeferredTaskTopicPolicy, but we do
+        # I don't know why we need both this & TaskHandlerTopicPolicy, but we do
         - SNSPublishMessagePolicy:
-            TopicName: !GetAtt DeferredTaskTopic.TopicName
+            TopicName: !GetAtt TaskHandlerTopic.TopicName
       Environment:
         Variables:
-          DEFERRED_TASK_TOPIC_ARN: !Ref DeferredTaskTopic
+          DEFERRED_TASK_TOPIC_ARN: !Ref TaskHandlerTopic
       Events:
         GetRoot:
           Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -40,41 +39,55 @@ Resources:
             Method: post
 
   # https://github.com/dsandor/example-lambda-sns/blob/master/template.yaml
-  DeferredTaskHandler:
+  TaskHandler:
     Type: AWS::Serverless::Function
     Properties:
+      MemorySize: 256
+      Tracing: Active
+      Timeout: 20
       CodeUri: ./lambda
       Handler: target/main.deferredTaskHandler
       Runtime: nodejs12.x
-  DeferredTaskTopic:
+  TaskHandlerTopic:
     Type: AWS::SNS::Topic
+  TaskHandlerSubscription:
+    Type: AWS::SNS::Subscription
     Properties:
-      Subscription:
-        - Protocol: lambda
-          Endpoint: !GetAtt DeferredTaskHandler.Arn
+      Protocol: lambda
+      TopicArn: !Ref TaskHandlerTopic
+      Endpoint: !GetAtt TaskHandler.Arn
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          numRetries: 0 # Slack tasks must be invoked immediately or not at all
+          minDelayTarget: 10
+          maxDelayTarget: 30
+          numMinDelayRetries: 0
+          numMaxDelayRetries: 0
+          numNoDelayRetries: 0
+          backoffFunction: "exponential"
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
   # https://stackoverflow.com/questions/32465505/cant-create-a-sns-event-source-on-a-lambda-function-using-cloudformation
-  DeferredTaskTopicPermission:
+  TaskHandlerTopicPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt DeferredTaskHandler.Arn
+      FunctionName: !GetAtt TaskHandler.Arn
       Action: lambda:InvokeFunction
       Principal: "sns.amazonaws.com"
-      SourceArn: !Ref DeferredTaskTopic
+      SourceArn: !Ref TaskHandlerTopic
 
   # https://github.com/aws-samples/aws-serverless-sns-fanout/blob/master/template.yml
-  DeferredTaskTopicPolicy:
+  TaskHandlerTopicPolicy:
     Type: 'AWS::SNS::TopicPolicy'
     Properties:
       Topics:
-        - !Ref DeferredTaskTopic
+        - !Ref TaskHandlerTopic
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Action: 'sns:Publish'
-            Resource: !Ref DeferredTaskTopic
+            Resource: !Ref TaskHandlerTopic
             Principal:
               AWS: '*'
 Outputs:
