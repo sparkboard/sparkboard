@@ -94,7 +94,9 @@
                      :label {:type "plain_text",
                              :text "Tell us what you've been working on:",
                              :emoji true},
-                     :element {:type "plain_text_input", :multiline true}}]
+                     :block_id "sb-project-status1"
+                     :element {:type "plain_text_input", :multiline true
+                               :action_id "user:status-input"}}]
            :submit [:plain_text "Send"]}])
 
 (def team-broadcast-response-achievement
@@ -103,7 +105,9 @@
                      :label {:type "plain_text",
                              :text "Tell us about the milestone you reached:",
                              :emoji true},
-                     :element {:type "plain_text_input", :multiline true}}]
+                     :block_id "sb-project-achievement1"
+                     :element {:type "plain_text_input", :multiline true
+                               :action_id "user:achievement-input"}}]
            :submit [:plain_text "Send"]}])
 
 (def team-broadcast-response-help
@@ -112,27 +116,26 @@
                      :label {:type "plain_text",
                              :text "Let us know what you could use help with. We'll try to lend a hand.",
                              :emoji true},
-                     :element {:type "plain_text_input", :multiline true}}]
+                     :block_id "sb-project-help1"
+                     :element {:type "plain_text_input", :multiline true
+                               :action_id "user:help-input"}}]
            :submit [:plain_text "Send"]}])
 
-(def team-broadcast-response-msg
+(defn team-broadcast-response-msg [project msg]
   [{:type "divider"}
    {:type "section",
-    :text {:type "mrkdwn", :text "_Project:_ *Diabetes Monitor*"}} ; FIXME
+    :text {:type "mrkdwn", :text (str "_Project:_ * " project "*")}}
    {:type "section",
-    :text {:type "plain_text",
-                                        ; FIXME
-           :text "Our team has finished step 1 of the prototype and we are now starting on ...blah...",
-           :emoji true}}
+    :text {:type "plain_text", :text msg, :emoji true}}
    {:type "actions",
     :elements [{:type "button",
                 :text {:type "plain_text",
-                       :text "Go to channel", ; FIXME
+                       :text "Go to channel", ; FIXME (project->channel project)
                        :emoji true},
                 :value "click_me_123"}
                {:type "button",
                 :text {:type "plain_text",
-                       :text "View project",
+                       :text "View project", ; FIXME sparkboard project URL
                        :emoji true}
                 :value "click_me_123"}]}])
 
