@@ -52,7 +52,7 @@ node lambda/target/main.js
 ```
 
 When you start this process you should see `:started-server 3000` in the console, repeated
-whenever you save a change, unless you are using SAM (see below).
+whenever you save a change.
 
 ## Receive Slack events with your local server
 
@@ -72,6 +72,16 @@ and then redirected to your app's home tab in Slack.
 
 ## Release
 
+The release flow requires AWS [SAM](https://aws.amazon.com/serverless/sam/).
+
+Installation (mac):
+```
+brew tap aws/tap
+brew install aws-sam-cli
+```
+Set up [AWS credentials](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-set-up-credentials.html)
+
+To release:
 ```
 bin/release <dev/staging/prod/other-tag>
 ```
@@ -83,27 +93,3 @@ Staging: https://xztdh6w28b.execute-api.us-east-1.amazonaws.com/Prod
 Prod: https://sstwt0eqqb.execute-api.us-east-1.amazonaws.com/Prod
 
 (Yes, they all end in 'Prod', this is a weird SAM thing.)
-
-### Local testing: SAM
-
-Instead of the local dev server, you can simulate a lambda environment using [SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html).
-This will run a mock lambda runtime on your machine. It is much slower than using the express-server
-approach and many requests will not return fast enough to satisfy Slack. However, it will be a more
-realistic approximation of the prod environment.
-
-First, set `server.dev-server/ENABLED?` to false to prevent the dev server from running.
-
-Then, install AWS SAM:
-
-```
-brew tap aws/tap
-brew install aws-sam-cli
-```
-
-Set up [AWS credentials](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started-set-up-credentials.html)
-
-Start the lambda:
-
-```
-sam local start-api
-```

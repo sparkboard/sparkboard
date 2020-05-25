@@ -13,5 +13,5 @@ node_modules
 .migration-data
 public
 .store
-.aws-sam
+**/.aws-sam
 **/*.zip

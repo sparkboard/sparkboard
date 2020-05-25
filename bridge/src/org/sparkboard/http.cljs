@@ -10,7 +10,7 @@
   (when-not (.-ok res)
     (pp/pprint [:http/error (js->clj res)])
     (throw (ex-info "Invalid network request"
-                    {:status (.-status res)})))
+                    (j/select-keys res [:status :statusText :body]))))
   res)
 
 (defn fetch+ [url opts]

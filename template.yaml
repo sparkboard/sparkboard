@@ -3,10 +3,6 @@ Transform: AWS::Serverless-2016-10-31
 Description: SAM Template for sparkboard-lambda
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-Globals:
-  Function:
-    Timeout: 5
-
 Resources:
   SlackHandler:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
@@ -14,64 +10,58 @@ Resources:
       CodeUri: ./lambda
       Handler: target/main.slackHandler
       Runtime: nodejs12.x
+      Timeout: 3
+      MemorySize: 256
+      Tracing: Active
+
+      ## provisioned concurrency is supposed to reduce post-init cold start latency
+      ## but didn't address the slow early runs I am seeing
+      #      AutoPublishAlias: live
+      #      ProvisionedConcurrencyConfig:
+      #        ProvisionedConcurrentExecutions: 1
       Policies:
         # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
-        # I don't know why we need both this & DeferredTaskTopicPolicy, but we do
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt DeferredTaskTopic.TopicName
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TaskHandler
       Environment:
         Variables:
-          DEFERRED_TASK_TOPIC_ARN: !Ref DeferredTaskTopic
+          TASK_HANDLER: !Ref TaskHandler
       Events:
-        Get:
+        GetRoot:
+          Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /
+            Method: get
+        GetAll:
           Type: Api # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /{any+}
             Method: get
-        Post:
+        PostRoot:
           Type: Api
           Properties:
             Path: /
             Method: post
 
   # https://github.com/dsandor/example-lambda-sns/blob/master/template.yaml
-  DeferredTaskHandler:
+  TaskHandler:
     Type: AWS::Serverless::Function
     Properties:
+      MemorySize: 192
+      Tracing: Active
+      Timeout: 20
       CodeUri: ./lambda
       Handler: target/main.deferredTaskHandler
       Runtime: nodejs12.x
-  DeferredTaskTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      Subscription:
-        - Protocol: lambda
-          Endpoint: !GetAtt DeferredTaskHandler.Arn
 
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
-  # https://stackoverflow.com/questions/32465505/cant-create-a-sns-event-source-on-a-lambda-function-using-cloudformation
-  DeferredTaskTopicPermission:
-    Type: AWS::Lambda::Permission
+  # https://stackoverflow.com/questions/61015330/how-can-i-set-the-maximumretryattempt-for-aws-lambda-in-the-cloudformation-lambd
+  TaskHandlerInvokeConfig:
+    Type: AWS::Lambda::EventInvokeConfig
     Properties:
-      FunctionName: !GetAtt DeferredTaskHandler.Arn
-      Action: lambda:InvokeFunction
-      Principal: "sns.amazonaws.com"
-      SourceArn: !Ref DeferredTaskTopic
+      FunctionName: !Ref TaskHandler
+      MaximumRetryAttempts: 0 # slack UI tasks should not be retried
+      Qualifier: $LATEST
 
-  # https://github.com/aws-samples/aws-serverless-sns-fanout/blob/master/template.yml
-  DeferredTaskTopicPolicy:
-    Type: 'AWS::SNS::TopicPolicy'
-    Properties:
-      Topics:
-        - !Ref DeferredTaskTopic
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: 'sns:Publish'
-            Resource: !Ref DeferredTaskTopic
-            Principal:
-              AWS: '*'
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
@@ -80,12 +70,6 @@ Outputs:
   SlackApi:
     Description: "API Gateway endpoint URL for Slack function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
-  SlackHandler:
-    Description: "Slack Lambda Function ARN"
-    Value: !GetAtt SlackHandler.Arn
-  SlackHandlerIamRole:
-    Description: "Implicit IAM Role created for Slack function"
-    Value: !GetAtt SlackHandlerRole.Arn
 
 # put shared functionality/dependencies in a layer?
 # https://docs.aws.amazon.com/serverlessrepo/latest/devguide/sharing-lambda-layers.html
