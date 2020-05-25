@@ -3,14 +3,15 @@
             [cljs.reader :refer [read-string]]
             [shadow.resource :as rc]
             [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
-            [org.sparkboard.firebase-config :as fire-config]))
+            [org.sparkboard.firebase-config :as fire-config]
+            [server.env :as env]))
 
 (defn env-var [k]
   (j/get-in js/process [:env (name k)]))
 
 (def config (read-string
              (or (env-var :SPARKBOARD_CONFIG)
-                 (rc/inline "/.local.config.edn"))))
+                 (env/some-inline-resource "/.local.config.edn"))))
 
 (def aws? (or (env-var :LAMBDA_TASK_ROOT)
               (env-var :AWS_EXECUTION_ENV)))
