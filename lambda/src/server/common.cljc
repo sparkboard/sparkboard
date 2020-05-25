@@ -1,13 +1,15 @@
 (ns server.common
   (:require [applied-science.js-interop :as j]
-            [cljs.reader :refer [read-string]]
+            #?(:cljs [cljs.reader :refer [read-string]])
             [shadow.resource :as rc]
-            [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
-            [org.sparkboard.firebase-config :as fire-config]
-            [server.env :as env]))
+            [server.env :as env]
+            [org.sparkboard.js-convert :refer [json->clj clj->json]]
+            [org.sparkboard.firebase-config :as fire-config])
+  #?(:clj (:import java.util.Base64)))
 
 (defn env-var [k]
-  (j/get-in js/process [:env (name k)]))
+  #?(:cljs (j/get-in js/process [:env (name k)])
+     :clj (System/getenv (name k))))
 
 (def config (read-string
              (or (env-var :SPARKBOARD_CONFIG)
@@ -16,11 +18,6 @@
 (def aws? (or (env-var :LAMBDA_TASK_ROOT)
               (env-var :AWS_EXECUTION_ENV)))
 
-(defn parse-json [maybe-json]
-  (try (.parse js/JSON maybe-json)
-       (catch js/Error e
-         e)))
-
 (defn update-some [m updaters]
   (reduce-kv (fn [m k update-fn]
                (if (contains? m k)
@@ -28,11 +25,17 @@
                  m)) m updaters))
 
 (defn decode-base64 [s]
-  (.toString (.from js/Buffer s "base64")))
+  #?(:cljs (.toString (.from js/Buffer s "base64"))
+     :clj (String. (.decode (Base64/getDecoder) s))))
 
 (def lambda-path-prefix (when aws? "/Prod"))                ;; better way to discover lambda root at runtime?
-(j/defn lambda-root-url [^:js {:keys [headers]}]
-  (str "https://" (j/get headers :host) lambda-path-prefix))
+
+(defn req-host [req]
+  #?(:cljs (j/get-in req [:headers :host])
+     :clj (get-in req [:headers "host"])))
+
+(defn lambda-root-url [req]
+  (str "https://" (req-host req) lambda-path-prefix))
 
 (defn init-config []
   (fire-config/set-firebase-config!

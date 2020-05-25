@@ -8,7 +8,7 @@
             [org.sparkboard.http :as http]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.browser :as slack-browser]
-            [server.blocks :as blocks]
+            [server.slack.hiccup :as hiccup]
             [server.common :as common]
             [server.deferred-tasks :as tasks]))
 
@@ -66,10 +66,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [token trigger-id blocks]
-  #_ (println "[views-open!] JSON blocks:" (blocks/to-json blocks))
+  #_ (println "[views-open!] JSON blocks:" (hiccup/->blocks-json blocks))
   (p/->> (post+ "views.open"
                 {:query {:trigger_id trigger-id
-                         :view (blocks/to-json blocks)}
+                         :view (hiccup/->blocks-json blocks)}
                  :token token})
          (http/assert-ok)
          ;; TODO better callback
@@ -80,7 +80,7 @@
 (defn views-update! [token view-id blocks]
   (p/->> (post+ "views.update"
                 {:query {:view_id view-id
-                         :view (blocks/to-json blocks)}
+                         :view (hiccup/->blocks-json blocks)}
                  :token token})
          ;; TODO better callback
          (println "slack views.update response:")))

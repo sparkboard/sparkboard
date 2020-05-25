@@ -1,6 +1,5 @@
 (ns server.slack.screens
-  (:require [applied-science.js-interop :as j]
-            [server.blocks :as blocks]
+  (:require [server.slack.hiccup :as hiccup]
             [server.common :as common]
             [org.sparkboard.slack.slack-db :as slack-db]))
 
@@ -137,5 +136,5 @@
                 :value "click_me_123"}]}])
 
 (comment
-  (blocks/parse team-broadcast-modal-compose)
-  (blocks/parse [:md "hi"]))
+  (hiccup/->blocks team-broadcast-modal-compose)
+  (hiccup/->blocks [:md "hi"]))
