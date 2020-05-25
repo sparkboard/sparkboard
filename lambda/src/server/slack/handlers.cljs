@@ -3,9 +3,9 @@
             [cljs.pprint :as pp]
             [clojure.string :as str]
             [kitchen-async.promise :as p]
+            [org.sparkboard.http :as http]
             [server.blocks :as blocks]
             [server.deferred-tasks :as tasks]
-            [org.sparkboard.http :as http]
             [server.slack :as slack]
             [server.slack.screens :as screens]))
 
