@@ -13,6 +13,12 @@ Resources:
       Timeout: 3
       MemorySize: 256
       Tracing: Active
+
+      ## provisioned concurrency is supposed to reduce post-init cold start latency
+      ## but didn't address the slow early runs I am seeing
+      #      AutoPublishAlias: live
+      #      ProvisionedConcurrencyConfig:
+      #        ProvisionedConcurrentExecutions: 1
       Policies:
         # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
         - LambdaInvokePolicy:
