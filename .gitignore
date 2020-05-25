@@ -9,7 +9,7 @@ node_modules
 *.iml
 *.DS_Store
 **/compiled/**
-**/.local.config.edn
+**/.*.config.edn
 .migration-data
 public
 .store

@@ -61,11 +61,17 @@ to the internet.
 
 1. Install http://ngrok.io/
 1. `ngrok http 3000 and copy the https url ngrok prints.
-1. Create/update a Slack app and paste the above `https` url
-    into the relevant fields in "Interactivity & Shortcuts", "Event Subscriptions", and
-    "OAuth & Permissions > Redirect URLs" in the Slack settings for your app.
-1. Enable "App Distribution" for your app.
-1. Update `lambda/src/.local.config.edn` with your Slack app's config.
+1. Create/update a Slack app
+    1. paste the above `https` url into the relevant fields in:
+        * `Interactivity & Shortcuts`,
+        * `OAuth & Permissions > Redirect URLs` (then click "Save URLs")
+        * `Event Subscriptions`, then
+            1. Subscribe to bot events: `app_home_opened`, `member_joined_channel`
+            2. "Save Changes"
+    1. `Manage Distribution`
+        - check the box in `Remove Hard Coded Information`
+        - click `Activate Public Distribution`
+1. Update `lambda/src/.local.config.edn` with your Slack app's config found under `Basic Information` > `App Credentials`
 1. Navigate to `https://YOUR_NGROK_SUBDOMAIN.ngrok.io/slack/install-local` and pick a Slack workspace
 to install your dev app to. If all goes well, you will be asked to grant permissions to your app,
 and then redirected to your app's home tab in Slack.
