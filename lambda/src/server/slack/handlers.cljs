@@ -113,11 +113,11 @@
 
       ;; User broadcast response: describe current status
       (or (-> state :sb-project-status1 :user:status-input)
-          (-> state :sb-project-status1 :user:achievement-input)
-          (-> state :sb-project-status1 :user:help-input))
+          (-> state :sb-project-achievement1 :user:achievement-input)
+          (-> state :sb-project-help1 :user:help-input))
       {:task [`report-project-status! token (-> (or (get-in state [:sb-project-status1 :user:status-input])
-                                                    (get-in state [:sb-project-status1 :user:achievement-input])
-                                                    (get-in state [:sb-project-status1 :user:help-input]))
+                                                    (get-in state [:sb-project-achievement1 :user:achievement-input])
+                                                    (get-in state [:sb-project-help1 :user:help-input]))
                                                 :value
                                                 decode-text-input)]})))
 
