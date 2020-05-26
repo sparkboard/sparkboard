@@ -41,21 +41,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Direct HTTP calls
 (defn get+ [family-method {:keys [query token]}]
-  (http/fetch-json+ (str base-uri family-method
-                         (when query
-                           (str "?" (uri/map->query-string query))))
-                    (j/lit {:method "GET"
-                            :Content-Type "application/json; charset=utf-8"
-                            :headers {:Authorization (str "Bearer " token)}})))
+  (http/http-req (str base-uri family-method
+                      (when query
+                        (str "?" (uri/map->query-string query))))
+                 {:method "GET"
+                  :Content-Type "application/json; charset=utf-8"
+                  :headers {:Authorization (str "Bearer " token)}}))
 
 ;; XXX may or may not work for the rest of the API; breaks on chat.PostMessage for unknown reasons I suspect are related to node-fetch possibly mixing URL parameters with a JSON body, which makes Slack choke with "channel_not_found"
 (defn post+ [family-method {:keys [body query token]}]
-  (http/fetch-json+ (str base-uri family-method (when query
-                                                  (str "?" (uri/map->query-string query))))
-                    #js{:method "post"
-                        :Content-Type "application/json; charset=utf-8"
-                        :headers #js{:Authorization (str "Bearer " token)}
-                        :body (clj->js body) #_(.stringify js/JSON (clj->js body))}))
+  (http/http-req (str base-uri family-method (when query
+                                               (str "?" (uri/map->query-string query))))
+                 {:method "post"
+                  :Content-Type "application/json; charset=utf-8"
+                  :headers #js{:Authorization (str "Bearer " token)}
+                  :body body}))
 
 (tasks/register-handler! `post+)
 
@@ -66,12 +66,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [token trigger-id blocks]
-  #_ (println "[views-open!] JSON blocks:" (hiccup/->blocks-json blocks))
+  #_(println "[views-open!] JSON blocks:" (hiccup/->blocks-json blocks))
   (p/->> (post+ "views.open"
                 {:query {:trigger_id trigger-id
                          :view (hiccup/->blocks-json blocks)}
                  :token token})
-         (http/assert-ok)
          ;; TODO better callback
          (println "slack views.open response:")))
 
@@ -128,48 +127,48 @@
                          :state (:state query)}))))))
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
-  (let [{:keys [code state]} query
-        {:as token-claims
-         :keys [sparkboard/board-id
-                sparkboard/account-id
-                slack/team-id
-                lambda/local?]} (tokens/decode state)]
-    (assert (or (and board-id account-id)
-                team-id
-                local?) "token must include board-id and account-id")
-    (p/let [response (post+ "oauth.v2.access"
-                            {:query {:code code
-                                     :client_id (:client-id slack-config)
-                                     :client_secret (:client-secret slack-config)
-                                     :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})]
-      (j/let [^:js {app-id :app_id
-                    :keys [bot_user_id
-                           access_token]
-                    {team-id :id team-name :name} :team
-                    {user-id :id} :authed_user} response]
-        (p/let [user-response (get+ "users.info" {:query {:user user-id}
-                                                  :token access_token})]
-          (p/try
-            (assert (j/get-in user-response [:user :is_admin])
-                    "Only an admin can install the Sparkboard app")
-            (when-let [token-team (:slack/team-id token-claims)]
-              (assert (= token-team team-id) "Reinstall must be to the same team"))
-            (when board-id
-              (slack-db/link-team-to-board!
-                {:slack/team-id team-id
-                 :sparkboard/board-id board-id}))
-            (p/all
-              [(slack-db/install-app!
+  (p/let [{:keys [code state]} query
+          {:as token-claims
+           :keys [sparkboard/board-id
+                  sparkboard/account-id
+                  slack/team-id
+                  lambda/local?]} (tokens/decode state)
+          response (post+ "oauth.v2.access"
+                          {:query {:code code
+                                   :client_id (:client-id slack-config)
+                                   :client_secret (:client-secret slack-config)
+                                   :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})
+          _ (assert (or (and board-id account-id)
+                        team-id
+                        local?) "token must include board-id and account-id")]
+    (j/let [^:js {app-id :app_id
+                  :keys [bot_user_id
+                         access_token]
+                  {team-id :id team-name :name} :team
+                  {user-id :id} :authed_user} response]
+      (p/let [user-response (get+ "users.info" {:query {:user user-id}
+                                                :token access_token})]
+        (p/try
+          (assert (j/get-in user-response [:user :is_admin])
+                  "Only an admin can install the Sparkboard app")
+          (when-let [token-team (:slack/team-id token-claims)]
+            (assert (= token-team team-id) "Reinstall must be to the same team"))
+          (when board-id
+            (slack-db/link-team-to-board!
+              {:slack/team-id team-id
+               :sparkboard/board-id board-id}))
+          (p/all
+            [(slack-db/install-app!
+               {:slack/team-id team-id
+                :slack/team-name team-name
+                :slack/app-id app-id
+                :slack/bot-token access_token
+                :slack/bot-user-id bot_user_id})
+             (when account-id
+               (slack-db/link-user-to-account!
                  {:slack/team-id team-id
-                  :slack/team-name team-name
-                  :slack/app-id app-id
-                  :slack/bot-token access_token
-                  :slack/bot-user-id bot_user_id})
-               (when account-id
-                 (slack-db/link-user-to-account!
-                   {:slack/team-id team-id
-                    :slack/user-id user-id
-                    :sparkboard/account-id account-id}))])
-            (.redirect res (slack-browser/deep-link-to-home app-id team-id))
-            (p/catch js/Error ^js e
-              (.send res 400 (.-message e)))))))))
+                  :slack/user-id user-id
+                  :sparkboard/account-id account-id}))])
+          (.redirect res (slack-browser/deep-link-to-home app-id team-id))
+          (p/catch js/Error ^js e
+            (.send res 400 (.-message e))))))))
