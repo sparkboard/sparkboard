@@ -81,20 +81,20 @@
   (p/->> (fire/get+ (str "/slack-channel")
                     {:query {:orderBy "team-id"
                              :equalTo team-id}})
-         (fire/obj->list :channel-id)))
+         (fire/map->list :channel-id)))
 
 (defn project->linked-channel [project-id]
   (p/->> (fire/get+ (str "/slack-channel")
                     {:query {:orderBy "project-id"
                              :equalTo project-id
                              :limitToFirst 1}})
-         (fire/obj->list :channel-id)))
+         (fire/map->list :channel-id)))
 
 (defn account->all-linked-users [account-id]
   (p/->> (fire/get+ (str "/slack-user")
                     {:query {:orderBy "account-id"
                              :equalTo account-id}})
-         (fire/obj->list :user-id)))
+         (fire/map->list :user-id)))
 
 (defn account->team-user [{:keys [slack/team-id
                                   sparkboard/account-id]}]
@@ -108,7 +108,7 @@
                      {:orderBy "board-id"
                       :equalTo board-id
                       :limitToFirst 1}})
-         (fire/obj->list :team-id)
+         (fire/map->list :team-id)
          first))
 
 (defn user-is-board-admin? [slack-user-id team-id]

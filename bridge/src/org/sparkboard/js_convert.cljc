@@ -8,17 +8,18 @@
     (str ns "/" (name k))
     (name k)))
 
-#?(:cljs
-   (defn ->js [x]
-     (clj->js x :keyword-fn kw->js)))
+(defn ->js [x]
+  #?(:cljs (clj->js x :keyword-fn kw->js)
+     :clj x))
 
-#?(:cljs
-   (defn ->clj [x]
-     (js->clj x :keywordize-keys true)))
+(defn ->clj [x]
+  #?(:cljs (js->clj x :keywordize-keys true)
+     :clj x))
 
 #?(:clj
-   (def jsonista-mapper {:encode-key-fn kw->js
-                         :decode-key-fn keyword}))
+   (def jsonista-mapper (json/object-mapper
+                          {:encode-key-fn kw->js
+                           :decode-key-fn keyword})))
 
 (defn json->clj [x]
   #?(:cljs

@@ -41,21 +41,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Direct HTTP calls
 (defn get+ [family-method {:keys [query token]}]
-  (http/fetch-json+ (str base-uri family-method
-                         (when query
-                           (str "?" (uri/map->query-string query))))
-                    (j/lit {:method "GET"
-                            :Content-Type "application/json; charset=utf-8"
-                            :headers {:Authorization (str "Bearer " token)}})))
+  (http/http-req (str base-uri family-method
+                      (when query
+                        (str "?" (uri/map->query-string query))))
+                 {:method "GET"
+                  :Content-Type "application/json; charset=utf-8"
+                  :headers {:Authorization (str "Bearer " token)}}))
 
 ;; XXX may or may not work for the rest of the API; breaks on chat.PostMessage for unknown reasons I suspect are related to node-fetch possibly mixing URL parameters with a JSON body, which makes Slack choke with "channel_not_found"
 (defn post+ [family-method {:keys [body query token]}]
-  (http/fetch-json+ (str base-uri family-method (when query
-                                                  (str "?" (uri/map->query-string query))))
-                    #js{:method "post"
-                        :Content-Type "application/json; charset=utf-8"
-                        :headers #js{:Authorization (str "Bearer " token)}
-                        :body (clj->js body) #_(.stringify js/JSON (clj->js body))}))
+  (http/http-req (str base-uri family-method (when query
+                                               (str "?" (uri/map->query-string query))))
+                 {:method "post"
+                  :Content-Type "application/json; charset=utf-8"
+                  :headers #js{:Authorization (str "Bearer " token)}
+                  :body body}))
 
 (tasks/register-handler! `post+)
 
@@ -66,12 +66,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Convenience wrappers over individual endpoints
 (defn views-open! [token trigger-id blocks]
-  #_ (println "[views-open!] JSON blocks:" (hiccup/->blocks-json blocks))
+  #_(println "[views-open!] JSON blocks:" (hiccup/->blocks-json blocks))
   (p/->> (post+ "views.open"
                 {:query {:trigger_id trigger-id
                          :view (hiccup/->blocks-json blocks)}
                  :token token})
-         (http/assert-ok)
          ;; TODO better callback
          (println "slack views.open response:")))
 

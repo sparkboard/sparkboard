@@ -1,6 +1,5 @@
 (ns org.sparkboard.firebase-rest
   (:require [clojure.string :as str]
-            [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
             [org.sparkboard.firebase-config :refer [config]]
             [org.sparkboard.http :as http]
@@ -19,27 +18,21 @@
              "?"
              (-> query
                  (update-some {:orderBy clj->json
-                                      :startAt clj->json
-                                      :endAt clj->json
-                                      :equalTo clj->json})
+                               :startAt clj->json
+                               :endAt clj->json
+                               :equalTo clj->json})
                  (assoc :auth (:firebase/database-secret @config))
                  uri/map->query-string))
     (->> (prn :json-url))))
 
-(defn req-fn [method]
-  (fn [path & [{:as opts :keys [body]}]]
-    (http/fetch-json+ (json-url path opts)
-                      (-> {:method method}
-                          (cond-> body (assoc :body (clj->json body)))
-                          (clj->js)))))
+(defn partial-opts [http-fn extra-opts]
+  (fn [path & [opts]]
+    (http-fn (json-url path opts) (merge extra-opts opts))))
 
-(def get+ (req-fn "GET"))
-(def put+ (req-fn "PUT"))
-(def post+ (req-fn "POST"))
-(def patch+ (req-fn "PATCH"))
+(def get+ (partial-opts http/http-req {:method "GET"}))
+(def put+ (partial-opts http/http-req {:method "PUT"}))
+(def post+ (partial-opts http/http-req {:method "POST"}))
+(def patch+ (partial-opts http/http-req {:method "PATCH"}))
 
 (defn map->list [id-key m]
   (reduce-kv (fn [out key value] (conj out (assoc value id-key (name key)))) [] m))
-
-(defn obj->list [id-key m]
-  (map->list id-key (->clj m)))
