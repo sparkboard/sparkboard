@@ -1,4 +1,9 @@
 # Basic HTTP request
-GET http://localhost:3000/index
-User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0
-Content-Type: application/edn
+# GET http://localhost:3000/
+# User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0
+# Content-Type: application/edn
+
+# Slack challenge
+POST http://localhost:3000/challenge
+Content-Type: application/json
+< resources/sample-slack-challenge.json

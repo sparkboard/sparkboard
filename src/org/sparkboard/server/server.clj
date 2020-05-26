@@ -1,9 +1,10 @@
 (ns org.sparkboard.server.server
+  "HTTP server handling Slack requests"
   (:require [bidi.ring]
+            [org.sparkboard.server.handle :as handle]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
-            [ring.middleware.format]
-            [ring.util.http-response :as http]))
+            [ring.middleware.format]))
 
 (defonce server (atom nil))
 
@@ -12,12 +13,14 @@
     (.stop @server)))
 
 (def routes
-  ["/index" (fn [req] (http/ok {:hello "is it me you're looking for?"}))])
+  ["/challenge"   handle/challenge
+   "/event"       handle/event
+   "/interaction" handle/interaction])
 
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
-      (ring.middleware.format/wrap-restful-format :formats [:edn])))
+      (ring.middleware.format/wrap-restful-format :formats [:json-kw :edn])))
 
 (defn restart-server!
   "Setup fn.
@@ -31,7 +34,5 @@
    
   @server
 
-  (app {:uri "/index"})
-
-  ;; See also `dev.restlient` at root
+  ;; See also `dev.restlient` at project root
   )
