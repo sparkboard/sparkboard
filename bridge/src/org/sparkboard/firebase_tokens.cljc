@@ -1,8 +1,10 @@
 (ns org.sparkboard.firebase-tokens
-  (:require [org.sparkboard.firebase-config :refer [config]]
+  (:require #?(:clj [clj-time.core :as time])
+            [org.sparkboard.firebase-config :refer [config]]
+            [org.sparkboard.http :as http]
             [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
             [org.sparkboard.jwt-rs256 :as jwt]
-            #?(:clj [clj-time.core :as time])))
+            [org.sparkboard.promise :as p]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Firebase token encode/decode for secure communication with legacy services
@@ -31,10 +33,18 @@
                     :claims claims}]
     (jwt/encode jwt-claims private_key)))
 
+
+(def public-key
+  ;; TODO
+  ;; respect http caching headers, invalidate these accordingly
+  (delay
+    (p/-> (http/get+ (:client_x509_cert_url @creds))
+          (get (keyword (:private_key_id @creds))))))
+
 (defn decode [token]
-  (let [decoded (jwt/decode token (-> @creds :private_key))]
+  (p/let [decoded (jwt/decode token @public-key)]
     (with-meta (:claims decoded) decoded)))
 
 (comment
-  (let [payload {:name "Jerry"}]
-    (meta (decode (encode payload)))))
+  (let [claims {:name "Jerry"}]
+    (= claims (decode (encode claims)))))

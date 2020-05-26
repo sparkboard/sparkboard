@@ -12,18 +12,17 @@
                  m)) m updaters))
 
 (defn json-url [path & [{:keys [query]}]]
-  (doto (str (-> @config :firebase/app-config :databaseURL (str/replace #"/$" ""))
-             (str/replace-first path #"^/*" "/")            ;; needs a single leading "/"
-             ".json"
-             "?"
-             (-> query
-                 (update-some {:orderBy clj->json
-                               :startAt clj->json
-                               :endAt clj->json
-                               :equalTo clj->json})
-                 (assoc :auth (:firebase/database-secret @config))
-                 uri/map->query-string))
-    (->> (prn :json-url))))
+  (str (-> @config :firebase/app-config :databaseURL (str/replace #"/$" ""))
+       (str/replace-first path #"^/*" "/")            ;; needs a single leading "/"
+       ".json"
+       "?"
+       (-> query
+           (update-some {:orderBy clj->json
+                         :startAt clj->json
+                         :endAt clj->json
+                         :equalTo clj->json})
+           (assoc :auth (:firebase/database-secret @config))
+           uri/map->query-string)))
 
 (defn partial-opts [http-fn extra-opts]
   (fn [path & [opts]]

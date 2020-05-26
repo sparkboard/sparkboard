@@ -3,15 +3,17 @@
   #?(:cljs
      (:require
        ["isomorphic-unfetch" :as fetch]
-       [kitchen-async.promise :as p]
        [applied-science.js-interop :as j]
-       [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
        [clojure.pprint :as pp]
-       [org.sparkboard.js-convert :as jc])
+       [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
+       [org.sparkboard.promise :as p]
+       [clojure.string :as str])
      :clj
      (:require
-       [clojure.pprint :as pp]
-       [clj-http.client :as client])))
+       [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
+       [org.sparkboard.promise :as p]
+       [clj-http.client :as client]
+       [clojure.string :as str])))
 
 #?(:cljs
    (defn assert-ok [^js/Response res]
@@ -21,20 +23,35 @@
                        (j/select-keys res [:status :statusText :body]))))
      res))
 
+(defn content-type [res]
+  ;; TODO - use cljs-bean for stuff like this?
+  #?(:cljs (-> (j/get res :headers) (j/call :get "Content-Type"))
+     :clj (-> res :headers "Content-Type")))
+
+(defn json? [res]
+  (-> (content-type res)
+      (str/starts-with? "application/json")))
+
+(defn json->clj-body [res]
+  ;; return json as Clojure body
+  (if (json? res)
+    #?(:cljs (p/-> res (j/call :text) json->clj)
+       :clj (-> res :body json->clj))
+    res))
+
 (defn http-req [url {:as opts :keys [body method]}]
-  #?(:cljs
-     (p/-> (fetch url (-> opts
-                          (cond-> body (update :body clj->json))
-                          (->js)))
-           (assert-ok)
-           (j/call :text)
-           json->clj)
-     :clj
-     (case method
-       "GET" (client/get url opts)
-       "PUT" (client/put url opts)
-       "POST"  (client/post url opts)
-       "PATCH" (client/patch url opts))))
+  (p/let [response #?(:cljs
+                      (p/-> (fetch url (-> opts
+                                           (cond-> body (update :body clj->json))
+                                           (->js)))
+                            (assert-ok))
+                      :clj
+                      (case method
+                        "GET" (client/get url opts)
+                        "PUT" (client/put url opts)
+                        "POST" (client/post url opts)
+                        "PATCH" (client/patch url opts)))]
+    (json->clj-body response)))
 
 (defn partial-opts [http-fn extra-opts]
   (fn [path & [opts]]

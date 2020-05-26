@@ -127,48 +127,48 @@
                          :state (:state query)}))))))
 
 (j/defn oauth-redirect [^:js {:as req :keys [body query]} res next]
-  (let [{:keys [code state]} query
-        {:as token-claims
-         :keys [sparkboard/board-id
-                sparkboard/account-id
-                slack/team-id
-                lambda/local?]} (tokens/decode state)]
-    (assert (or (and board-id account-id)
-                team-id
-                local?) "token must include board-id and account-id")
-    (p/let [response (post+ "oauth.v2.access"
-                            {:query {:code code
-                                     :client_id (:client-id slack-config)
-                                     :client_secret (:client-secret slack-config)
-                                     :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})]
-      (j/let [^:js {app-id :app_id
-                    :keys [bot_user_id
-                           access_token]
-                    {team-id :id team-name :name} :team
-                    {user-id :id} :authed_user} response]
-        (p/let [user-response (get+ "users.info" {:query {:user user-id}
-                                                  :token access_token})]
-          (p/try
-            (assert (j/get-in user-response [:user :is_admin])
-                    "Only an admin can install the Sparkboard app")
-            (when-let [token-team (:slack/team-id token-claims)]
-              (assert (= token-team team-id) "Reinstall must be to the same team"))
-            (when board-id
-              (slack-db/link-team-to-board!
-                {:slack/team-id team-id
-                 :sparkboard/board-id board-id}))
-            (p/all
-              [(slack-db/install-app!
+  (p/let [{:keys [code state]} query
+          {:as token-claims
+           :keys [sparkboard/board-id
+                  sparkboard/account-id
+                  slack/team-id
+                  lambda/local?]} (tokens/decode state)
+          response (post+ "oauth.v2.access"
+                          {:query {:code code
+                                   :client_id (:client-id slack-config)
+                                   :client_secret (:client-secret slack-config)
+                                   :redirect_uri (str (common/lambda-root-url req) "/slack/oauth-redirect")}})
+          _ (assert (or (and board-id account-id)
+                        team-id
+                        local?) "token must include board-id and account-id")]
+    (j/let [^:js {app-id :app_id
+                  :keys [bot_user_id
+                         access_token]
+                  {team-id :id team-name :name} :team
+                  {user-id :id} :authed_user} response]
+      (p/let [user-response (get+ "users.info" {:query {:user user-id}
+                                                :token access_token})]
+        (p/try
+          (assert (j/get-in user-response [:user :is_admin])
+                  "Only an admin can install the Sparkboard app")
+          (when-let [token-team (:slack/team-id token-claims)]
+            (assert (= token-team team-id) "Reinstall must be to the same team"))
+          (when board-id
+            (slack-db/link-team-to-board!
+              {:slack/team-id team-id
+               :sparkboard/board-id board-id}))
+          (p/all
+            [(slack-db/install-app!
+               {:slack/team-id team-id
+                :slack/team-name team-name
+                :slack/app-id app-id
+                :slack/bot-token access_token
+                :slack/bot-user-id bot_user_id})
+             (when account-id
+               (slack-db/link-user-to-account!
                  {:slack/team-id team-id
-                  :slack/team-name team-name
-                  :slack/app-id app-id
-                  :slack/bot-token access_token
-                  :slack/bot-user-id bot_user_id})
-               (when account-id
-                 (slack-db/link-user-to-account!
-                   {:slack/team-id team-id
-                    :slack/user-id user-id
-                    :sparkboard/account-id account-id}))])
-            (.redirect res (slack-browser/deep-link-to-home app-id team-id))
-            (p/catch js/Error ^js e
-              (.send res 400 (.-message e)))))))))
+                  :slack/user-id user-id
+                  :sparkboard/account-id account-id}))])
+          (.redirect res (slack-browser/deep-link-to-home app-id team-id))
+          (p/catch js/Error ^js e
+            (.send res 400 (.-message e))))))))
