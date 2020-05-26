@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [kitchen-async.promise :as p]
             [org.sparkboard.http :as http]
-            [server.blocks :as blocks]
+            [server.slack.hiccup :as hiccup]
             [server.deferred-tasks :as tasks]
             [server.slack :as slack]
             [server.slack.screens :as screens]))
@@ -12,7 +12,7 @@
 (defn send-slack-blocks+ [token blocks channel]
   (p/->> (slack/post+ "chat.postMessage"
                       {:query {:channel channel             ;; id or name
-                               :blocks (blocks/to-json blocks)}
+                               :blocks (hiccup/->blocks-json blocks)}
                        :token token})
          (prn "slack blocks response:")))
 
@@ -54,7 +54,7 @@
             {:token token
              :query {:user_id user
                      :view
-                     (blocks/to-json
+                     (hiccup/->blocks-json
                        (screens/home props))}}]}
     nil))
 

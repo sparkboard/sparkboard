@@ -14,6 +14,7 @@ yarn install
 yarn shadow-cljs release lambda
 
 # package and deploy
+rm -rf lambda/target/cljs-runtime
 STACK="sparkboard-lambda-$1"
 sam build
-sam deploy --stack-name "$STACK" --s3-prefix s3_prefix = "$STACK"
+sam deploy --stack-name "$STACK" --s3-prefix "$STACK"
