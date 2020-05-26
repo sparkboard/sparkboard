@@ -1,5 +1,5 @@
 (ns org.sparkboard.promise
-  (:refer-clojure :exclude [let -> ->> do resolve try catch])
+  (:refer-clojure :exclude [let -> ->> do resolve try catch promise])
   #?(:cljs (:require kitchen-async.promise
                      [clojure.walk :as walk])
      :clj  (:require [net.cgrand.macrovich :as m]
