@@ -40,6 +40,7 @@
      {:block_id "sb-section1"
       :accessory [:conversations_select
                   {:placeholder [:plain_text "Select a channel..."],
+                   :initial_conversation "team-updates" ; default channel TODO should this come from db?
                    :action_id "broadcast2:channel-select"
                    :filter {:include ["public" "private"]}}]}
      "*Post responses to channel:*"]
@@ -51,12 +52,17 @@
                  :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}],
       :label [:plain_text "Message:"]}]))
 
-(def team-broadcast-modal-compose
-  [:modal {:title [:plain_text "Compose Broadcast"]
-           :blocks team-broadcast-blocks
-           :submit [:plain_text "Submit"]}])
+(defn team-broadcast-modal-compose
+  ([] (team-broadcast-modal-compose nil))
+  ([private-data]
+   [:modal (merge {:title [:plain_text "Compose Broadcast"]
+                   :blocks team-broadcast-blocks
+                   :submit [:plain_text "Submit"]}
+                  ;; NB: private metadata is a String of max 3000 chars
+                  ;; See https://api.slack.com/reference/surfaces/views
+                  (when private-data {:private_metadata private-data}))]))
 
-(defn team-broadcast-message [msg]
+(defn team-broadcast-message [msg reply-channel]
   (list
     [:section {:text {:type "mrkdwn" :text msg}}]
     {:type "actions",
@@ -65,9 +71,15 @@
                                  :text "Post an Update",
                                  :emoji true},
                           :action_id "user:team-broadcast-response"
-                          :value "click_me_123"}]]}))
+                          :value "click_me_123"}]]}
+    {:type "context",
+     :elements [{:type "mrkdwn",
+                 ;; TODO make `reply-channel` a human-readable channel
+                 ;; name; `db` namespace was broken in an earlier
+                 ;; refactor so don't have time now
+                 :text (str "Responses will post to channel [" reply-channel "]")}]}))
 
-(def team-broadcast-response
+(defn team-broadcast-response [reply-channel]
   [:modal {:title [:plain_text "Project Update"]
            :blocks (list
                     {:type "actions",
@@ -86,9 +98,10 @@
                                                  :emoji true},
                                           :action_id "user:team-broadcast-response-help"
                                           :value "click_me_789"}]]})
-           :submit [:plain_text "Send"]}])
+           :submit [:plain_text "Send"]
+           :private_metadata reply-channel}])
 
-(def team-broadcast-response-status
+(defn team-broadcast-response-status [private-metadata]
   [:modal {:title [:plain_text "Describe Current Status"]
            :blocks [{:type "input",
                      :label {:type "plain_text",
@@ -97,9 +110,10 @@
                      :block_id "sb-project-status1"
                      :element {:type "plain_text_input", :multiline true
                                :action_id "user:status-input"}}]
+           :private_metadata private-metadata
            :submit [:plain_text "Send"]}])
 
-(def team-broadcast-response-achievement
+(defn team-broadcast-response-achievement [private-metadata]
   [:modal {:title [:plain_text "Share Achievement"]
            :blocks [{:type "input",
                      :label {:type "plain_text",
@@ -108,9 +122,10 @@
                      :block_id "sb-project-achievement1"
                      :element {:type "plain_text_input", :multiline true
                                :action_id "user:achievement-input"}}]
+           :private_metadata private-metadata
            :submit [:plain_text "Send"]}])
 
-(def team-broadcast-response-help
+(defn team-broadcast-response-help [private-metadata]
   [:modal {:title [:plain_text "Request for Help"]
            :blocks [{:type "input",
                      :label {:type "plain_text",
@@ -119,6 +134,7 @@
                      :block_id "sb-project-help1"
                      :element {:type "plain_text_input", :multiline true
                                :action_id "user:help-input"}}]
+           :private_metadata private-metadata
            :submit [:plain_text "Send"]}])
 
 (defn team-broadcast-response-msg [project msg]
@@ -127,7 +143,7 @@
     :text {:type "mrkdwn", :text (str "_Project:_ * " project "*")}}
    {:type "section",
     :text {:type "plain_text", :text msg, :emoji true}}
-   {:type "actions",
+   #_ {:type "actions",
     :elements [{:type "button",
                 :text {:type "plain_text",
                        :text "Go to channel", ; FIXME (project->channel project)
@@ -140,5 +156,5 @@
                 :value "click_me_123"}]}])
 
 (comment
-  (blocks/parse team-broadcast-modal-compose)
+  (blocks/parse (team-broadcast-modal-compose))
   (blocks/parse [:md "hi"]))
