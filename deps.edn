@@ -27,6 +27,7 @@
         mhuebert/kitchen-async {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         yogsototh/clj-jwt {:mvn/version "0.3.0"}
+        com.taoensso/timbre {:mvn/version "4.10.0"}
 
         ;; http server
         ring/ring-core {:mvn/version "1.8.1"}

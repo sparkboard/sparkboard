@@ -13,14 +13,14 @@
     (.stop @server)))
 
 (def routes
-  ["/challenge"   handle/challenge
-   "/event"       handle/event
-   "/interaction" handle/interaction])
+  ;; TODO provide separate URLs where Slack allows, so we can pass to
+  ;; individual handlers here rather than by examining the request
+  ["/" handle/incoming])
 
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
-      (ring.middleware.format/wrap-restful-format :formats [:json-kw :edn])))
+      (ring.middleware.format/wrap-restful-format {:formats [:json-kw]})))
 
 (defn restart-server!
   "Setup fn.
@@ -31,7 +31,7 @@
 
 (comment
   (restart-server! 3000)
-   
+  
   @server
 
   ;; See also `dev.restlient` at project root

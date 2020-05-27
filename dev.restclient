@@ -7,3 +7,25 @@
 POST http://localhost:3000/challenge
 Content-Type: application/json
 < resources/sample-slack-challenge.json
+
+# Modal (global shortcut)
+POST http://localhost:3000/
+Content-Type: application/json
+{
+  "payload": {
+    "type": "shortcut",
+    "token": "foobar1dA5ZXv8abcdef",
+    "action_ts": "1590584728.017521",
+    "team": {
+      "id": "T010MGVT4TV",
+      "domain": "sparkboard-app"
+    },
+    "user": {
+      "id": "U012E480NTB",
+      "username": "dave.liepmann",
+      "team_id": "T010MGVT4TV"
+    },
+    "callback_id": "sparkboard",
+    "trigger_id": "1147868125282.1021573922947.e6ec02024540b1b39892ada6e6130b82"
+  }
+}

@@ -1,4 +1,5 @@
 (ns org.sparkboard.server.slack.screens
+  ;; TODO  (:require [org.sparkboard.firebase-tokens :as fb-tokens])
   ;; (:require [server.slack.hiccup :as hiccup]
   ;;           [server.common :as common]
   ;;           [org.sparkboard.slack.slack-db :as slack-db])
@@ -15,7 +16,8 @@
     [:divider]
     [:section "Admin actions"]
     [:actions
-     [:button {:url "TODO" #_(slack-db/get-install-link
+     ;; FIXME TODO this requires the `slack-db` ns
+     [:button {:url "https://www.google.com/search?q=TODO" #_(slack-db/get-install-link
                       {:slack/team-id team-id
                        :lambda/root (common/lambda-root-url req)})} "Reinstall App"]]))
 

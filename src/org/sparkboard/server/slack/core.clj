@@ -1,26 +1,53 @@
 (ns org.sparkboard.server.slack.core
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
-            [org.sparkboard.env :as env]))
+            [org.sparkboard.env :as env]
+            [taoensso.timbre :as log])
+  (:import [java.net.http HttpClient HttpRequest HttpClient$Version HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
+           [java.net URI]))
 
-(def ^{:doc "Slack Web API RPC specification"
-       :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
+(defonce ^{:doc "Slack Web API RPC specification"
+           :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
   web-api-spec
   (json/read-value (slurp ;; canonical URL per https://api.slack.com/web#basics#spec
                     "https://api.slack.com/specs/openapi/v2/slack_web.json")))
 
-(defn http-verb [method]
-  (case (ffirst (get-in web-api-spec ["paths" method]))
+(defn http-verb [family-method]
+  (case (ffirst (get-in web-api-spec
+                        ["paths" (if-not (#{\/} (first family-method))
+                                   (str "/" family-method)
+                                   family-method)]))
     "get"  client/get
     "post" client/post))
 
 (defn web-api
   ([family-method] (web-api family-method nil))
   ([family-method body]
-   ((http-verb family-method) (str "https://slack.com/api/" family-method)
-    {:content-type "application/json; charset=utf-8"
-     :headers {"Authorization" (str "Bearer " (-> env/get :slack.app :bot-user-oauth-token))}
-     :body (json/write-value-as-string body)})))
+   (log/info "[web-api] body:" body)
+   (let [rsp ((http-verb family-method) (str "https://slack.com/api/" family-method)
+                  {:content-type "application/json; charset=utf-8"
+                   :headers {"Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token))}
+                   :form-params (json/write-value-as-string body)})]
+     (log/info "[web-api] rsp:" rsp)
+     rsp)))
+
+;; TODO consider https://github.com/gnarroway/hato
+;; TODO consider wrapping Java11+ API further
+(defn web-api2 ; because `clj-http` fails to properly pass JSON bodies - it does some unwanted magic internally
+  [family-method body]
+  (log/info "[web-api2] body:" body)
+  (let [request (-> (HttpRequest/newBuilder)
+                    (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                    (.header "Content-Type" "application/json; charset=utf-8")
+                    (.header "Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token)))
+                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
+                    (.build))
+        clnt (-> (HttpClient/newBuilder)
+                 (.version HttpClient$Version/HTTP_2)
+                 (.build))
+        rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+    (log/info "[web-api2] rsp:" rsp)
+    rsp))
 
 (defn channels []
   (reduce (fn [m channel]

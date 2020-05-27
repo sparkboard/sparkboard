@@ -1,19 +1,117 @@
 (ns org.sparkboard.server.handle
-  "Request handlers"
-  (:require [org.sparkboard.server.slack.core :as slack]
+  "HTTP request handlers"
+  (:require [clojure.string :as string]
+            [jsonista.core :as json]
+            [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
             [org.sparkboard.server.slack.screens :as screens]
-            [ring.util.http-response :as http]))
+            [ring.util.http-response :as http]
+            [taoensso.timbre :as log]))
 
-(defn challenge
-  "Slack API identification challenge"
-  [req]
-  (http/ok (-> req :body-params :challenge)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Utility fns
+
+(defn read-json [v]
+  (json/read-value v (json/object-mapper {:decode-key-fn keyword})))
+
+(defn decode-text-input [s]
+  ;; Slack appears to use some (?) of
+  ;; `application/x-www-form-urlencoded` for at least multiline text
+  ;; input, specifically replacing spaces with `+`
+  (string/replace s "+" " "))
+
+(defn request-updates! [token msg reply-channel]
+  ;; TODO Write broadcast to Firebase
+  (mapv #(slack/web-api "chat.postMessage"
+                        {:channel %
+                         :blocks (screens/team-broadcast-message msg reply-channel)})
+        (keep (fn [{:keys [is_member id]}]
+                ;; TODO ensure bot joins team-channels when they are created
+                (when is_member id))
+              (:channels (slack/web-api "channels.list")))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Individual/second-tier handlers
+
+(defn block-actions
+  "Handler for specific block actions.
+  Branches on the bespoke action ID (set in server.slack.screens)."
+  [payload]
+  (log/info "[block-actions!] payload" payload)
+  (let [view-id (get-in payload [:container :view-id])]
+    (case (-> payload :actions first :action-id)
+      "admin:team-broadcast"
+      (case (get-in payload [:view :type])
+        "home"  (slack/web-api "views-open" {:trigger_id (:trigger_id payload)
+                                             ;; FIXME i think this needs `hiccup/->blocks-json`
+                                             :view (screens/team-broadcast-modal-compose)} )
+        "modal" (slack/web-api "views-update" {:view_id view-id
+                                               :view (screens/team-broadcast-modal-compose)}))
+
+      "user:team-broadcast-response"
+      (slack/web-api "views-open" {:trigger_id (:trigger_id payload)
+                                   :view (screens/team-broadcast-response (->> payload
+                                                                               :message
+                                                                               :blocks last
+                                                                               :elements first
+                                                                               ;; text between brackets with lookahead/lookbehind:
+                                                                               :text (re-find #"(?<=\[).+?(?=\])")))})
+
+      "user:team-broadcast-response-status"
+      (slack/web-api "views-update" {:view_id view-id
+                                     :view (screens/team-broadcast-response-status
+                                            (get-in payload [:view :private_metadata]))})
+      "user:team-broadcast-response-achievement"
+      (slack/web-api "views-update" {:view_id view-id
+                                     :view (screens/team-broadcast-response-achievement
+                                            (get-in payload [:view :private_metadata]))})
+      "user:team-broadcast-response-help"
+      (slack/web-api "views-update" {:view_id view-id
+                                     :view (screens/team-broadcast-response-help
+                                            (get-in payload [:view :private_metadata]))})
+
+      "broadcast2:channel-select" ;; refresh same view then save selection in private metadata
+      (slack/web-api "views-update" {:view_id view-id
+                                     :view (screens/team-broadcast-modal-compose (-> payload :actions first :selected_conversation))})
+
+      ;; Default: failure TODO `throw` or `log`?
+      (log/info [:unhandled-block-action (-> payload :actions first :action-id)]))))
+
+(defn submission
+  "Handler for 'Submit' press on any Slack modal."
+  [payload]
+  (log/info "[submission!] payload:" payload)
+  (let [state (get-in payload [:view :state :values])]
+    (cond
+      ;; Admin broadcast: request for project update
+      (-> state :sb-input1 :broadcast2:text-input)
+      (request-updates! (decode-text-input (get-in state [:sb-input1 :broadcast2:text-input :value]))
+                        (get-in payload [:view :private_metadata]))
+
+      ;; User broadcast response: describe current status
+      (or (-> state :sb-project-status1 :user:status-input)
+          (-> state :sb-project-achievement1 :user:achievement-input)
+          (-> state :sb-project-help1 :user:help-input))
+      (slack/web-api "chat.postMessage"
+                     (screens/team-broadcast-response-msg
+                      "FIXME TODO project"
+                      (-> (or (get-in state [:sb-project-status1 :user:status-input])
+                              (get-in state [:sb-project-achievement1 :user:achievement-input])
+                              (get-in state [:sb-project-help1 :user:help-input]))
+                          :value
+                          decode-text-input))
+                     (get-in payload [:view :private_metadata])))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Top level API
 
 (defn event
   "Slack Event"
-  [{:as req :keys [body-params]}]
-  (case (get-in body-params [:event :type])
+  [params]
+  (log/info "[handle/event] params:" params)
+  (case (get-in params [:event :type])
     "app_home_opened" (slack/web-api "views.publish"
                                      {:user_id (:user event)
                                       :view (hiccup/->blocks-json (screens/home {} ;; FIXME props
@@ -22,25 +120,32 @@
 
 (defn interaction
   "Slack Interaction (e.g. global shortcut or modal)"
-  [{:as req {:keys [payload]} :body-params}]
+  [payload]
+  (log/info "[handle/interaction] payload:" payload)
   (let [;; ts (-> payload :actions first :action_ts (some-> perf/slack-ts-ms))
         slack-team-id (get-in payload [:team :id])
         slack-user-id (get-in payload [:user :id])]
     (case (:type payload)
       ;; Slack "Global shortcut"
       ;; XXX cljs version sends token from request -- I think we can rely on token from config
-      "shortcut" (slack/web-api "views.open"
-                                {:trigger_id (:trigger_id payload)
-                                 :view (screens/shortcut-modal {} ;; FIXME props
-                                        )})
-        
+      ;; TODO `future`
+      "shortcut" (slack/web-api2 "views.open"
+                                 {:trigger_id (:trigger_id payload)
+                                  ;; FIXME `props` not empty map:
+                                  :view (hiccup/->blocks-json (screens/shortcut-modal {}))})      
       ;; ;; User acted on existing view
-      ;; TODO "block_actions" (handle-block-actions! token payload
-      ;;                                        action_id trigger_id view_id
-      ;;                                        view-type)
+      "block_actions" (block-actions payload)
 
-      ;; ;; "Submit" button pressed; modal submitted
-      ;; TODO "view_submission" (handle-submission! token payload)
+      ;; "Submit" button pressed; modal submitted
+      "view_submission" (submission payload)
 
       ;; TODO throw? or log as error
-      (println [:unhandled-event (:type payload)]))))
+      (log/info [:unhandled-event (:type payload)]))))
+
+(defn incoming
+  "All-purpose handler for Slack requests"
+  [req]
+  (log/info "[incoming] request:" req)
+  (cond (-> req :params :challenge) (http/ok (-> req :params :challenge))
+        (-> req :params :event)     (http/ok (event (read-json (-> req :params :event))))
+        (-> req :params :payload)   (http/ok (interaction (read-json (-> req :params :payload))))))
