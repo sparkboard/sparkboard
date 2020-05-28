@@ -1,12 +1,14 @@
 (ns org.sparkboard.server.handle
   "HTTP request handlers"
   (:require [clojure.string :as string]
+            [org.sparkboard.server.future :refer [try-future]]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
             [org.sparkboard.server.slack.screens :as screens]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.js-convert :refer [json->clj]]
-            [server.common :as common] ;; TODO move ns to sensible dir
+            [org.sparkboard.server-env :as env]
+            [org.sparkboard.slack.urls :as urls]
             [ring.util.http-response :as http]
             [taoensso.timbre :as log]))
 
@@ -50,7 +52,7 @@
         "modal" (slack/web-api "views.update" {:auth/token (:slack/token context)}
                                {:view_id view-id
                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))}))
-      
+
       "user:team-broadcast-response"
       (slack/web-api "views.open" {:auth/token (:slack/token context)}
                      {:trigger_id (:trigger_id payload)
@@ -69,7 +71,7 @@
                              (screens/team-broadcast-response-status
                               (get-in payload [:view :private_metadata])))})
       "user:team-broadcast-response-achievement"
-      (slack/web-api "views.update" 
+      (slack/web-api "views.update"
                      {:auth/token (:slack/token context)} {:view_id view-id
                                            :view (hiccup/->blocks-json
                                                   (screens/team-broadcast-response-achievement
@@ -171,7 +173,7 @@
                                              (get-in payload [:user :id])])
                                           ;; Has not yet been required:
                                           :else (log/error [:unhandled-request req]))
-        app-id (-> common/config :slack :app-id)
+        app-id (-> env/config :slack :app-id)
         team (slack-db/linked-team team-id)
         context #:slack{:app-id app-id
                       :team-id team-id
@@ -179,9 +181,9 @@
                       :token (get-in team [:app (keyword app-id) :bot-token])}]
     (case kind
       :challenge    (http/ok data)
-      :event        (do (future (event context data))
+      :event        (do (try-future (event context data))
                         (http/ok))
-      :interaction  (do (future (interaction context data))
+      :interaction  (do (try-future (interaction context data))
                         ;; Submissions require an empty body
                         (http/ok))
       :else         (log/error [:unhandled-request req]))))

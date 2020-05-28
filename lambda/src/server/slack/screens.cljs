@@ -1,6 +1,5 @@
 (ns server.slack.screens
   (:require [server.slack.hiccup :as hiccup]
-            [server.common :as common]
             [org.sparkboard.promise :as p]
             [org.sparkboard.slack.links :as links]))
 

@@ -34,7 +34,6 @@
                     :claims (dissoc claims :token/expires-in)}]
     (jwt/encode jwt-claims private_key)))
 
-(count (encode {:x "10000000000"}))
 (def public-key
   ;; TODO
   ;; respect http caching headers, invalidate these accordingly

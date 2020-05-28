@@ -4,7 +4,8 @@
             [org.sparkboard.server.handle :as handle]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
-            [ring.middleware.format]))
+            [ring.middleware.format]
+            [taoensso.timbre :as log]))
 
 (defonce server (atom nil))
 
@@ -15,7 +16,7 @@
 (def routes
   ;; TODO provide separate URLs where Slack allows, so we can pass to
   ;; individual handlers here rather than by examining the request
-  ["/" handle/incoming])
+  ["/" (fn [x] (#'handle/incoming x))])
 
 (def app
   (-> (bidi.ring/make-handler routes)
@@ -31,7 +32,7 @@
 
 (comment
   (restart-server! 3000)
-  
+
   @server
 
   ;; See also `dev.restlient` at project root

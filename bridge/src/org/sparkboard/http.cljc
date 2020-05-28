@@ -56,7 +56,6 @@
                            (dissoc :format)
                            (assoc-in [:headers "Content-Type"] (str "application/" (name format))))]
                       [body opts])]
-    (prn :formatted-body body)
     (p/let [response #?(:cljs
                         (p/-> (fetch url (-> opts
                                              (cond-> body (assoc :body body))

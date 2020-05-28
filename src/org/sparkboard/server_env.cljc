@@ -1,7 +1,7 @@
-(ns server.common
+(ns org.sparkboard.server-env
   (:require [applied-science.js-interop :as j]
             #?(:cljs [cljs.reader :refer [read-string]])
-            [server.env :as env]
+            [org.sparkboard.resource :as rc]
             [org.sparkboard.js-convert :refer [json->clj clj->json]]
             [org.sparkboard.firebase-config :as fire-config])
   #?(:clj (:import java.util.Base64)))
@@ -12,7 +12,7 @@
 
 (def config (read-string
               (or (env-var :SPARKBOARD_CONFIG)
-                  (env/some-inline-resource "/.local.config.edn"))))
+                  (rc/some-inline-resource "/.local.config.edn"))))
 
 (def aws? (or (env-var :LAMBDA_TASK_ROOT)
               (env-var :AWS_EXECUTION_ENV)))

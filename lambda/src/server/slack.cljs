@@ -9,7 +9,7 @@
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.links :as links]
             [server.slack.hiccup :as hiccup]
-            [server.common :as common]
+            [org.sparkboard.common :as common]
             [server.deferred-tasks :as tasks]))
 
 (def slack-config (:slack common/config))

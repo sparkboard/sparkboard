@@ -3,7 +3,8 @@
   ;; (:require [server.slack.hiccup :as hiccup]
   ;;           [server.common :as common]
   ;;           [org.sparkboard.slack.slack-db :as slack-db])
-  )
+  (:require [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.server-env :as env]))
 
 (defn main-menu [{:as context :keys [lambda/req slack/team-id]}]
   (list
@@ -16,10 +17,8 @@
     [:divider]
     [:section "Admin actions"]
     [:actions
-     ;; FIXME TODO this requires the `slack-db` ns
-     [:button {:url "https://www.google.com/search?q=TODO" #_(slack-db/get-install-link
-                      {:slack/team-id team-id
-                       :lambda/root (common/lambda-root-url req)})} "Reinstall App"]]))
+     [:button {:url (urls/install-slack-app {:lambda/root (-> env/config :lambda/root)
+                                             :slack/team-id team-id})} "Reinstall App"]]))
 
 (defn home [context]
   [:home

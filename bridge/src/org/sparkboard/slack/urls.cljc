@@ -1,9 +1,10 @@
-(ns org.sparkboard.slack.links
+(ns org.sparkboard.slack.urls
   (:require [org.sparkboard.firebase-tokens :as tokens]
             [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.server-env :as env]
             [org.sparkboard.promise :as p]))
 
-(defn env-host [env domain]
+(defn- sparkboard-host [env domain]
   (case env
     "dev" (str "http://" domain ".test:4999")
     "staging" (str "http://" domain ".sparkboard.org")
@@ -32,7 +33,7 @@
                       :keys [env]} redirect]
   {:pre [env board-id user-id team-id redirect]}
   (p/let [domain (slack-db/board-domain board-id)]
-    (str (env-host env domain)
+    (str (sparkboard-host env domain)
          "/slack-link?token="
          (-> props
              (select-keys [:slack/team-id

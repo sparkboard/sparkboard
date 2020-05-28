@@ -1,7 +1,8 @@
 (ns org.sparkboard.server.slack.core
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
-            [org.sparkboard.env :as env]
+            [org.sparkboard.http :as http]
+            [org.sparkboard.server-env :as env]
             [taoensso.timbre :as log])
   (:import [java.net.http HttpClient HttpRequest HttpClient$Version HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
            [java.net URI]))

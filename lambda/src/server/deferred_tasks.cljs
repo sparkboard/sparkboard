@@ -4,7 +4,7 @@
             [kitchen-async.promise :as p]
             [org.sparkboard.transit :as transit]
             [org.sparkboard.js-convert :refer [clj->json]]
-            [server.common :as common]
+            [org.sparkboard.common :as common]
             [server.perf :as perf])
   (:require-macros server.deferred-tasks))
 
