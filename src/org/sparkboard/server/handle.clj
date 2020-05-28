@@ -116,10 +116,10 @@
 (defn event
   "Slack Event"
   [evt]
-  (log/info "[handle/event] evt:" evt)
-  (case (get evt :type)  #_(get-in params [:event :type])
+  (log/debug "[handle/event] evt:" evt)
+  (case (get evt :type)
     "app_home_opened" (slack/web-api "views.publish"
-                                      {:user_id (:user event)
+                                      {:user_id (:user evt)
                                        :view (hiccup/->blocks-json (screens/home {} ;; FIXME props
                                                                                 ))})    
     nil))
@@ -155,9 +155,10 @@
   (log/info "[incoming] request:" req)
   ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
   (cond (-> req :params :challenge) (http/ok (-> req :params :challenge))
-        (-> req :params :event)     (do (future (event (read-json (-> req :params :event))))
+        (-> req :params :event)     (do (future (event (-> req :params :event)))
                                         (http/ok))
         (-> req :params :payload)   (do (future (interaction (read-json (-> req :params :payload))))
                                         ;; Submissions require an empty body
                                         (http/ok))
+        ;; Has not yet been required:
         :else (log/error [:unhandled-request req])))
