@@ -24,11 +24,11 @@
 ;; TODO consider wrapping Java11+ API further
 (defn web-api
   ;; because `clj-http` fails to properly pass JSON bodies - it does some unwanted magic internally
-  ([family-method token]
+  ([family-method config]
    (let [request (-> (HttpRequest/newBuilder)
                      (.uri (URI/create (str "https://slack.com/api/" family-method)))
                      (.header "Content-Type" "application/json; charset=utf-8")
-                     (.header "Authorization" (str "Bearer " token))
+                     (.header "Authorization" (str "Bearer " (:auth/token config)))
                      (.GET)
                      (.build))
          clnt (-> (HttpClient/newBuilder)
@@ -37,12 +37,12 @@
          rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
      (log/debug "[web-api] GET rsp:" rsp)
      (json/read-value rsp)))
-  ([family-method token body]
+  ([family-method config body]
    (log/debug "[web-api] body:" body)
    (let [request (-> (HttpRequest/newBuilder)
                      (.uri (URI/create (str "https://slack.com/api/" family-method)))
                      (.header "Content-Type" "application/json; charset=utf-8")
-                     (.header "Authorization" (str "Bearer " token))
+                     (.header "Authorization" (str "Bearer " (:auth/token config)))
                      (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
                      (.build))
          clnt (-> (HttpClient/newBuilder)

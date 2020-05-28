@@ -23,12 +23,13 @@
   ;; TODO Write broadcast to Firebase
   (log/debug "[request-updates] msg:" msg)
   (let [blocks (hiccup/->blocks-json (screens/team-broadcast-message msg reply-channel))]
-    (mapv #(slack/web-api "chat.postMessage" (:slack/token context)
+    (mapv #(slack/web-api "chat.postMessage" {:auth/token (:slack/token context)}
                           {:channel % :blocks blocks})
           (keep (fn [{:strs [is_member id]}]
                   ;; TODO ensure bot joins team-channels when they are created
                   (when is_member id))
-                (get (slack/web-api "channels.list" (:slack/token context)) "channels")))))
+                (get (slack/web-api "channels.list" {:auth/token (:slack/token context)})
+                     "channels")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -43,15 +44,15 @@
     (case (-> payload :actions first :action_id)
       "admin:team-broadcast"
       (case (get-in payload [:view :type])
-        "home" (slack/web-api "views.open" (:slack/token context)
+        "home" (slack/web-api "views.open" {:auth/token (:slack/token context)}
                               {:trigger_id (:trigger_id payload)
                                :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))})
-        "modal" (slack/web-api "views.update" (:slack/token context)
+        "modal" (slack/web-api "views.update" {:auth/token (:slack/token context)}
                                {:view_id view-id
                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))}))
       
       "user:team-broadcast-response"
-      (slack/web-api "views.open" (:slack/token context)
+      (slack/web-api "views.open" {:auth/token (:slack/token context)}
                      {:trigger_id (:trigger_id payload)
                       :view (hiccup/->blocks-json
                              (screens/team-broadcast-response (->> payload
@@ -62,26 +63,26 @@
                                                                    :text (re-find #"(?<=\[).+?(?=\])"))))})
 
       "user:team-broadcast-response-status"
-      (slack/web-api "views.update" (:slack/token context)
+      (slack/web-api "views.update" {:auth/token (:slack/token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
                              (screens/team-broadcast-response-status
                               (get-in payload [:view :private_metadata])))})
       "user:team-broadcast-response-achievement"
       (slack/web-api "views.update" 
-                     (:slack/token context) {:view_id view-id
+                     {:auth/token (:slack/token context)} {:view_id view-id
                                            :view (hiccup/->blocks-json
                                                   (screens/team-broadcast-response-achievement
                                                    (get-in payload [:view :private_metadata])))})
       "user:team-broadcast-response-help"
-      (slack/web-api "views.update" (:slack/token context)
+      (slack/web-api "views.update" {:auth/token (:slack/token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
                              (screens/team-broadcast-response-help
                               (get-in payload [:view :private_metadata])))})
 
       "broadcast2:channel-select"                           ;; refresh same view then save selection in private metadata
-      (slack/web-api "views.update" (:slack/token context)
+      (slack/web-api "views.update" {:auth/token (:slack/token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
                              (screens/team-broadcast-modal-compose (-> payload :actions first :selected_conversation)))})
@@ -105,7 +106,7 @@
       (or (-> state :sb-project-status1 :user:status-input)
           (-> state :sb-project-achievement1 :user:achievement-input)
           (-> state :sb-project-help1 :user:help-input))
-      (slack/web-api "chat.postMessage" (:slack/token context)
+      (slack/web-api "chat.postMessage" {:auth/token (:slack/token context)}
                      {:blocks (hiccup/->blocks-json
                                (screens/team-broadcast-response-msg
                                 "FIXME TODO project"
@@ -126,7 +127,7 @@
   (tap> ["[handle/event] evt:" evt])
   (log/debug "[event] context:" context)
   (case (get evt :type)
-    "app_home_opened" (slack/web-api "views.publish" (:slack/token context)
+    "app_home_opened" (slack/web-api "views.publish" {:auth/token (:slack/token context)}
                                      {:user_id (:slack/user-id context)
                                       :view (hiccup/->blocks-json (screens/home context))})
     nil))
@@ -136,7 +137,7 @@
   [context payload]
   (case (:type payload)
     ;; Slack "Global shortcut"
-    "shortcut" (slack/web-api "views.open" (:slack/token context)
+    "shortcut" (slack/web-api "views.open" {:auth/token (:slack/token context)}
                               {:trigger_id (:trigger_id payload)
                                :view (hiccup/->blocks-json (screens/shortcut-modal context))})
 
