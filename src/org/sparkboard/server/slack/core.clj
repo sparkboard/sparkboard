@@ -24,34 +24,33 @@
 ;; TODO consider wrapping Java11+ API further
 (defn web-api
   ;; because `clj-http` fails to properly pass JSON bodies - it does some unwanted magic internally
-  ([family-method]
+  ([family-method token]
    (let [request (-> (HttpRequest/newBuilder)
                      (.uri (URI/create (str "https://slack.com/api/" family-method)))
                      (.header "Content-Type" "application/json; charset=utf-8")
-                     (.header "Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token)))
+                     (.header "Authorization" (str "Bearer " token))
                      (.GET)
                      (.build))
          clnt (-> (HttpClient/newBuilder)
                   (.version HttpClient$Version/HTTP_2)
                   (.build))
          rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
-     (log/info "[web-api] GET rsp:" rsp)
+     (log/debug "[web-api] GET rsp:" rsp)
      (json/read-value rsp)))
-  ([family-method {:as body :keys [slack/token]}]
-   (let [body (dissoc body :slack/token)]
-     (log/info "[web-api] body:" body)
-     (let [request (-> (HttpRequest/newBuilder)
-                       (.uri (URI/create (str "https://slack.com/api/" family-method)))
-                       (.header "Content-Type" "application/json; charset=utf-8")
-                       (.header "Authorization" (str "Bearer " token))
-                       (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
-                       (.build))
-           clnt (-> (HttpClient/newBuilder)
-                    (.version HttpClient$Version/HTTP_2)
-                    (.build))
-           rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
-       (log/info "[web-api] POST rsp:" rsp)
-       (json/read-value rsp)))))
+  ([family-method token body]
+   (log/debug "[web-api] body:" body)
+   (let [request (-> (HttpRequest/newBuilder)
+                     (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                     (.header "Content-Type" "application/json; charset=utf-8")
+                     (.header "Authorization" (str "Bearer " token))
+                     (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
+                     (.build))
+         clnt (-> (HttpClient/newBuilder)
+                  (.version HttpClient$Version/HTTP_2)
+                  (.build))
+         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+     (log/debug "[web-api] POST rsp:" rsp)
+     (json/read-value rsp))))
 
 ;; TODO "when a new member joins a project, add them to the linked channel"
 
