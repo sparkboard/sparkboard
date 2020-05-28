@@ -45,7 +45,7 @@
       "admin:team-broadcast"
       (case (get-in payload [:view :type])
         "home"  (slack/web-api2 "views.open" {:trigger_id (:trigger_id payload)
-                                             :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))} )
+                                              :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))} )
         "modal" (slack/web-api2 "views.update" {:view_id view-id
                                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))}))
 
@@ -118,16 +118,16 @@
   [params]
   (log/info "[handle/event] params:" params)
   (case (get-in params [:event :type])
-    "app_home_opened" (slack/web-api "views.publish"
-                                     {:user_id (:user event)
-                                      :view (hiccup/->blocks-json (screens/home {} ;; FIXME props
+    "app_home_opened" (slack/web-api2 "views.publish"
+                                      {:user_id (:user event)
+                                       :view (hiccup/->blocks-json (screens/home {} ;; FIXME props
                                                                                 ))})    
     nil))
 
 (defn interaction
   "Slack Interaction (e.g. global shortcut or modal)"
   [payload]
-  #_  (log/info "[handle/interaction] payload:" payload)
+  (log/info "[handle/interaction] payload:" payload)
   (let [;; ts (-> payload :actions first :action_ts (some-> perf/slack-ts-ms))
         slack-team-id (get-in payload [:team :id])
         slack-user-id (get-in payload [:user :id])]
@@ -154,7 +154,8 @@
   ;; (log/info "[incoming] request:" req)
   ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
   (cond (-> req :params :challenge) (http/ok (-> req :params :challenge))
-        (-> req :params :event)     (http/ok (event (read-json (-> req :params :event))))
+        (-> req :params :event)     (do (future (event (read-json (-> req :params :event))))
+                                        (http/ok))
         (-> req :params :payload)   (do (future (interaction (read-json (-> req :params :payload))))
                                         ;; Submissions require an empty body
                                         (http/ok))))
