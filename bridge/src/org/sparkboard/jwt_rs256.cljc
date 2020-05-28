@@ -1,5 +1,5 @@
 (ns org.sparkboard.jwt-rs256
-  #?(:cljs (:require ["jwt-simple" :as jwt-simple]
+  #?(:cljs (:require ["jsonwebtoken" :as jwt]
                      [org.sparkboard.js-convert :refer [->js ->clj]])
      :clj  (:require [clj-jwt.core :as jwt]
                      [clj-jwt.key :as jwt-key]))
@@ -21,13 +21,12 @@
                (jwt/sign :RS256 (key->string :private key))
                jwt/to-str)
      :cljs (-> (->js claims)
-               (jwt-simple/encode key))))
+               (jwt/sign key #js{:algorithm "RS256"}))))
 
 (defn decode [token key]
   #?(:clj  (-> token
                jwt/str->jwt
                (doto (jwt/verify :RS256 (key->string :public key)))
                :claims)
-     :cljs (-> (jwt-simple/decode token key)
+     :cljs (-> (jwt/verify token key)
                ->clj)))
-

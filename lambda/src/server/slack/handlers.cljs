@@ -43,19 +43,24 @@
 
 (tasks/register-handler! `report-project-status!)
 
+(defn update-home! [{:as props :slack/keys [token user-id]}]
+  (p/let [view (screens/home props)]
+    {:task [`slack/post+ "views.publish"
+            {:token token
+             :query {:user_id user-id
+                     :view (hiccup/->blocks-json view)}}]}))
+
 (defn handle-event! [{:as props
                       :keys [slack/token]} {:as event
                                             event-type :type
                                             :keys [user channel tab]}]
   (case event-type
-    "app_home_opened"
-    {:task [`slack/post+ "views.publish"
-            {:token token
-             :query {:user_id user
-                     :view
-                     (hiccup/->blocks-json
-                       (screens/home props))}}]}
+    "app_home_opened" (update-home! props)
     nil))
+
+(defn handle-sparkboard-action! [props {:keys [slack/action]}]
+  (case action
+    :update-home! (update-home! props)))
 
 (defn decode-text-input [s]
   ;; Slack appears to use some (?) of

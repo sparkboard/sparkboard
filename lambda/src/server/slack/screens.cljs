@@ -1,9 +1,10 @@
 (ns server.slack.screens
   (:require [server.slack.hiccup :as hiccup]
             [server.common :as common]
-            [org.sparkboard.slack.slack-db :as slack-db]))
+            [org.sparkboard.promise :as p]
+            [org.sparkboard.slack.links :as links]))
 
-(defn main-menu [{:as props :keys [lambda/req slack/team-id]}]
+(defn main-menu [{:as props :keys [lambda/root slack/team-id]}]
   (list
     [:section
      {:accessory [:button {:style "primary",
@@ -14,18 +15,33 @@
     [:divider]
     [:section "Admin actions"]
     [:actions
-     [:button {:url (slack-db/get-install-link
+     [:button {:url (links/install-slack-app
                       {:slack/team-id team-id
-                       :lambda/root (common/lambda-root-url req)})} "Reinstall App"]]))
+                       :lambda/root root})} "Reinstall App"]]))
 
-(defn home [props]
-  [:home
-   (main-menu props)
-   [:section
-    (str "_Last updated:_ "
-         (-> (js/Date.)
-             (.toLocaleString "en-US" #js{:dateStyle "medium"
-                                          :timeStyle "medium"})))]])
+(defn link-account [props]
+  ;; TODO
+  ;; linking url should point to lambda/jvm, which signs a token and redirects -
+  ;; otherwise will have a stale Link Account button
+  (p/let [linking-url (links/link-sparkboard-account props)]
+    [:home
+     [:section (str "Please link your Sparkboard account: \n" linking-url)]
+     [:actions
+      [:button {:style "primary"
+                :action_id "URL"
+                :url linking-url}
+       (str "Link Account")]]]))
+
+(defn home [{:as props :keys [sparkboard/account-id]}]
+  (if account-id
+    [:home
+     (main-menu props)
+     [:section
+      (str "_Last updated:_ "
+           (-> (js/Date.)
+               (.toLocaleString "en-US" #js{:dateStyle "medium"
+                                            :timeStyle "medium"})))]]
+    (link-account props)))
 
 (defn shortcut-modal [props]
   [:modal {:title "Broadcast"
@@ -39,7 +55,7 @@
      {:block_id "sb-section1"
       :accessory [:conversations_select
                   {:placeholder [:plain_text "Select a channel..."],
-                   :initial_conversation "team-updates" ; default channel TODO should this come from db?
+                   :initial_conversation "team-updates"     ; default channel TODO should this come from db?
                    :action_id "broadcast2:channel-select"
                    :filter {:include ["public" "private"]}}]}
      "*Post responses to channel:*"]
@@ -81,22 +97,22 @@
 (defn team-broadcast-response [reply-channel]
   [:modal {:title [:plain_text "Project Update"]
            :blocks (list
-                    {:type "actions",
-                     :elements [[:button {:text {:type "plain_text",
-                                                 :text "Describe current status",
-                                                 :emoji true},
-                                          :action_id "user:team-broadcast-response-status"
-                                          :value "click_me_123"}]
-                                [:button {:text {:type "plain_text",
-                                                 :text "Share achievement",
-                                                 :emoji true},
-                                          :action_id "user:team-broadcast-response-achievement"
-                                          :value "click_me_456"}]
-                                [:button {:text {:type "plain_text",
-                                                 :text "Ask for help",
-                                                 :emoji true},
-                                          :action_id "user:team-broadcast-response-help"
-                                          :value "click_me_789"}]]})
+                     {:type "actions",
+                      :elements [[:button {:text {:type "plain_text",
+                                                  :text "Describe current status",
+                                                  :emoji true},
+                                           :action_id "user:team-broadcast-response-status"
+                                           :value "click_me_123"}]
+                                 [:button {:text {:type "plain_text",
+                                                  :text "Share achievement",
+                                                  :emoji true},
+                                           :action_id "user:team-broadcast-response-achievement"
+                                           :value "click_me_456"}]
+                                 [:button {:text {:type "plain_text",
+                                                  :text "Ask for help",
+                                                  :emoji true},
+                                           :action_id "user:team-broadcast-response-help"
+                                           :value "click_me_789"}]]})
            :submit [:plain_text "Send"]
            :private_metadata reply-channel}])
 
@@ -142,17 +158,17 @@
     :text {:type "mrkdwn", :text (str "_Project:_ * " project "*")}}
    {:type "section",
     :text {:type "plain_text", :text msg, :emoji true}}
-   #_ {:type "actions",
-    :elements [{:type "button",
-                :text {:type "plain_text",
-                       :text "Go to channel", ; FIXME (project->channel project)
-                       :emoji true},
-                :value "click_me_123"}
-               {:type "button",
-                :text {:type "plain_text",
-                       :text "View project", ; FIXME sparkboard project URL
-                       :emoji true}
-                :value "click_me_123"}]}])
+   #_{:type "actions",
+      :elements [{:type "button",
+                  :text {:type "plain_text",
+                         :text "Go to channel",             ; FIXME (project->channel project)
+                         :emoji true},
+                  :value "click_me_123"}
+                 {:type "button",
+                  :text {:type "plain_text",
+                         :text "View project",              ; FIXME sparkboard project URL
+                         :emoji true}
+                  :value "click_me_123"}]}])
 
 (comment
   (hiccup/->blocks team-broadcast-modal-compose)

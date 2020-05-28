@@ -118,37 +118,10 @@
     ;; OR rely on Slack admin status?
     ))
 
-(defn linking-url-for-slack-id [team-id user-id]
-  (let [{:keys [board-id]} (linked-team team-id)
-        {:keys [domain]} (fire/get+ (str "/settings/" board-id "/domain"))
-        token (tokens/encode
-                {:user-id user-id
-                 :team-id team-id})]
-    ;; TODO
-    ;; create `link-account` endpoint that prompts the user to sign in
-    ;; and then shows confirmation screen, before creating the entry
-    ;; /slack-user/{user-id} => {:account-id <account-id>
-    ;;                           :team-id team-id}
-    (str "https://" domain "/link-account/slack?token=" token)))
-
-(defn get-install-link
-  "Returns a link that will lead user to install/reinstall app to a workspace"
-  [& [{:as params
-       :keys [lambda/root
-              lambda/local?
-              sparkboard/board-id
-              sparkboard/account-id
-              slack/team-id]}]]
-  {:pre [(or local?                                         ;; dev
-             team-id                                        ;; reinstall
-             (and board-id account-id)                      ;; new install + link board
-             )]}
-  (str root "/slack/install?state=" (tokens/encode (dissoc params :lambda/root))))
+(defn board-domain [board-id]
+  (fire/get+ (str "/settings/" board-id "/domain")))
 
 (comment
-
-  (get-install-link {:lambda/root "https://slack-matt.ngrok.io"
-                     :lambda/local? true})
 
   (defn then-print [& xs]
     (p/then (p/all xs) (comp pp/pprint js->clj)))

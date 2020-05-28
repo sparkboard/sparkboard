@@ -19,7 +19,8 @@
   #?(:cljs (+ t n)
      :clj  (time/plus t (time/seconds n))))
 
-(defn encode [claims]
+(defn encode [{:as claims ::keys [expires-in]
+               :or {expires-in 3600}}]
   (let [now (now)
         {:keys [private_key client_email]} @creds
         jwt-claims {:alg :RS256
@@ -27,13 +28,13 @@
                     :sub client_email
                     :aud "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit"
                     :iat now
-                    :exp (+seconds now 3600)
+                    :exp (+seconds now expires-in)
                     :uid (str ::encode #?(:clj ".clj" :cljs ".cljs"))
                     ;; nested claims field for app data
-                    :claims claims}]
+                    :claims (dissoc claims :token/expires-in)}]
     (jwt/encode jwt-claims private_key)))
 
-
+(count (encode {:x "10000000000"}))
 (def public-key
   ;; TODO
   ;; respect http caching headers, invalidate these accordingly
@@ -42,7 +43,8 @@
           (get (keyword (:private_key_id @creds))))))
 
 (defn decode [token]
-  (p/let [decoded (jwt/decode token @public-key)]
+  (p/let [key @public-key
+          decoded (jwt/decode token key)]
     (with-meta (:claims decoded) decoded)))
 
 (comment

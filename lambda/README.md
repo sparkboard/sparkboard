@@ -66,7 +66,8 @@ to the internet.
         * `Interactivity & Shortcuts`,
         * `OAuth & Permissions > Redirect URLs` (then click "Save URLs")
         * `Event Subscriptions`, then
-            1. Subscribe to bot events: `app_home_opened`, `member_joined_channel`
+            1. Subscribe to bot events:
+                `app_home_opened`, `member_joined_channel`, `team_join`
             2. "Save Changes"
     1. `Manage Distribution`
         - check the box in `Remove Hard Coded Information`
