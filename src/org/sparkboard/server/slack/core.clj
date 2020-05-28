@@ -24,37 +24,46 @@
   ([family-method] (web-api family-method nil))
   ([family-method body]
    (log/info "[web-api] body:" body)
-   (let [rsp ((http-verb family-method) (str "https://slack.com/api/" family-method)
-                  {:content-type "application/json; charset=utf-8"
-                   :headers {"Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token))}
-                   :form-params (json/write-value-as-string body)})]
+   (let [rsp (try ((http-verb family-method) (str "https://slack.com/api/" family-method)
+               {:content-type "application/json; charset=utf-8"
+                :headers {"Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token))}
+                :form-params (json/write-value-as-string body)})
+                  (catch Exception e
+                    (log/error e)
+                    (.getMessage e)))]
      (log/info "[web-api] rsp:" rsp)
-     rsp)))
+     (:body rsp))))
 
 ;; TODO consider https://github.com/gnarroway/hato
 ;; TODO consider wrapping Java11+ API further
 (defn web-api2 ; because `clj-http` fails to properly pass JSON bodies - it does some unwanted magic internally
-  [family-method body]
-  (log/info "[web-api2] body:" body)
-  (let [request (-> (HttpRequest/newBuilder)
-                    (.uri (URI/create (str "https://slack.com/api/" family-method)))
-                    (.header "Content-Type" "application/json; charset=utf-8")
-                    (.header "Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token)))
-                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
-                    (.build))
-        clnt (-> (HttpClient/newBuilder)
-                 (.version HttpClient$Version/HTTP_2)
-                 (.build))
-        rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
-    (log/info "[web-api2] rsp:" rsp)
-    rsp))
-
-(defn channels []
-  (reduce (fn [m channel]
-            (assoc m (:name_normalized channel) channel))
-          {}
-          (:channels (json/read-value (:body (web-api "channels.list"))
-                                      (json/object-mapper {:decode-key-fn keyword})))))
+  ([family-method]
+   (let [request (-> (HttpRequest/newBuilder)
+                     (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                     (.header "Content-Type" "application/json; charset=utf-8")
+                     (.header "Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token)))
+                     (.GET)
+                     (.build))
+         clnt (-> (HttpClient/newBuilder)
+                  (.version HttpClient$Version/HTTP_2)
+                  (.build))
+         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+     (log/info "[web-api2] GET rsp:" rsp)
+     (json/read-value rsp)))
+  ([family-method body]
+   (log/info "[web-api2] body:" body)
+   (let [request (-> (HttpRequest/newBuilder)
+                     (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                     (.header "Content-Type" "application/json; charset=utf-8")
+                     (.header "Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token)))
+                     (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
+                     (.build))
+         clnt (-> (HttpClient/newBuilder)
+                  (.version HttpClient$Version/HTTP_2)
+                  (.build))
+         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+     (log/info "[web-api2] POST rsp:" rsp)
+     (json/read-value rsp))))
 
 (defn channel-id [channel-name]
   (:id (get (channels) channel-name)))
@@ -112,8 +121,6 @@
   
   (map :name (users))
   ;; ("slackbot" "me1" "sparkboard" "mhuebert" "dave.liepmann")
-
-  (channels)
 
   ;; TODO delete/archive channel, for testing and clean-up
   )
