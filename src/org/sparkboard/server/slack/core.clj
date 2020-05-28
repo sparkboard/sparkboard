@@ -37,20 +37,21 @@
          rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
      (log/info "[web-api] GET rsp:" rsp)
      (json/read-value rsp)))
-  ([family-method body]
-   (log/info "[web-api] body:" body)
-   (let [request (-> (HttpRequest/newBuilder)
-                     (.uri (URI/create (str "https://slack.com/api/" family-method)))
-                     (.header "Content-Type" "application/json; charset=utf-8")
-                     (.header "Authorization" (str "Bearer " (-> env/get :slack :bot-user-oauth-token)))
-                     (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
-                     (.build))
-         clnt (-> (HttpClient/newBuilder)
-                  (.version HttpClient$Version/HTTP_2)
-                  (.build))
-         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
-     (log/info "[web-api] POST rsp:" rsp)
-     (json/read-value rsp))))
+  ([family-method {:as body :keys [slack/token]}]
+   (let [body (dissoc body :slack/token)]
+     (log/info "[web-api] body:" body)
+     (let [request (-> (HttpRequest/newBuilder)
+                       (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                       (.header "Content-Type" "application/json; charset=utf-8")
+                       (.header "Authorization" (str "Bearer " token))
+                       (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
+                       (.build))
+           clnt (-> (HttpClient/newBuilder)
+                    (.version HttpClient$Version/HTTP_2)
+                    (.build))
+           rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+       (log/info "[web-api] POST rsp:" rsp)
+       (json/read-value rsp)))))
 
 ;; TODO "when a new member joins a project, add them to the linked channel"
 

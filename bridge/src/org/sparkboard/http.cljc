@@ -26,7 +26,7 @@
 (defn content-type [res]
   ;; TODO - use cljs-bean for stuff like this?
   #?(:cljs (-> (j/get res :headers) (j/call :get "Content-Type"))
-     :clj (-> res :headers "Content-Type")))
+     :clj (-> res :headers (get "Content-Type"))))
 
 (defn json? [res]
   (-> (content-type res)

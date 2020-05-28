@@ -1,7 +1,6 @@
 (ns org.sparkboard.slack.slack-db
-  (:require [applied-science.js-interop :as j]
-            [cljs.pprint :as pp]
-            [kitchen-async.promise :as p]
+  (:require [clojure.pprint :as pp]
+            [org.sparkboard.promise :as p]
             [org.sparkboard.firebase-rest :as fire]
             [org.sparkboard.firebase-tokens :as tokens]))
 
@@ -39,7 +38,7 @@
           existing-board (fire/get+ path)]
     (cond (nil? existing-board) (fire/put+ path {:body board-id})
           (= existing-board board-id) nil
-          :else (throw (js/Error. "This Slack team is already linked to a board.")))))
+          :else (throw (ex-info "This Slack team is already linked to a board." {:team-id team-id})))))
 
 (defn link-channel-to-project!
   [{:keys [slack/team-id
