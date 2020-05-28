@@ -25,7 +25,7 @@
   [:home
    (main-menu props)
    [:section
-    (str "_Last updated:_ "
+    (str "_Last updated:_ " (rand-int 10000)
          ;; FIXME (-> (js/Date.)
          ;;     (.toLocaleString "en-US" #js{:dateStyle "medium"
          ;;                                  :timeStyle "medium"}))
