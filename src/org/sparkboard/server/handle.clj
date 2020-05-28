@@ -165,30 +165,34 @@
   (log/info "[incoming] =====================================================================")
   ;(log/info "[incoming] request:" req)
   ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
-  (let [[kind data team-id user-id] (cond (:challenge params)
-                                          [:challenge (:challenge params)]
+  (try (let [[kind data team-id user-id] (cond (:challenge params)
+                                               [:challenge (:challenge params)]
 
-                                          (:event params)
-                                          (let [event (:event params)]
-                                            [:event event (:team_id params) (:user event)])
+                                               (:event params)
+                                               (let [event (:event params)]
+                                                 [:event event (:team_id params) (:user event)])
 
-                                          (:payload params)
-                                          (let [payload (json->clj (:payload params))]
-                                            [:interaction interaction
-                                             (get-in payload [:team :id])
-                                             (get-in payload [:user :id])])
-                                          ;; Has not yet been required:
-                                          :else (log/error [:unhandled-request req]))
-        app-id (-> common/config :slack :app-id)
-        team (slack-db/linked-team team-id)
-        props #:slack{:app-id app-id
-                      :team-id team-id
-                      :user-id user-id
-                      :token (get-in team [:app (keyword app-id) :bot-token])}]
-    (case kind :challenge (http/ok data)
-               :event (do (future (event props data))
-                          (http/ok))
-               :interaction (do (future (interaction props data))
-                                ;; Submissions require an empty body
-                                (http/ok))
-               :else (log/error [:unhandled-request req]))))
+                                               (:payload params)
+                                               (let [payload (json->clj (:payload params))]
+                                                 [:interaction
+                                                  payload
+                                                  (get-in payload [:team :id])
+                                                  (get-in payload [:user :id])])
+                                               ;; Has not yet been required:
+                                               :else (log/error [:unhandled-request req]))
+             app-id (-> common/config :slack :app-id)
+             team (slack-db/linked-team team-id)
+             props #:slack{:app-id app-id
+                           :team-id team-id
+                           :user-id user-id
+                           :token (get-in team [:app (keyword app-id) :bot-token])}]
+         (case kind :challenge (http/ok data)
+                    :event (do (future (event props data))
+                               (http/ok))
+                    :interaction (do (future (interaction props data))
+                                     ;; Submissions require an empty body
+                                     (http/ok))
+                    :else (log/error [:unhandled-request req])))
+       (catch Exception e
+         (tap> e)
+         (throw e))))
