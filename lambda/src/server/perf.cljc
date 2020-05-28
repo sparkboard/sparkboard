@@ -35,3 +35,7 @@
      (def seconds-since (comp seconds time-since))
      (defn slack-ts-ms [ts]
        (-> (js/parseFloat ts) (* 1000)))))
+
+#?(:clj
+   (defn slack-ts-ms [ts]
+     (* 1000 (float ts))))
