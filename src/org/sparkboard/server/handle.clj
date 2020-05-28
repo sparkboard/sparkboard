@@ -23,13 +23,13 @@
 (defn request-updates [msg reply-channel]
   ;; TODO Write broadcast to Firebase
   (log/info "[request-updates] msg:" msg)
-  (mapv #(slack/web-api2 "chat.postMessage"
+  (mapv #(slack/web-api "chat.postMessage"
                          {:channel %
                           :blocks (hiccup/->blocks-json (screens/team-broadcast-message msg reply-channel))})
         (keep (fn [{:strs [is_member id]}]
                 ;; TODO ensure bot joins team-channels when they are created
                 (when is_member id))
-              (get (slack/web-api2 "channels.list") "channels"))))
+              (get (slack/web-api "channels.list") "channels"))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,13 +44,13 @@
     (case (-> payload :actions first :action_id)
       "admin:team-broadcast"
       (case (get-in payload [:view :type])
-        "home"  (slack/web-api2 "views.open" {:trigger_id (:trigger_id payload)
+        "home"  (slack/web-api "views.open" {:trigger_id (:trigger_id payload)
                                               :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))} )
-        "modal" (slack/web-api2 "views.update" {:view_id view-id
+        "modal" (slack/web-api "views.update" {:view_id view-id
                                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))}))
 
       "user:team-broadcast-response"
-      (slack/web-api2 "views.open" {:trigger_id (:trigger_id payload)
+      (slack/web-api "views.open" {:trigger_id (:trigger_id payload)
                                     :view (hiccup/->blocks-json
                                            (screens/team-broadcast-response (->> payload
                                                                                  :message
@@ -60,23 +60,23 @@
                                                                                  :text (re-find #"(?<=\[).+?(?=\])"))))})
 
       "user:team-broadcast-response-status"
-      (slack/web-api2 "views.update" {:view_id view-id
+      (slack/web-api "views.update" {:view_id view-id
                                       :view (hiccup/->blocks-json
                                              (screens/team-broadcast-response-status
                                               (get-in payload [:view :private_metadata])))})
       "user:team-broadcast-response-achievement"
-      (slack/web-api2 "views.update" {:view_id view-id
+      (slack/web-api "views.update" {:view_id view-id
                                       :view (hiccup/->blocks-json
                                              (screens/team-broadcast-response-achievement
                                               (get-in payload [:view :private_metadata])))})
       "user:team-broadcast-response-help"
-      (slack/web-api2 "views.update" {:view_id view-id
+      (slack/web-api "views.update" {:view_id view-id
                                       :view (hiccup/->blocks-json
                                              (screens/team-broadcast-response-help
                                               (get-in payload [:view :private_metadata])))})
 
       "broadcast2:channel-select" ;; refresh same view then save selection in private metadata
-      (slack/web-api2 "views.update" {:view_id view-id
+      (slack/web-api "views.update" {:view_id view-id
                                       :view (hiccup/->blocks-json
                                              (screens/team-broadcast-modal-compose (-> payload :actions first :selected_conversation)))})
 
@@ -98,7 +98,7 @@
       (or (-> state :sb-project-status1 :user:status-input)
           (-> state :sb-project-achievement1 :user:achievement-input)
           (-> state :sb-project-help1 :user:help-input))
-      (slack/web-api2 "chat.postMessage"
+      (slack/web-api "chat.postMessage"
                       {:blocks (hiccup/->blocks-json
                                 (screens/team-broadcast-response-msg
                                  "FIXME TODO project"
@@ -115,10 +115,10 @@
 
 (defn event
   "Slack Event"
-  [params]
-  (log/info "[handle/event] params:" params)
-  (case (get-in params [:event :type])
-    "app_home_opened" (slack/web-api2 "views.publish"
+  [evt]
+  (log/info "[handle/event] evt:" evt)
+  (case (get evt :type)  #_(get-in params [:event :type])
+    "app_home_opened" (slack/web-api "views.publish"
                                       {:user_id (:user event)
                                        :view (hiccup/->blocks-json (screens/home {} ;; FIXME props
                                                                                 ))})    
@@ -134,10 +134,11 @@
     (case (:type payload)
       ;; Slack "Global shortcut"
       ;; TODO `future`?
-      "shortcut" (slack/web-api2 "views.open"
+      "shortcut" (slack/web-api "views.open"
                                  {:trigger_id (:trigger_id payload)
                                   ;; FIXME `props` not empty map:
-                                  :view (hiccup/->blocks-json (screens/shortcut-modal {}))})      
+                                  :view (hiccup/->blocks-json (screens/shortcut-modal {}))})
+
       ;; ;; User acted on existing view
       "block_actions" (block-actions payload)
 
@@ -151,11 +152,12 @@
   "All-purpose handler for Slack requests"
   [req]
   (log/info "[incoming] =====================================================================")
-  ;; (log/info "[incoming] request:" req)
+  (log/info "[incoming] request:" req)
   ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
   (cond (-> req :params :challenge) (http/ok (-> req :params :challenge))
         (-> req :params :event)     (do (future (event (read-json (-> req :params :event))))
                                         (http/ok))
         (-> req :params :payload)   (do (future (interaction (read-json (-> req :params :payload))))
                                         ;; Submissions require an empty body
-                                        (http/ok))))
+                                        (http/ok))
+        :else (log/error [:unhandled-request req])))
