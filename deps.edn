@@ -31,7 +31,6 @@
         ;; http server
         ring/ring-jetty-adapter {:mvn/version "1.8.1"}
         ring/ring-defaults {:mvn/version "0.3.2"}
-        bidi {:mvn/version "2.1.6"}
         ring-middleware-format {:mvn/version "0.7.4"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
         
