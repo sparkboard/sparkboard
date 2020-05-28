@@ -15,8 +15,7 @@
 (def routes
   ;; TODO provide separate URLs where Slack allows, so we can pass to
   ;; individual handlers here rather than by examining the request
-  ["/" {"event"       handle/event-or-challenge
-        "interaction" handle/interaction}])
+  ["/" handle/incoming])
 
 (def app
   (-> (bidi.ring/make-handler routes)

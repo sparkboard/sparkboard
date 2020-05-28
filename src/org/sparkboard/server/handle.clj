@@ -107,13 +107,13 @@
           (-> state :sb-project-help1 :user:help-input))
       (slack/web-api "chat.postMessage" (:slack/token props)
                      {:blocks (hiccup/->blocks-json
-                                (screens/team-broadcast-response-msg
-                                  "FIXME TODO project"
-                                  (-> (or (get-in state [:sb-project-status1 :user:status-input])
-                                          (get-in state [:sb-project-achievement1 :user:achievement-input])
-                                          (get-in state [:sb-project-help1 :user:help-input]))
-                                      :value
-                                      decode-text-input)))
+                               (screens/team-broadcast-response-msg
+                                "FIXME TODO project"
+                                (-> (or (get-in state [:sb-project-status1 :user:status-input])
+                                        (get-in state [:sb-project-achievement1 :user:achievement-input])
+                                        (get-in state [:sb-project-help1 :user:help-input]))
+                                    :value
+                                    decode-text-input)))
                       :channel (get-in payload [:view :private_metadata])}))))
 
 
@@ -131,25 +131,7 @@
                                       :view (hiccup/->blocks-json (screens/home props))})
     nil))
 
-(defn event-or-challenge
-  "Slack Event or URL confirmation challenge"
-  [{:as req :keys [params]}]
-  (if-let [challenge (:challenge params)]
-    (http/ok challenge)
-    (do ;; Fire off our complete response asynchronously
-      (future (let [evt (get-in req [:params :event])
-                    app-id (get-in common/config [:slack :app-id])
-                    team-id (:team_id params)]
-                (event #:slack{:app-id  app-id
-                               :team-id team-id
-                               :user-id (:user evt)
-                               :token   (get-in (slack-db/linked-team team-id) ;; ~600ms
-                                                [:app (keyword app-id) :bot-token])}
-                       evt)))
-      ;; Acknowledge the request immediately
-      (http/ok))))
-
-(defn interaction*
+(defn interaction
   "Slack Interaction (e.g. global shortcut or modal) handler"
   [props payload]
   (case (:type payload)
@@ -167,17 +149,38 @@
     ;; TODO throw?
     (log/error [:unhandled-event (:type payload)])))
 
-(defn interaction
-  "Parsing request for Slack interactions handler"
+(defn incoming
+  "All-purpose handler for Slack requests"
   [{:as req :keys [params]}]
-  #_ (tap> ["[handle/interaction]" (:type payload) payload])
-  (future (let [payload (json->clj (:payload params))
-                app-id  (get-in common/config [:slack :app-id])
-                team-id (get-in payload [:team :id])]
-            (interaction* #:slack{:app-id  app-id
-                                  :team-id team-id
-                                  :user-id (get-in payload [:user :id])
-                                  :token   (get-in (slack-db/linked-team team-id) ;; ~600ms
-                                                   [:app (keyword app-id) :bot-token])}
-                          payload)))
-  (http/ok))
+  (log/debug "[incoming] =====================================================================")
+  ;; (log/debug "[incoming] request:" req)
+  ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
+  (let [[kind data team-id user-id] (cond (:challenge params)
+                                          [:challenge (:challenge params)]
+
+                                          (:event params)
+                                          (let [event (:event params)]
+                                            [:event event (:team_id params) (:user event)])
+
+                                          (:payload params)
+                                          (let [payload (json->clj (:payload params))]
+                                            [:interaction
+                                             payload
+                                             (get-in payload [:team :id])
+                                             (get-in payload [:user :id])])
+                                          ;; Has not yet been required:
+                                          :else (log/error [:unhandled-request req]))
+        app-id (-> common/config :slack :app-id)
+        team (slack-db/linked-team team-id)
+        props #:slack{:app-id app-id
+                      :team-id team-id
+                      :user-id user-id
+                      :token (get-in team [:app (keyword app-id) :bot-token])}]
+    (case kind
+      :challenge    (http/ok data)
+      :event        (do (future (event props data))
+                        (http/ok))
+      :interaction  (do (future (interaction props data))
+                        ;; Submissions require an empty body
+                        (http/ok))
+      :else         (log/error [:unhandled-request req]))))
