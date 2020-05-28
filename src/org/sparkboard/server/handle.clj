@@ -126,7 +126,7 @@
 (defn event
   "Slack Event"
   [props evt]
-  (log/debug "[handle/event] evt:" evt)
+  (tap> ["[handle/event] evt:" evt])
   (case (get evt :type)
     "app_home_opened" (slack/web-api "views.publish"
                                      {:user_id (:slack/user-id props)
@@ -138,7 +138,7 @@
 (defn interaction
   "Slack Interaction (e.g. global shortcut or modal)"
   [props payload]
-  (log/info "[handle/interaction] payload:" payload)
+  (tap> ["[handle/interaction] payload:" payload])
   (case (:type payload)
     ;; Slack "Global shortcut"
     ;; TODO `future`?
@@ -151,7 +151,7 @@
     "block_actions" (block-actions props payload)
 
     ;; "Submit" button pressed; modal submitted
-    "view_submission" (submission payload)
+    "view_submission" (submission props payload)
 
     ;; TODO throw?
     (log/error [:unhandled-event (:type payload)])))
