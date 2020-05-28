@@ -5,7 +5,7 @@
   ;;           [org.sparkboard.slack.slack-db :as slack-db])
   )
 
-(defn main-menu [{:as props :keys [lambda/req slack/team-id]}]
+(defn main-menu [{:as context :keys [lambda/req slack/team-id]}]
   (list
     [:section
      {:accessory [:button {:style "primary",
@@ -21,9 +21,9 @@
                       {:slack/team-id team-id
                        :lambda/root (common/lambda-root-url req)})} "Reinstall App"]]))
 
-(defn home [props]
+(defn home [context]
   [:home
-   (main-menu props)
+   (main-menu context)
    [:section
     (str "_Last updated:_ " (rand-int 10000)
          ;; FIXME (-> (js/Date.)
@@ -31,9 +31,9 @@
          ;;                                  :timeStyle "medium"}))
          )]])
 
-(defn shortcut-modal [props]
+(defn shortcut-modal [context]
   [:modal {:title "Broadcast"
-           :blocks (main-menu props)}])
+           :blocks (main-menu context)}])
 
 (def team-broadcast-blocks
   (list
