@@ -1,5 +1,6 @@
 (ns org.sparkboard.server.server
   "HTTP server handling Slack requests"
+  (:gen-class)
   (:require [bidi.ring :as bidi.ring]
             [clojure.string :as str]
             [org.sparkboard.firebase.jvm :as fire-jvm]
@@ -22,6 +23,7 @@
 (let [log-levels
       ;; configure per-namespace log levels here
       '{:all :info
+        org.sparkboard.firebase.jvm :trace
         org.sparkboard.server.slack.core :trace}]
   (-> {:middleware [(timbre-patterns/middleware
                       (reduce-kv
@@ -246,11 +248,9 @@
   (reset! server (run-jetty #'app {:port port :join? false})))
 
 (defn -main []
-
+  (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
   (fire-jvm/sync-all)                                       ;; cache firebase db locally
-  (restart-server! (or (System/getenv "PORT") 3000)))
-
-(-main)
+  (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt)) 3000)))
 
 (comment
   (restart-server! 3000)

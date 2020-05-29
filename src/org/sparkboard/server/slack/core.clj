@@ -10,11 +10,12 @@
 (defonce ^{:doc "Slack Web API RPC specification"
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
   web-api-spec
-  (json/read-value (slurp ;; canonical URL per https://api.slack.com/web#basics#spec
-                    "https://api.slack.com/specs/openapi/v2/slack_web.json")))
+         (delay
+           (json/read-value (slurp                          ;; canonical URL per https://api.slack.com/web#basics#spec
+                              "https://api.slack.com/specs/openapi/v2/slack_web.json"))))
 
 (defn http-verb [family-method]
-  (case (ffirst (get-in web-api-spec
+  (case (ffirst (get-in @web-api-spec
                         ["paths" (if-not (#{\/} (first family-method))
                                    (str "/" family-method)
                                    family-method)]))

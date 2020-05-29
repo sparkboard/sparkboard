@@ -1,1 +1,2 @@
-clj -A:build
+clojure -e "(compile 'org.sparkboard.server.server)"
+clojure -A:build

@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["src" "classes"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         com.cognitect/transit-clj {:mvn/version "1.0.324"}
@@ -16,7 +16,6 @@
         mhuebert/shadow-env {:mvn/version "0.1.6"}
 
         ;; util
-        org.bovinegenius/exploding-fish {:mvn/version "0.3.6"}
         metosin/jsonista {:mvn/version "0.2.5"}
         mhuebert/kitchen-async {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
@@ -48,4 +47,4 @@
  {:build
   {:extra-deps
    {uberdeps {:mvn/version "0.1.8"}}
-   :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar"]}}}
+   :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar" "--main-class" "org.sparkboard.server.server"]}}}

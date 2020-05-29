@@ -34,7 +34,8 @@
    (defn- apply-query [ref query]
      (reduce (fn [^DatabaseReference ref [k v]]
                (case k
-                 :orderByChild (.orderByChild ref v)
+                 (:orderBy
+                   :orderByChild) (.orderByChild ref v)
                  :orderByKey (.orderByKey ref)
                  :orderByValue (.orderByValue ref)
                  :limitToFirst (.limitToFirst ref v)
@@ -50,7 +51,7 @@
 (def read #?(:cljs (firebase-fetch "GET")
              :clj  (fn [path & [{:keys [query]}]]
                      (-> (fire-jvm/->ref path)
-                         (cond->> query (apply-query query))
+                         (cond-> query (apply-query query))
                          (fire-jvm/read)))))
 
 ;; replace value at path

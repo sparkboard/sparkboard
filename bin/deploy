@@ -1,0 +1,1 @@
+heroku deploy:jar target/sparkboard.jar --app sparkboard-jvm-staging -i system.properties

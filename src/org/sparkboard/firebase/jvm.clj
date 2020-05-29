@@ -3,7 +3,8 @@
   (:require [org.sparkboard.server.env :as env]
             [org.sparkboard.js-convert :refer [clj->json]]
             [clojure.java.io :as io]
-            [clojure.walk :as walk])
+            [clojure.walk :as walk]
+            [taoensso.timbre :as log])
   (:import (com.google.auth.oauth2 ServiceAccountCredentials)
            (com.google.firebase FirebaseOptions$Builder FirebaseApp)
            (com.google.firebase.database FirebaseDatabase ValueEventListener DatabaseReference DatabaseReference$CompletionListener)))
@@ -68,7 +69,9 @@
 (defn read [path]
   (let [p (promise)]
     (listen-once path
-                 #(deliver p (->clj (.getValue %)))
+                 #(deliver p (let [val (->clj (.getValue %))]
+                               (log/trace :read-val val)
+                               val))
                  #(throw %))
     @p))
 

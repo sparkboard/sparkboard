@@ -16,3 +16,4 @@ public
 **/.aws-sam
 **/*.zip
 target/**
+classes
