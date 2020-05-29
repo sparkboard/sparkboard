@@ -1,7 +1,7 @@
 (ns org.sparkboard.server.server
   "HTTP server handling Slack requests"
   (:require [bidi.ring :as bidi.ring]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
@@ -16,7 +16,30 @@
             [ring.middleware.defaults]
             [ring.middleware.format]
             [ring.util.http-response :as http]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [timbre-ns-pattern-level :as timbre-patterns]))
+
+(let [log-levels
+      ;; configure per-namespace log levels here
+      '{:all :info
+        org.sparkboard.server.slack.core :trace}]
+  (-> {:middleware [(timbre-patterns/middleware
+                      (reduce-kv
+                        (fn [m k v] (assoc m (cond-> k (symbol? k) (str)) v))
+                        {} log-levels))]
+       :level :trace}
+      ;; add :dev.logging/tap? to .local.config.edn to use tap>
+      (cond-> (env/config :dev.logging/tap?)
+              (assoc :appenders
+                     {:tap> {:min-level nil
+                             :enabled? true
+                             :output-fn (fn [{:keys [?ns-str ?line vargs]}]
+                                          (into [(-> ?ns-str
+                                                     (str/replace "org.sparkboard." "")
+                                                     (str ":" ?line)
+                                                     (symbol))] vargs))
+                             :fn (comp tap> force :output_)}}))
+      (log/merge-config!)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Utility fns
@@ -25,7 +48,7 @@
   ;; Slack appears to use some (?) of
   ;; `application/x-www-form-urlencoded` for at least multiline text
   ;; input, specifically replacing spaces with `+`
-  (string/replace s "+" " "))
+  (str/replace s "+" " "))
 
 (defn request-updates [context msg reply-channel]
   ;; TODO Write broadcast to Firebase
@@ -132,7 +155,7 @@
 (defn event
   "Slack Event"
   [context evt]
-  (tap> ["[event] evt:" evt])
+  (log/debug "[event] evt:" evt)
   (log/debug "[event] context:" context)
   (case (get evt :type)
     "app_home_opened" (slack/web-api "views.publish" {:auth/token (:slack/token context)}
@@ -161,8 +184,8 @@
 (defn incoming
   "All-purpose handler for Slack requests"
   [{:as req :keys [params]}]
-  (tap> {:incoming req})
   (log/debug "[incoming] =====================================================================")
+  (log/trace :incoming/req req)
   ;; (log/debug "[incoming] request:" req)
   ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
   (if (:challenge params)
@@ -224,12 +247,10 @@
 
 (defn -main []
 
-  {:appenders {:tap> {:enabled? true
-                      :output-fn identity
-                      :fn #(tap> (force (:output_ %)))}}}
-
   (fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (System/getenv "PORT") 3000)))
+
+(-main)
 
 (comment
   (restart-server! 3000)

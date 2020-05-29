@@ -7,7 +7,8 @@
             [org.sparkboard.server.env :as env]
             [ring.util.http-response :as http]
             [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.http :refer [get+ post+]]))
+            [org.sparkboard.http :refer [get+ post+]]
+            [taoensso.timbre :as log]))
 
 (def slack-config (-> env/config :slack))
 
@@ -28,7 +29,7 @@
    This is how we verify who the user is, and what board to connect the
    app to (a board for which the user must be an admin)"
   [{:keys [query-params] :as req}]
-  (tap> req)
+  (log/trace :install-redirect/req req)
   (let [{:strs [state]} query-params
         {:keys [slack/team-id
                 sparkboard/board-id]} (tokens/decode state)
@@ -74,13 +75,13 @@
                   access_token]
            {team-id :id team-name :name} :team
            {user-id :id} :authed_user} response]
-      (tap> {:response response})
+      (log/trace :redirect/response response)
       ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
       ;; this app on.
       (let [user-response (get+ (str base-uri "users.info")
                                 {:query {:user user-id
                                          :token access_token}})]
-        (tap> {:user-response user-response})
+        (log/trace :redirect/user-response user-response)
         (try
           (assert (get-in user-response [:user :is_admin])
                   "Only an admin can install the Sparkboard app")
