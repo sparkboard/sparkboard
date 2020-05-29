@@ -8,7 +8,8 @@
        [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
        [org.sparkboard.promise :as p]
        [clojure.string :as str]
-       [org.sparkboard.transit :as transit])
+       [org.sparkboard.transit :as transit]
+       [taoensso.timbre :as log])
      :clj
      (:require
        [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
@@ -16,7 +17,8 @@
        [org.sparkboard.transit :as transit]
        [clj-http.client :as client]
        [clojure.string :as str]
-       [lambdaisland.uri :as uri]))
+       [lambdaisland.uri :as uri]
+       [taoensso.timbre :as log]))
   #?(:clj (:import (java.util Base64))))
 
 #?(:cljs
@@ -70,7 +72,7 @@
                body (format-req-body)
                true (dissoc :query :auth/token))
         url (cond-> url query (str "?" (uri/map->query-string query)))]
-    (tap> {url opts})
+    (log/trace :http-req {:url url :opts opts})
     (p/let [response #?(:cljs
                         (p/-> (fetch url (-> opts
                                              (cond-> body (assoc :body body))

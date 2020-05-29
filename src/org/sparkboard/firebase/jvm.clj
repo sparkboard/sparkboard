@@ -94,7 +94,6 @@
                (walk/stringify-keys value)
                (reify-completion-listener
                  (fn [error snap]
-                   (tap> {:error error :snap snap})
                    (if error
                      (throw (ex-info "Error setting firebase value"
                                      {:path path}
@@ -108,9 +107,8 @@
                      (walk/stringify-keys value)
                      (reify-completion-listener
                        (fn [error snap]
-                         (tap> {:error error :snap snap})
                          (if error
-                           (throw (ex-info "Error setting firebase value"
+                           (throw (ex-info "Error updating firebase value"
                                            {:path path}
                                            error))
                            (deliver p snap)))))

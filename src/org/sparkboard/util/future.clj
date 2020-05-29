@@ -5,6 +5,6 @@
      (try
        ~@body
        (catch Exception e#
-         (tap> {:future/Exception e#}))
+         (~'taoensso.timbre/error :future/Exception e#))
        (catch java.lang.AssertionError e#
-         (tap> {:future/AssertionError e#})))))
+         (~'taoensso.timbre/error {:future/AssertionError e#})))))
