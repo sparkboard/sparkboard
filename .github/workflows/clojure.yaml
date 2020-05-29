@@ -1,28 +1,16 @@
+# disabled for now, keeping this config around
+# for automated testing later
 name: clojure
 
 on:
   push:
     branches:
-      - master
-      - release
-      - gh-actions
+      - test
 
 jobs:
   compile-release:
     runs-on: ubuntu-18.04
     steps:
-      - if: endsWith(github.ref, '/master') || endsWith(github.ref, '/gh-actions')
-        run: |
-          echo "::set-env name=STACK_NAME::sparkboard-lambda-staging"
-          echo "::set-env name=SPARKBOARD_CONFIG::${{ secrets.SPARKBOARD_CONFIG_STAGING }}"
-          echo "::set-env name=AWS_ACCESS_KEY_ID::${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}"
-          echo "::set-env name=AWS_SECRET_ACCESS_KEY::${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}"
-      - if: endsWith(github.ref, '/release')
-        run: |
-          echo "::set-env name=STACK_NAME::sparkboard-lambda-prod"
-          echo "::set-env name=SPARKBOARD_CONFIG::${{ secrets.SPARKBOARD_CONFIG_PROD }}"
-          echo "::set-env name=AWS_ACCESS_KEY_ID::${{ secrets.AWS_ACCESS_KEY_ID_PROD }}"
-          echo "::set-env name=AWS_SECRET_ACCESS_KEY::${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}"
       - name: checkout
         uses: actions/checkout@v1
         with:
@@ -72,16 +60,3 @@ jobs:
       - name: Yarn
         if: steps.cache-yarn.outputs.cache-hit != 'true'
         run: yarn
-
-      - name: Compile
-        run: yarn shadow-cljs release lambda
-
-      - name: sam build
-        uses: youyo/aws-sam-action/python3.8@master
-        with:
-          sam_command: build
-
-      - name: sam deploy
-        uses: youyo/aws-sam-action/python3.8@master
-        with:
-          sam_command: deploy --no-fail-on-empty-changeset --stack-name ${{ env.STACK_NAME }} --s3-prefix ${{ env.STACK_NAME }}
