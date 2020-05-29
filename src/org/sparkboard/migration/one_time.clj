@@ -1,7 +1,7 @@
 (ns org.sparkboard.migration.one-time
   (:require [clojure.java.shell :refer [sh]]
             [jsonista.core :as json]
-            [org.sparkboard.env :as env]))
+            [org.sparkboard.server.env :as env]))
 
 ;; For exploratory or one-off migration steps.
 ;;

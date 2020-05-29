@@ -1,12 +1,13 @@
-(ns org.sparkboard.server.firebase
+(ns org.sparkboard.migration.firebase-schema
   (:require [clojure.string :as str]
+            [clojure.string :as str]
             [jsonista.core :as json]
             [malli.core :as m]
-            [malli.provider :as mp] ;; could be moved to dev/user.clj
-            [org.sparkboard.env :as env]))
+            [malli.provider :as mp]     ))
 
-(def database-url (:databaseURL (to-json (env/get :firebase/app-config))))
-(def database-secret (env/get :firebase/database-secret))
+
+(def database-url (:databaseURL (env/config :firebase/app-config)))
+(def database-secret (env/config :firebase/database-secret))
 
 (defn json-path [path]
   (str database-url
@@ -16,7 +17,6 @@
 
   ;; NB: keywordized keys are not reliable due to mismatch between Firebase and Clojure
 (def fetch-json (comp json/read-value slurp json-path))
-
 
 (comment
   (get (fetch-json "settings/demo") "title")
@@ -212,5 +212,4 @@
   (m/validate db-schema db)
 
   )
-
 

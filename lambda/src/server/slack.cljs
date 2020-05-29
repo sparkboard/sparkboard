@@ -7,9 +7,9 @@
             [org.sparkboard.firebase-tokens :as tokens]
             [org.sparkboard.http :as http]
             [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.slack.browser :as slack-browser]
+            [org.sparkboard.slack.links :as links]
             [server.slack.hiccup :as hiccup]
-            [server.common :as common]
+            [org.sparkboard.common :as common]
             [server.deferred-tasks :as tasks]))
 
 (def slack-config (:slack common/config))
@@ -169,6 +169,6 @@
                  {:slack/team-id team-id
                   :slack/user-id user-id
                   :sparkboard/account-id account-id}))])
-          (.redirect res (slack-browser/deep-link-to-home app-id team-id))
+          (.redirect res (links/slack-home app-id team-id))
           (p/catch js/Error ^js e
             (.send res 400 (.-message e))))))))

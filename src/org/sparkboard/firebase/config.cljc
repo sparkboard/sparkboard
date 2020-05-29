@@ -1,4 +1,4 @@
-(ns org.sparkboard.firebase-config
+(ns org.sparkboard.firebase.config
   (:require [org.sparkboard.js-convert :refer [->clj]]))
 
 (defonce config (atom nil))

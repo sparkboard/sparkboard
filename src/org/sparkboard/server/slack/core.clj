@@ -1,10 +1,11 @@
 (ns org.sparkboard.server.slack.core
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
-            [org.sparkboard.env :as env]
             [taoensso.timbre :as log])
   (:import [java.net.http HttpClient HttpRequest HttpClient$Version HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
            [java.net URI]))
+
+(def base-uri "https://slack.com/api/")
 
 (defonce ^{:doc "Slack Web API RPC specification"
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
@@ -26,7 +27,7 @@
   ;; because `clj-http` fails to properly pass JSON bodies - it does some unwanted magic internally
   ([family-method config]
    (let [request (-> (HttpRequest/newBuilder)
-                     (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                     (.uri (URI/create (str base-uri family-method)))
                      (.header "Content-Type" "application/json; charset=utf-8")
                      (.header "Authorization" (str "Bearer " (:auth/token config)))
                      (.GET)
@@ -40,7 +41,7 @@
   ([family-method config body]
    (log/debug "[web-api] body:" body)
    (let [request (-> (HttpRequest/newBuilder)
-                     (.uri (URI/create (str "https://slack.com/api/" family-method)))
+                     (.uri (URI/create (str base-uri family-method)))
                      (.header "Content-Type" "application/json; charset=utf-8")
                      (.header "Authorization" (str "Bearer " (:auth/token config)))
                      (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))

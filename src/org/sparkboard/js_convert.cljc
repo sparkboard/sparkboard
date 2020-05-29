@@ -1,5 +1,7 @@
 (ns org.sparkboard.js-convert
-  (:require #?(:clj [jsonista.core :as json])))
+  #?(:clj (:require
+            [jsonista.core :as json]
+            [clojure.walk :as walk])))
 
 ;; js<>clj conversion interop with namespaced keys retained
 
@@ -8,13 +10,20 @@
     (str ns "/" (name k))
     (name k)))
 
+#?(:clj
+   (defn stringify-keys [x]
+     (let [f (fn [[k v]] (if (keyword? k) [(cond->> (name k)
+                                                    (namespace k) (str (namespace k) "/")) v] [k v]))]
+       ;; only apply to maps
+       (walk/postwalk (fn [x] (if (map? x) (into {} (map f x)) x)) x))))
+
 (defn ->js [x]
   #?(:cljs (clj->js x :keyword-fn kw->js)
-     :clj x))
+     :clj  (stringify-keys x)))
 
 (defn ->clj [x]
   #?(:cljs (js->clj x :keywordize-keys true)
-     :clj x))
+     :clj  x))
 
 #?(:clj
    (def jsonista-mapper (json/object-mapper

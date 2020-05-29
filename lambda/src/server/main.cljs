@@ -6,51 +6,72 @@
             ["body-parser" :as body-parser]
             ["express" :as express]
             [applied-science.js-interop :as j]
-            [cljs.pprint :as pp]
             [kitchen-async.promise :as p]
             [lambdaisland.uri :as uri]
-            [org.sparkboard.js-convert :refer [clj->json json->clj]]
-            [server.common :refer [config decode-base64]]
+            [org.sparkboard.js-convert :refer [clj->json json->clj ->clj]]
+            [org.sparkboard.common :refer [config decode-base64]]
             [server.deferred-tasks :as tasks]
             [server.slack :as slack]
-            [server.slack.db :as mock-db]
             [org.sparkboard.slack.slack-db :as slack-db]
             [server.slack.handlers :as handlers]
-            [server.common :as common]
-            [server.perf :as perf]))
+            [org.sparkboard.common :as common]
+            [server.perf :as perf]
+            [org.sparkboard.slack.links :as links]
+            [org.sparkboard.transit :as transit]))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; SparkBoard SlackBot server
 
-(defn body->clj [body]
-  (let [body (js->clj body :keywordize-keys true)]
-    (cond-> body
-      (:payload body)                                       ;; special case for Slack including a json-string as url-encoded body
-      (update :payload json->clj))))
+(defn body->clj [body content-type]
+  (when body
+    (let [body (case content-type "application/json" (json->clj body)
+                                  "application/transit+json" (transit/read body)
+                                  body)]
+      (cond-> body
+        (:payload body)                                     ;; special case for Slack including a json-string as url-encoded body
+        (update :payload json->clj)))))
+
+(def app-id (-> config :slack :app-id))
 
 (j/defn handler*
   "Main AWS Lambda handler. Invoked by slackBot.
    See https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html"
-  [^:js {:as req :keys [body headers]} ^js res]
+  [^:js {:as req :keys [body headers query]} ^js res]
   ;(tap> [:body body])
   ;(tap> [:headers headers])
+
+  (prn :THE_BODY body)
   (perf/time-promise "handler*"
-    (p/let [[kind data props] (cond (:payload body) [:interaction
-                                                     (:payload body)
-                                                     #:slack{:team-id (-> body :payload :team :id)
-                                                             :user-id (-> body :payload :user :id)
-                                                             :ts (-> body :payload :actions first :action_ts (some-> perf/slack-ts-ms))}]
-                                    (:event body) [:event
-                                                   (:event body)
-                                                   #:slack{:team-id (:team_id body)
-                                                           :user-id (-> body :event :user)
-                                                           :app-id (:api_app_id body)
-                                                           :ts (-> body :event :event_ts perf/slack-ts-ms)}]
-                                    (:challenge body) [:challenge (:challenge body) nil])
-            token (when (:slack/team-id props)
-                    (perf/time-promise "slack-db/team->token"
-                      (slack-db/team->token (-> config :slack :app-id) (:slack/team-id props))))
-            props (merge props {:lambda/req req
-                                :slack/token token})
+    (p/let [[kind data team-id user-id ts] (cond (:payload body) [:interaction
+                                                                  (:payload body)
+                                                                  (-> body :payload :team :id)
+                                                                  (-> body :payload :user :id)
+                                                                  (-> body :payload :actions first :action_ts (some-> perf/slack-ts-ms))]
+                                                 (:event body) [:event
+                                                                (:event body)
+                                                                (:team_id body)
+                                                                (-> body :event :user)
+                                                                (-> body :event :event_ts perf/slack-ts-ms)]
+                                                 (:sparkboard body) (let [{:as data
+                                                                           :slack/keys [team-id
+                                                                                        user-id]} (:sparkboard body)]
+                                                                      [:sparkboard
+                                                                       data
+                                                                       team-id user-id
+                                                                       (.now js/Date)])
+                                                 (:challenge body) [:challenge (:challenge body) nil])
+            props (p/let [team (some-> team-id (slack-db/linked-team))
+                          token (get-in team [:app (keyword app-id) :bot-token])
+                          user (some-> user-id slack-db/linked-user)]
+                    {:lambda/root (common/lambda-root-url req)
+                     :slack/team-id team-id
+                     :slack/user-id user-id
+                     :slack/app-id app-id
+                     :slack/token token
+                     :slack/user user
+                     :slack/ts ts
+                     :sparkboard/account-id (:account-id user)
+                     :sparkboard/board-id (:board-id team)
+                     :env (:env common/config "dev")})
             {:as result
              :keys [response
                     task]} (perf/time "build-response"
@@ -62,7 +83,9 @@
                                         :interaction (handlers/handle-interaction! props data)
 
                                         ;; Slack Event
-                                        :event (handlers/handle-event! props data)))]
+                                        :event (handlers/handle-event! props data)
+
+                                        :sparkboard (handlers/handle-sparkboard-action! props data)))]
       (assert (or (map? result) (nil? result)))
       ;(pp/pprint [(if result ::handled ::not-handled) body])
       (when task
@@ -76,14 +99,18 @@
 
 (def app
   (doto ^js (express)
-    (.use (perf/req-measure :parse-body))
-    (.use (body-parser/json))
+
+    ;; POST body
+    (.use (fn [req res next]
+            (j/update! req :body body->clj (j/get-in req [:headers :content-type]))
+            (next)))
+
+    ;; query params
     (.use (body-parser/urlencoded #js{:extended true}))
     (.use (fn [req res next]
-            (j/update! req :body body->clj)
-            (j/update! req :query js->clj :keywordize-keys true)
+            (j/update! req :query ->clj)
             (next)))
-    (.use (perf/req-measure :parse-body))
+
 
     (.get "/slack/install" slack/oauth-install-redirect)
     (.get "/slack/oauth-redirect" slack/oauth-redirect)
@@ -91,7 +118,7 @@
     (cond-> (not common/aws?)
             (.get "/slack/install-local"
                   (fn [req res next]
-                    (.redirect res (slack-db/get-install-link {:lambda/local? true})))))
+                    (.redirect res (links/install-slack-app {:lambda/local? true})))))
 
     (.post "*" (fn [req res next] (#'handler* req res next)))))
 
