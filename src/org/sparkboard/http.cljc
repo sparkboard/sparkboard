@@ -1,30 +1,22 @@
 (ns org.sparkboard.http
   "HTTP verbs for browser, node.js and jvm"
-  #?(:cljs
-     (:require
-       ["isomorphic-unfetch" :as fetch]
-       [applied-science.js-interop :as j]
-       [clojure.pprint :as pp]
-       [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
-       [org.sparkboard.promise :as p]
-       [clojure.string :as str]
-       [org.sparkboard.transit :as transit]
-       [taoensso.timbre :as log])
-     :clj
-     (:require
-       [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
-       [org.sparkboard.promise :as p]
-       [org.sparkboard.transit :as transit]
-       [clj-http.client :as client]
-       [clojure.string :as str]
-       [lambdaisland.uri :as uri]
-       [taoensso.timbre :as log]))
+  (:require [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
+            [org.sparkboard.promise :as p]
+            [clojure.string :as str]
+            [org.sparkboard.transit :as transit]
+            [lambdaisland.uri :as uri]
+            [taoensso.timbre :as log]
+            #?@(:cljs
+                [["isomorphic-unfetch" :as fetch]
+                 [applied-science.js-interop :as j]]
+                :clj
+                [[clj-http.client :as client]]))
   #?(:clj (:import (java.util Base64))))
 
 #?(:cljs
    (defn assert-ok [^js/Response res]
      (when-not (.-ok res)
-       (pp/pprint [:http/error (js->clj res)])
+       (prn [:http/error (js->clj res)])
        (throw (ex-info "Invalid network request"
                        (j/select-keys res [:status :statusText :body]))))
      res))
