@@ -199,14 +199,8 @@
                          (http/ok))
         :else (log/error [:unhandled-request req])))))
 
-(defonce server (atom nil))
-
-(defn stop-server! []
-  (when-not (nil? @server)
-    (.stop @server)))
-
 (def routes
-  ["/" {"slack-api" (fn [x] (#'incoming x))
+  ["/" {"slack-api" #'incoming
         "slack-api/oauth-redirect" #'slack-oauth/redirect
         "slack/install" #'slack-oauth/install-redirect}])
 
@@ -215,6 +209,12 @@
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw]})))
 
+(defonce server (atom nil))
+
+(defn stop-server! []
+  (when-not (nil? @server)
+    (.stop @server)))
+
 (defn restart-server!
   "Setup fn.
   Starts HTTP server, stopping existing HTTP server first if necessary."
@@ -222,8 +222,14 @@
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false})))
 
-;; TODO, explicit init fn
-(defonce _ (fire-jvm/sync-all))
+(defn -main []
+
+  {:appenders {:tap> {:enabled? true
+                      :output-fn identity
+                      :fn #(tap> (force (:output_ %)))}}}
+
+  (fire-jvm/sync-all)                                       ;; cache firebase db locally
+  (restart-server! (or (System/getenv "PORT") 3000)))
 
 (comment
   (restart-server! 3000)
