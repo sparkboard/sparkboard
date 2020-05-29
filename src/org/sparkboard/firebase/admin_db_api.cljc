@@ -16,23 +16,19 @@
                     m)) m updaters)))
 
 #?(:cljs
-   (defn json-url [path & [{:keys [query]}]]
-     (str (-> env/config :firebase/app-config :databaseURL (str/replace #"/$" ""))
-          (str/replace-first path #"^/*" "/")               ;; needs a single leading "/"
-          ".json"
-          "?"
-          (-> (apply hash-map query)
-              (update-some {:orderBy clj->json
-                            :startAt clj->json
-                            :endAt clj->json
-                            :equalTo clj->json})
-              (assoc :auth (:firebase/database-secret env/config))
-              uri/map->query-string))))
+   (def database-url (-> env/config :firebase/app-config :databaseURL (str/replace #"/$" ""))))
 
 #?(:cljs
-   (defn partial-opts [http-fn extra-opts]
+   (defn firebase-fetch [method]
      (fn [path & [opts]]
-       (http-fn (json-url path opts) (merge extra-opts opts)))))
+       (http/http-req
+         (str database-url (str/replace-first path #"^/*" "/") ".json")
+         (update opts :query #(-> (if (map? %) % (apply hash-map %))
+                                  (assoc :auth (:firebase/database-secret env/config))
+                                  (update-some {:orderBy clj->json
+                                                :startAt clj->json
+                                                :endAt clj->json
+                                                :equalTo clj->json})))))))
 
 #?(:clj
    (defn- apply-query [ref query]
@@ -51,19 +47,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
 
-(def read #?(:cljs (partial-opts http/http-req {:method "GET"})
+(def read #?(:cljs (firebase-fetch "GET")
              :clj  (fn [path & [{:keys [query]}]]
                      (-> (fire-jvm/->ref path)
                          (cond->> query (apply-query query))
                          (fire-jvm/read)))))
 
 ;; replace value at path
-(def set-value #?(:cljs (partial-opts http/http-req {:method "PUT"})
+(def set-value #?(:cljs (firebase-fetch "PUT")
                   :clj  (fn [path & [{:keys [body]}]]
                           (fire-jvm/set-value path body))))
 
 ;; merge value at path
-(def update-value #?(:cljs (partial-opts http/http-req {:method "PATCH"})
+(def update-value #?(:cljs (firebase-fetch "PATCH")
                      :clj  (fn [path & [{:keys [body]}]]
                              (fire-jvm/update-value path body))))
 
