@@ -211,7 +211,7 @@
                    :slack/token (get-in team [:app (keyword app-id) :bot-token])
                    :sparkboard/account-id (:account-id user)
                    :sparkboard/board-id (:board-id team)
-                   :sparkboard.jvm/root (-> env/config :sparkboard.jvm/root)
+                   :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
                    :env (:env env/config "dev")}]
       (case kind
         :challenge (http/ok data)

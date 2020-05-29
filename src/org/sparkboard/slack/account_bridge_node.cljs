@@ -37,7 +37,7 @@
                             {:slack/team-id team-id
                              :slack/user-id user-id
                              :sparkboard/account-id authed-account})
-                          (http/post+ (j/get req "sparkboard.jvm/root") ;; update the user's home tab
+                          (http/post+ (j/get req "sparkboard/jvm-root") ;; update the user's home tab
                                       {:body/content-type :transit+json
                                        :body {:sparkboard [:update-home! {:slack/team-id team-id
                                                                           :slack/user-id user-id}]}})

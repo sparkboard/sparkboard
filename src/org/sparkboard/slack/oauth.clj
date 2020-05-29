@@ -45,7 +45,7 @@
                {:scope (str/join "," required-scopes)
                 :team team-id
                 :client_id (:client-id slack-config)
-                :redirect_uri (str (:sparkboard.jvm/root env/config) "/slack-api/oauth-redirect")
+                :redirect_uri (str (:sparkboard/jvm-root env/config) "/slack-api/oauth-redirect")
                 ;; the `state` query parameter - a signed token from Sparkboard
                 :state state}))))))
 
@@ -66,7 +66,7 @@
                        {:query {:code code
                                 :client_id (:client-id slack-config)
                                 :client_secret (:client-secret slack-config)
-                                :redirect_uri (str (:sparkboard.jvm/root env/config) "/slack-api/oauth-redirect")}})
+                                :redirect_uri (str (:sparkboard/jvm-root env/config) "/slack-api/oauth-redirect")}})
         _ (assert (or (and board-id account-id)
                       team-id
                       local?) "token must include board-id and account-id")]

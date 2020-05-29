@@ -1,9 +1,7 @@
 (ns org.sparkboard.slack.slack-db
   (:require [clojure.pprint :as pp]
             [org.sparkboard.promise :as p]
-            [org.sparkboard.firebase.client :as fire]
-            [org.sparkboard.firebase.tokens :as tokens]
-            #?(:clj [org.sparkboard.firebase.jvm :as fire-jvm])))
+            [org.sparkboard.firebase.client :as fire]))
 
 ;; Read & write links between Slack and Sparkboard
 ;;

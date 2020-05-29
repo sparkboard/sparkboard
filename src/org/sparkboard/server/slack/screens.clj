@@ -17,7 +17,7 @@
     [:divider]
     [:section "Admin actions"]
     [:actions
-     [:button {:url (urls/install-slack-app (select-keys context [:sparkboard.jvm/root
+     [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                   :slack/team-id]))} "Reinstall App"]]))
 
 (defn home [context]
