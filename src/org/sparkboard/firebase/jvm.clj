@@ -122,5 +122,3 @@
                                 :c (rand-int 1000)}}))
 
   (time (update-value "/test" {"a/b" (rand-int 1000)})))
-
-

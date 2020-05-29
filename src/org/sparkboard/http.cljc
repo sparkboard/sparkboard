@@ -1,5 +1,5 @@
 (ns org.sparkboard.http
-  "HTTP verbs, via node-fetch"
+  "HTTP verbs for browser, node.js and jvm"
   #?(:cljs
      (:require
        ["isomorphic-unfetch" :as fetch]

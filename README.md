@@ -15,7 +15,7 @@ Slack uses webhooks to tell us when events happen, so we need to expose our loca
 to the internet.
 
 1. Install http://ngrok.io/
-1. `ngrok http 3000 and copy the https url ngrok prints.
+1. `ngrok http 3000` and copy the https url ngrok prints.
 1. Create/update a Slack app
     1. paste the above `https` url into the relevant fields in:
         * `Interactivity & Shortcuts`,
