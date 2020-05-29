@@ -1,12 +1,12 @@
-(ns org.sparkboard.firebase.client
+(ns org.sparkboard.firebase.admin-db-api
   (:refer-clojure :exclude [read])
   (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
-            [org.sparkboard.firebase.config :refer [config]]
+            [org.sparkboard.server.env :as env]
             [org.sparkboard.js-convert :refer [clj->json ->clj]]
             #?(:clj  [org.sparkboard.firebase.jvm :as fire-jvm]
                :cljs [org.sparkboard.http :as http]))
-  (:import (com.google.firebase.database DatabaseReference)))
+  #?(:clj (:import (com.google.firebase.database DatabaseReference))))
 
 #?(:cljs
    (defn update-some [m updaters]
@@ -17,7 +17,7 @@
 
 #?(:cljs
    (defn json-url [path & [{:keys [query]}]]
-     (str (-> @config :firebase/app-config :databaseURL (str/replace #"/$" ""))
+     (str (-> env/config :firebase/app-config :databaseURL (str/replace #"/$" ""))
           (str/replace-first path #"^/*" "/")               ;; needs a single leading "/"
           ".json"
           "?"
@@ -26,7 +26,7 @@
                             :startAt clj->json
                             :endAt clj->json
                             :equalTo clj->json})
-              (assoc :auth (:firebase/database-secret @config))
+              (assoc :auth (:firebase/database-secret env/config))
               uri/map->query-string))))
 
 #?(:cljs

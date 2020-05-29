@@ -2,8 +2,7 @@
   (:require [applied-science.js-interop :as j]
             #?(:cljs [cljs.reader :refer [read-string]])
             [org.sparkboard.resource :as rc]
-            [org.sparkboard.js-convert :refer [json->clj clj->json]]
-            [org.sparkboard.firebase.config :as fire-config])
+            [org.sparkboard.js-convert :refer [json->clj clj->json]])
   #?(:clj (:import java.util.Base64)))
 
 (defn env-var [k]
@@ -21,11 +20,3 @@
                       (rc/some-inline-resource "/.local.config.edn")))
                 (update-some {:firebase/app-config json->clj
                               :firebase/service-account json->clj})))
-
-(defn init-config []
-  (fire-config/set-firebase-config!
-    (select-keys config [:firebase/app-config
-                         :firebase/database-secret
-                         :firebase/service-account])))
-
-#?(:clj (init-config))

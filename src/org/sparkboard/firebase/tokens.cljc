@@ -1,5 +1,5 @@
 (ns org.sparkboard.firebase.tokens
-  (:require [org.sparkboard.firebase.config :refer [config]]
+  (:require [org.sparkboard.server.env :as env]
             [org.sparkboard.http :as http]
             [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
             [org.sparkboard.jwt-rs256 :as jwt]
@@ -8,7 +8,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Firebase token encode/decode for secure communication with legacy services
 
-(def creds (delay (:firebase/service-account @config)))
+(def creds (:firebase/service-account env/config))
 
 (defn now-in-seconds []
   (-> #?(:clj (inst-ms (java.time.Instant/now))
@@ -23,7 +23,7 @@
 (defn encode [{:as claims ::keys [expires-in]
                :or {expires-in 3600}}]
   (let [now (now-in-seconds)
-        {:keys [private_key client_email]} @creds
+        {:keys [private_key client_email]} creds
         jwt-claims {:alg :RS256
                     :iss client_email
                     :sub client_email
@@ -39,8 +39,8 @@
   ;; TODO
   ;; respect http caching headers, invalidate these accordingly
   (delay
-    (p/-> (http/get+ (:client_x509_cert_url @creds))
-          (get (keyword (:private_key_id @creds))))))
+    (p/-> (http/get+ (:client_x509_cert_url creds))
+          (get (keyword (:private_key_id creds))))))
 
 (defn decode [token]
   (p/let [key @public-key
