@@ -1,21 +1,22 @@
 (ns org.sparkboard.server.server
   "HTTP server handling Slack requests"
-  (:require [bidi.ring]
+  (:require [bidi.ring :as bidi.ring]
             [clojure.string :as string]
+            [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.js-convert :refer [json->clj]]
-            [org.sparkboard.server-env :as env]
-            [org.sparkboard.server.future :refer [try-future]]
+            [org.sparkboard.server.env :as env]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
             [org.sparkboard.server.slack.screens :as screens]
+            [org.sparkboard.slack.oauth :as slack-oauth]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.util.future :refer [try-future]]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
             [ring.middleware.format]
             [ring.util.http-response :as http]
             [taoensso.timbre :as log]))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Utility fns
@@ -160,39 +161,43 @@
 (defn incoming
   "All-purpose handler for Slack requests"
   [{:as req :keys [params]}]
+  (tap> {:incoming req})
   (log/debug "[incoming] =====================================================================")
   ;; (log/debug "[incoming] request:" req)
   ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
-  (let [[kind data team-id user-id] (cond (:challenge params)
-                                          [:challenge (:challenge params)]
+  (if (:challenge params)
+    (http/ok (:challenge params))
+    (let [[kind data team-id user-id] (cond (:event params)
+                                            (let [event (:event params)]
+                                              [:event event (:team_id params) (:user event)])
 
-                                          (:event params)
-                                          (let [event (:event params)]
-                                            [:event event (:team_id params) (:user event)])
-
-                                          (:payload params)
-                                          (let [payload (json->clj (:payload params))]
-                                            [:interaction
-                                             payload
-                                             (get-in payload [:team :id])
-                                             (get-in payload [:user :id])])
-                                          ;; Has not yet been required:
-                                          :else (log/error [:unhandled-request req]))
-        app-id (-> env/config :slack :app-id)
-        team (slack-db/linked-team team-id)
-        context #:slack{:app-id app-id
-                        :team-id team-id
-                        :user-id user-id
-                        :token (get-in team [:app (keyword app-id) :bot-token])}]
-    (case kind
-      :challenge (http/ok data)
-      :event (do (try-future (event context data))
-                 (http/ok))
-      :interaction (do (try-future (interaction context data))
-                       ;; Submissions require an empty body
-                       (http/ok))
-      :else (log/error [:unhandled-request req]))))
-
+                                            (:payload params)
+                                            (let [payload (json->clj (:payload params))]
+                                              [:interaction
+                                               payload
+                                               (get-in payload [:team :id])
+                                               (get-in payload [:user :id])])
+                                            ;; Has not yet been required:
+                                            :else (log/error [:unhandled-request req]))
+          app-id (-> env/config :slack :app-id)
+          team (slack-db/linked-team team-id)
+          user (slack-db/linked-user user-id)
+          context {:slack/app-id app-id
+                   :slack/team-id team-id
+                   :slack/user-id user-id
+                   :slack/token (get-in team [:app (keyword app-id) :bot-token])
+                   :sparkboard/account-id (:account-id user)
+                   :sparkboard/board-id (:board-id team)
+                   :sparkboard.jvm/root (-> env/config :sparkboard.jvm/root)
+                   :env (:env env/config "dev")}]
+      (case kind
+        :challenge (http/ok data)
+        :event (do (try-future (event context data))
+                   (http/ok))
+        :interaction (do (try-future (interaction context data))
+                         ;; Submissions require an empty body
+                         (http/ok))
+        :else (log/error [:unhandled-request req])))))
 
 (defonce server (atom nil))
 
@@ -200,8 +205,13 @@
   (when-not (nil? @server)
     (.stop @server)))
 
+(def routes
+  ["/" {"slack-api" (fn [x] (#'incoming x))
+        "slack-api/oauth-redirect" #'slack-oauth/redirect
+        "slack/install" #'slack-oauth/install-redirect}])
+
 (def app
-  (-> (fn [x] (#'incoming x))
+  (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw]})))
 
@@ -211,6 +221,9 @@
   [port]
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false})))
+
+;; TODO, explicit init fn
+(defonce _ (fire-jvm/sync-all))
 
 (comment
   (restart-server! 3000)

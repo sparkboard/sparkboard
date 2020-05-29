@@ -1,8 +1,9 @@
 (ns org.sparkboard.slack.slack-db
   (:require [clojure.pprint :as pp]
             [org.sparkboard.promise :as p]
-            [org.sparkboard.firebase-rest :as fire]
-            [org.sparkboard.firebase-tokens :as tokens]))
+            [org.sparkboard.firebase.client :as fire]
+            [org.sparkboard.firebase.tokens :as tokens]
+            #?(:clj [org.sparkboard.firebase.jvm :as fire-jvm])))
 
 ;; Read & write links between Slack and Sparkboard
 ;;
@@ -26,8 +27,8 @@
                             slack/bot-token
                             slack/bot-user-id
                             slack/app-id]}]
-  (fire/patch+ (str "/slack-team/" team-id)
-               {:body {(str "/app/" app-id) {:bot-token bot-token
+  (fire/update-value (str "/slack-team/" team-id)
+                     {:body {(str "/app/" app-id) {:bot-token bot-token
                                              :bot-user-id bot-user-id}
                        :team-name team-name}}))
 
@@ -35,8 +36,8 @@
                             :keys [slack/team-id
                                    sparkboard/board-id]}]
   (p/let [path (str "/slack-team/" team-id "/board-id/")
-          existing-board (fire/get+ path)]
-    (cond (nil? existing-board) (fire/put+ path {:body board-id})
+          existing-board (fire/read path)]
+    (cond (nil? existing-board) (fire/set-value path {:body board-id})
           (= existing-board board-id) nil
           :else (throw (ex-info "This Slack team is already linked to a board." {:team-id team-id})))))
 
@@ -44,16 +45,16 @@
   [{:keys [slack/team-id
            slack/channel-id
            sparkboard/project-id]}]
-  (fire/put+ (str "/slack-channel/" channel-id)
-             {:body {:team-id team-id
+  (fire/set-value (str "/slack-channel/" channel-id)
+                  {:body {:team-id team-id
                      :project-id project-id}}))
 
 (defn link-user-to-account!
   [{:keys [slack/team-id
            slack/user-id
            sparkboard/account-id]}]
-  (fire/put+ (str "/slack-user/" user-id)
-             {:body {:team-id team-id
+  (fire/set-value (str "/slack-user/" user-id)
+                  {:body {:team-id team-id
                      :account-id account-id}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,37 +63,37 @@
 ;; direct lookups
 
 (defn linked-channel [channel-id]
-  (fire/get+ (str "/slack-channel/" channel-id)))
+  (fire/read (str "/slack-channel/" channel-id)))
 
 (defn linked-user [user-id]
-  (fire/get+ (str "/slack-user/" user-id)))
+  (fire/read (str "/slack-user/" user-id)))
 
 (defn linked-team [team-id]
-  (fire/get+ (str "/slack-team/" team-id)))
+  (fire/read (str "/slack-team/" team-id)))
 
 (defn team->token [app-id team-id]
   {:pre [(and app-id team-id)]}
-  (fire/get+ (str "/slack-team/" team-id "/app/" app-id "/bot-token")))
+  (fire/read (str "/slack-team/" team-id "/app/" app-id "/bot-token")))
 
 ;; lookups by index
 
 (defn team->all-linked-channels [team-id]
-  (p/->> (fire/get+ (str "/slack-channel")
-                    {:query {:orderBy "team-id"
-                             :equalTo team-id}})
+  (p/->> (fire/read (str "/slack-channel")
+                    {:query [:orderBy "team-id"
+                             :equalTo team-id]})
          (fire/map->list :channel-id)))
 
 (defn project->linked-channel [project-id]
-  (p/->> (fire/get+ (str "/slack-channel")
-                    {:query {:orderBy "project-id"
+  (p/->> (fire/read (str "/slack-channel")
+                    {:query [:orderBy "project-id"
                              :equalTo project-id
-                             :limitToFirst 1}})
+                             :limitToFirst 1]})
          (fire/map->list :channel-id)))
 
 (defn account->all-linked-users [account-id]
-  (p/->> (fire/get+ (str "/slack-user")
-                    {:query {:orderBy "account-id"
-                             :equalTo account-id}})
+  (p/->> (fire/read (str "/slack-user")
+                    {:query [:orderBy "account-id"
+                             :equalTo account-id]})
          (fire/map->list :user-id)))
 
 (defn account->team-user [{:keys [slack/team-id
@@ -102,11 +103,10 @@
          first))
 
 (defn board->team [board-id]
-  (p/->> (fire/get+ "/slack-team"
-                    {:query
-                     {:orderBy "board-id"
-                      :equalTo board-id
-                      :limitToFirst 1}})
+  (p/->> (fire/read "/slack-team"
+                    {:query [:orderBy "board-id"
+                             :equalTo board-id
+                             :limitToFirst 1]})
          (fire/map->list :team-id)
          first))
 
@@ -119,15 +119,15 @@
     ))
 
 (defn board-domain [board-id]
-  (fire/get+ (str "/settings/" board-id "/domain")))
+  (fire/read (str "/settings/" board-id "/domain")))
 
 (comment
 
   (defn then-print [& xs]
     (p/then (p/all xs) (comp pp/pprint js->clj)))
 
-  (fire/put+ (str "/slack-team/" "WS1" "/parent")
-             {:body "demo"})
+  (fire/set-value (str "/slack-team/" "WS1" "/parent")
+                  {:body "demo"})
 
   ;; create mock linkages
   (then-print

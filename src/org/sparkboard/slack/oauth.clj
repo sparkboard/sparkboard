@@ -1,0 +1,109 @@
+(ns org.sparkboard.slack.oauth
+  (:require [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.server.slack.core :refer [web-api base-uri]]
+            [org.sparkboard.firebase.tokens :as tokens]
+            [lambdaisland.uri :as uri]
+            [clojure.string :as str]
+            [org.sparkboard.server.env :as env]
+            [ring.util.http-response :as http]
+            [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.http :refer [get+ post+]]))
+
+(def slack-config (-> env/config :slack))
+
+(def required-scopes ["channels:read"
+                      "chat:write"
+                      "commands"
+                      "groups:read"
+                      "users:read"
+                      "users:read.email"])
+
+(defn install-redirect
+  "Users navigate to /slack/install to add this app to a Slack team.
+
+   They are sent to this URL from Sparkboard, which adds a `state`
+   query parameter - a signed token with a payload containing the user's
+   account-id and board-id from Sparkboard.
+
+   This is how we verify who the user is, and what board to connect the
+   app to (a board for which the user must be an admin)"
+  [{:keys [query-params] :as req}]
+  (tap> req)
+  (let [{:strs [state]} query-params
+        {:keys [slack/team-id
+                sparkboard/board-id]} (tokens/decode state)
+        error (when board-id
+                (let [entry (slack-db/board->team board-id)]
+                  (when (and entry (not= board-id (:board-id entry)))
+                    (str "This board is already linked to the Slack team " (:team-name entry)))))]
+    (if error
+      (http/unauthorized error)
+      (http/found
+        (str "https://slack.com/oauth/v2/authorize?"
+             (uri/map->query-string
+               {:scope (str/join "," required-scopes)
+                :team team-id
+                :client_id (:client-id slack-config)
+                :redirect_uri (str (:sparkboard.jvm/root env/config) "/slack-api/oauth-redirect")
+                ;; the `state` query parameter - a signed token from Sparkboard
+                :state state}))))))
+
+
+(defn redirect
+  "This is the main oauth redirect, where Slack sends users who are in the process of installing our Slack app.
+   We know who users are already when they land here because we pass Slack a `state` parameter when we start
+   the flow which is a signed token containing bits of context."
+  [{:keys [query-params]}]
+  (let [{:strs [code state]} query-params
+        {:as token-claims
+         :keys [sparkboard/board-id
+                sparkboard/account-id
+                slack/team-id
+                lambda/local?]} (tokens/decode state)
+        ;; use the code from Slack to request an access token
+        response (get+ (str base-uri "oauth.v2.access")
+                       {:query {:code code
+                                :client_id (:client-id slack-config)
+                                :client_secret (:client-secret slack-config)
+                                :redirect_uri (str (:sparkboard.jvm/root env/config) "/slack-api/oauth-redirect")}})
+        _ (assert (or (and board-id account-id)
+                      team-id
+                      local?) "token must include board-id and account-id")]
+    (let [{app-id :app_id
+           :keys [bot_user_id
+                  access_token]
+           {team-id :id team-name :name} :team
+           {user-id :id} :authed_user} response]
+      (tap> {:response response})
+      ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
+      ;; this app on.
+      (let [user-response (get+ (str base-uri "users.info")
+                                {:query {:user user-id
+                                         :token access_token}})]
+        (tap> {:user-response user-response})
+        (try
+          (assert (get-in user-response [:user :is_admin])
+                  "Only an admin can install the Sparkboard app")
+          (when-let [token-team (:slack/team-id token-claims)]
+            (assert (= token-team team-id) "Reinstall must be to the same team"))
+
+          (when board-id
+            (slack-db/link-team-to-board!
+              {:slack/team-id team-id
+               :sparkboard/board-id board-id}))
+          (slack-db/install-app!
+            {:slack/team-id team-id
+             :slack/team-name team-name
+             :slack/app-id app-id
+             :slack/bot-token access_token
+             :slack/bot-user-id bot_user_id})
+          (when account-id
+            (slack-db/link-user-to-account!
+              {:slack/team-id team-id
+               :slack/user-id user-id
+               :sparkboard/account-id account-id}))
+          (http/found (urls/slack-home app-id team-id))
+          (catch Exception e
+            (http/unauthorized (.-message e)))
+          (catch java.lang.AssertionError e
+            (http/unauthorized e)))))))

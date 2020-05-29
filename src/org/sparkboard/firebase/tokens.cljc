@@ -1,6 +1,5 @@
-(ns org.sparkboard.firebase-tokens
-  (:require #?(:clj [clj-time.core :as time])
-            [org.sparkboard.firebase-config :refer [config]]
+(ns org.sparkboard.firebase.tokens
+  (:require [org.sparkboard.firebase.config :refer [config]]
             [org.sparkboard.http :as http]
             [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
             [org.sparkboard.jwt-rs256 :as jwt]
@@ -11,17 +10,19 @@
 
 (def creds (delay (:firebase/service-account @config)))
 
-(defn now []
-  #?(:cljs (-> (js/Date.now) (/ 1000))
-     :clj  (time/now)))
+(defn now-in-seconds []
+  (-> #?(:clj (inst-ms (java.time.Instant/now))
+         :cljs (js/Date.now))
+      (/ 1000)))
 
 (defn +seconds [t n]
-  #?(:cljs (+ t n)
-     :clj  (time/plus t (time/seconds n))))
+  (+ t n))
+
+(now-in-seconds)
 
 (defn encode [{:as claims ::keys [expires-in]
                :or {expires-in 3600}}]
-  (let [now (now)
+  (let [now (now-in-seconds)
         {:keys [private_key client_email]} @creds
         jwt-claims {:alg :RS256
                     :iss client_email
@@ -48,4 +49,6 @@
 
 (comment
   (let [claims {:name "Jerry"}]
-    (= claims (decode (encode claims)))))
+    (= claims (decode (encode claims))))
+
+  (decode (encode {:a/b 1})))

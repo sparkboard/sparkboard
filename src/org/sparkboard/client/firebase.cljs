@@ -4,7 +4,7 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [kitchen-async.promise :as p]
-            [org.sparkboard.env :as env]
+            [org.sparkboard.server.env :as env]
             [triple.view.react.experimental.atom :as ratom]
             [org.sparkboard.client.loaders :as loaders]))
 

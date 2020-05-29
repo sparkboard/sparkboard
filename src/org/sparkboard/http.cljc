@@ -15,8 +15,9 @@
        [org.sparkboard.promise :as p]
        [org.sparkboard.transit :as transit]
        [clj-http.client :as client]
-       [clojure.string :as str]))
-#?(:clj (:import (java.util Base64))))
+       [clojure.string :as str]
+       [lambdaisland.uri :as uri]))
+  #?(:clj (:import (java.util Base64))))
 
 #?(:cljs
    (defn assert-ok [^js/Response res]
@@ -29,7 +30,7 @@
 (defn content-type [res]
   ;; TODO - use cljs-bean for stuff like this?
   #?(:cljs (-> (j/get res :headers) (j/call :get "Content-Type"))
-     :clj (-> res :headers (get "Content-Type"))))
+     :clj  (-> res :headers (get "Content-Type"))))
 
 (defn json-body [res]
   ;; return json as Clojure body
@@ -40,22 +41,36 @@
   #?(:cljs (p/-> res (j/call :text) transit/read)
      :clj  (-> res :body transit/read)))
 
-(defn formatted-body [res]
+(defn format-response [res]
   (let [type (content-type res)]
     (cond (str/starts-with? type "application/json") (json-body res)
           (str/starts-with? type "application/transit+json") (transit-body res)
           :else res)))
 
-(defn http-req [url {:as opts :keys [body method format]
-                     :or {format :json}}]
-  (let [[body opts] (if body
-                      [(case format :json (clj->json body)
-                                    :transit+json (transit/write body)
-                                    body)
-                       (-> opts
-                           (dissoc :format)
-                           (assoc-in [:headers "Content-Type"] (str "application/" (name format))))]
-                      [body opts])]
+(defn format-req-body [{:as opts
+                        :keys [body body/content-type]
+                        :or {content-type :json}}]
+  (-> opts
+      (assoc-in [:headers "Content-Type"] (str "application/" (name content-type)))
+      (assoc :body (case content-type :json (clj->json body)
+                                      :transit+json (transit/write body)
+                                      body))
+      (dissoc :body/content-type)))
+
+(defn format-req-token [{:as opts :keys [auth/token]}]
+  (if token
+    (-> opts
+        (-> (assoc-in [:headers "Authorization"] (str "Bearer: " token))
+            (dissoc :auth/token)))
+    opts))
+
+(defn http-req [url {:as opts :keys [query body auth/token method]}]
+  (let [opts (cond-> opts
+               token (assoc-in [:headers "Authorization"] (str "Bearer: " token))
+               body (format-req-body)
+               true (dissoc :query :auth/token))
+        url (cond-> url query (str "?" (uri/map->query-string query)))]
+    (tap> {url opts})
     (p/let [response #?(:cljs
                         (p/-> (fetch url (-> opts
                                              (cond-> body (assoc :body body))
@@ -67,7 +82,7 @@
                           "PUT" (client/put url opts)
                           "POST" (client/post url opts)
                           "PATCH" (client/patch url opts)))]
-      (formatted-body response))))
+      (format-response response))))
 
 (defn partial-opts [http-fn extra-opts]
   (fn [path & [opts]]
@@ -85,4 +100,4 @@
 (defn encode-base64 [s]
   #?(:cljs (-> (new js/Buffer s)
                (.toString "base64"))
-     :clj (.encode (Base64/getEncoder) (.getBytes s))))
+     :clj  (.encode (Base64/getEncoder) (.getBytes s))))

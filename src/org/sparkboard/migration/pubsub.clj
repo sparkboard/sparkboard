@@ -1,7 +1,7 @@
 (ns org.sparkboard.migration.pubsub
   (:require [jonotin.core :as jonotin]
             [jsonista.core :as json]
-            [org.sparkboard.env :as env]
+            [org.sparkboard.server.env :as env]
             [mount.core :as mo]))
 
 ;; to be run in prod - consumes stream of updates from mongodb + firebase

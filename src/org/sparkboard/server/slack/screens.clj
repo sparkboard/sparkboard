@@ -1,12 +1,12 @@
 (ns org.sparkboard.server.slack.screens
-  ;; TODO  (:require [org.sparkboard.firebase-tokens :as fb-tokens])
+  ;; TODO  (:require [org.sparkboard.firebase.tokens :as fb-tokens])
   ;; (:require [server.slack.hiccup :as hiccup]
   ;;           [server.common :as common]
   ;;           [org.sparkboard.slack.slack-db :as slack-db])
   (:require [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.server-env :as env]))
+            [org.sparkboard.server.env :as env]))
 
-(defn main-menu [{:as context :keys [lambda/req slack/team-id]}]
+(defn main-menu [context]
   (list
     [:section
      {:accessory [:button {:style "primary",
@@ -17,8 +17,8 @@
     [:divider]
     [:section "Admin actions"]
     [:actions
-     [:button {:url (urls/install-slack-app {:lambda/root (-> env/config :lambda/root)
-                                             :slack/team-id team-id})} "Reinstall App"]]))
+     [:button {:url (urls/install-slack-app (select-keys context [:sparkboard.jvm/root
+                                                                  :slack/team-id]))} "Reinstall App"]]))
 
 (defn home [context]
   [:home
