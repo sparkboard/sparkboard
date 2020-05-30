@@ -27,6 +27,8 @@ to the internet.
     1. `Manage Distribution`
         - check the box in `Remove Hard Coded Information`
         - click `Activate Public Distribution`
+    1. App Home > Show Tabs
+        - enable Home Tab, disable Messages Tab
 1. Update `lambda/src/.local.config.edn` with your Slack app's config found under `Basic Information` > `App Credentials`
 1. Navigate to `https://YOUR_NGROK_SUBDOMAIN.ngrok.io/slack/install-local` and pick a Slack workspace
 to install your dev app to. If all goes well, you will be asked to grant permissions to your app,

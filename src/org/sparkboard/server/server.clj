@@ -222,7 +222,7 @@
         :interaction (do (try-future (interaction context data))
                          ;; Submissions require an empty body
                          (http/ok))
-        :else (log/error [:unhandled-request req])))))
+        (log/error [:unhandled-request req])))))
 
 (def routes
   ["/" {"slack-api" #'incoming
