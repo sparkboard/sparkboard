@@ -27,8 +27,8 @@
                             slack/app-id]}]
   (fire/update-value (str "/slack-team/" team-id)
                      {:body {(str "/app/" app-id) {:bot-token bot-token
-                                             :bot-user-id bot-user-id}
-                       :team-name team-name}}))
+                                                   :bot-user-id bot-user-id}
+                             :team-name team-name}}))
 
 (defn link-team-to-board! [{:as entry
                             :keys [slack/team-id
@@ -45,7 +45,7 @@
            sparkboard/project-id]}]
   (fire/set-value (str "/slack-channel/" channel-id)
                   {:body {:team-id team-id
-                     :project-id project-id}}))
+                          :project-id project-id}}))
 
 (defn link-user-to-account!
   [{:keys [slack/team-id
@@ -53,7 +53,7 @@
            sparkboard/account-id]}]
   (fire/set-value (str "/slack-user/" user-id)
                   {:body {:team-id team-id
-                     :account-id account-id}}))
+                          :account-id account-id}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Read link entries

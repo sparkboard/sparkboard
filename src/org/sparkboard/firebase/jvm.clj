@@ -70,7 +70,7 @@
   (let [p (promise)]
     (listen-once path
                  #(deliver p (let [val (->clj (.getValue %))]
-                               (log/trace :read-val val)
+                               (log/trace :read-val (str path) val)
                                val))
                  #(throw %))
     @p))

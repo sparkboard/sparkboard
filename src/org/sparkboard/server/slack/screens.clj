@@ -1,10 +1,5 @@
 (ns org.sparkboard.server.slack.screens
-  ;; TODO  (:require [org.sparkboard.firebase.tokens :as fb-tokens])
-  ;; (:require [server.slack.hiccup :as hiccup]
-  ;;           [server.common :as common]
-  ;;           [org.sparkboard.slack.slack-db :as slack-db])
-  (:require [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.server.env :as env]))
+  (:require [org.sparkboard.slack.urls :as urls]))
 
 (defn main-menu [context]
   (list
@@ -20,9 +15,21 @@
      [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                   :slack/team-id]))} "Reinstall App"]]))
 
+(defn link-account [context]
+  (let [linking-url (urls/link-sparkboard-account context)]
+    (list
+      [:section (str "Please link your Sparkboard account:")]
+      [:actions
+       [:button {:style "primary"
+                 :action_id "URL"
+                 :url linking-url}
+        (str "Link Account")]])) )
+
 (defn home [context]
   [:home
-   (main-menu context)
+   (if (:sparkboard/account-id context)
+     (main-menu context)
+     (link-account context))
    [:section
     (str "_Last updated:_ " (rand-int 10000)
          ;; FIXME (-> (js/Date.)

@@ -20,28 +20,31 @@
             [taoensso.timbre :as log]
             [timbre-ns-pattern-level :as timbre-patterns]))
 
-(let [log-levels
-      ;; configure per-namespace log levels here
-      '{:all :info
-        org.sparkboard.firebase.jvm :trace
-        org.sparkboard.server.slack.core :trace}]
-  (-> {:middleware [(timbre-patterns/middleware
-                      (reduce-kv
-                        (fn [m k v] (assoc m (cond-> k (symbol? k) (str)) v))
-                        {} log-levels))]
-       :level :trace}
-      ;; add :dev.logging/tap? to .local.config.edn to use tap>
-      (cond-> (env/config :dev.logging/tap?)
-              (assoc :appenders
-                     {:tap> {:min-level nil
-                             :enabled? true
-                             :output-fn (fn [{:keys [?ns-str ?line vargs]}]
-                                          (into [(-> ?ns-str
-                                                     (str/replace "org.sparkboard." "")
-                                                     (str ":" ?line)
-                                                     (symbol))] vargs))
-                             :fn (comp tap> force :output_)}}))
-      (log/merge-config!)))
+(def log-levels
+  (case (env/config :env "dev")
+    "dev" '{:all :info
+            org.sparkboard.firebase.jvm :trace
+            org.sparkboard.server.slack.core :trace}
+    "staging" {:all :warn}
+    "prod" {:all :warn}))
+
+(-> {:middleware [(timbre-patterns/middleware
+                    (reduce-kv
+                      (fn [m k v] (assoc m (cond-> k (symbol? k) (str)) v))
+                      {} log-levels))]
+     :level :trace}
+    ;; add :dev.logging/tap? to .local.config.edn to use tap>
+    (cond-> (env/config :dev.logging/tap?)
+            (assoc :appenders
+                   {:tap> {:min-level nil
+                           :enabled? true
+                           :output-fn (fn [{:keys [?ns-str ?line vargs]}]
+                                        (into [(-> ?ns-str
+                                                   (str/replace "org.sparkboard." "")
+                                                   (str ":" ?line)
+                                                   (symbol))] vargs))
+                           :fn (comp tap> force :output_)}}))
+    (log/merge-config!))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Utility fns
@@ -151,21 +154,24 @@
                       :channel (get-in payload [:view :private_metadata])}))))
 
 
+(defn update-user-home-tab! [context]
+  (slack/web-api "views.publish" {:auth/token (:slack/token context)}
+                 {:user_id (:slack/user-id context)
+                  :view (hiccup/->blocks-json (screens/home context))}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Top level API
 
-(defn event
+(defn slack-event
   "Slack Event"
   [context evt]
   (log/debug "[event] evt:" evt)
   (log/debug "[event] context:" context)
   (case (get evt :type)
-    "app_home_opened" (slack/web-api "views.publish" {:auth/token (:slack/token context)}
-                                     {:user_id (:slack/user-id context)
-                                      :view (hiccup/->blocks-json (screens/home context))})
+    "app_home_opened" (update-user-home-tab! context)
     nil))
 
-(defn interaction
+(defn slack-interaction
   "Slack Interaction (e.g. global shortcut or modal) handler"
   [context payload]
   (case (:type payload)
@@ -183,7 +189,13 @@
     ;; TODO throw?
     (log/error [:unhandled-event (:type payload)])))
 
-(defn incoming
+(defn sparkboard-action
+  "Event triggered by Sparkboard (legacy)"
+  [context {:keys [action]}]
+  (case action
+    :update-home! (update-user-home-tab! context)))
+
+(defn slack-api
   "All-purpose handler for Slack requests"
   [{:as req :keys [params]}]
   (log/debug "[incoming] =====================================================================")
@@ -194,14 +206,21 @@
     (http/ok (:challenge params))
     (let [[kind data team-id user-id] (cond (:event params)
                                             (let [event (:event params)]
-                                              [:event event (:team_id params) (:user event)])
+                                              [:slack/event event (:team_id params) (:user event)])
 
                                             (:payload params)
                                             (let [payload (json->clj (:payload params))]
-                                              [:interaction
+                                              [:slack/interaction
                                                payload
                                                (get-in payload [:team :id])
                                                (get-in payload [:user :id])])
+
+                                            (:sparkboard params)
+                                            (let [data (:sparkboard params)]
+                                              [:sparkboard/action
+                                               data
+                                               (:slack/team-id data)
+                                               (:slack/user-id data)])
                                             ;; Has not yet been required:
                                             :else (log/error [:unhandled-request req]))
           app-id (-> env/config :slack :app-id)
@@ -215,24 +234,26 @@
                    :sparkboard/board-id (:board-id team)
                    :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
                    :env (:env env/config "dev")}]
+      (assert (and team-id user-id)
+              (str "Missing context: " {:team-id team-id :user-id user-id :params params}))
       (case kind
-        :challenge (http/ok data)
-        :event (do (try-future (event context data))
-                   (http/ok))
-        :interaction (do (try-future (interaction context data))
-                         ;; Submissions require an empty body
+        :slack/event (do (try-future (slack-event context data))
                          (http/ok))
+        :slack/interaction (do (try-future (slack-interaction context data))
+                               ;; Submissions require an empty body
+                               (http/ok))
+        :sparkboard/action (sparkboard-action context data)
         (log/error [:unhandled-request req])))))
 
 (def routes
-  ["/" {"slack-api" #'incoming
-        "slack-api/oauth-redirect" #'slack-oauth/redirect
-        "slack/install" #'slack-oauth/install-redirect}])
+  ["/" {"slack-api" slack-api
+        "slack-api/oauth-redirect" slack-oauth/redirect
+        "slack/install" slack-oauth/install-redirect}])
 
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
-      (ring.middleware.format/wrap-restful-format {:formats [:json-kw]})))
+      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})))
 
 (defonce server (atom nil))
 

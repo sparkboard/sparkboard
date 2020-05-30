@@ -1,7 +1,8 @@
 (ns org.sparkboard.slack.urls
   (:require [org.sparkboard.firebase.tokens :as tokens]
             [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.promise :as p]))
+            [org.sparkboard.promise :as p]
+            [taoensso.timbre :as log]))
 
 (defn- sparkboard-host [env domain]
   (case env
@@ -29,6 +30,7 @@
                       :sparkboard/keys [board-id]
                       :keys [env]} redirect]
   {:pre [env board-id user-id team-id redirect]}
+  (log/trace ::on-sparkboard props)
   (p/let [domain (slack-db/board-domain board-id)]
     (str (sparkboard-host env domain)
          "/slack-link?token="

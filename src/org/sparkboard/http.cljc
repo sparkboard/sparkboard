@@ -28,7 +28,9 @@
 
 (defn json-body [res]
   ;; return json as Clojure body
-  #?(:cljs (p/-> res (j/call :text) json->clj)
+  #?(:cljs (p/let [text (j/call res :text)]
+             (when-not (str/blank? text)
+               (json->clj text)))
      :clj  (-> res :body json->clj)))
 
 (defn transit-body [res]
@@ -64,11 +66,8 @@
                body (format-req-body)
                true (dissoc :query :auth/token))
         url (cond-> url query (str "?" (uri/map->query-string query)))]
-    (log/trace :http-req {:url url :opts opts})
     (p/let [response #?(:cljs
-                        (p/-> (fetch url (-> opts
-                                             (cond-> body (assoc :body body))
-                                             (->js)))
+                        (p/-> (fetch url (->js opts))
                               (assert-ok))
                         :clj
                         (case method
