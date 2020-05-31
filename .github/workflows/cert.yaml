@@ -16,6 +16,8 @@ jobs:
             Set-PAServer LE_STAGE;
             New-PACertificate example.com -AcceptTOS;" | pwsh -c -
 
+# Workflow
+# - check expiration-time of certificate
 
 # heroku cert api: https://devcenter.heroku.com/articles/ssl#ssl-certificate-details
 # posh-ACME with GitHub actions: https://github.com/rmbolger/Posh-ACME/issues/242
