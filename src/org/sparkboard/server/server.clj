@@ -159,95 +159,82 @@
                  {:user_id (:slack/user-id context)
                   :view (hiccup/->blocks-json (screens/home context))}))
 
+(defn slack-context
+  "Returns context-map expected by functions handling Slack events"
+  [team-id user-id]
+  {:pre [team-id user-id]}
+  (let [app-id (-> env/config :slack :app-id)
+        team (slack-db/linked-team team-id)
+        user (slack-db/linked-user user-id)]
+    {:slack/app-id app-id
+     :slack/team-id team-id
+     :slack/user-id user-id
+     :slack/token (get-in team [:app (keyword app-id) :bot-token])
+     :sparkboard/account-id (:account-id user)
+     :sparkboard/board-id (:board-id team)
+     :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
+     :env (:env env/config "dev")}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Top level API
 
 (defn slack-event
   "Slack Event"
-  [context evt]
-  (log/debug "[event] evt:" evt)
-  (log/debug "[event] context:" context)
-  (case (get evt :type)
-    "app_home_opened" (update-user-home-tab! context)
-    nil))
+  [params]
+  (try-future
+    (let [evt (:event params)
+          context (slack-context (:team_id params) (:user evt))]
+      (log/debug "[event] evt:" evt)
+      (log/debug "[event] context:" context)
+      (case (get evt :type)
+        "app_home_opened" (update-user-home-tab! context)
+        nil)))
+  (http/ok))
 
 (defn slack-interaction
   "Slack Interaction (e.g. global shortcut or modal) handler"
-  [context payload]
-  (case (:type payload)
-    ;; Slack "Global shortcut"
-    "shortcut" (slack/web-api "views.open" {:auth/token (:slack/token context)}
-                              {:trigger_id (:trigger_id payload)
-                               :view (hiccup/->blocks-json (screens/shortcut-modal context))})
+  [params]
+  (try-future
+    (let [payload (json->clj (:payload params))
+          context (slack-context (-> payload :team :id)
+                                 (-> payload :user :id))]
+      (case (:type payload)
+        ;; Slack "Global shortcut"
+        "shortcut" (slack/web-api "views.open" {:auth/token (:slack/token context)}
+                                  {:trigger_id (:trigger_id payload)
+                                   :view (hiccup/->blocks-json (screens/shortcut-modal context))})
 
-    ;; ;; User acted on existing view
-    "block_actions" (block-actions context payload)
+        ;; ;; User acted on existing view
+        "block_actions" (block-actions context payload)
 
-    ;; "Submit" button pressed; modal submitted
-    "view_submission" (submission context payload)
+        ;; "Submit" button pressed; modal submitted
+        "view_submission" (submission context payload)
 
-    ;; TODO throw?
-    (log/error [:unhandled-event (:type payload)])))
+        ;; TODO throw?
+        (log/error [:unhandled-event (:type payload)]))))
+  (http/ok))
 
 (defn sparkboard-action
   "Event triggered by Sparkboard (legacy)"
-  [context {:keys [action]}]
-  (case action
-    :update-home! (update-user-home-tab! context)))
-
-(defn slack-api
-  "All-purpose handler for Slack requests"
-  [{:as req :keys [params]}]
-  (log/debug "[incoming] =====================================================================")
-  (log/trace :incoming/req req)
-  ;; (log/debug "[incoming] request:" req)
-  ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
-  (if (:challenge params)
-    (http/ok (:challenge params))
-    (let [[kind data team-id user-id] (cond (:event params)
-                                            (let [event (:event params)]
-                                              [:slack/event event (:team_id params) (:user event)])
-
-                                            (:payload params)
-                                            (let [payload (json->clj (:payload params))]
-                                              [:slack/interaction
-                                               payload
-                                               (get-in payload [:team :id])
-                                               (get-in payload [:user :id])])
-
-                                            (:sparkboard params)
-                                            (let [data (:sparkboard params)]
-                                              [:sparkboard/action
-                                               data
-                                               (:slack/team-id data)
-                                               (:slack/user-id data)])
-                                            ;; Has not yet been required:
-                                            :else (log/error [:unhandled-request req]))
-          app-id (-> env/config :slack :app-id)
-          team (slack-db/linked-team team-id)
-          user (slack-db/linked-user user-id)
-          context {:slack/app-id app-id
-                   :slack/team-id team-id
-                   :slack/user-id user-id
-                   :slack/token (get-in team [:app (keyword app-id) :bot-token])
-                   :sparkboard/account-id (:account-id user)
-                   :sparkboard/board-id (:board-id team)
-                   :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
-                   :env (:env env/config "dev")}]
-      (assert (and team-id user-id)
-              (str "Missing context: " {:team-id team-id :user-id user-id :params params}))
-      (case kind
-        :slack/event (do (try-future (slack-event context data))
-                         (http/ok))
-        :slack/interaction (do (try-future (slack-interaction context data))
-                               ;; Submissions require an empty body
-                               (http/ok))
-        :sparkboard/action (sparkboard-action context data)
-        (log/error [:unhandled-request req])))))
+  [params]
+  ;; TODO
+  ;; verify that request came from sparkboard server
+  (let [{:keys [action slack/team-id slack/user-id]} (:sparkboard params)
+        context (slack-context team-id user-id)]
+    (case action
+      :update-home! (update-user-home-tab! context))))
 
 (def routes
-  ["/" {"slack-api" slack-api
+  ["/" {"slack-api" (fn [{:as req :keys [params]}]
+                      (log/trace "[slack-api]" req)
+                      ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
+                      (cond (:challenge params) (http/ok (:challenge params))
+                            (:event params) (slack-event params)
+                            (:payload params) (slack-interaction params)
+                            (:sparkboard params) (sparkboard-action params) ;; TODO use a separate path for this
+                            :else (log/error [:unhandled-request req])))
         "slack-api/oauth-redirect" slack-oauth/redirect
+        "slack/sparkboard-action" (comp sparkboard-action :params)
         "slack/install" slack-oauth/install-redirect}])
 
 (def app

@@ -17,3 +17,5 @@ public
 **/*.zip
 target/**
 classes
+*.crt
+*.key
