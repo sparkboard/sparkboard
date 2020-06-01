@@ -4,6 +4,7 @@
   (:require [bidi.ring :as bidi.ring]
             [clojure.string :as str]
             [org.sparkboard.firebase.jvm :as fire-jvm]
+            [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.server.slack.core :as slack]
@@ -11,7 +12,7 @@
             [org.sparkboard.server.slack.screens :as screens]
             [org.sparkboard.slack.oauth :as slack-oauth]
             [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.util :as u]
             [org.sparkboard.util.future :refer [try-future]]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
@@ -175,6 +176,9 @@
      :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
      :env (:env env/config "dev")}))
 
+(defn req-token [req]
+  (some-> req :headers (get "authorization") (str/replace #"^Bearer: " "")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Top level API
 
@@ -214,12 +218,19 @@
         (log/error [:unhandled-event (:type payload)]))))
   (http/ok))
 
+(defn wrap-sparkboard-auth [f]
+  (fn [req]
+    (if-let [auth (try (some-> (req-token req)
+                               (fire-tokens/decode)
+                               (u/guard :sparkboard/server-request?))
+                       (catch Exception e nil))]
+      (f (assoc req :auth/token-claims auth))
+      (http/unauthorized))))
+
 (defn sparkboard-action
   "Event triggered by Sparkboard (legacy)"
-  [params]
-  ;; TODO
-  ;; verify that request came from sparkboard server
-  (let [{:keys [action slack/team-id slack/user-id]} (:sparkboard params)
+  [{:as req :keys [params]}]
+  (let [{:keys [action slack/team-id slack/user-id]} params
         context (slack-context team-id user-id)]
     (case action
       :update-home! (update-user-home-tab! context))))
@@ -231,10 +242,9 @@
                       (cond (:challenge params) (http/ok (:challenge params))
                             (:event params) (slack-event params)
                             (:payload params) (slack-interaction params)
-                            (:sparkboard params) (sparkboard-action params) ;; TODO use a separate path for this
                             :else (log/error [:unhandled-request req])))
         "slack-api/oauth-redirect" slack-oauth/redirect
-        "slack/sparkboard-action" (comp sparkboard-action :params)
+        "slack/sparkboard-action" (wrap-sparkboard-auth sparkboard-action)
         "slack/install" slack-oauth/install-redirect}])
 
 (def app

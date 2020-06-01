@@ -14,11 +14,13 @@
   #?(:clj (:import (java.util Base64))))
 
 #?(:cljs
-   (defn assert-ok [^js/Response res]
+   (defn assert-ok [^js/Response res url]
      (when-not (.-ok res)
        (prn [:http/error (js->clj res)])
        (throw (ex-info "Invalid network request"
-                       (j/select-keys res [:status :statusText :body]))))
+                       (-> res
+                           (j/select-keys [:status :statusText :body])
+                           (j/assoc! :url url)))))
      res))
 
 (defn content-type [res]
@@ -68,7 +70,7 @@
         url (cond-> url query (str "?" (uri/map->query-string query)))]
     (p/let [response #?(:cljs
                         (p/-> (fetch url (->js opts))
-                              (assert-ok))
+                              (assert-ok url))
                         :clj
                         (case method
                           "GET" (client/get url opts)

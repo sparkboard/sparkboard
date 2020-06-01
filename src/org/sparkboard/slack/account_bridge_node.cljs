@@ -42,11 +42,12 @@
                :sparkboard/account-id req-account-id})
 
             ;; update the user's home tab
-            (http/post+ (str (env/config :sparkboard/jvm-root) "/slack-api")
-                        {:body/content-type :transit+json
-                         :body {:sparkboard {:action :update-home!
-                                             :slack/team-id team-id
-                                             :slack/user-id user-id}}})
+            (http/post+ (str (env/config :sparkboard/jvm-root) "/slack/sparkboard-action")
+                        {:auth/token (tokens/encode {:sparkboard/server-request? true})
+                         :body/content-type :transit+json
+                         :body {:action :update-home!
+                                :slack/team-id team-id
+                                :slack/user-id user-id}})
             (res-redirect redirect))
           :auth-redirect
           (res-redirect (str "/login?redirect=" (js/encodeURIComponent req-url)))))
