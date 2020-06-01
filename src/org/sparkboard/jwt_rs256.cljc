@@ -28,10 +28,10 @@
              (jwt-key/pem->public-key r nil)))))))
 
 (defn encode [claims key]
-  #?(:clj  (let [claims (->js claims)]
-             (-> (jwt/jwt (->js claims))
-                 (jwt/sign :RS256 (key->string :private key))
-                 jwt/to-str))
+  #?(:clj  (-> (->js claims)
+               (jwt/jwt)
+               (jwt/sign :RS256 (key->string :private key))
+               jwt/to-str)
      :cljs (-> (->js claims)
                (jwt/sign key #js{:algorithm "RS256"}))))
 

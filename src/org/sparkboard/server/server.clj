@@ -19,8 +19,10 @@
             [ring.middleware.format]
             [ring.util.http-response :as http]
             [taoensso.timbre :as log]
-            [timbre-ns-pattern-level :as timbre-patterns]))
-
+            [timbre-ns-pattern-level :as timbre-patterns])
+  (:import (javax.crypto Mac)
+           (javax.crypto.spec SecretKeySpec)
+           (org.apache.commons.codec.binary Hex)))
 (def log-levels
   (case (env/config :env "dev")
     "dev" '{:all :info
@@ -218,7 +220,9 @@
         (log/error [:unhandled-event (:type payload)]))))
   (http/ok))
 
-(defn wrap-sparkboard-auth [f]
+(defn wrap-sparkboard-server-verify
+  "must be a Sparkboard server request"
+  [f]
   (fn [req]
     (if-let [auth (try (some-> (req-token req)
                                (fire-tokens/decode)
@@ -226,6 +230,33 @@
                        (catch Exception e nil))]
       (f (assoc req :auth/token-claims auth))
       (http/unauthorized))))
+
+(defn hash-hmac256 [secret message]
+  (-> (Mac/getInstance "HmacSHA256")
+      (doto (.init (SecretKeySpec. (.getBytes secret "UTF-8") "HmacSHA256")))
+      (.doFinal (.getBytes message "UTF-8"))
+      (Hex/encodeHexString)))
+
+(defn wrap-slack-verify
+  "must be a Slack api request"
+  [f]
+  ;; https://api.slack.com/authentication/verifying-requests-from-slack
+  (fn [req]
+    (let [body-string (slurp (:body req))
+          {:strs [x-slack-request-timestamp
+                  x-slack-signature]} (:headers req)
+          secret (-> env/config :slack :signing-secret)
+          message (str "v0:" x-slack-request-timestamp ":" body-string)
+          hashed (str "v0=" (hash-hmac256 secret message))]
+      (tap> {:message message})
+      (tap> [:ts x-slack-request-timestamp])
+      (tap> {:req req})
+      (tap> [:authed? (= x-slack-signature hashed)])
+      (tap> x-slack-signature)
+      (tap> hashed)
+      (if (= hashed x-slack-signature)
+        (f req)
+        (http/unauthorized)))))
 
 (defn sparkboard-action
   "Event triggered by Sparkboard (legacy)"
@@ -236,15 +267,15 @@
       :update-home! (update-user-home-tab! context))))
 
 (def routes
-  ["/" {"slack-api" (fn [{:as req :keys [params]}]
-                      (log/trace "[slack-api]" req)
-                      ;; TODO verify that requests come from Slack https://api.slack.com/authentication/verifying-requests-from-slack
-                      (cond (:challenge params) (http/ok (:challenge params))
-                            (:event params) (slack-event params)
-                            (:payload params) (slack-interaction params)
-                            :else (log/error [:unhandled-request req])))
+  ["/" {"slack-api" (wrap-slack-verify
+                      (fn [{:as req :keys [params]}]
+                        (log/trace "[slack-api]" req)
+                        (cond (:challenge params) (http/ok (:challenge params))
+                              (:event params) (slack-event params)
+                              (:payload params) (slack-interaction params)
+                              :else (log/error [:unhandled-request req]))))
         "slack-api/oauth-redirect" slack-oauth/redirect
-        "slack/sparkboard-action" (wrap-sparkboard-auth sparkboard-action)
+        "slack/sparkboard-action" (wrap-sparkboard-server-verify sparkboard-action)
         "slack/install" slack-oauth/install-redirect}])
 
 (def app
