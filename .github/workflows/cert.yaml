@@ -1,23 +1,16 @@
 name: certificates
 
+# TODO
+# run on a schedule
 on:
   push:
     branches:
       - certs
 
+
 jobs:
   renew-certificate:
     runs-on: ubuntu-18.04
     steps:
-      - name: Posh-ACME test
-        run: echo "
-            Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted;
-            Install-Module -Name Posh-ACME -Scope CurrentUser;
-            Set-PAServer LE_STAGE;
-            New-PACertificate example.com -AcceptTOS;" | pwsh -c -
-
-# Workflow
-# - check expiration-time of certificate
-
-# heroku cert api: https://devcenter.heroku.com/articles/ssl#ssl-certificate-details
-# posh-ACME with GitHub actions: https://github.com/rmbolger/Posh-ACME/issues/242
+      - name: Posh-ACME
+        run: echo "TODO - run bin/certs.clj"

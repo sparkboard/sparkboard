@@ -2,7 +2,7 @@
 # this scripts downlaods babashka when needed and runs it
 
 name=babashka
-version="0.0.75"
+version="0.0.90"
 install_dir="$(pwd)/.store/$name-$version"
 
 if ! [[ -f "$install_dir/bb" ]]; then
