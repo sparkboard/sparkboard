@@ -248,12 +248,6 @@
           secret (-> env/config :slack :signing-secret)
           message (str "v0:" x-slack-request-timestamp ":" body-string)
           hashed (str "v0=" (hash-hmac256 secret message))]
-      (tap> {:message message})
-      (tap> [:ts x-slack-request-timestamp])
-      (tap> {:req req})
-      (tap> [:authed? (= x-slack-signature hashed)])
-      (tap> x-slack-signature)
-      (tap> hashed)
       (if (= hashed x-slack-signature)
         (f req)
         (http/unauthorized)))))
