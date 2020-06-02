@@ -10,8 +10,11 @@
     "staging" (str "http://" domain ".sparkboard.org")
     "prod" (str "https://" domain)))
 
+(defn app-redirect [params]
+  (str "https://slack.com/app_redirect?" (uri/map->query-string params)))
+
 (defn slack-home [app-id team-id]
-  (str "https://slack.com/app_redirect?team=" team-id "&app=" app-id))
+  (app-redirect {:team team-id :app app-id}))
 
 (defn install-slack-app
   "Returns a link that will lead user to install/reinstall app to a workspace"

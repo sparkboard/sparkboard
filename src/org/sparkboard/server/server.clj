@@ -210,7 +210,8 @@
      :env (:env env/config "dev")}))
 
 (defn req-token [req]
-  (some-> req :headers (get "authorization") (str/replace #"^Bearer: " "")))
+  (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
+      (-> req :params :token)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Top level API
@@ -252,16 +253,30 @@
         (log/error [:unhandled-event (:type payload)]))))
   (http/ok))
 
-(defn wrap-sparkboard-server-verify
+(defn wrap-sparkboard-verify
   "must be a Sparkboard server request"
-  [f]
+  [claims-check f]
   (fn [req]
     (if-let [auth (try (some-> (req-token req)
                                (fire-tokens/decode)
-                               (u/guard :sparkboard/server-request?))
+                               (u/guard claims-check))
                        (catch Exception e nil))]
       (f (assoc req :auth/token-claims auth))
-      (http/unauthorized))))
+      {:status 401
+       :headers {"Content-Type" "text/plain"}
+       :body "Invalid token"})))
+
+(defn nav-project-channel [{:as req
+                            {:sparkboard/keys [account-id board-id]} :auth/token-claims
+                            {:keys [project-id]} :params}]
+  (let [{:keys [channel-id]} (or (slack-db/project->linked-channel project-id)
+                                 ;; TODO make channel!
+                                 )]
+
+    (http/found
+      (urls/app-redirect {:app (-> env/config :slack :app-id)
+                          :team (slack-db/board->team board-id)
+                          :channel channel-id}))))
 
 (defn hash-hmac256 [secret message]
   (-> (Mac/getInstance "HmacSHA256")
@@ -318,7 +333,11 @@
                               (:payload params) (slack-interaction params)
                               :else (log/error [:unhandled-request req]))))
         "slack-api/oauth-redirect" slack-oauth/redirect
-        "slack/sparkboard-action" (wrap-sparkboard-server-verify sparkboard-action)
+        "slack/sparkboard-action" (wrap-sparkboard-verify :sparkboard/server-request?
+                                                          sparkboard-action)
+        ["slack/project-channel/" :project-id] (wrap-sparkboard-verify (every-pred :sparkboard/account-id
+                                                                                   :sparkboard/board-id)
+                                                                       nav-project-channel)
         "slack/install" slack-oauth/install-redirect}])
 
 (def app
@@ -348,7 +367,7 @@
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt)) 3000)))
 
 (comment
-  (restart-server! 3000)
+  (-main)
 
   @server
 

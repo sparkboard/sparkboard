@@ -86,7 +86,8 @@
                     {:query [:orderBy "project-id"
                              :equalTo project-id
                              :limitToFirst 1]})
-         (fire/map->list :channel-id)))
+         (fire/map->list :channel-id)
+         first))
 
 (defn account->all-linked-users [account-id]
   (p/->> (fire/read (str "/slack-user")
