@@ -13,6 +13,7 @@
             [org.sparkboard.server.slack.screens :as screens]
             [org.sparkboard.slack.oauth :as slack-oauth]
             [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.util :as u]
             [org.sparkboard.util.future :refer [try-future]]
             [ring.adapter.jetty :refer [run-jetty]]
@@ -159,11 +160,38 @@
                                       decode-text-input)))
                       :channel (get-in payload [:view :private_metadata])}))))
 
+(defn send-welcome-message! [context {:as user :keys [id]}]
+  (let [url (urls/link-sparkboard-account context)]
+    ;; TODO
+    ;; send welcome message to user, with a button (using ^url) to link their new Slack account with Sparkboard.
+    )
+  )
 
 (defn update-user-home-tab! [context]
   (slack/web-api "views.publish" {:auth/token (:slack/token context)}
                  {:user_id (:slack/user-id context)
                   :view (hiccup/->blocks-json (screens/home context))}))
+
+(defn create-linked-channel! [context {:sparkboard.project/keys [title url]
+                                       :keys [sparkboard/project-id
+                                              sparkboard/account-id]}]
+  (comment
+    (let [channel ...create-channel-via-slack-api!]
+      ;; TODO
+      ;;   - name should be `team-${SOMETHING}`, derived from title?
+      ;;   - include title + url in channel description
+
+      ;; after creating the channel, link it to the project
+      (slack-db/link-channel-to-project! (assoc context
+                                           :slack/channel-id (:id channel)
+                                           :sparkboard/project-id project-id))))
+  )
+
+(defn add-user-to-channel! [context {:keys [slack/user-id
+                                            slack/channel-id]}]
+  ;; TODO
+  ;; use slack api to add user-id to channel-id
+  )
 
 (defn slack-context
   "Returns context-map expected by functions handling Slack events"
@@ -197,6 +225,7 @@
       (log/debug "[event] context:" context)
       (case (get evt :type)
         "app_home_opened" (update-user-home-tab! context)
+        "team_join" (send-welcome-message! context (:user evt))
         nil)))
   (http/ok))
 
@@ -277,7 +306,8 @@
   (let [{:keys [action slack/team-id slack/user-id]} params
         context (slack-context team-id user-id)]
     (case action
-      :update-home! (update-user-home-tab! context))))
+      :update-home! (update-user-home-tab! context)
+      :create-linked-channel! (create-linked-channel! context params))))
 
 (def routes
   ["/" {"slack-api" (wrap-slack-verify

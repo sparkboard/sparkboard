@@ -25,16 +25,16 @@
              )]}
   (str jvm-root "/slack/install?state=" (tokens/encode (dissoc params :sparkboard/jvm-root))))
 
-(defn on-sparkboard [{:as props
+(defn on-sparkboard [{:as context
                       :slack/keys [team-id app-id user-id]
                       :sparkboard/keys [board-id]
                       :keys [env]} redirect]
   {:pre [env board-id user-id team-id redirect]}
-  (log/trace ::on-sparkboard props)
+  (log/trace ::on-sparkboard context)
   (p/let [domain (slack-db/board-domain board-id)]
     (str (sparkboard-host env domain)
          "/slack-link?token="
-         (-> props
+         (-> context
              (select-keys [:slack/team-id
                            :slack/app-id
                            :slack/user-id
@@ -42,8 +42,10 @@
              (assoc :redirect redirect)
              (tokens/encode)))))
 
-(defn link-sparkboard-account [props]
-  (on-sparkboard props
-                 (slack-home (:slack/app-id props)
-                             (:slack/team-id props))))
+(defn link-sparkboard-account
+  "Sends the user to Sparkboard to link their account, then redirects them back to Slack"
+  [context]
+  (on-sparkboard context
+                 (slack-home (:slack/app-id context)
+                             (:slack/team-id context))))
 
