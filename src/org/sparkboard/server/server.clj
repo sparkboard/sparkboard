@@ -253,7 +253,7 @@
                                           "UTF-8"))]
            (assoc req
                   :body  (io/input-stream (.getBytes input))
-                  :body2 (io/input-stream (.getBytes input)))))
+                  :body-string input)))
       (f req))))
 
 (defn wrap-slack-verify
@@ -261,7 +261,7 @@
   [f]
   ;; https://api.slack.com/authentication/verifying-requests-from-slack
   (fn [req]
-    (let [body-string (slurp (:body2 req)) ; we must rely on saved body, because `ring` destructively consumes the inputstream of urlencoded requests. therefore this depends on work of `wrap-saved-body` and must come after it in the middleware stack (ergo, _before_ in the thread)
+    (let [body-string (:body-string req) ; we must rely on saved body, because `ring` destructively consumes the inputstream of urlencoded requests. therefore this depends on work of `wrap-saved-body` and must come after it in the middleware stack (ergo, _before_ in the thread)
           {:strs [x-slack-request-timestamp
                   x-slack-signature]} (:headers req)
           secret (-> env/config :slack :signing-secret)
