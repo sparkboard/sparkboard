@@ -167,10 +167,39 @@
     )
   )
 
+(defn slack-context
+  "Returns context-map expected by functions handling Slack events"
+  [team-id user-id]
+  {:pre [team-id user-id]}
+  (let [app-id (-> env/config :slack :app-id)
+        team (slack-db/linked-team team-id)
+        user (slack-db/linked-user user-id)]
+    {:slack/app-id app-id
+     :slack/team-id team-id
+     :slack/user-id user-id
+     :slack/token (get-in team [:app (keyword app-id) :bot-token])
+     :sparkboard/account-id (:account-id user)
+     :sparkboard/board-id (:board-id team)
+     :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
+     :env (:env env/config "dev")}))
+
 (defn update-user-home-tab! [context]
   (slack/web-api "views.publish" {:auth/token (:slack/token context)}
                  {:user_id (:slack/user-id context)
                   :view (hiccup/->blocks-json (screens/home context))}))
+
+(defn link-account! [context {:as params
+                              :keys [slack/team-id
+                                     slack/user-id
+                                     sparkboard/account-id]}]
+  ;; TODO
+  ;; visible confirmation step to link the two accounts?
+  (slack-db/link-user-to-account!                           ;; link the accounts
+    {:slack/team-id team-id
+     :slack/user-id user-id
+     :sparkboard/account-id account-id})
+  (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
+  (http/ok))
 
 (defn create-linked-channel! [context {:sparkboard.project/keys [title url]
                                        :keys [sparkboard/project-id
@@ -193,25 +222,27 @@
   ;; use slack api to add user-id to channel-id
   )
 
-(defn slack-context
-  "Returns context-map expected by functions handling Slack events"
-  [team-id user-id]
-  {:pre [team-id user-id]}
-  (let [app-id (-> env/config :slack :app-id)
-        team (slack-db/linked-team team-id)
-        user (slack-db/linked-user user-id)]
-    {:slack/app-id app-id
-     :slack/team-id team-id
-     :slack/user-id user-id
-     :slack/token (get-in team [:app (keyword app-id) :bot-token])
-     :sparkboard/account-id (:account-id user)
-     :sparkboard/board-id (:board-id team)
-     :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
-     :env (:env env/config "dev")}))
-
 (defn req-token [req]
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
       (-> req :params :token)))
+
+(defn mock-slack-link-proxy [{{:as token-claims
+                               :keys [slack/user-id
+                                      slack/team-id
+                                      sparkboard/board-id
+                                      sparkboard/account-id
+                                      redirect]} :auth/token-claims
+                              :as req}]
+  (when-not account-id
+    (link-account! (slack-context team-id user-id)
+                   (assoc token-claims :sparkboard/account-id "MOCK_SPARKBOARD_ACCOUNT")))
+  (if (str/starts-with? redirect "http")
+    {:status 302
+     :headers {"Location" redirect}
+     :body ""}
+    {:body (str "mock redirect: " redirect)
+     :status 200
+     :headers {"Content-Type" "text/string"}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Top level API
@@ -255,11 +286,12 @@
 
 (defn wrap-sparkboard-verify
   "must be a Sparkboard server request"
-  [claims-check f]
+  [f & claims-checks]
   (fn [req]
     (if-let [auth (try (some-> (req-token req)
                                (fire-tokens/decode)
-                               (u/guard claims-check))
+                               (cond-> (seq claims-checks)
+                                       (u/guard (apply every-pred claims-checks))))
                        (catch Exception e nil))]
       (f (assoc req :auth/token-claims auth))
       {:status 401
@@ -322,23 +354,26 @@
         context (slack-context team-id user-id)]
     (case action
       :update-home! (update-user-home-tab! context)
+      :link-account! (link-account! context params)
       :create-linked-channel! (create-linked-channel! context params))))
 
 (def routes
-  ["/" {"slack-api" (wrap-slack-verify
-                      (fn [{:as req :keys [params]}]
-                        (log/trace "[slack-api]" req)
-                        (cond (:challenge params) (http/ok (:challenge params))
-                              (:event params) (slack-event params)
-                              (:payload params) (slack-interaction params)
-                              :else (log/error [:unhandled-request req]))))
-        "slack-api/oauth-redirect" slack-oauth/redirect
-        "slack/sparkboard-action" (wrap-sparkboard-verify :sparkboard/server-request?
-                                                          sparkboard-action)
-        ["slack/project-channel/" :project-id] (wrap-sparkboard-verify (every-pred :sparkboard/account-id
-                                                                                   :sparkboard/board-id)
-                                                                       nav-project-channel)
-        "slack/install" slack-oauth/install-redirect}])
+  ["/" (merge {"slack-api" (wrap-slack-verify
+                             (fn [{:as req :keys [params]}]
+                               (log/trace "[slack-api]" req)
+                               (cond (:challenge params) (http/ok (:challenge params))
+                                     (:event params) (slack-event params)
+                                     (:payload params) (slack-interaction params)
+                                     :else (log/error [:unhandled-request req]))))
+               "slack-api/oauth-redirect" slack-oauth/redirect
+               "slack/server-action" (wrap-sparkboard-verify sparkboard-action
+                                                             :sparkboard/server-request?)
+               ["slack/project-channel/" :project-id] (wrap-sparkboard-verify nav-project-channel
+                                                                              :sparkboard/account-id
+                                                                              :sparkboard/board-id)
+               "slack/install" slack-oauth/install-redirect}
+              (when (env/config :dev/mock-sparkboard? true)
+                {"mock/" {"slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)}}))])
 
 (def app
   (-> (bidi.ring/make-handler routes)
@@ -367,9 +402,4 @@
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt)) 3000)))
 
 (comment
-  (-main)
-
-  @server
-
-  ;; See also `dev.restlient` at project root
-  )
+  (-main))

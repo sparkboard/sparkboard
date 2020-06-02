@@ -2,7 +2,10 @@
   (:require [org.sparkboard.firebase.tokens :as tokens]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.promise :as p]
-            [taoensso.timbre :as log]))
+            [org.sparkboard.server.env :as env]
+            [taoensso.timbre :as log]
+            [lambdaisland.uri :as uri]
+            [org.sparkboard.js-convert :refer [clj->json]]))
 
 (defn- sparkboard-host [env domain]
   (case env
@@ -35,7 +38,9 @@
   {:pre [env board-id user-id team-id redirect]}
   (log/trace ::on-sparkboard context)
   (p/let [domain (slack-db/board-domain board-id)]
-    (str (sparkboard-host env domain)
+    (str (if (-> env/config :dev/mock-sparkboard?)
+           (str (:sparkboard/jvm-root env/config) "/mock")
+           (sparkboard-host env domain))
          "/slack-link?token="
          (-> context
              (select-keys [:slack/team-id
