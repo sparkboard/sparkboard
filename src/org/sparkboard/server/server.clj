@@ -2,6 +2,7 @@
   "HTTP server handling Slack requests"
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
@@ -18,11 +19,13 @@
             [ring.middleware.defaults]
             [ring.middleware.format]
             [ring.util.http-response :as http]
+            [ring.util.request]
             [taoensso.timbre :as log]
             [timbre-ns-pattern-level :as timbre-patterns])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
+
 (def log-levels
   (case (env/config :env "dev")
     "dev" '{:all :info
@@ -237,12 +240,28 @@
       (.doFinal (.getBytes message "UTF-8"))
       (Hex/encodeHexString)))
 
+(defn wrap-saved-body
+  "Duplicates body of urlencoded requests for later parsing.
+   Must go before/outside ring middleware (i.e. after in the `->`
+  thread), so it still has access to untouched `body` of request."
+  [f]
+  (fn [req]
+    (log/warn "[wrap-saved-body" (ring.util.request/urlencoded-form? req))
+    (if (ring.util.request/urlencoded-form? req)
+      (f (let [input (slurp (:body req)
+                            :encoding (or (ring.util.request/character-encoding req)
+                                          "UTF-8"))]
+           (assoc req
+                  :body  (io/input-stream (.getBytes input))
+                  :body2 (io/input-stream (.getBytes input)))))
+      (f req))))
+
 (defn wrap-slack-verify
   "must be a Slack api request"
   [f]
   ;; https://api.slack.com/authentication/verifying-requests-from-slack
   (fn [req]
-    (let [body-string (slurp (:body req))
+    (let [body-string (slurp (:body2 req)) ; we must rely on saved body, because `ring` destructively consumes the inputstream of urlencoded requests. therefore this depends on work of `wrap-saved-body` and must come after it in the middleware stack (ergo, _before_ in the thread)
           {:strs [x-slack-request-timestamp
                   x-slack-signature]} (:headers req)
           secret (-> env/config :slack :signing-secret)
@@ -275,7 +294,10 @@
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
-      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})))
+      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
+      ;; Must go before/outside/"after" ring middleware, so it still
+      ;; has access to untouched `body` of request:
+      wrap-saved-body))
 
 (defonce server (atom nil))
 
