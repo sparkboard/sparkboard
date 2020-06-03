@@ -50,11 +50,6 @@
                 ;; the `state` query parameter - a signed token from Sparkboard
                 :state state}))))))
 
-
-(get+ (str base-uri "users.info")
-      {:query {:user "U014033LZNW"
-               :token "xoxb-1136314689523-1154487745250-Z7kN18aCChLfcMr2yxr7Pb81"}})
-
 (defn res-text [res message]
   (-> res
       (assoc :body message)
