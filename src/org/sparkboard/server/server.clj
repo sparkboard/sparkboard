@@ -319,6 +319,12 @@
          (log/info :call/value v#)
          v#)))
 
+(defn slack-ok! [resp status message]
+  (if (:ok resp)
+    resp
+    (throw (ex-info message {:status status
+                             :resp resp}))))
+
 (defn user-info [{:slack/keys [user-id bot-token]}]
   (http/get+ (str slack/base-uri "users.info")              ;; `web-api` fn does not work b/c queries are broken
              {:query {:user user-id
@@ -347,26 +353,35 @@
                               user-id]} (slack-context team-id user-id)
                 domain (slack-db/board-domain board-id)
                 project-url (str (urls/sparkboard-host domain) "/project/" project-id)
-                {project-id :_id
+                {:as project
+                 project-id :_id
                  project-title :title} (http/get+ (str project-url "/json"))
+                _ (when-not project-title
+                    (throw (ex-info "Missing project title" {:project project
+                                                             :url project-url
+                                                             :status 500}))) ;; TODO, correct these error codes
                 channel-id (-> (log-call (slack/web-api "conversations.create"
                                                         {:auth/token bot-token}
                                                         {:user_ids [bot-user-id] ;; adding user-id here does not work
                                                          :is_private false
                                                          :name (slack-channel-namify (str "team-" project-title))}))
+                               (slack-ok! 500 "Could not create conversation")
                                :channel
                                :id)]
-            (log-call (slack/web-api "conversations.invite"
-                                     {:auth/token bot-token}
-                                     {:channel channel-id
-                                      :users [user-id]}))
-            (log-call (slack/web-api "conversations.setTopic"
-                                     {:auth/token bot-token}
-                                     {:channel channel-id
-                                      :topic (str "on Sparkboard: " project-url)}))
-            (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
-                                                          :slack/channel-id channel-id
-                                                          :sparkboard/project-id project-id}))
+            (-> (log-call (slack/web-api "conversations.invite"
+                                         {:auth/token bot-token}
+                                         {:channel channel-id
+                                          :users [user-id]}))
+                (slack-ok! 500 "Could not invite user to new channel"))
+            (-> (log-call (slack/web-api "conversations.setTopic"
+                                         {:auth/token bot-token}
+                                         {:channel channel-id
+                                          :topic (str "on Sparkboard: " project-url)}))
+                (slack-ok! 500 "Could not set topic for channel"))
+            (-> (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
+                                                              :slack/channel-id channel-id
+                                                              :sparkboard/project-id project-id}))
+                (slack-ok! 500 "Could not link channel to project"))
             (assoc context :slack/channel-id channel-id))))))
 
 (defn nav-project-channel [{:as req
@@ -418,6 +433,7 @@
 (defn sparkboard-action
   "Event triggered by Sparkboard (legacy)"
   [{:as req :keys [params]}]
+
   (let [{:keys [action slack/team-id slack/user-id]} params
         context (slack-context team-id user-id)]
     (case action
@@ -444,12 +460,30 @@
 (comment
   (def token "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGciOiJSUzI1NiIsImlzcyI6InNwYXJrYm9hcmQtc3RhZ2luZy0yMDIwLTJAc3Bhcmtib2FyZC1zdGFnaW5nLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwic3ViIjoic3Bhcmtib2FyZC1zdGFnaW5nLTIwMjAtMkBzcGFya2JvYXJkLXN0YWdpbmcuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJhdWQiOiJodHRwczpcL1wvaWRlbnRpdHl0b29sa2l0Lmdvb2dsZWFwaXMuY29tXC9nb29nbGUuaWRlbnRpdHkuaWRlbnRpdHl0b29sa2l0LnYxLklkZW50aXR5VG9vbGtpdCIsImlhdCI6MTU5MTE1MjM4NCwiZXhwIjoxNTkxMTU1OTg0LCJ1aWQiOiI6b3JnLnNwYXJrYm9hcmQuZmlyZWJhc2UudG9rZW5zXC9lbmNvZGUuY2xqIiwiY2xhaW1zIjp7InNsYWNrXC90ZWFtLWlkIjoiVDAxME1HVlQ0VFYiLCJzbGFja1wvYXBwLWlkIjoiQTAxM1NLN0FYOUQiLCJzbGFja1wvdXNlci1pZCI6IlUwMTBZR0NKVk4wIiwic3Bhcmtib2FyZFwvYm9hcmQtaWQiOiItTThYd1ZiZUwyTmt5R01DTERNeiIsInJlZGlyZWN0IjoiaHR0cHM6XC9cL3NsYWNrLmNvbVwvYXBwX3JlZGlyZWN0P3RlYW09VDAxME1HVlQ0VFYmYXBwPUEwMTNTSzdBWDlEIn19.KAhmxRjh-DAkaWVbZHqtVxVsU7yyd7iblTC-MfAmSzJf7Zit3aQPEHxW80pAmkOVSjbbZf24U6Mwjibx5ri1wDNxZERU10u6CbfZnxMaN3FyxXCBj3CQbGpHJVH6_BjaaKT0MYAESImwy9NgxGPDjAMna4i4IPIh3PMh5xzj6xxXe22VK5-gmDD7MfodmBC_wPUBJjqAj0gu2L-_LPc7peaLuHSNhJYfrzqYRs8DBaeUBtuiFZFoffhAvI_c92Vos2CVYfsEaFiamEbpIbMszzk54A6E6Z-NlzQAS1segrHq9V4QCCEdt3dMxwcZc18-qmjV0NWZm3khboarWOwsCQ")
   (fire-tokens/decode token))
+
+(defn text-response [status message]
+  {:status status
+   :body message
+   :headers {"Content-Type" "text/plain"}})
+
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
       wrap-slack-verify
-      ((fn [f] (fn [req] (log/info :URI (:uri req)) (f req))))))
+      ((fn [f] (fn [req]
+                 (log/info :URI (:uri req))
+                 (try (f req)
+                      (catch Exception e
+                        (log/error e)
+                        (text-response
+                          (:status (ex-data e) 500)
+                          (ex-message e)))
+                      (catch java.lang.AssertionError e
+                        (log/error e)
+                        (text-response
+                          (:status (ex-data e) 500)
+                          (ex-message e)))))))))
 
 (defonce server (atom nil))
 

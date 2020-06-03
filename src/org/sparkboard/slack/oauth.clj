@@ -92,34 +92,28 @@
                                 {:query {:user user-id
                                          :token access_token}})]
         (log/trace :redirect/user-response user-response)
-        (try
-          (assert (get-in user-response [:user :is_admin])
-                  "Only an admin can install the Sparkboard app")
-          (when-let [token-team (:slack/team-id token-claims)]
-            (assert (= token-team team-id) "Reinstall must be to the same team"))
 
-          (when board-id
-            (log/debug 'slack-db/link-team-to-board!
-                       (slack-db/link-team-to-board!
-                         {:slack/team-id team-id
-                          :sparkboard/board-id board-id})))
-          (log/debug 'slack-db/install-app!
-                     (slack-db/install-app!
+        (assert (get-in user-response [:user :is_admin])
+                "Only an admin can install the Sparkboard app")
+        (when-let [token-team (:slack/team-id token-claims)]
+          (assert (= token-team team-id) "Reinstall must be to the same team"))
+
+        (when board-id
+          (log/debug 'slack-db/link-team-to-board!
+                     (slack-db/link-team-to-board!
                        {:slack/team-id team-id
-                        :slack/team-name team-name
-                        :slack/app-id app-id
-                        :slack/bot-token access_token
-                        :slack/bot-user-id bot_user_id}))
-          (when account-id
-            (log/debug 'slack-db/link-user-to-account!
-                       (slack-db/link-user-to-account!
-                         {:slack/team-id team-id
-                          :slack/user-id user-id
-                          :sparkboard/account-id account-id})))
-          (http/found (urls/slack-home app-id team-id))
-          (catch Exception e
-            (log/error :error-in-oauth-redirect e)
-            (res-text (http/unauthorized) (ex-message e)))
-          (catch java.lang.AssertionError e
-            (log/error e)
-            (res-text (http/unauthorized) (ex-message e))))))))
+                        :sparkboard/board-id board-id})))
+        (log/debug 'slack-db/install-app!
+                   (slack-db/install-app!
+                     {:slack/team-id team-id
+                      :slack/team-name team-name
+                      :slack/app-id app-id
+                      :slack/bot-token access_token
+                      :slack/bot-user-id bot_user_id}))
+        (when account-id
+          (log/debug 'slack-db/link-user-to-account!
+                     (slack-db/link-user-to-account!
+                       {:slack/team-id team-id
+                        :slack/user-id user-id
+                        :sparkboard/account-id account-id})))
+        (http/found (urls/slack-home app-id team-id))))))
