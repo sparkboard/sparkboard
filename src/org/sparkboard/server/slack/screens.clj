@@ -1,6 +1,8 @@
 (ns org.sparkboard.server.slack.screens
   (:require [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.firebase.jvm :as fire-jvm]))
+            [org.sparkboard.firebase.jvm :as fire-jvm]
+            [org.sparkboard.server.slack.core :as slack]
+            [org.sparkboard.server.slack.hiccup :as hiccup]))
 
 (defn main-menu [context]
   (list
@@ -35,7 +37,7 @@
    [:section
     (str "_Last updated: "
          (->> (java.util.Date.)
-              (.format (new java.text.SimpleDateFormat "hh:m a, MMMM d, YYYY"))) "_")]
+              (.format (new java.text.SimpleDateFormat "hh:mm:ss a, MMMM d, YYYY"))) "_")]
    [:actions
     [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                  :slack/team-id]))} "Reinstall App"]]])
@@ -44,9 +46,35 @@
   [:modal {:title "Broadcast"
            :blocks (main-menu context)}])
 
-(def team-broadcast-blocks
+(defn destination-channel-groups [{:keys [slack/bot-token
+                                    slack/bot-user-id]}]
+  (let [channels (->> (slack/web-api "conversations.list"
+                                     {:auth/token bot-token}
+                                     {:exclude_archived true
+                                      :types "public_channel,private_channel"})
+                      :channels
+                      (filter :is_member))
+        {general false
+         project true} (group-by #(= bot-user-id (-> % :topic :creator)) channels)
+        channel-option (fn [{:keys [name id]}]
+                         {:value id
+                          :text [:plain_text name]})]
+    [{:options (mapv channel-option general)
+      :label [:plain_text "User channels"]}
+     {:options (mapv channel-option project)
+      :label [:plain_text "Projects"]}]))
+
+(comment
+  ;; TODO
+  ; replace conversations_select below with sth like this (currently doesn't work as-is)
+  [:static_select
+   {:placeholder [:plain_text "Select a channel..."],
+    :option_groups (destination-channel-groups context)
+    :action_id "broadcast2:channel-select"}])
+
+(defn team-broadcast-blocks [context]
   (list
-    [:section "Send a prompt to *all projects*."]
+    [:section "Send a prompt to *all project teams*."]
     [:divider]
     [:section
      {:block_id "sb-section1"
@@ -65,10 +93,10 @@
       :label [:plain_text "Message:"]}]))
 
 (defn team-broadcast-modal-compose
-  ([] (team-broadcast-modal-compose nil))
-  ([private-data]
+  ([context] (team-broadcast-modal-compose context nil))
+  ([context private-data]
    [:modal (merge {:title [:plain_text "Compose Broadcast"]
-                   :blocks team-broadcast-blocks
+                   :blocks (team-broadcast-blocks context)
                    :submit [:plain_text "Submit"]}
                   ;; NB: private metadata is a String of max 3000 chars
                   ;; See https://api.slack.com/reference/surfaces/views

@@ -90,10 +90,10 @@
       (case (get-in payload [:view :type])
         "home" (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
                               {:trigger_id (:trigger_id payload)
-                               :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))})
+                               :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))})
         "modal" (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
                                {:view_id view-id
-                                :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose))}))
+                                :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))}))
 
       "user:team-broadcast-response"
       (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
@@ -129,7 +129,7 @@
       (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
-                              (screens/team-broadcast-modal-compose (-> payload :actions first :selected_conversation)))})
+                              (screens/team-broadcast-modal-compose context (-> payload :actions first :selected_conversation)))})
 
       ;; Default: failure XXX `throw`?
       (log/error [:unhandled-block-action (-> payload :actions first :action-id)]))))
@@ -176,6 +176,9 @@
         team (slack-db/linked-team team-id)
         user (slack-db/linked-user user-id)
         {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
+    (def APP_ID app-id)
+    (def BOT-TOKEN bot-token)
+    (def BOT-USER-ID bot-user-id)
     {:slack/app-id app-id
      :slack/team-id team-id
      :slack/user-id user-id
@@ -323,6 +326,7 @@
     (throw (ex-info message {:status status
                              :resp resp}))))
 
+
 (defn user-info [{:slack/keys [user-id bot-token]}]
   (http/get+ (str slack/base-uri "users.info")              ;; `web-api` fn does not work b/c queries are broken
              {:query {:user user-id
@@ -336,7 +340,7 @@
       (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
             {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
                                                                   :sparkboard/account-id account-id})
-            project-title (slack-channel-namify project-title)]
+            project-title (slack-channel-namify (str "project-" project-title))]
         (assert (not (str/blank? project-title)) "Project title is required")
         ;; possible states:
         ;; - user is a member of the workspace, but the account is not yet linked
@@ -357,7 +361,7 @@
                                                         {:auth/token bot-token}
                                                         {:user_ids [bot-user-id] ;; adding user-id here does not work
                                                          :is_private false
-                                                         :name (str "team-" project-title)}))
+                                                         :name project-title}))
                                :channel
                                :id)]
             (log-call (slack/web-api "conversations.invite"
