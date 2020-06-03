@@ -119,31 +119,10 @@
                  ;; refactor so don't have time now
                  :text (str "Responses will post to channel [" reply-channel "]")}]}))
 
-(defn team-broadcast-response [reply-channel]
-  [:modal {:title [:plain_text "Project Update"]
-           :blocks (list
-                     {:type "actions",
-                      :elements [[:button {:text {:type "plain_text",
-                                                  :text "Describe current status",
-                                                  :emoji true},
-                                           :action_id "user:team-broadcast-response-status"
-                                           :value "click_me_123"}]
-                                 [:button {:text {:type "plain_text",
-                                                  :text "Share achievement",
-                                                  :emoji true},
-                                           :action_id "user:team-broadcast-response-achievement"
-                                           :value "click_me_456"}]
-                                 [:button {:text {:type "plain_text",
-                                                  :text "Ask for help",
-                                                  :emoji true},
-                                           :action_id "user:team-broadcast-response-help"
-                                           :value "click_me_789"}]]})
-           :submit [:plain_text "Send"]
-           :private_metadata reply-channel}])
-
-(defn team-broadcast-response-status [private-metadata]
+(defn team-broadcast-response [broadcast-text reply-channel]
   [:modal {:title [:plain_text "Describe Current Status"]
-           :blocks [{:type "input",
+           :blocks [[:plain_text broadcast-text]
+                    {:type "input",
                      :label {:type "plain_text",
                              :text "Tell us what you've been working on:",
                              :emoji true},
