@@ -126,29 +126,7 @@
                  ;; refactor so don't have time now
                  :text (str "Responses will post to channel [" reply-channel "]")}]}))
 
-(defn team-broadcast-response [reply-channel]
-  [:modal {:title [:plain_text "Project Update"]
-           :blocks (list
-                     {:type "actions",
-                      :elements [[:button {:text {:type "plain_text",
-                                                  :text "Describe current status",
-                                                  :emoji true},
-                                           :action_id "user:team-broadcast-response-status"
-                                           :value "click_me_123"}]
-                                 [:button {:text {:type "plain_text",
-                                                  :text "Share achievement",
-                                                  :emoji true},
-                                           :action_id "user:team-broadcast-response-achievement"
-                                           :value "click_me_456"}]
-                                 [:button {:text {:type "plain_text",
-                                                  :text "Ask for help",
-                                                  :emoji true},
-                                           :action_id "user:team-broadcast-response-help"
-                                           :value "click_me_789"}]]})
-           :submit [:plain_text "Send"]
-           :private_metadata reply-channel}])
-
-(defn team-broadcast-response-status [private-metadata]
+(defn team-broadcast-response [reply-channel] ;; TODO add parameter for existing message
   [:modal {:title [:plain_text "Describe Current Status"]
            :blocks [{:type "input",
                      :label {:type "plain_text",
@@ -157,31 +135,7 @@
                      :block_id "sb-project-status1"
                      :element {:type "plain_text_input", :multiline true
                                :action_id "user:status-input"}}]
-           :private_metadata private-metadata
-           :submit [:plain_text "Send"]}])
-
-(defn team-broadcast-response-achievement [private-metadata]
-  [:modal {:title [:plain_text "Share Achievement"]
-           :blocks [{:type "input",
-                     :label {:type "plain_text",
-                             :text "Tell us about the milestone you reached:",
-                             :emoji true},
-                     :block_id "sb-project-achievement1"
-                     :element {:type "plain_text_input", :multiline true
-                               :action_id "user:achievement-input"}}]
-           :private_metadata private-metadata
-           :submit [:plain_text "Send"]}])
-
-(defn team-broadcast-response-help [private-metadata]
-  [:modal {:title [:plain_text "Request for Help"]
-           :blocks [{:type "input",
-                     :label {:type "plain_text",
-                             :text "Let us know what you could use help with. We'll try to lend a hand.",
-                             :emoji true},
-                     :block_id "sb-project-help1"
-                     :element {:type "plain_text_input", :multiline true
-                               :action_id "user:help-input"}}]
-           :private_metadata private-metadata
+           :private_metadata reply-channel
            :submit [:plain_text "Send"]}])
 
 (defn team-broadcast-response-msg [project msg]
