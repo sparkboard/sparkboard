@@ -136,7 +136,7 @@
                      :block_id "sb-project-status1"
                      :element {:type "plain_text_input", :multiline true
                                :action_id "user:status-input"}}]
-           :private_metadata private-metadata
+           :private_metadata reply-channel #_private-metadata
            :submit [:plain_text "Send"]}])
 
 (defn team-broadcast-response-msg [project msg]
