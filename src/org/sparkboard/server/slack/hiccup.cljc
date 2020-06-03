@@ -88,7 +88,9 @@
           (->blocks (apply-schema tag props body)))
         (sequential? form) (reduce (fn [out child]
                                      (let [child (->blocks child)]
-                                       ((if (sequential? child) into conj) out child))) [] form)
+                                       (cond (nil? child) out
+                                             (sequential? child) (into out child)
+                                             :else (conj out child)))) [] form)
         (map? form) (reduce-kv (fn [m k v]
                                  (assoc m k (->blocks v))) {} form)
         :else form))

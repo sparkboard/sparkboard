@@ -27,7 +27,7 @@
   [:home
 
    (if-let [board-id (:sparkboard/board-id context)]
-     (let [{:keys [title domain]} (fire-jvm/read (str "settings/" (:sparkboard/board-id context)))]
+     (let [{:keys [title domain]} (fire-jvm/read (str "settings/" board-id))]
        [:section
         {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
         (str "This Slack team is connected to *" title "* on Sparkboard.")])
