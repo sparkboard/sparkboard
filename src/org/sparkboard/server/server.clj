@@ -337,8 +337,9 @@
   (or (slack-db/project->linked-channel project-id)
       (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
             {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
-                                                                  :sparkboard/account-id account-id})]
-
+                                                                  :sparkboard/account-id account-id})
+            project-title (slack-channel-namify project-title)]
+        (assert (not (str/blank? project-title)) "Project title is required")
         ;; possible states:
         ;; - user is a member of the workspace, but the account is not yet linked
         ;;   ->
@@ -358,7 +359,7 @@
                                                         {:auth/token bot-token}
                                                         {:user_ids [bot-user-id] ;; adding user-id here does not work
                                                          :is_private false
-                                                         :name (slack-channel-namify (str "team-" project-title))}))
+                                                         :name (str "team-" project-title)}))
                                :channel
                                :id)]
             (log-call (slack/web-api "conversations.invite"
