@@ -153,30 +153,6 @@
            :private_metadata private-metadata
            :submit [:plain_text "Send"]}])
 
-(defn team-broadcast-response-achievement [private-metadata]
-  [:modal {:title [:plain_text "Share Achievement"]
-           :blocks [{:type "input",
-                     :label {:type "plain_text",
-                             :text "Tell us about the milestone you reached:",
-                             :emoji true},
-                     :block_id "sb-project-achievement1"
-                     :element {:type "plain_text_input", :multiline true
-                               :action_id "user:achievement-input"}}]
-           :private_metadata private-metadata
-           :submit [:plain_text "Send"]}])
-
-(defn team-broadcast-response-help [private-metadata]
-  [:modal {:title [:plain_text "Request for Help"]
-           :blocks [{:type "input",
-                     :label {:type "plain_text",
-                             :text "Let us know what you could use help with. We'll try to lend a hand.",
-                             :emoji true},
-                     :block_id "sb-project-help1"
-                     :element {:type "plain_text_input", :multiline true
-                               :action_id "user:help-input"}}]
-           :private_metadata private-metadata
-           :submit [:plain_text "Send"]}])
-
 (defn team-broadcast-response-msg [project msg]
   [{:type "divider"}
    {:type "section",
