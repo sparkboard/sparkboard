@@ -35,6 +35,7 @@
             ;org.sparkboard.firebase.jvm :trace
             org.sparkboard.server.slack.core :trace}
     "staging" '{:all :info
+                org.sparkboard.slack.oauth :trace
                 org.sparkboard.server.server :trace}
     "prod" {:all :warn}))
 
