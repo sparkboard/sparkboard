@@ -110,7 +110,7 @@
           (http/found (urls/slack-home app-id team-id))
           (catch Exception e
             (log/error :error-in-oauth-redirect e)
-            (http/unauthorized e))
+            (http/unauthorized (ex-message e)))
           (catch java.lang.AssertionError e
             (log/error :assertion-in-oauth-redirect e)
-            (http/unauthorized e)))))))
+            (http/unauthorized (ex-message e))))))))
