@@ -70,12 +70,10 @@
   ;; TODO Write broadcast to Firebase
   (log/debug "[request-updates] msg:" msg)
   (let [blocks (hiccup/->blocks-json (screens/team-broadcast-message msg reply-channel))]
-    (mapv #(slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                          {:channel % :blocks blocks})
-          (keep (fn [{:keys [is_member id]}]
-                  ;; TODO ensure bot joins team-channels when they are created
-                  (when is_member id))
-                (:channels (slack/web-api "channels.list" {:auth/token (:slack/bot-token context)}))))))
+    (->> (slack-db/team->all-linked-channels (:slack/team-id context))
+         (mapv #(slack/web-api "chat.postMessage"
+                               {:auth/token (:slack/bot-token context)}
+                               {:channel (:channel-id %) :blocks blocks})))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

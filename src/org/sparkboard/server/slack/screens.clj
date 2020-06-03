@@ -14,10 +14,7 @@
                            :action_id "admin:team-broadcast"
                            :value "click_me_123"}
                   "Compose"]}
-     "*Team Broadcast*\nSend a message to all teams."]
-    [:actions
-     [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
-                                                                  :slack/team-id]))} "Reinstall App"]]))
+     "*Team Broadcast*\nSend a message to all teams."]))
 
 (defn link-account [context]
   (let [linking-url (urls/link-sparkboard-account context)]
@@ -31,13 +28,17 @@
 
 (defn home [context]
   [:home
-   (if (:sparkboard/account-id context)
-     (main-menu context)
-     (link-account context))
+   (cond (nil? (:sparkboard/board-id context))
+         [:section "No Sparkboard is linked to this Slack workspace."]
+         (nil? (:sparkboard/account-id context)) (link-account context)
+         :else (main-menu context))
    [:section
     (str "_Last updated: "
          (->> (java.util.Date.)
-              (.format (new java.text.SimpleDateFormat "hh:m a, MMMM d, YYYY"))) "_")]])
+              (.format (new java.text.SimpleDateFormat "hh:m a, MMMM d, YYYY"))) "_")]
+   [:actions
+    [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
+                                                                 :slack/team-id]))} "Reinstall App"]]])
 
 (defn shortcut-modal [context]
   [:modal {:title "Broadcast"

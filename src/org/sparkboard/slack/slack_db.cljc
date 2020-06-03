@@ -72,7 +72,7 @@
 
 ;; lookups by index
 
-#_(defn team->all-linked-channels [team-id]
+(defn team->all-linked-channels [team-id]
     (p/->> (fire/read (str "/slack-channel")
                       {:query [:orderBy "team-id"
                                :equalTo team-id]})
