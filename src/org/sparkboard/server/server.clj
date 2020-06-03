@@ -451,7 +451,7 @@
                                                                               :sparkboard/account-id
                                                                               :sparkboard/board-id)
                "slack/install" slack-oauth/install-redirect}
-              (when (= "dev" (env/config :env))
+              (when (not= "prod" (env/config :env))
                 {"slack/install-local"
                  (fn [req] (ring.http/found (urls/install-slack-app {:dev/local? true})))})
               (when (env/config :dev/mock-sparkboard? true)
@@ -460,6 +460,7 @@
                                     (fn [{:keys [params]}] {:body (str "Mock page for " (:domain params) "/" (:catchall params))
                                                             :status 200
                                                             :headers {"Content-Type" "text/plain"}})}}))])
+
 (comment
   (fire-tokens/decode token))
 
