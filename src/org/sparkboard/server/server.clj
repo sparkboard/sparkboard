@@ -451,8 +451,15 @@
                                                                               :sparkboard/account-id
                                                                               :sparkboard/board-id)
                "slack/install" slack-oauth/install-redirect}
+              (when (= "dev" (env/config :env))
+                {"slack/install-local"
+                 (fn [req] (ring.http/found (urls/install-slack-app {:dev/local? true})))})
               (when (env/config :dev/mock-sparkboard? true)
-                {"mock/" {"slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)}}))])
+                {["mock/" :domain] {"/slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)
+                                    [[#".*" :catchall]]
+                                    (fn [{:keys [params]}] {:body (str "Mock page for " (:domain params) "/" (:catchall params))
+                                                            :status 200
+                                                            :headers {"Content-Type" "text/plain"}})}}))])
 (comment
   (def token "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGciOiJSUzI1NiIsImlzcyI6InNwYXJrYm9hcmQtc3RhZ2luZy0yMDIwLTJAc3Bhcmtib2FyZC1zdGFnaW5nLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwic3ViIjoic3Bhcmtib2FyZC1zdGFnaW5nLTIwMjAtMkBzcGFya2JvYXJkLXN0YWdpbmcuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJhdWQiOiJodHRwczpcL1wvaWRlbnRpdHl0b29sa2l0Lmdvb2dsZWFwaXMuY29tXC9nb29nbGUuaWRlbnRpdHkuaWRlbnRpdHl0b29sa2l0LnYxLklkZW50aXR5VG9vbGtpdCIsImlhdCI6MTU5MTE1MjM4NCwiZXhwIjoxNTkxMTU1OTg0LCJ1aWQiOiI6b3JnLnNwYXJrYm9hcmQuZmlyZWJhc2UudG9rZW5zXC9lbmNvZGUuY2xqIiwiY2xhaW1zIjp7InNsYWNrXC90ZWFtLWlkIjoiVDAxME1HVlQ0VFYiLCJzbGFja1wvYXBwLWlkIjoiQTAxM1NLN0FYOUQiLCJzbGFja1wvdXNlci1pZCI6IlUwMTBZR0NKVk4wIiwic3Bhcmtib2FyZFwvYm9hcmQtaWQiOiItTThYd1ZiZUwyTmt5R01DTERNeiIsInJlZGlyZWN0IjoiaHR0cHM6XC9cL3NsYWNrLmNvbVwvYXBwX3JlZGlyZWN0P3RlYW09VDAxME1HVlQ0VFYmYXBwPUEwMTNTSzdBWDlEIn19.KAhmxRjh-DAkaWVbZHqtVxVsU7yyd7iblTC-MfAmSzJf7Zit3aQPEHxW80pAmkOVSjbbZf24U6Mwjibx5ri1wDNxZERU10u6CbfZnxMaN3FyxXCBj3CQbGpHJVH6_BjaaKT0MYAESImwy9NgxGPDjAMna4i4IPIh3PMh5xzj6xxXe22VK5-gmDD7MfodmBC_wPUBJjqAj0gu2L-_LPc7peaLuHSNhJYfrzqYRs8DBaeUBtuiFZFoffhAvI_c92Vos2CVYfsEaFiamEbpIbMszzk54A6E6Z-NlzQAS1segrHq9V4QCCEdt3dMxwcZc18-qmjV0NWZm3khboarWOwsCQ")
   (fire-tokens/decode token))

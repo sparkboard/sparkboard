@@ -6,11 +6,6 @@
 
 (defn main-menu [context]
   (list
-    (let [{:keys [title domain]} (fire-jvm/read (str "settings/" (:sparkboard/board-id context)))]
-      [:section
-       {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
-       (str "This Slack team is connected to *" title "* on Sparkboard.")])
-    [:divider]
     [:section
      {:accessory [:button {:style "primary",
                            :action_id "admin:team-broadcast"
@@ -30,14 +25,26 @@
 
 (defn home [context]
   [:home
-   (cond (nil? (:sparkboard/board-id context))
-         [:section "No Sparkboard is linked to this Slack workspace."]
-         (nil? (:sparkboard/account-id context)) (link-account context)
-         :else (main-menu context))
+
+   (if-let [board-id (:sparkboard/board-id context)]
+     (let [{:keys [title domain]} (fire-jvm/read (str "settings/" (:sparkboard/board-id context)))]
+       [:section
+        {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
+        (str "This Slack team is connected to *" title "* on Sparkboard.")])
+     [:section "No Sparkboard is linked to this Slack workspace."])
+
+   (when-not (:sparkboard/account-id context)
+     (link-account context))
+
+   [:divider]
+
+   (main-menu context)
+
    [:section
-    (str "_Last updated: "
+    (str "_Updated "
          (->> (java.util.Date.)
-              (.format (new java.text.SimpleDateFormat "hh:mm:ss a, MMMM d, YYYY"))) "_")]
+              (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
+         ". App " (:slack/app-id context) ", Team " (:slack/team-id context))]
    [:actions
     [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                  :slack/team-id]))} "Reinstall App"]]])

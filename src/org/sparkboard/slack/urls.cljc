@@ -11,10 +11,12 @@
   ([domain]
    (sparkboard-host (:env env/config "dev") domain))
   ([env domain]
-   (case env
-     "dev" (str "http://" domain ".test:4999")
-     "staging" (str "http://" domain ".sparkboard.org")
-     "prod" (str "https://" domain))))
+   (if (-> env/config :dev/mock-sparkboard?)
+     (str (:sparkboard/jvm-root env/config) "/mock/" domain)
+     (case env
+       "dev" (str "http://" domain ".test:4999")
+       "staging" (str "http://" domain ".sparkboard.org")
+       "prod" (str "https://" domain)))))
 
 (defn app-redirect [params]
   (str "https://slack.com/app_redirect?" (uri/map->query-string params)))
@@ -28,9 +30,12 @@
        :keys [sparkboard/jvm-root
               sparkboard/board-id
               sparkboard/account-id
-              slack/team-id]}]]
+              slack/team-id
+              dev/local?]
+       :or {jvm-root (-> env/config :sparkboard/jvm-root)}}]]
   {:pre [(or team-id                                        ;; reinstall
              (and board-id account-id)                      ;; new install + link board
+             local?
              )]}
   (str jvm-root "/slack/install?state=" (tokens/encode (dissoc params :sparkboard/jvm-root))))
 
@@ -41,9 +46,7 @@
   {:pre [env board-id user-id team-id redirect]}
   (log/trace ::on-sparkboard context)
   (p/let [domain (slack-db/board-domain board-id)]
-    (str (if (-> env/config :dev/mock-sparkboard?)
-           (str (:sparkboard/jvm-root env/config) "/mock")
-           (sparkboard-host env domain))
+    (str (sparkboard-host env domain)
          "/slack-link?token="
          (-> context
              (select-keys [:slack/team-id
