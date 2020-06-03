@@ -126,11 +126,11 @@
                  ;; refactor so don't have time now
                  :text (str "Responses will post to channel [" reply-channel "]")}]}))
 
-(defn team-broadcast-response [reply-channel] ;; TODO add parameter for existing message
-  [:modal {:title [:plain_text "Describe Current Status"]
+(defn team-broadcast-response [original-msg reply-channel]
+  [:modal {:title [:plain_text "Project Update"]
            :blocks [{:type "input",
                      :label {:type "plain_text",
-                             :text "Tell us what you've been working on:",
+                             :text original-msg,
                              :emoji true},
                      :block_id "sb-project-status1"
                      :element {:type "plain_text_input", :multiline true

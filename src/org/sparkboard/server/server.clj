@@ -99,12 +99,12 @@
       (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
                      {:trigger_id (:trigger_id payload)
                       :view (hiccup/->blocks-json
-                              (screens/team-broadcast-response (->> payload
-                                                                    :message
-                                                                    :blocks last
-                                                                    :elements first
-                                                                    ;; text between brackets with lookahead/lookbehind:
-                                                                    :text (re-find #"(?<=\[).+?(?=\])"))))})
+                             (screens/team-broadcast-response
+                              (->> payload :message :blocks first :text :text) ; broadcast msg
+                              (->> payload :message :blocks last
+                                   :elements first :text
+                                   ;; text between brackets with lookahead/lookbehind:
+                                   (re-find #"(?<=\[).+?(?=\])"))))})
 
       "broadcast2:channel-select"                           ;; refresh same view then save selection in private metadata
       (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
