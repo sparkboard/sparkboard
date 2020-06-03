@@ -330,9 +330,10 @@
              {:query {:user user-id
                       :token bot-token}}))
 
-(defn find-or-create-channel [{:keys [sparkboard/board-id
-                                      sparkboard/account-id
-                                      sparkboard/project-id]}]
+(defn find-or-create-channel [{:sparkboard/keys [board-id
+                                                 account-id
+                                                 project-id
+                                                 project-title]}]
   (or (slack-db/project->linked-channel project-id)
       (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
             {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
@@ -353,49 +354,41 @@
                               user-id]} (slack-context team-id user-id)
                 domain (slack-db/board-domain board-id)
                 project-url (str (urls/sparkboard-host domain) "/project/" project-id)
-                {:as project
-                 project-id :_id
-                 project-title :title} (http/get+ (str project-url "/json"))
-                _ (when-not project-title
-                    (throw (ex-info "Missing project title" {:project project
-                                                             :url project-url
-                                                             :status 500}))) ;; TODO, correct these error codes
                 channel-id (-> (log-call (slack/web-api "conversations.create"
                                                         {:auth/token bot-token}
                                                         {:user_ids [bot-user-id] ;; adding user-id here does not work
                                                          :is_private false
                                                          :name (slack-channel-namify (str "team-" project-title))}))
-                               (slack-ok! 500 "Could not create conversation")
                                :channel
                                :id)]
-            (-> (log-call (slack/web-api "conversations.invite"
-                                         {:auth/token bot-token}
-                                         {:channel channel-id
-                                          :users [user-id]}))
-                (slack-ok! 500 "Could not invite user to new channel"))
-            (-> (log-call (slack/web-api "conversations.setTopic"
-                                         {:auth/token bot-token}
-                                         {:channel channel-id
-                                          :topic (str "on Sparkboard: " project-url)}))
-                (slack-ok! 500 "Could not set topic for channel"))
-            (-> (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
-                                                              :slack/channel-id channel-id
-                                                              :sparkboard/project-id project-id}))
-                (slack-ok! 500 "Could not link channel to project"))
+            (log-call (slack/web-api "conversations.invite"
+                                     {:auth/token bot-token}
+                                     {:channel channel-id
+                                      :users [user-id]}))
+            (log-call (slack/web-api "conversations.setTopic"
+                                     {:auth/token bot-token}
+                                     {:channel channel-id
+                                      :topic (str "on Sparkboard: " project-url)}))
+            (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
+                                                          :slack/channel-id channel-id
+                                                          :sparkboard/project-id project-id}))
             (assoc context :slack/channel-id channel-id))))))
 
 (defn nav-project-channel [{:as req
                             {:sparkboard/keys [account-id
                                                board-id]} :auth/token-claims
-                            {:keys [project-id]} :params}]
+                            {:keys [project-id
+                                    project-title]} :params}]
   (let [{:slack/keys [channel-id
-                      team-id]} (find-or-create-channel {:sparkboard/board-id board-id
-                                                         :sparkboard/account-id account-id
-                                                         :sparkboard/project-id project-id})]
+                      team-id]} (find-or-create-channel #:sparkboard{:board-id board-id
+                                                                     :account-id account-id
+                                                                     :project-id project-id
+                                                                     :project-title project-title})]
     (log/trace :nav-to-channel channel-id)
-    (ring.http/found (urls/app-redirect {:app (-> env/config :slack :app-id)
-                                         :team team-id
-                                         :channel channel-id}))))
+    (ring.http/found
+      (urls/app-redirect {:app (-> env/config :slack :app-id)
+                          :team team-id
+                          :channel channel-id}))))
 
 (defn hash-hmac256 [secret message]
   (-> (Mac/getInstance "HmacSHA256")
@@ -466,24 +459,27 @@
    :body message
    :headers {"Content-Type" "text/plain"}})
 
+(defn wrap-handle-errors [f]
+  (fn [req]
+    (log/info :URI (:uri req))
+    (try (f req)
+         (catch Exception e
+           (log/error e)
+           (text-response
+             (:status (ex-data e) 500)
+             (ex-message e)))
+         (catch java.lang.AssertionError e
+           (log/error e)
+           (text-response
+             (:status (ex-data e) 500)
+             (ex-message e))))))
+
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
       wrap-slack-verify
-      ((fn [f] (fn [req]
-                 (log/info :URI (:uri req))
-                 (try (f req)
-                      (catch Exception e
-                        (log/error e)
-                        (text-response
-                          (:status (ex-data e) 500)
-                          (ex-message e)))
-                      (catch java.lang.AssertionError e
-                        (log/error e)
-                        (text-response
-                          (:status (ex-data e) 500)
-                          (ex-message e)))))))))
+      wrap-handle-errors))
 
 (defonce server (atom nil))
 

@@ -39,6 +39,8 @@
                   (.build))
          rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
      (log/debug "[web-api] GET rsp:" rsp)
+     (when-not  (:ok rsp)
+       (throw (ex-info (str "web-api failure: slack/" family-method) {:rsp rsp :config config})))
      rsp))
   ([family-method config body]
    (log/debug "[web-api] body:" body)
@@ -52,6 +54,8 @@
                   (.version HttpClient$Version/HTTP_2)
                   (.build))
          rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
+     (when-not  (:ok rsp)
+       (throw (ex-info (str "web-api failure: slack/" family-method) {:rsp rsp :config config})))
      (log/debug "[web-api] POST rsp:" rsp)
      rsp)))
 
