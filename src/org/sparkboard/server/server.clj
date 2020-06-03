@@ -326,36 +326,46 @@
                                       sparkboard/account-id
                                       sparkboard/project-id]}]
   (or (slack-db/project->linked-channel project-id)
-      (let [{:keys [slack/team-id]} (slack-db/board->team board-id)
+      (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
             {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
-                                                                  :sparkboard/account-id account-id})
-            {:as context
-             :slack/keys [bot-token
-                          bot-user-id
-                          user-id]} (slack-context team-id user-id)
-            domain (slack-db/board-domain board-id)
-            project-url (str (urls/sparkboard-host domain) "/project/" project-id)
-            {project-id :_id
-             project-title :title} (http/get+ (str project-url "/json"))
-            channel-id (-> (log-call (slack/web-api "conversations.create"
-                                                    {:auth/token bot-token}
-                                                    {:user_ids [bot-user-id] ;; adding user-id here does not work
-                                                     :is_private false
-                                                     :name (slack-channel-namify (str "team-" project-title))}))
-                           :channel
-                           :id)]
-        (log-call (slack/web-api "conversations.invite"
-                                 {:auth/token bot-token}
-                                 {:channel channel-id
-                                  :users [user-id]}))
-        (log-call (slack/web-api "conversations.setTopic"
-                                 {:auth/token bot-token}
-                                 {:channel channel-id
-                                  :topic (str "on Sparkboard: " project-url)}))
-        (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
-                                                      :slack/channel-id channel-id
-                                                      :sparkboard/project-id project-id}))
-        (assoc context :slack/channel-id channel-id))))
+                                                                  :sparkboard/account-id account-id})]
+
+        ;; possible states:
+        ;; - user is a member of the workspace, but the account is not yet linked
+        ;;   ->
+        ;; - user is not a member of the workspace
+        ;;   -> send them to invite-link
+
+        (if-not user-id
+          {:status 200
+           :body (str "You are not a member of " team-name ".")}
+          (let [{:as context
+                 :slack/keys [bot-token
+                              bot-user-id
+                              user-id]} (slack-context team-id user-id)
+                domain (slack-db/board-domain board-id)
+                project-url (str (urls/sparkboard-host domain) "/project/" project-id)
+                {project-id :_id
+                 project-title :title} (http/get+ (str project-url "/json"))
+                channel-id (-> (log-call (slack/web-api "conversations.create"
+                                                        {:auth/token bot-token}
+                                                        {:user_ids [bot-user-id] ;; adding user-id here does not work
+                                                         :is_private false
+                                                         :name (slack-channel-namify (str "team-" project-title))}))
+                               :channel
+                               :id)]
+            (log-call (slack/web-api "conversations.invite"
+                                     {:auth/token bot-token}
+                                     {:channel channel-id
+                                      :users [user-id]}))
+            (log-call (slack/web-api "conversations.setTopic"
+                                     {:auth/token bot-token}
+                                     {:channel channel-id
+                                      :topic (str "on Sparkboard: " project-url)}))
+            (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
+                                                          :slack/channel-id channel-id
+                                                          :sparkboard/project-id project-id}))
+            (assoc context :slack/channel-id channel-id))))))
 
 (defn nav-project-channel [{:as req
                             {:sparkboard/keys [account-id

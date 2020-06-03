@@ -1,16 +1,20 @@
 (ns org.sparkboard.server.slack.screens
-  (:require [org.sparkboard.slack.urls :as urls]))
+  (:require [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.firebase.jvm :as fire-jvm]))
 
 (defn main-menu [context]
   (list
+    (let [{:keys [title domain]} (fire-jvm/read (str "settings/" (:sparkboard/board-id context)))]
+      [:section
+       {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
+       (str "This Slack team is connected to *" title "* on Sparkboard.")])
+    [:divider]
     [:section
      {:accessory [:button {:style "primary",
                            :action_id "admin:team-broadcast"
                            :value "click_me_123"}
                   "Compose"]}
      "*Team Broadcast*\nSend a message to all teams."]
-    [:divider]
-    [:section "Admin actions"]
     [:actions
      [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                   :slack/team-id]))} "Reinstall App"]]))
@@ -23,7 +27,7 @@
        [:button {:style "primary"
                  :action_id "URL"
                  :url linking-url}
-        (str "Link Account")]])) )
+        (str "Link Account")]])))
 
 (defn home [context]
   [:home
@@ -31,11 +35,9 @@
      (main-menu context)
      (link-account context))
    [:section
-    (str "_Last updated:_ " (rand-int 10000)
-         ;; FIXME (-> (js/Date.)
-         ;;     (.toLocaleString "en-US" #js{:dateStyle "medium"
-         ;;                                  :timeStyle "medium"}))
-         )]])
+    (str "_Last updated: "
+         (->> (java.util.Date.)
+              (.format (new java.text.SimpleDateFormat "hh:m a, MMMM d, YYYY"))) "_")]])
 
 (defn shortcut-modal [context]
   [:modal {:title "Broadcast"
@@ -49,7 +51,7 @@
      {:block_id "sb-section1"
       :accessory [:conversations_select
                   {:placeholder [:plain_text "Select a channel..."],
-                   :initial_conversation "team-updates" ; default channel TODO should this come from db?
+                   :initial_conversation "team-updates"     ; default channel TODO should this come from db?
                    :action_id "broadcast2:channel-select"
                    :filter {:include ["public" "private"]}}]}
      "*Post responses to channel:*"]
@@ -91,22 +93,22 @@
 (defn team-broadcast-response [reply-channel]
   [:modal {:title [:plain_text "Project Update"]
            :blocks (list
-                    {:type "actions",
-                     :elements [[:button {:text {:type "plain_text",
-                                                 :text "Describe current status",
-                                                 :emoji true},
-                                          :action_id "user:team-broadcast-response-status"
-                                          :value "click_me_123"}]
-                                [:button {:text {:type "plain_text",
-                                                 :text "Share achievement",
-                                                 :emoji true},
-                                          :action_id "user:team-broadcast-response-achievement"
-                                          :value "click_me_456"}]
-                                [:button {:text {:type "plain_text",
-                                                 :text "Ask for help",
-                                                 :emoji true},
-                                          :action_id "user:team-broadcast-response-help"
-                                          :value "click_me_789"}]]})
+                     {:type "actions",
+                      :elements [[:button {:text {:type "plain_text",
+                                                  :text "Describe current status",
+                                                  :emoji true},
+                                           :action_id "user:team-broadcast-response-status"
+                                           :value "click_me_123"}]
+                                 [:button {:text {:type "plain_text",
+                                                  :text "Share achievement",
+                                                  :emoji true},
+                                           :action_id "user:team-broadcast-response-achievement"
+                                           :value "click_me_456"}]
+                                 [:button {:text {:type "plain_text",
+                                                  :text "Ask for help",
+                                                  :emoji true},
+                                           :action_id "user:team-broadcast-response-help"
+                                           :value "click_me_789"}]]})
            :submit [:plain_text "Send"]
            :private_metadata reply-channel}])
 
@@ -152,17 +154,17 @@
     :text {:type "mrkdwn", :text (str "_Project:_ * " project "*")}}
    {:type "section",
     :text {:type "plain_text", :text msg, :emoji true}}
-   #_ {:type "actions",
-    :elements [{:type "button",
-                :text {:type "plain_text",
-                       :text "Go to channel", ; FIXME (project->channel project)
-                       :emoji true},
-                :value "click_me_123"}
-               {:type "button",
-                :text {:type "plain_text",
-                       :text "View project", ; FIXME sparkboard project URL
-                       :emoji true}
-                :value "click_me_123"}]}])
+   #_{:type "actions",
+      :elements [{:type "button",
+                  :text {:type "plain_text",
+                         :text "Go to channel",             ; FIXME (project->channel project)
+                         :emoji true},
+                  :value "click_me_123"}
+                 {:type "button",
+                  :text {:type "plain_text",
+                         :text "View project",              ; FIXME sparkboard project URL
+                         :emoji true}
+                  :value "click_me_123"}]}])
 
 (comment
   (hiccup/->blocks team-broadcast-modal-compose)
