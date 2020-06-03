@@ -7,11 +7,14 @@
             [lambdaisland.uri :as uri]
             [org.sparkboard.js-convert :refer [clj->json]]))
 
-(defn- sparkboard-host [env domain]
-  (case env
-    "dev" (str "http://" domain ".test:4999")
-    "staging" (str "http://" domain ".sparkboard.org")
-    "prod" (str "https://" domain)))
+(defn sparkboard-host
+  ([domain]
+   (sparkboard-host (:env env/config "dev") domain))
+  ([env domain]
+   (case env
+     "dev" (str "http://" domain ".test:4999")
+     "staging" (str "http://" domain ".sparkboard.org")
+     "prod" (str "https://" domain))))
 
 (defn app-redirect [params]
   (str "https://slack.com/app_redirect?" (uri/map->query-string params)))

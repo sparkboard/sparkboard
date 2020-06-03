@@ -13,6 +13,7 @@
 (def slack-config (-> env/config :slack))
 
 (def required-scopes ["channels:read"
+                      "channels:manage"
                       "chat:write"
                       "commands"
                       "groups:read"
@@ -34,9 +35,9 @@
         {:keys [slack/team-id
                 sparkboard/board-id]} (tokens/decode state)
         error (when board-id
-                (let [entry (slack-db/board->team board-id)]
-                  (when (and entry (not= board-id (:board-id entry)))
-                    (str "This board is already linked to the Slack team " (:team-name entry)))))]
+                (when-let [entry (slack-db/board->team board-id)]
+                  (when (not= board-id (:sparkboard/board-id entry))
+                    (str "This board is already linked to the Slack team " (:slack/team-name entry)))))]
     (if error
       (http/unauthorized error)
       (http/found

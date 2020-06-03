@@ -1,6 +1,7 @@
 (ns org.sparkboard.server.slack.core
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
+            [org.sparkboard.js-convert :refer [json->clj]]
             [taoensso.timbre :as log])
   (:import [java.net.http HttpClient HttpRequest HttpClient$Version HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
            [java.net URI]))
@@ -36,9 +37,9 @@
          clnt (-> (HttpClient/newBuilder)
                   (.version HttpClient$Version/HTTP_2)
                   (.build))
-         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
      (log/debug "[web-api] GET rsp:" rsp)
-     (json/read-value rsp)))
+     rsp))
   ([family-method config body]
    (log/debug "[web-api] body:" body)
    (let [request (-> (HttpRequest/newBuilder)
@@ -50,9 +51,9 @@
          clnt (-> (HttpClient/newBuilder)
                   (.version HttpClient$Version/HTTP_2)
                   (.build))
-         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
      (log/debug "[web-api] POST rsp:" rsp)
-     (json/read-value rsp))))
+     rsp)))
 
 ;; TODO "when a new member joins a project, add them to the linked channel"
 
