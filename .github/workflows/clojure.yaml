@@ -5,7 +5,7 @@ name: clojure
 on:
   push:
     branches:
-      - master
+      - staging
 
 jobs:
   deploy-jar-to-staging:
