@@ -51,6 +51,9 @@
                 :state state}))))))
 
 
+(get+ (str base-uri "users.info")
+      {:query {:user "U014033LZNW"
+               :token "xoxb-1136314689523-1154487745250-Z7kN18aCChLfcMr2yxr7Pb81"}})
 (defn redirect
   "This is the main oauth redirect, where Slack sends users who are in the process of installing our Slack app.
    We know who users are already when they land here because we pass Slack a `state` parameter when we start
@@ -80,8 +83,8 @@
       ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
       ;; this app on.
       (let [user-response (get+ (str base-uri "users.info")
-                                {:query {:user user-id}
-                                 :auth/token access_token})]
+                                {:query {:user user-id
+                                         :token access_token}})]
         (log/trace :redirect/user-response user-response)
         (try
           (assert (get-in user-response [:user :is_admin])
