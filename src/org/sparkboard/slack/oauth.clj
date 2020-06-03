@@ -54,6 +54,12 @@
 (get+ (str base-uri "users.info")
       {:query {:user "U014033LZNW"
                :token "xoxb-1136314689523-1154487745250-Z7kN18aCChLfcMr2yxr7Pb81"}})
+
+(defn res-text [res message]
+  (-> res
+      (assoc :body message)
+      (assoc-in [:headers "Content-Type"] "text/plain")))
+
 (defn redirect
   "This is the main oauth redirect, where Slack sends users who are in the process of installing our Slack app.
    We know who users are already when they land here because we pass Slack a `state` parameter when we start
@@ -113,7 +119,7 @@
           (http/found (urls/slack-home app-id team-id))
           (catch Exception e
             (log/error :error-in-oauth-redirect e)
-            (http/unauthorized (ex-message e)))
+            (res-text (http/unauthorized) (ex-message e)))
           (catch java.lang.AssertionError e
-            (log/error :assertion-in-oauth-redirect e)
-            (http/unauthorized (ex-message e))))))))
+            (log/error e)
+            (res-text (http/unauthorized) (ex-message e))))))))
