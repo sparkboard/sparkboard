@@ -83,7 +83,7 @@
   "Handler for specific block actions.
   Branches on the bespoke action ID (set in server.slack.screens)."
   [context payload]
-  (log/debug "[block-actions!] payload" payload)
+  (log/debug "[block-actions] payload" payload)
   (let [view-id (get-in payload [:container :view_id])]
     (case (-> payload :actions first :action_id)
       "admin:team-broadcast"
@@ -99,31 +99,12 @@
       (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
                      {:trigger_id (:trigger_id payload)
                       :view (hiccup/->blocks-json
-                              (screens/team-broadcast-response (->> payload
-                                                                    :message
-                                                                    :blocks last
-                                                                    :elements first
-                                                                    ;; text between brackets with lookahead/lookbehind:
-                                                                    :text (re-find #"(?<=\[).+?(?=\])"))))})
-
-      "user:team-broadcast-response-status"
-      (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
-                     {:view_id view-id
-                      :view (hiccup/->blocks-json
-                              (screens/team-broadcast-response-status
-                                (get-in payload [:view :private_metadata])))})
-      "user:team-broadcast-response-achievement"
-      (slack/web-api "views.update"
-                     {:auth/token (:slack/bot-token context)} {:view_id view-id
-                                                               :view (hiccup/->blocks-json
-                                                                       (screens/team-broadcast-response-achievement
-                                                                         (get-in payload [:view :private_metadata])))})
-      "user:team-broadcast-response-help"
-      (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
-                     {:view_id view-id
-                      :view (hiccup/->blocks-json
-                              (screens/team-broadcast-response-help
-                                (get-in payload [:view :private_metadata])))})
+                             (screens/team-broadcast-response
+                              (->> payload :message :blocks first :text :text) ; broadcast msg
+                              (->> payload :message :blocks last
+                                   :elements first :text
+                                   ;; text between brackets with lookahead/lookbehind:
+                                   (re-find #"(?<=\[).+?(?=\])"))))})
 
       "broadcast2:channel-select"                           ;; refresh same view then save selection in private metadata
       (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
@@ -510,4 +491,6 @@
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt)) 3000)))
 
 (comment
-  (-main))
+  (-main)
+
+  )
