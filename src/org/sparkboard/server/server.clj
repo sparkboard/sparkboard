@@ -67,13 +67,18 @@
   (str/replace s "+" " "))
 
 (defn request-updates [context msg reply-channel]
-  ;; TODO Write broadcast to Firebase
-  (log/debug "[request-updates] msg:" msg)
-  (let [blocks (hiccup/->blocks-json (screens/team-broadcast-message msg reply-channel))]
-    (->> (slack-db/team->all-linked-channels (:slack/team-id context))
-         (mapv #(slack/web-api "chat.postMessage"
-                               {:auth/token (:slack/bot-token context)}
-                               {:channel (:channel-id %) :blocks blocks})))))
+  (let [reply-channel-name (slack/channel-name reply-channel)]
+    (log/debug "[request-updates] msg:" msg)
+    (fire-jvm/set-value (.push (fire-jvm/->ref "/slack-broadcast"))
+                        {:message msg
+                         :reply-to {:channel-id reply-channel
+                                    :reply-channel reply-channel-name}})
+    (mapv #(slack/web-api "chat.postMessage"
+                          {:auth/token (:slack/bot-token context)}
+                          {:channel (:channel-id %)
+                           :blocks (hiccup/->blocks-json
+                                    (screens/team-broadcast-message msg reply-channel-name))})
+          (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

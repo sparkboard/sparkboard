@@ -2,6 +2,7 @@
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
             [org.sparkboard.js-convert :refer [json->clj]]
+            [org.sparkboard.server.env :as env]
             [taoensso.timbre :as log])
   (:import [java.net.http HttpClient HttpRequest HttpClient$Version HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
            [java.net URI]))
@@ -59,10 +60,17 @@
      (log/debug "[web-api] POST rsp:" rsp)
      rsp)))
 
-;; TODO "when a new member joins a project, add them to the linked channel"
-
 (comment
   (http-verb "/users.list")
-  
-  ;; TODO delete/archive channel, for testing and clean-up
+
   )
+
+(def channel-name
+  (memoize
+   (fn [channel-id]
+     (get (into {}
+                (map (juxt :id :name_normalized)
+                     (:channels (web-api "channels.list"
+                                         {:auth/token (-> env/config :slack
+                                                          :bot-user-oauth-token)}))))
+          channel-id))))

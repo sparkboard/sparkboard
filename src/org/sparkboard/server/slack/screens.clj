@@ -109,7 +109,7 @@
                   ;; See https://api.slack.com/reference/surfaces/views
                   (when private-data {:private_metadata private-data}))]))
 
-(defn team-broadcast-message [msg reply-channel]
+(defn team-broadcast-message [msg reply-channel-name]
   (list
     [:section {:text {:type "mrkdwn" :text msg}}]
     {:type "actions",
@@ -121,10 +121,7 @@
                           :value "click_me_123"}]]}
     {:type "context",
      :elements [{:type "mrkdwn",
-                 ;; TODO make `reply-channel` a human-readable channel
-                 ;; name; `db` namespace was broken in an earlier
-                 ;; refactor so don't have time now
-                 :text (str "Responses will post to channel [" reply-channel "]")}]}))
+                 :text (str "Responses will post to channel [" reply-channel-name "]")}]}))
 
 (defn team-broadcast-response [original-msg reply-channel]
   [:modal {:title [:plain_text "Project Update"]
