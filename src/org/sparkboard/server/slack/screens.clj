@@ -135,10 +135,11 @@
            :private_metadata reply-channel
            :submit [:plain_text "Send"]}])
 
-(defn team-broadcast-response-msg [project msg]
+(defn team-broadcast-response-msg [replying-user project msg]
   [{:type "divider"}
    {:type "section",
-    :text {:type "mrkdwn", :text (str "_Project:_ * " project "*")}}
+    :text {:type "mrkdwn", :text (str "_Project:_ * " project "*, "
+                                      "_User:_ * " replying-user "*")}}
    {:type "section",
     :text {:type "plain_text", :text msg, :emoji true}}
    #_{:type "actions",

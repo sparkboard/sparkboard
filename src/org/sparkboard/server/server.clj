@@ -100,18 +100,18 @@
                                {:view_id view-id
                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))}))
 
-      "user:team-broadcast-response"
+      "user:team-broadcast-response" ; user opens modal to respond to broadcast
       (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
                      {:trigger_id (:trigger_id payload)
                       :view (hiccup/->blocks-json
                              (screens/team-broadcast-response
-                              (->> payload :message :blocks first :text :text) ; broadcast msg
+                              (->  payload :message :blocks first :text :text) ; broadcast msg
                               (->> payload :message :blocks last
                                    :elements first :text
                                    ;; text between brackets with lookahead/lookbehind:
                                    (re-find #"(?<=\[).+?(?=\])"))))})
 
-      "broadcast2:channel-select"                           ;; refresh same view then save selection in private metadata
+      "broadcast2:channel-select" ; refresh same view then save selection in private metadata
       (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
@@ -138,13 +138,14 @@
           (-> state :sb-project-help1 :user:help-input))
       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
                      {:blocks (hiccup/->blocks-json
-                                (screens/team-broadcast-response-msg
-                                  "FIXME TODO project"
-                                  (-> (or (get-in state [:sb-project-status1 :user:status-input])
-                                          (get-in state [:sb-project-achievement1 :user:achievement-input])
-                                          (get-in state [:sb-project-help1 :user:help-input]))
-                                      :value
-                                      decode-text-input)))
+                               (screens/team-broadcast-response-msg
+                                (->  payload :user :name)
+                                "FIXME TODO project"
+                                (-> (or (get-in state [:sb-project-status1 :user:status-input])
+                                        (get-in state [:sb-project-achievement1 :user:achievement-input])
+                                        (get-in state [:sb-project-help1 :user:help-input]))
+                                    :value
+                                    decode-text-input)))
                       :channel (get-in payload [:view :private_metadata])}))))
 
 (defn send-welcome-message! [context {:as user :keys [id]}]
