@@ -1,5 +1,6 @@
 (ns org.sparkboard.slack.slack-db
-  (:require [clojure.pprint :as pp]
+  (:require [clojure.set :as set]
+            [clojure.pprint :as pp]
             [org.sparkboard.promise :as p]
             [org.sparkboard.firebase.admin-db-api :as fire]))
 
@@ -69,52 +70,47 @@
 (defn linked-team [team-id]
   (fire/read (str "/slack-team/" team-id)))
 
-(defn team->token [app-id team-id]
-  {:pre [(and app-id team-id)]}
-  (fire/read (str "/slack-team/" team-id "/app/" app-id "/bot-token")))
-
 ;; lookups by index
 
 (defn team->all-linked-channels [team-id]
-  (p/->> (fire/read (str "/slack-channel")
-                    {:query [:orderBy "team-id"
-                             :equalTo team-id]})
-         (fire/map->list :channel-id)))
+    (p/->> (fire/read (str "/slack-channel")
+                      {:query [:orderBy "team-id"
+                               :equalTo team-id]})
+           (fire/map->list :channel-id)))
 
 (defn project->linked-channel [project-id]
   (p/->> (fire/read (str "/slack-channel")
                     {:query [:orderBy "project-id"
                              :equalTo project-id
                              :limitToFirst 1]})
-         (fire/map->list :channel-id)))
+         (fire/map->list :slack/channel-id)
+         first
+         (#(set/rename-keys % {:team-id :slack/team-id
+                               :project-id :sparkboard/project-id}))))
 
 (defn account->all-linked-users [account-id]
   (p/->> (fire/read (str "/slack-user")
                     {:query [:orderBy "account-id"
                              :equalTo account-id]})
-         (fire/map->list :user-id)))
+         (fire/map->list :slack/user-id)))
 
 (defn account->team-user [{:keys [slack/team-id
                                   sparkboard/account-id]}]
-  (p/->> (account->all-linked-users account-id)
-         (filter #(= (:team-id %) team-id))
-         first))
+  (some->> (account->all-linked-users account-id)
+           (filter #(= (:team-id %) team-id))
+           first
+           (#(set/rename-keys % {:team-id :slack/team-id
+                                 :account-id :sparkboard/account-id}))))
 
 (defn board->team [board-id]
-  (p/->> (fire/read "/slack-team"
-                    {:query [:orderBy "board-id"
-                             :equalTo board-id
-                             :limitToFirst 1]})
-         (fire/map->list :team-id)
-         first))
-
-(defn user-is-board-admin? [slack-user-id team-id]
-  (p/let [{:keys [board-id]} (linked-team team-id)
-          {:keys [account-id]} (linked-user slack-user-id)]
-    ;; TODO
-    ;; ask Sparkboard if account is admin of board,
-    ;; OR rely on Slack admin status?
-    ))
+  (some->> (fire/read "/slack-team"
+                      {:query [:orderBy "board-id"
+                               :equalTo board-id
+                               :limitToFirst 1]})
+           (fire/map->list :slack/team-id)
+           first
+           (#(set/rename-keys % {:board-id :sparkboard/board-id
+                                 :team-name :slack/team-name}))))
 
 (defn board-domain [board-id]
   (fire/read (str "/settings/" board-id "/domain")))

@@ -2,10 +2,8 @@
   (:require [org.sparkboard.firebase.tokens :as tokens]
             [kitchen-async.promise :as p]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.http :as http]
-            [org.sparkboard.js-convert :refer [->clj]]
-            [applied-science.js-interop :as j]))
+            [org.sparkboard.js-convert :refer [->clj]]))
 
 ;; this fn is called by the legacy node server and handles inbound links (from slack to sparkboard).
 (defn slack-link-proxy [legacy-session]
@@ -33,21 +31,13 @@
 
           :link-account
           (p/do
-
-            ;; TODO
-            ;; visible confirmation step to link the two accounts?
-            (slack-db/link-user-to-account!                 ;; link the accounts
-              {:slack/team-id team-id
-               :slack/user-id user-id
-               :sparkboard/account-id req-account-id})
-
-            ;; update the user's home tab
-            (http/post+ (str (env/config :sparkboard/jvm-root) "/slack/sparkboard-action")
+            (http/post+ (str (env/config :sparkboard/jvm-root) "/slack/server-action")
                         {:auth/token (tokens/encode {:sparkboard/server-request? true})
                          :body/content-type :transit+json
-                         :body {:action :update-home!
+                         :body {:action :link-account!
                                 :slack/team-id team-id
-                                :slack/user-id user-id}})
+                                :slack/user-id user-id
+                                :sparkboard/account-id req-account-id}})
             (res-redirect redirect))
           :auth-redirect
           (res-redirect (str "/login?redirect=" (js/encodeURIComponent req-url)))))

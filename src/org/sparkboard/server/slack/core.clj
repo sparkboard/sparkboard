@@ -1,6 +1,8 @@
 (ns org.sparkboard.server.slack.core
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
+            [org.sparkboard.js-convert :refer [json->clj]]
+            [org.sparkboard.server.env :as env]
             [taoensso.timbre :as log])
   (:import [java.net.http HttpClient HttpRequest HttpClient$Version HttpRequest$BodyPublishers HttpResponse$BodyHandlers]
            [java.net URI]))
@@ -36,9 +38,11 @@
          clnt (-> (HttpClient/newBuilder)
                   (.version HttpClient$Version/HTTP_2)
                   (.build))
-         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
      (log/debug "[web-api] GET rsp:" rsp)
-     (json/read-value rsp)))
+     (when-not  (:ok rsp)
+       (throw (ex-info (str "web-api failure: slack/" family-method) {:rsp rsp :config config})))
+     rsp))
   ([family-method config body]
    (log/debug "[web-api] body:" body)
    (let [request (-> (HttpRequest/newBuilder)
@@ -50,14 +54,22 @@
          clnt (-> (HttpClient/newBuilder)
                   (.version HttpClient$Version/HTTP_2)
                   (.build))
-         rsp (.body (.send clnt request (HttpResponse$BodyHandlers/ofString)))]
+         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
+     (when-not  (:ok rsp)
+       (throw (ex-info (str "web-api failure: slack/" family-method) {:rsp rsp :config config})))
      (log/debug "[web-api] POST rsp:" rsp)
-     (json/read-value rsp))))
-
-;; TODO "when a new member joins a project, add them to the linked channel"
+     rsp)))
 
 (comment
   (http-verb "/users.list")
-  
-  ;; TODO delete/archive channel, for testing and clean-up
+
   )
+
+(def channel-name
+  (memoize
+   (fn [channel-id token]
+     (get (into {}
+                (map (juxt :id :name_normalized)
+                     (:channels (web-api "channels.list"
+                                         {:auth/token token}))))
+          channel-id))))

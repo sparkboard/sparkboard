@@ -13,6 +13,7 @@
 (def slack-config (-> env/config :slack))
 
 (def required-scopes ["channels:read"
+                      "channels:manage"
                       "chat:write"
                       "commands"
                       "groups:read"
@@ -31,12 +32,13 @@
   [{:keys [query-params] :as req}]
   (log/trace :install-redirect/req req)
   (let [{:strs [state]} query-params
-        {:keys [slack/team-id
+        {:keys [dev/local?
+                slack/team-id
                 sparkboard/board-id]} (tokens/decode state)
         error (when board-id
-                (let [entry (slack-db/board->team board-id)]
-                  (when (and entry (not= board-id (:board-id entry)))
-                    (str "This board is already linked to the Slack team " (:team-name entry)))))]
+                (when-let [entry (slack-db/board->team board-id)]
+                  (when (not= board-id (:sparkboard/board-id entry))
+                    (str "This board is already linked to the Slack team " (:slack/team-name entry)))))]
     (if error
       (http/unauthorized error)
       (http/found
@@ -49,6 +51,10 @@
                 ;; the `state` query parameter - a signed token from Sparkboard
                 :state state}))))))
 
+(defn res-text [res message]
+  (-> res
+      (assoc :body message)
+      (assoc-in [:headers "Content-Type"] "text/plain")))
 
 (defn redirect
   "This is the main oauth redirect, where Slack sends users who are in the process of installing our Slack app.
@@ -60,7 +66,7 @@
          :keys [sparkboard/board-id
                 sparkboard/account-id
                 slack/team-id
-                lambda/local?]} (tokens/decode state)
+                dev/local?]} (tokens/decode state)
         ;; use the code from Slack to request an access token
         response (get+ (str base-uri "oauth.v2.access")
                        {:query {:code code
@@ -82,29 +88,28 @@
                                 {:query {:user user-id
                                          :token access_token}})]
         (log/trace :redirect/user-response user-response)
-        (try
-          (assert (get-in user-response [:user :is_admin])
-                  "Only an admin can install the Sparkboard app")
-          (when-let [token-team (:slack/team-id token-claims)]
-            (assert (= token-team team-id) "Reinstall must be to the same team"))
 
-          (when board-id
-            (slack-db/link-team-to-board!
-              {:slack/team-id team-id
-               :sparkboard/board-id board-id}))
-          (slack-db/install-app!
-            {:slack/team-id team-id
-             :slack/team-name team-name
-             :slack/app-id app-id
-             :slack/bot-token access_token
-             :slack/bot-user-id bot_user_id})
-          (when account-id
-            (slack-db/link-user-to-account!
-              {:slack/team-id team-id
-               :slack/user-id user-id
-               :sparkboard/account-id account-id}))
-          (http/found (urls/slack-home app-id team-id))
-          (catch Exception e
-            (http/unauthorized (.-message e)))
-          (catch java.lang.AssertionError e
-            (http/unauthorized e)))))))
+        (assert (get-in user-response [:user :is_admin])
+                "Only an admin can install the Sparkboard app")
+        (when-let [token-team (:slack/team-id token-claims)]
+          (assert (= token-team team-id) "Reinstall must be to the same team"))
+
+        (when board-id
+          (log/debug 'slack-db/link-team-to-board!
+                     (slack-db/link-team-to-board!
+                       {:slack/team-id team-id
+                        :sparkboard/board-id board-id})))
+        (log/debug 'slack-db/install-app!
+                   (slack-db/install-app!
+                     {:slack/team-id team-id
+                      :slack/team-name team-name
+                      :slack/app-id app-id
+                      :slack/bot-token access_token
+                      :slack/bot-user-id bot_user_id}))
+        (when account-id
+          (log/debug 'slack-db/link-user-to-account!
+                     (slack-db/link-user-to-account!
+                       {:slack/team-id team-id
+                        :slack/user-id user-id
+                        :sparkboard/account-id account-id})))
+        (http/found (urls/slack-home app-id team-id))))))

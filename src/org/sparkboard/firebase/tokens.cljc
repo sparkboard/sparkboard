@@ -10,7 +10,7 @@
 
 (def creds (:firebase/service-account env/config))
 
-(defn encode [{:as claims} & [{:keys [expires-in]
+(defn encode [claims & [{:keys [expires-in]
                                :or {expires-in 3600}}]]
   (let [now (jwt/now-in-seconds)
         {:keys [private_key client_email]} creds
