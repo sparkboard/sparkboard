@@ -6,7 +6,7 @@
 
 (def action-id-separator "::")
 
-(defn main-menu [context]
+(defn admin-menu [context]
   (list
     [:section
      {:accessory [:button {:style "primary",
@@ -26,8 +26,9 @@
         (str "Link Account")]])))
 
 (defn home [context]
+  (tap> (slack/web-api "users.info" {} {:user (:slack/user-id context)
+                                        :token (:slack/bot-token context)}))
   [:home
-
    (if-let [board-id (:sparkboard/board-id context)]
      (let [{:keys [title domain]} (fire-jvm/read (str "settings/" board-id))]
        [:section
@@ -39,8 +40,7 @@
      (link-account context))
 
    [:divider]
-
-   (main-menu context)
+   (admin-menu context)
 
    [:section
     (str "_Updated "
@@ -53,10 +53,10 @@
 
 (defn shortcut-modal [context]
   [:modal {:title "Broadcast"
-           :blocks (main-menu context)}])
+           :blocks (admin-menu context)}])
 
 (defn destination-channel-groups [{:keys [slack/bot-token
-                                    slack/bot-user-id]}]
+                                          slack/bot-user-id]}]
   (let [channels (->> (slack/web-api "conversations.list"
                                      {:auth/token bot-token}
                                      {:exclude_archived true

@@ -29,15 +29,15 @@
            (org.apache.commons.codec.binary Hex)))
 
 (def log-levels
-  (case (env/config :env "dev")
-    "dev" '{:all :info
-            org.sparkboard.server.server :trace
-            ;org.sparkboard.firebase.jvm :trace
-            org.sparkboard.server.slack.core :trace}
-    "staging" '{:all :info
-                org.sparkboard.slack.oauth :trace
-                org.sparkboard.server.server :trace}
-    "prod" {:all :warn}))
+  (or (env/config :dev.logging/levels)
+      (case (env/config :env "dev")
+        "dev" '{:all :trace
+                org.sparkboard.server.server :trace
+                org.sparkboard.server.slack.core :trace}
+        "staging" '{:all :info
+                    org.sparkboard.slack.oauth :trace
+                    org.sparkboard.server.server :trace}
+        "prod" {:all :warn})))
 
 (-> {:middleware [(timbre-patterns/middleware
                     (reduce-kv
@@ -105,6 +105,38 @@
       ;; Default: failure XXX `throw`?
       (log/error [:unhandled-block-action (-> payload :actions first :action-id)]))))
 
+(defn team-context [team-id]
+  ;; context we derive from team-id
+  (let [app-id (-> env/config :slack :app-id)
+        team (slack-db/linked-team team-id)
+        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
+    (def APP-ID app-id)
+    (def BOT-TOKEN bot-token)
+    (def BOT-USER-ID bot-user-id)
+    {:slack/team-id team-id
+     :slack/bot-token bot-token
+     :slack/bot-user-id bot-user-id
+     :sparkboard/board-id (:board-id team)}))
+
+(defn user-context [user-id]
+  ;; context we derive from user-id
+  (let [user (slack-db/linked-user user-id)]
+    {:sparkboard/account-id (:account-id user)
+     :slack/user-id user-id}))
+
+(defn slack-context
+  "Returns context-map expected by functions handling Slack events"
+  [team-id user-id]
+  {:pre [team-id user-id]}
+  (merge (team-context team-id)
+         (user-context user-id)
+         {:slack/app-id (-> env/config :slack :app-id)
+          :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
+          :env (:env env/config "dev")}))
+
+(defn req-token [req]
+  (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
+      (-> req :params :token)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Individual/second-tier handlers
@@ -161,35 +193,6 @@
     )
   )
 
-(defn team-context [team-id]
-  ;; context we derive from team-id
-  (let [app-id (-> env/config :slack :app-id)
-        team (slack-db/linked-team team-id)
-        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
-    (def APP-ID app-id)
-    (def BOT-TOKEN bot-token)
-    (def BOT-USER-ID bot-user-id)
-    {:slack/team-id team-id
-     :slack/bot-token bot-token
-     :slack/bot-user-id bot-user-id
-     :sparkboard/board-id (:board-id team)}))
-
-(defn user-context [user-id]
-  ;; context we derive from user-id
-  (let [user (slack-db/linked-user user-id)]
-    {:sparkboard/account-id (:account-id user)
-     :slack/user-id user-id}))
-
-(defn slack-context
-  "Returns context-map expected by functions handling Slack events"
-  [team-id user-id]
-  {:pre [team-id user-id]}
-  (merge (team-context team-id)
-         (user-context user-id)
-         {:slack/app-id (-> env/config :slack :app-id)
-          :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
-          :env (:env env/config "dev")}))
-
 (defn update-user-home-tab! [context]
   (slack/web-api "views.publish" {:auth/token (:slack/bot-token context)}
                  {:user_id (:slack/user-id context)
@@ -207,10 +210,6 @@
      :sparkboard/account-id account-id})
   (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
   (ring.http/ok))
-
-(defn req-token [req]
-  (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
-      (-> req :params :token)))
 
 (defn mock-slack-link-proxy [{{:as token-claims
                                :keys [slack/user-id
@@ -282,15 +281,16 @@
   "must be a Sparkboard server request"
   [f & claims-checks]
   (fn [req]
-    (if-let [claims (try (some-> (req-token req)
-                                 (fire-tokens/decode)
-                                 (cond-> (seq claims-checks)
-                                         (u/guard (apply every-pred claims-checks))))
-                         (catch Exception e nil))]
-      (f (assoc req :auth/token-claims claims))
-      (do
-        (log/warn "Sparkboard token verification failed." {:uri (:uri req)})
-        (respond-str 401 "Invalid token")))))
+    (let [token (req-token req)
+          claims (some-> token (fire-tokens/decode))
+          check-claims (or (some->> claims-checks seq (apply every-pred)) (constantly true))]
+      (if (check-claims claims)
+        (f (assoc req :auth/token-claims claims))
+        (do
+          (log/warn "Sparkboard token verification failed." {:uri (:uri req)
+                                                             :claims claims
+                                                             :token token})
+          (respond-str 401 "Invalid token"))))))
 
 (defn slack-ok! [resp status message]
   (if (:ok resp)
@@ -298,17 +298,28 @@
     (throw (ex-info message {:status status
                              :resp resp}))))
 
+(defn invite-user [req {:keys [slack/team-id
+                               slack/invitation-link
+                               sparkboard/account-id]}]
+  (respond-html 200
+                (str "Please <a href='" invitation-link "'>join our Slack community,</a>
+                                         follow the instructions to link your Sparkboard account, and then
+                                         reload this page.")))
+
 (defn wrap-sparkboard-invite [f]
   (fn [req]
-    (let [{:sparkboard/keys [account-id board-id]} (:auth/token-claims req)
-          {:slack/keys [team-id invitation-link]} (slack-db/board->team board-id)
-          user-id (slack-db/account->team-user {:slack/team-id team-id
-                                                :sparkboard/account-id account-id})]
+    (let [{:as token-claims
+           :sparkboard/keys [account-id board-id]} (:auth/token-claims req)
+          _ (log/info :token-claims token-claims)
+          {:as slack-team
+           :slack/keys [team-id invitation-link]} (slack-db/board->team board-id)
+          {:as slack-user
+           :keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
+                                                                :sparkboard/account-id account-id})]
       (cond user-id (f req)
-            invitation-link (respond-html 200
-                                          (str "Please <a href='" invitation-link "'>join our Slack community,</a>
-                                         follow the instructions to link your Sparkboard account, and then
-                                         reload this page."))
+            invitation-link (invite-user req (merge slack-team
+                                                    slack-user
+                                                    token-claims))
             ;; TODO - this page can subscribe to /account/$/slack-team/$/user-id,
             ;;        wait for linking to occur,
             ;;        and then show a "Continue" button ... ?
@@ -319,7 +330,9 @@
                                                        :team "T014098L9FD"}})
                                    (slack-ok! 500 "Could not read team info")
                                    :team :domain)]
-                    (ring.http/temporary-redirect domain))))))
+                    (respond-html  200
+                                   (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
+                                        "Please contact an organizer.")))))))
 
 (defn slack-channel-namify [s]
   (-> s
@@ -334,7 +347,6 @@
        (let [v# ~form]
          (log/info :call/value v#)
          v#)))
-
 
 (defn user-info [{:slack/keys [user-id bot-token]}]
   (http/get+ (str slack/base-uri "users.info")              ;; `web-api` fn does not work b/c queries are broken
@@ -438,11 +450,9 @@
 (defn sparkboard-action
   "Event triggered by Sparkboard (legacy)"
   [{:as req :keys [params]}]
-
   (let [{:keys [action slack/team-id slack/user-id]} params
         context (slack-context team-id user-id)]
     (case action
-      :update-home! (update-user-home-tab! context)
       :link-account! (link-account! context params))))
 
 (def routes
@@ -456,9 +466,9 @@
                "slack/server-action" (wrap-sparkboard-verify sparkboard-action
                                                              :sparkboard/server-request?)
                ["slack/project-channel/" :project-id] (-> nav-project-channel
+                                                          (wrap-sparkboard-invite)
                                                           (wrap-sparkboard-verify :sparkboard/account-id
-                                                                                  :sparkboard/board-id)
-                                                          (wrap-sparkboard-invite))
+                                                                                  :sparkboard/board-id))
                "slack/install" slack-oauth/install-redirect}
               (when (not= "prod" (env/config :env))
                 {"slack/install-local"
@@ -483,12 +493,12 @@
     (log/info :URI (:uri req))
     (try (f req)
          (catch Exception e
-           (log/error e)
+           (log/error (ex-message e) (ex-data e))
            (text-response
              (:status (ex-data e) 500)
              (ex-message e)))
          (catch java.lang.AssertionError e
-           (log/error e)
+           (log/error (ex-message e) (ex-data e))
            (text-response
              (:status (ex-data e) 500)
              (ex-message e))))))
