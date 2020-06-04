@@ -67,7 +67,7 @@
   (str/replace s "+" " "))
 
 (defn request-updates [context msg reply-channel]
-  (let [reply-channel-name (slack/channel-name reply-channel)
+  (let [reply-channel-name (slack/channel-name reply-channel (:slack/bot-token context))
         firebase-ref (.push (fire-jvm/->ref "/slack-broadcast"))]
     (fire-jvm/set-value firebase-ref
                         {:message msg

@@ -67,10 +67,9 @@
 
 (def channel-name
   (memoize
-   (fn [channel-id]
+   (fn [channel-id token]
      (get (into {}
                 (map (juxt :id :name_normalized)
                      (:channels (web-api "channels.list"
-                                         {:auth/token (-> env/config :slack
-                                                          :bot-user-oauth-token)}))))
+                                         {:auth/token token}))))
           channel-id))))
