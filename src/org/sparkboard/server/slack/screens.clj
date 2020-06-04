@@ -4,6 +4,8 @@
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]))
 
+(def action-id-separator "::")
+
 (defn main-menu [context]
   (list
     [:section
@@ -109,7 +111,9 @@
                   ;; See https://api.slack.com/reference/surfaces/views
                   (when private-data {:private_metadata private-data}))]))
 
-(defn team-broadcast-message [msg reply-channel]
+(defn team-broadcast-message
+  "Administrator broadcast to project channels, soliciting project update responses."
+  [msg firebase-key reply-channel-name]
   (list
     [:section {:text {:type "mrkdwn" :text msg}}]
     {:type "actions",
@@ -117,16 +121,17 @@
                           :text {:type "plain_text",
                                  :text "Post an Update",
                                  :emoji true},
-                          :action_id "user:team-broadcast-response"
+                          :action_id (str "user:team-broadcast-response"
+                                          action-id-separator
+                                          firebase-key)
                           :value "click_me_123"}]]}
     {:type "context",
      :elements [{:type "mrkdwn",
-                 ;; TODO make `reply-channel` a human-readable channel
-                 ;; name; `db` namespace was broken in an earlier
-                 ;; refactor so don't have time now
-                 :text (str "Responses will post to channel [" reply-channel "]")}]}))
+                 :text (str "Responses will post to channel [" reply-channel-name "]")}]}))
 
-(defn team-broadcast-response [original-msg reply-channel]
+(defn team-broadcast-response
+  "User response to broadcast - text field for project status update"
+  [original-msg firebase-key]
   [:modal {:title [:plain_text "Project Update"]
            :blocks [{:type "input",
                      :label {:type "plain_text",
@@ -135,13 +140,14 @@
                      :block_id "sb-project-status1"
                      :element {:type "plain_text_input", :multiline true
                                :action_id "user:status-input"}}]
-           :private_metadata reply-channel
+           :private_metadata firebase-key
            :submit [:plain_text "Send"]}])
 
-(defn team-broadcast-response-msg [project msg]
+(defn team-broadcast-response-msg [replying-user project msg]
   [{:type "divider"}
    {:type "section",
-    :text {:type "mrkdwn", :text (str "_Project:_ * " project "*")}}
+    :text {:type "mrkdwn", :text (str "_Project:_ * " project "*, "
+                                      "_User:_ * " replying-user "*")}}
    {:type "section",
     :text {:type "plain_text", :text msg, :emoji true}}
    #_{:type "actions",

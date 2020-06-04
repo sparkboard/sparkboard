@@ -67,13 +67,20 @@
   (str/replace s "+" " "))
 
 (defn request-updates [context msg reply-channel]
-  ;; TODO Write broadcast to Firebase
-  (log/debug "[request-updates] msg:" msg)
-  (let [blocks (hiccup/->blocks-json (screens/team-broadcast-message msg reply-channel))]
-    (->> (slack-db/team->all-linked-channels (:slack/team-id context))
-         (mapv #(slack/web-api "chat.postMessage"
-                               {:auth/token (:slack/bot-token context)}
-                               {:channel (:channel-id %) :blocks blocks})))))
+  (let [reply-channel-name (slack/channel-name reply-channel (:slack/bot-token context))
+        firebase-ref (.push (fire-jvm/->ref "/slack-broadcast"))]
+    (fire-jvm/set-value firebase-ref
+                        {:message msg
+                         :reply-to {:channel-id reply-channel
+                                    :reply-channel reply-channel-name}})
+    (mapv #(slack/web-api "chat.postMessage"
+                          {:auth/token (:slack/bot-token context)}
+                          {:channel (:channel-id %)
+                           :blocks (hiccup/->blocks-json
+                                    (screens/team-broadcast-message msg
+                                                                    (.getKey firebase-ref)
+                                                                    reply-channel-name))})
+          (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -84,8 +91,10 @@
   Branches on the bespoke action ID (set in server.slack.screens)."
   [context payload]
   (log/debug "[block-actions] payload" payload)
-  (let [view-id (get-in payload [:container :view_id])]
-    (case (-> payload :actions first :action_id)
+  (let [view-id (get-in payload [:container :view_id])
+        [action-id firebase-key] (str/split (-> payload :actions first :action_id)
+                                            (re-pattern screens/action-id-separator))]
+    (case action-id
       "admin:team-broadcast"
       (case (get-in payload [:view :type])
         "home" (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
@@ -95,18 +104,19 @@
                                {:view_id view-id
                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))}))
 
-      "user:team-broadcast-response"
-      (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
-                     {:trigger_id (:trigger_id payload)
-                      :view (hiccup/->blocks-json
-                             (screens/team-broadcast-response
-                              (->> payload :message :blocks first :text :text) ; broadcast msg
-                              (->> payload :message :blocks last
-                                   :elements first :text
-                                   ;; text between brackets with lookahead/lookbehind:
-                                   (re-find #"(?<=\[).+?(?=\])"))))})
+      "user:team-broadcast-response" ; "Post an Update" button (user opens modal to respond to broadcast)
+      (let [firebase-path (str "/slack-broadcast/" firebase-key)
+            firebase-child-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
+        (fire-jvm/set-value firebase-child-ref
+                            {:responding-from-channel (-> payload :channel :name)})
+        (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
+                       {:trigger_id (:trigger_id payload)
+                        :view (hiccup/->blocks-json
+                               (screens/team-broadcast-response
+                                (->  payload :message :blocks first :text :text) ; broadcast msg
+                                (str firebase-path "/replies/" (.getKey firebase-child-ref))))}))
 
-      "broadcast2:channel-select"                           ;; refresh same view then save selection in private metadata
+      "broadcast2:channel-select" ; refresh same view then save selection in private metadata
       (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
@@ -132,15 +142,17 @@
           (-> state :sb-project-achievement1 :user:achievement-input)
           (-> state :sb-project-help1 :user:help-input))
       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                     {:blocks (hiccup/->blocks-json
-                                (screens/team-broadcast-response-msg
-                                  "FIXME TODO project"
+                     (let [firebase-key (get-in payload [:view :private_metadata])]
+                       {:blocks (hiccup/->blocks-json
+                                 (screens/team-broadcast-response-msg
+                                  (->  payload :user :name)
+                                  (-> firebase-key fire-jvm/read :responding-from-channel)
                                   (-> (or (get-in state [:sb-project-status1 :user:status-input])
                                           (get-in state [:sb-project-achievement1 :user:achievement-input])
                                           (get-in state [:sb-project-help1 :user:help-input]))
                                       :value
                                       decode-text-input)))
-                      :channel (get-in payload [:view :private_metadata])}))))
+                        :channel (:channel-id (:reply-to (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref firebase-key))))))})))))
 
 (defn send-welcome-message! [context {:as user :keys [id]}]
   (let [url (urls/link-sparkboard-account context)]
