@@ -66,26 +66,6 @@
   ;; input, specifically replacing spaces with `+`
   (str/replace s "+" " "))
 
-(defn request-updates [context msg reply-channel]
-  (let [reply-channel-name (slack/channel-name reply-channel (:slack/bot-token context))
-        firebase-ref (.push (fire-jvm/->ref "/slack-broadcast"))]
-    (fire-jvm/set-value firebase-ref
-                        {:message msg
-                         :reply-to {:channel-id reply-channel
-                                    :reply-channel reply-channel-name}})
-    (mapv #(slack/web-api "chat.postMessage"
-                          {:auth/token (:slack/bot-token context)}
-                          {:channel (:channel-id %)
-                           :blocks (hiccup/->blocks-json
-                                    (screens/team-broadcast-message msg
-                                                                    (.getKey firebase-ref)
-                                                                    reply-channel-name))})
-          (slack-db/team->all-linked-channels (:slack/team-id context)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Individual/second-tier handlers
-
 (defn block-actions
   "Handler for specific block actions.
   Branches on the bespoke action ID (set in server.slack.screens)."
@@ -104,7 +84,7 @@
                                {:view_id view-id
                                 :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))}))
 
-      "user:team-broadcast-response" ; "Post an Update" button (user opens modal to respond to broadcast)
+      "user:team-broadcast-response"                        ; "Post an Update" button (user opens modal to respond to broadcast)
       (let [firebase-path (str "/slack-broadcast/" firebase-key)
             firebase-child-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
         (fire-jvm/set-value firebase-child-ref
@@ -112,11 +92,11 @@
         (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
                        {:trigger_id (:trigger_id payload)
                         :view (hiccup/->blocks-json
-                               (screens/team-broadcast-response
-                                (->  payload :message :blocks first :text :text) ; broadcast msg
-                                (str firebase-path "/replies/" (.getKey firebase-child-ref))))}))
+                                (screens/team-broadcast-response
+                                  (-> payload :message :blocks first :text :text) ; broadcast msg
+                                  (str firebase-path "/replies/" (.getKey firebase-child-ref))))}))
 
-      "broadcast2:channel-select" ; refresh same view then save selection in private metadata
+      "broadcast2:channel-select"                           ; refresh same view then save selection in private metadata
       (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
                      {:view_id view-id
                       :view (hiccup/->blocks-json
@@ -124,6 +104,26 @@
 
       ;; Default: failure XXX `throw`?
       (log/error [:unhandled-block-action (-> payload :actions first :action-id)]))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Individual/second-tier handlers
+
+(defn request-updates [context msg reply-channel]
+  (let [reply-channel-name (slack/channel-name reply-channel (:slack/bot-token context))
+        firebase-ref (.push (fire-jvm/->ref "/slack-broadcast"))]
+    (fire-jvm/set-value firebase-ref
+                        {:message msg
+                         :reply-to {:channel-id reply-channel
+                                    :reply-channel reply-channel-name}})
+    (mapv #(slack/web-api "chat.postMessage"
+                          {:auth/token (:slack/bot-token context)}
+                          {:channel (:channel-id %)
+                           :blocks (hiccup/->blocks-json
+                                     (screens/team-broadcast-message msg
+                                                                     (.getKey firebase-ref)
+                                                                     reply-channel-name))})
+          (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 (defn submission
   "Handler for 'Submit' press on any Slack modal."
@@ -144,14 +144,14 @@
       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
                      (let [firebase-key (get-in payload [:view :private_metadata])]
                        {:blocks (hiccup/->blocks-json
-                                 (screens/team-broadcast-response-msg
-                                  (->  payload :user :name)
-                                  (-> firebase-key fire-jvm/read :responding-from-channel)
-                                  (-> (or (get-in state [:sb-project-status1 :user:status-input])
-                                          (get-in state [:sb-project-achievement1 :user:achievement-input])
-                                          (get-in state [:sb-project-help1 :user:help-input]))
-                                      :value
-                                      decode-text-input)))
+                                  (screens/team-broadcast-response-msg
+                                    (-> payload :user :name)
+                                    (-> firebase-key fire-jvm/read :responding-from-channel)
+                                    (-> (or (get-in state [:sb-project-status1 :user:status-input])
+                                            (get-in state [:sb-project-achievement1 :user:achievement-input])
+                                            (get-in state [:sb-project-help1 :user:help-input]))
+                                        :value
+                                        decode-text-input)))
                         :channel (:channel-id (:reply-to (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref firebase-key))))))})))))
 
 (defn send-welcome-message! [context {:as user :keys [id]}]
@@ -161,26 +161,34 @@
     )
   )
 
+(defn team-context [team-id]
+  ;; context we derive from team-id
+  (let [app-id (-> env/config :slack :app-id)
+        team (slack-db/linked-team team-id)
+        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
+    (def APP-ID app-id)
+    (def BOT-TOKEN bot-token)
+    (def BOT-USER-ID bot-user-id)
+    {:slack/team-id team-id
+     :slack/bot-token bot-token
+     :slack/bot-user-id bot-user-id
+     :sparkboard/board-id (:board-id team)}))
+
+(defn user-context [user-id]
+  ;; context we derive from user-id
+  (let [user (slack-db/linked-user user-id)]
+    {:sparkboard/account-id (:account-id user)
+     :slack/user-id user-id}))
+
 (defn slack-context
   "Returns context-map expected by functions handling Slack events"
   [team-id user-id]
   {:pre [team-id user-id]}
-  (let [app-id (-> env/config :slack :app-id)
-        team (slack-db/linked-team team-id)
-        user (slack-db/linked-user user-id)
-        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
-    (def APP_ID app-id)
-    (def BOT-TOKEN bot-token)
-    (def BOT-USER-ID bot-user-id)
-    {:slack/app-id app-id
-     :slack/team-id team-id
-     :slack/user-id user-id
-     :slack/bot-token bot-token
-     :slack/bot-user-id bot-user-id
-     :sparkboard/account-id (:account-id user)
-     :sparkboard/board-id (:board-id team)
-     :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
-     :env (:env env/config "dev")}))
+  (merge (team-context team-id)
+         (user-context user-id)
+         {:slack/app-id (-> env/config :slack :app-id)
+          :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
+          :env (:env env/config "dev")}))
 
 (defn update-user-home-tab! [context]
   (slack/web-api "views.publish" {:auth/token (:slack/bot-token context)}
@@ -200,27 +208,6 @@
   (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
   (ring.http/ok))
 
-(defn create-linked-channel! [context {:sparkboard.project/keys [title url]
-                                       :keys [sparkboard/project-id
-                                              sparkboard/account-id]}]
-  (comment
-    (let [channel ...create-channel-via-slack-api!]
-      ;; TODO
-      ;;   - name should be `team-${SOMETHING}`, derived from title?
-      ;;   - include title + url in channel description
-
-      ;; after creating the channel, link it to the project
-      (slack-db/link-channel-to-project! (assoc context
-                                           :slack/channel-id (:id channel)
-                                           :sparkboard/project-id project-id))))
-  )
-
-(defn add-user-to-channel! [context {:keys [slack/user-id
-                                            slack/channel-id]}]
-  ;; TODO
-  ;; use slack api to add user-id to channel-id
-  )
-
 (defn req-token [req]
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
       (-> req :params :token)))
@@ -236,9 +223,7 @@
     (link-account! (slack-context team-id user-id)
                    (assoc token-claims :sparkboard/account-id "MOCK_SPARKBOARD_ACCOUNT")))
   (if (str/starts-with? redirect "http")
-    {:status 302
-     :headers {"Location" redirect}
-     :body ""}
+    (ring.http/found redirect)
     {:body (str "mock redirect: " redirect)
      :status 200
      :headers {"Content-Type" "text/string"}}))
@@ -283,6 +268,16 @@
         (log/error [:unhandled-event (:type payload)]))))
   (ring.http/ok))
 
+(defn respond-str [status message]
+  {:status status
+   :headers {"Content-Type" "text/plain"}
+   :body message})
+
+(defn respond-html [status message]
+  {:status status
+   :headers {"Content-Type" "text/html"}
+   :body message})
+
 (defn wrap-sparkboard-verify
   "must be a Sparkboard server request"
   [f & claims-checks]
@@ -295,9 +290,36 @@
       (f (assoc req :auth/token-claims claims))
       (do
         (log/warn "Sparkboard token verification failed." {:uri (:uri req)})
-        {:status 401
-         :headers {"Content-Type" "text/plain"}
-         :body "Invalid token"}))))
+        (respond-str 401 "Invalid token")))))
+
+(defn slack-ok! [resp status message]
+  (if (:ok resp)
+    resp
+    (throw (ex-info message {:status status
+                             :resp resp}))))
+
+(defn wrap-sparkboard-invite [f]
+  (fn [req]
+    (let [{:sparkboard/keys [account-id board-id]} (:auth/token-claims req)
+          {:slack/keys [team-id invitation-link]} (slack-db/board->team board-id)
+          user-id (slack-db/account->team-user {:slack/team-id team-id
+                                                :sparkboard/account-id account-id})]
+      (cond user-id (f req)
+            invitation-link (respond-html 200
+                                          (str "Please <a href='" invitation-link "'>join our Slack community,</a>
+                                         follow the instructions to link your Sparkboard account, and then
+                                         reload this page."))
+            ;; TODO - this page can subscribe to /account/$/slack-team/$/user-id,
+            ;;        wait for linking to occur,
+            ;;        and then show a "Continue" button ... ?
+            ;;        ...can sign user in by creating a custom token, passing it to the page...
+            :else (let [{:keys [slack/bot-token]} (team-context team-id)
+                        domain (-> (http/get+ (str slack/base-uri "team.info")
+                                              {:query {:token bot-token
+                                                       :team "T014098L9FD"}})
+                                   (slack-ok! 500 "Could not read team info")
+                                   :team :domain)]
+                    (ring.http/temporary-redirect domain))))))
 
 (defn slack-channel-namify [s]
   (-> s
@@ -312,12 +334,6 @@
        (let [v# ~form]
          (log/info :call/value v#)
          v#)))
-
-(defn slack-ok! [resp status message]
-  (if (:ok resp)
-    resp
-    (throw (ex-info message {:status status
-                             :resp resp}))))
 
 
 (defn user-info [{:slack/keys [user-id bot-token]}]
@@ -427,8 +443,7 @@
         context (slack-context team-id user-id)]
     (case action
       :update-home! (update-user-home-tab! context)
-      :link-account! (link-account! context params)
-      :create-linked-channel! (create-linked-channel! context params))))
+      :link-account! (link-account! context params))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
@@ -440,9 +455,10 @@
                "slack-api/oauth-redirect" slack-oauth/redirect
                "slack/server-action" (wrap-sparkboard-verify sparkboard-action
                                                              :sparkboard/server-request?)
-               ["slack/project-channel/" :project-id] (wrap-sparkboard-verify nav-project-channel
-                                                                              :sparkboard/account-id
-                                                                              :sparkboard/board-id)
+               ["slack/project-channel/" :project-id] (-> nav-project-channel
+                                                          (wrap-sparkboard-verify :sparkboard/account-id
+                                                                                  :sparkboard/board-id)
+                                                          (wrap-sparkboard-invite))
                "slack/install" slack-oauth/install-redirect}
               (when (not= "prod" (env/config :env))
                 {"slack/install-local"
