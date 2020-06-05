@@ -1,8 +1,16 @@
 (ns org.sparkboard.server.slack.screens
-  (:require [org.sparkboard.slack.urls :as urls]
+  (:require [clojure.string :as str]
+            [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.server.slack.core :as slack]
-            [org.sparkboard.server.slack.hiccup :as hiccup]))
+            [org.sparkboard.server.slack.hiccup :as hiccup]
+            [org.sparkboard.js-convert :refer [clj->json json->clj]]))
+
+(defn channel-link [id]
+  (str "<#" id ">"))
+
+(defn mention [user-id]
+  (str "<@" user-id "> "))
 
 (def team-messages
   {:welcome
@@ -111,99 +119,82 @@
 
 (defn destination-channel-groups [{:keys [slack/bot-token
                                           slack/bot-user-id]}]
-  (let [channels (->> (slack/web-api "conversations.list"
-                                     {:auth/token bot-token}
-                                     {:exclude_archived true
-                                      :types "public_channel,private_channel"})
-                      :channels
-                      (filter :is_member))
-        {general false
-         project true} (group-by #(= bot-user-id (-> % :topic :creator)) channels)
-        channel-option (fn [{:keys [name id]}]
-                         {:value id
-                          :text [:plain_text name]})]
-    [{:options (mapv channel-option general)
-      :label [:plain_text "User channels"]}
-     {:options (mapv channel-option project)
-      :label [:plain_text "Projects"]}]))
-
-(comment
-  ;; TODO
-  ; replace conversations_select below with sth like this (currently doesn't work as-is)
-  [:static_select
-   {:placeholder [:plain_text "Select a channel..."],
-    :option_groups (destination-channel-groups context)
-    :action_id "broadcast2:channel-select"}])
-
-(defn team-broadcast-blocks [context]
-  (list
-    [:section "Send a prompt to *all project teams*."]
-    [:divider]
-    [:section
-     {:block_id "sb-section1"
-      :accessory [:conversations_select
-                  {:placeholder [:plain_text "Select a channel..."],
-                   :initial_conversation "team-updates"     ; default channel TODO should this come from db?
-                   :action_id "broadcast2:channel-select"
-                   :filter {:include ["public" "private"]}}]}
-     "*Post responses to channel:*"]
-    [:input
-     {:block_id "sb-input1"
-      :element [:plain_text_input
-                {:multiline true,
-                 :action_id "broadcast2:text-input"
-                 :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}],
-      :label [:plain_text "Message:"]}]))
+  (->> (slack/web-api "conversations.list"
+                      {:auth/token bot-token}
+                      {:exclude_archived true
+                       :types "public_channel,private_channel"})
+       :channels
+       (into [] (comp (filter :is_member)
+                      (remove #(str/starts-with? (:name %) "project-"))
+                      (map (fn [{:keys [name_normalized id]}]
+                             {:value id :text [:plain_text name_normalized]}))))))
 
 (defn team-broadcast-modal-compose
   ([context] (team-broadcast-modal-compose context nil))
   ([context private-data]
-   [:modal (merge {:title [:plain_text "Compose Broadcast"]
-                   :blocks (team-broadcast-blocks context)
-                   :submit [:plain_text "Submit"]
-                   :callback_id "team-broadcast-modal-compose"}
-                  ;; NB: private metadata is a String of max 3000 chars
-                  ;; See https://api.slack.com/reference/surfaces/views
-                  (when private-data {:private_metadata private-data}))]))
+   [:modal {:title [:plain_text "Compose Broadcast"]
+            :submit [:plain_text "Submit"]
+            :callback_id "team-broadcast-modal-compose"
+            :private_metadata (or (some-> private-data (clj->json)) "")}
+    ;; NB: private metadata is a String of max 3000 chars
+    ;; See https://api.slack.com/reference/surfaces/views
+
+    [:section "Sends a prompt to *all project teams*."]
+    [:divider]
+    [:input
+     {:label [:plain_text "Message:"]}
+     [:plain_text_input
+      {:multiline true,
+       :action_id "broadcast2:text-input"
+       :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}]]
+    [:input
+     {:label "Send responses to channel:"
+      :optional true}
+     [:static_select
+      {:placeholder [:plain_text "Select a channel..."],
+       :options (destination-channel-groups context)
+       :action_id "broadcast2:channel-select"}]]
+    [:input
+     {:label "Options"
+      :optional true}
+     [:checkboxes
+      {:action_id "broadcast-options"
+       :options [{:value "collect-in-thread"
+                  :text [:md "Collect responses in a thread"]}]}]]]))
 
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
-  [msg firebase-key reply-channel-name]
+  [firebase-key {:keys [message response-channel]}]
   (list
-    [:section {:text {:type "mrkdwn" :text msg}}]
-    {:type "actions",
-     :elements [[:button {:style "primary"
-                          :text {:type "plain_text",
-                                 :text "Post an Update",
-                                 :emoji true},
-                          :action_id (str "user:team-broadcast-response"
-                                          action-id-separator
-                                          firebase-key)
-                          :value "click_me_123"}]]}
-    {:type "context",
-     :elements [{:type "mrkdwn",
-                 :text (str "Responses will post to channel [" reply-channel-name "]")}]}))
+    [:section [:md message]]
+    (when response-channel
+      (list
+        [:actions
+         [:button {:style "primary"
+                   :action_id (str "user:team-broadcast-response"
+                                   action-id-separator
+                                   firebase-key)
+                   :value "click_me_123"}
+          "Post an Update"]]
+        [:context [:md (str "Replies will be sent to " (channel-link response-channel))]]))))
 
 (defn team-broadcast-response
   "User response to broadcast - text field for project status update"
   [original-msg firebase-key]
   [:modal {:title [:plain_text "Project Update"]
            :callback_id "team-broadcast-response"
-           :blocks [{:type "input",
-                     :label {:type "plain_text",
-                             :text original-msg,
-                             :emoji true},
-                     :block_id "sb-project-status1"
-                     :element {:type "plain_text_input", :multiline true
-                               :action_id "user:status-input"}}]
-           :private_metadata firebase-key
-           :submit [:plain_text "Send"]}])
+           :private_metadata (clj->json {:broadcast/firebase-key firebase-key})
+           :submit "Send"}
+   [:input {:type "input"
+            :label original-msg
+            :block_id "sb-project-status1"}
+    [:plain_text_input {:multiline true
+                        :action_id "user:status-input"}]]])
 
-(defn team-broadcast-response-msg [replying-user project msg]
-  [{:type "divider"}
-   {:type "section",
-    :text {:type "mrkdwn", :text (str "_Project:_ * " project "*, "
-                                      "_User:_ * " replying-user "*")}}
+(defn team-broadcast-response-msg [from-user-id from-channel-id msg]
+  [[:divider]
+   [:section [:md (str "_Project:_ * " (channel-link from-channel-id) "*, "
+                       "_User:_ " (mention from-user-id))]]
    {:type "section",
     :text {:type "plain_text", :text msg, :emoji true}}
    #_{:type "actions",

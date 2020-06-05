@@ -7,7 +7,7 @@
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.http :as http]
-            [org.sparkboard.js-convert :refer [json->clj]]
+            [org.sparkboard.js-convert :refer [json->clj clj->json update-json]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
@@ -70,7 +70,8 @@
   [context payload]
   (log/debug "[block-actions] payload" payload)
   (let [view-id (get-in payload [:container :view_id])
-        [action-id firebase-key] (str/split (-> payload :actions first :action_id)
+        [action] (-> payload :actions)                      ;; there is always just 1 action
+        [action-id firebase-key] (str/split (:action_id action)
                                             (re-pattern screens/action-id-separator))
         modal! (fn
                  ([blocks]
@@ -92,15 +93,11 @@
 
       "user:team-broadcast-response"                        ; "Post an Update" button (user opens modal to respond to broadcast)
       (let [firebase-path (str "/slack-broadcast/" firebase-key)
-            firebase-child-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
-        (fire-jvm/set-value firebase-child-ref
-                            {:responding-from-channel (-> payload :channel :name)})
+            reply-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
+        (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
         (modal! (screens/team-broadcast-response
                   (-> payload :message :blocks first :text :text) ; broadcast msg
-                  (str firebase-path "/replies/" (.getKey firebase-child-ref)))))
-
-      "broadcast2:channel-select"                           ; refresh same view then save selection in private metadata
-      (modal! view-id (screens/team-broadcast-modal-compose context (-> payload :actions first :selected_conversation)))
+                  (str firebase-path "/replies/" (.getKey reply-ref)))))
 
       ;; Default: failure XXX `throw`?
       (log/error [:unhandled-block-action (-> payload :actions first :action-id)]))))
@@ -169,9 +166,6 @@
                  {:channel (:slack/user-id context)
                   :blocks (hiccup/->blocks-json blocks)}))
 
-(defn mention [user-id]
-  (str "<@" user-id "> "))
-
 (defn slack-ok! [resp status message]
   (if (:ok resp)
     resp
@@ -195,20 +189,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Individual/second-tier handlers
 
-(defn request-updates [context msg reply-channel]
-  (let [reply-channel-name (:name_normalized (slack/channel-info reply-channel (:slack/bot-token context)))
-        firebase-ref (.push (fire-jvm/->ref "/slack-broadcast"))]
-    (fire-jvm/set-value firebase-ref
-                        {:message msg
-                         :reply-to {:channel-id reply-channel
-                                    :reply-channel reply-channel-name}})
+(defn request-updates [context {:as opts
+                                :keys [message
+                                       response-channel
+                                       collect-in-thread]}]
+  (log/info :request-updates opts)
+  (let [broadcast-ref (.push (fire-jvm/->ref "/slack-broadcast"))
+        {thread :ts} (when response-channel
+                       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
+                                      {:channel response-channel
+                                       :blocks (hiccup/->blocks-json
+                                                 [[:section
+                                                   (str "*Team Broadcast Sent:*\n"
+                                                        message)]])}))
+        blocks (hiccup/->blocks-json
+                 (screens/team-broadcast-message (.getKey broadcast-ref) opts))]
+    (fire-jvm/set-value broadcast-ref
+                        {:message message
+                         :response-channel response-channel
+                         :response-thread (when collect-in-thread thread)})
     (mapv #(slack/web-api "chat.postMessage"
                           {:auth/token (:slack/bot-token context)}
                           {:channel (:channel-id %)
-                           :blocks (hiccup/->blocks-json
-                                     (screens/team-broadcast-message msg
-                                                                     (.getKey firebase-ref)
-                                                                     reply-channel-name))})
+                           :blocks blocks})
           (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 (defn update-user-home-tab! [context]
@@ -221,31 +224,44 @@
   [context payload]
   (log/debug "[submission!] payload:" payload)
   (let [state (get-in payload [:view :state :values])
+        private-metadata (some-> (get-in payload [:view :private_metadata]) (u/guard (complement str/blank?)) json->clj)
         action-values (->> (apply merge (vals state))
-                           (reduce-kv (fn [m k {:keys [value]}] (assoc m k value)) {}))
+                           (reduce-kv (fn [m k {:as v :keys [type value selected_options]}]
+                                        (assoc m k
+                                                 (case type
+                                                   "checkboxes" (->> (:selected_options v)
+                                                                     (map :value)
+                                                                     (into #{}))
+                                                   "static_select" (-> v :selected_option :value)
+                                                   "plain_text_input" (:value v)
+                                                   v))) {})
+                           (merge private-metadata))
         callback-id (-> payload :view :callback_id)]
     (log/trace :action-values action-values)
     (case callback-id
       ;; Admin broadcast: request for project update
       "team-broadcast-modal-compose"
       (request-updates context
-                       (decode-text-input (:broadcast2:text-input action-values))
-                       (get-in payload [:view :private_metadata]))
+                       {:message (decode-text-input (:broadcast2:text-input action-values))
+                        :response-channel (:broadcast2:channel-select action-values)
+                        :collect-in-thread (contains? (:broadcast-options action-values) "collect-in-thread")})
 
       ;; User broadcast response: describe current status
       "team-broadcast-response"
       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                     (let [firebase-key (get-in payload [:view :private_metadata])]
+                     (let [reply-ref-path (:broadcast/firebase-key private-metadata)
+                           broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
                        {:blocks (hiccup/->blocks-json
                                   (screens/team-broadcast-response-msg
-                                    (-> payload :user :name)
-                                    (-> firebase-key fire-jvm/read :responding-from-channel)
+                                    (-> payload :user :id)
+                                    (-> reply-ref-path fire-jvm/read :from-channel-id)
                                     (-> (or (get-in state [:sb-project-status1 :user:status-input])
                                             (get-in state [:sb-project-achievement1 :user:achievement-input])
                                             (get-in state [:sb-project-help1 :user:help-input]))
                                         :value
                                         decode-text-input)))
-                        :channel (:channel-id (:reply-to (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref firebase-key))))))}))
+                        :channel (-> broadcast :response-channel)
+                        :thread_ts (-> broadcast :response-thread)}))
       "invite-link-modal"
       (do
         (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
@@ -260,7 +276,7 @@
 (defn send-welcome-message! [context]
   (message-user! context
                  [[:section
-                   (str (mention (:slack/user-id context))
+                   (str (screens/mention (:slack/user-id context))
                         " "
                         (screens/team-message context :welcome))]
                   [:actions
@@ -283,7 +299,7 @@
      :sparkboard/account-id account-id})
   (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
   (message-user! context [[:section
-                           (str (mention (:slack/user-id context))
+                           (str (screens/mention (:slack/user-id context))
                                 " "
                                 (screens/team-message context :welcome-confirmation))]])
   (ring.http/ok))
