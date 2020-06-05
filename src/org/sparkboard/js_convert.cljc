@@ -45,3 +45,6 @@
 
 (comment
   (->clj (->js {:slack/id 1})))
+
+(defn update-json [json f & args]
+  (clj->json (apply f (json->clj json) args)))

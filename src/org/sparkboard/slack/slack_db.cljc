@@ -2,7 +2,8 @@
   (:require [clojure.set :as set]
             [clojure.pprint :as pp]
             [org.sparkboard.promise :as p]
-            [org.sparkboard.firebase.admin-db-api :as fire]))
+            [org.sparkboard.firebase.admin-db-api :as fire]
+            [taoensso.timbre :as log]))
 
 ;; Read & write links between Slack and Sparkboard
 ;;
@@ -73,10 +74,10 @@
 ;; lookups by index
 
 (defn team->all-linked-channels [team-id]
-    (p/->> (fire/read (str "/slack-channel")
-                      {:query [:orderBy "team-id"
-                               :equalTo team-id]})
-           (fire/map->list :channel-id)))
+  (p/->> (fire/read (str "/slack-channel")
+                    {:query [:orderBy "team-id"
+                             :equalTo team-id]})
+         (fire/map->list :channel-id)))
 
 (defn project->linked-channel [project-id]
   (p/->> (fire/read (str "/slack-channel")
@@ -110,6 +111,7 @@
            (fire/map->list :slack/team-id)
            first
            (#(set/rename-keys % {:board-id :sparkboard/board-id
+                                 :invite-link :slack/invite-link
                                  :team-name :slack/team-name}))))
 
 (defn board-domain [board-id]

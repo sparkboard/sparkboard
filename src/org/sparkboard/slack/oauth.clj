@@ -17,6 +17,7 @@
                       "chat:write"
                       "commands"
                       "groups:read"
+                      "team:read"
                       "users:read"
                       "users:read.email"])
 

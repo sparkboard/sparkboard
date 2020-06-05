@@ -7,9 +7,10 @@
             [taoensso.timbre :as log])
   (:import (com.google.auth.oauth2 ServiceAccountCredentials)
            (com.google.firebase FirebaseOptions$Builder FirebaseApp)
-           (com.google.firebase.database FirebaseDatabase ValueEventListener DatabaseReference DatabaseReference$CompletionListener)))
+           (com.google.firebase.database FirebaseDatabase ValueEventListener DatabaseReference DatabaseReference$CompletionListener)
+           (com.google.firebase.auth FirebaseAuth)))
 
-(defonce db
+(defonce app
          (delay
            (let [service-account (:firebase/service-account env/config)
                  database-url (-> env/config :firebase/app-config :databaseURL)]
@@ -22,8 +23,10 @@
                          io/input-stream)))
                  (.setDatabaseUrl database-url)
                  (.build)
-                 (FirebaseApp/initializeApp)
-                 (FirebaseDatabase/getInstance)))))
+                 (FirebaseApp/initializeApp)))))
+
+(def db (delay (FirebaseDatabase/getInstance @app)))
+(def auth (delay (FirebaseAuth/getInstance @app)))
 
 (defprotocol IConvertToClojure
   (->clj [o]))
@@ -116,6 +119,11 @@
                                            error))
                            (deliver p snap)))))
     @p))
+
+(defn custom-token
+  ;; we can pass a custom token to the browser & use it to sign in to Firebase/Sparkboard
+  ([uid] (.createCustomToken @auth uid))
+  ([uid claims] (.createCustomToken @auth uid claims)))
 
 (comment
 

@@ -76,12 +76,16 @@
   [family-method config params]
   ((http-verb family-method) family-method config params))
 
-(def channel-name
+(def channel-info
   (memoize
-   (fn [channel-id token]
-     (-> (web-api "conversations.info" {:auth/token token} {:channel channel-id})
-         :channel
-         :name_normalized))))
+    (fn [channel-id token]
+      (-> (web-api "conversations.info" {:auth/token token} {:channel channel-id})
+          :channel))))
+
+(defn user-info [{:keys [slack/user-id slack/bot-token]}]
+  (-> (web-api "users.info" {} {:user user-id
+                                :token bot-token})
+      :user))
 
 (comment
   (http-verb "users.list")
@@ -91,7 +95,7 @@
   (http-verb "channels.list")
 
   (http-verb "views.publish") ;; XXX this seems to be a mistake on Slack's part: it's GET in the spec but POST in the docs
-  
+
   ;; bot token only for local dev experiments
   (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)})
 
@@ -101,7 +105,7 @@
             :body
             json/read-value))
 
-  (time (channel-name "C0121SEV6Q2" (-> env/config :slack :bot-user-oauth-token)))
-  
+  (time (channel-info "C0121SEV6Q2" (-> env/config :slack :bot-user-oauth-token)))
+
   )
 

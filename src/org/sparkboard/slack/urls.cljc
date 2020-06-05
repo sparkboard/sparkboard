@@ -44,17 +44,17 @@
                       :sparkboard/keys [board-id]
                       :keys [env]} redirect]
   {:pre [env board-id user-id team-id redirect]}
-  (log/trace ::on-sparkboard context)
-  (p/let [domain (slack-db/board-domain board-id)]
+  (log/trace ::on-sparkboard redirect context)
+  (p/let [domain (slack-db/board-domain board-id)
+          payload (-> context
+                      (select-keys [:slack/team-id
+                                    :slack/app-id
+                                    :slack/user-id
+                                    :sparkboard/board-id])
+                      (assoc :redirect redirect))]
+    (log/trace :sparkboard/slack-link payload)
     (str (sparkboard-host env domain)
-         "/slack-link?token="
-         (-> context
-             (select-keys [:slack/team-id
-                           :slack/app-id
-                           :slack/user-id
-                           :sparkboard/board-id])
-             (assoc :redirect redirect)
-             (tokens/encode)))))
+         "/slack-link?token=" (tokens/encode payload))))
 
 (defn link-sparkboard-account
   "Sends the user to Sparkboard to link their account, then redirects them back to Slack"
