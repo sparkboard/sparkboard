@@ -75,7 +75,6 @@
          {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
          (str "This Slack team is connected to *" title "* on Sparkboard.")])
       [:section "No Sparkboard is linked to this Slack workspace."])
-
     (when-not (:sparkboard/account-id context)
       (link-account context))
     [:divider]
@@ -129,6 +128,28 @@
                       (map (fn [{:keys [name_normalized id]}]
                              {:value id :text [:plain_text name_normalized]}))))))
 
+(defn team-broadcast-modal-choose
+  ([context] (team-broadcast-modal-choose context nil))
+  ([context private-data]
+   [:modal {:title [:plain_text "Choose Broadcast Type"]
+            :submit [:plain_text "Submit"]
+            :callback_id "team-broadcast-modal-select"
+            :private_metadata (or (some-> private-data (clj->json)) "")}
+    ;; NB: private metadata is a String of max 3000 chars
+    ;; See https://api.slack.com/reference/surfaces/views
+
+    {:type "actions",
+     :elements [[:button {:text {:type "plain_text",
+                                 :text "Request project status",
+                                 :emoji true},
+                          :action_id "admin:team-broadcast-status"
+                          :value "click_me_123"}]
+                [:button {:text {:type "plain_text",
+                                 :text "Offer help",
+                                 :emoji true},
+                          :action_id "admin:team-broadcast-help"
+                          :value "click_me_789"}]]}]))
+
 (defn team-broadcast-modal-compose
   ([context] (team-broadcast-modal-compose context nil))
   ([context private-data]
@@ -146,7 +167,10 @@
      [:plain_text_input
       {:multiline true,
        :action_id "broadcast2:text-input"
-       :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}]]
+       :initial_value (case (:broadcast-type private-data)
+                        :project-status "Hello. Please take a moment to let us know where you stand with your project. What have you achieved so far? What's next?"
+                        :offer-help "Do you need the help of an expert? We have mentors available in AI, health, mobility, and more."
+                        "")}]]
     [:input
      {:label "Send responses to channel:"
       :optional true}

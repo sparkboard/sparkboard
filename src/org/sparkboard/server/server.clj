@@ -70,7 +70,7 @@
   [context payload]
   (log/debug "[block-actions] payload" payload)
   (let [view-id (get-in payload [:container :view_id])
-        [action] (-> payload :actions)                      ;; there is always just 1 action
+        [action] (-> payload :actions) ; there is always just 1 action
         [action-id firebase-key] (str/split (:action_id action)
                                             (re-pattern screens/action-id-separator))
         modal! (fn
@@ -85,13 +85,18 @@
                                   :view (hiccup/->blocks-json blocks)})))]
     (case action-id
       "admin:customize-messages-modal-open" (modal! (screens/customize-messages-modal context))
-      "admin:invite-link-modal-open" (modal! (screens/invite-link-modal context))
+      "admin:invite-link-modal-open"        (modal! (screens/invite-link-modal context))
+
+      "admin:team-broadcast-status" (modal! view-id (screens/team-broadcast-modal-compose
+                                                     context {:broadcast-type :project-status}))
+      "admin:team-broadcast-help"   (modal! view-id (screens/team-broadcast-modal-compose
+                                                     context {:broadcast-type :offer-help}))
       "admin:team-broadcast"
       (case (get-in payload [:view :type])
-        "home" (modal! (screens/team-broadcast-modal-compose context))
-        "modal" (modal! view-id (screens/team-broadcast-modal-compose context)))
-
-      "user:team-broadcast-response"                        ; "Post an Update" button (user opens modal to respond to broadcast)
+        "home" (modal! (screens/team-broadcast-modal-choose context))
+        "modal" (modal! view-id (screens/team-broadcast-modal-choose context)))
+      
+      "user:team-broadcast-response" ; "Post an Update" button (user opens modal to respond to broadcast)
       (let [firebase-path (str "/slack-broadcast/" firebase-key)
             reply-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
         (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
@@ -100,7 +105,7 @@
                   (str firebase-path "/replies/" (.getKey reply-ref)))))
 
       ;; Default: failure XXX `throw`?
-      (log/error [:unhandled-block-action (-> payload :actions first :action-id)]))))
+      (log/error [:unhandled-block-action (:action-id action)]))))
 
 (defn team-context [team-id]
   ;; context we derive from team-id
@@ -239,7 +244,7 @@
         callback-id (-> payload :view :callback_id)]
     (log/trace :action-values action-values)
     (case callback-id
-      ;; Admin broadcast: request for project update
+      ;; Admin broadcast: request for project update/offer help
       "team-broadcast-modal-compose"
       (request-updates context
                        {:message (decode-text-input (:broadcast2:text-input action-values))
