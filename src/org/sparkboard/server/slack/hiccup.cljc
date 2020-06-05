@@ -1,5 +1,6 @@
 (ns org.sparkboard.server.slack.hiccup
   (:require [clojure.string :as str]
+            [org.sparkboard.transit :as transit]
             [org.sparkboard.js-convert :refer [clj->json kw->js]]))
 
 (def schema
@@ -23,9 +24,11 @@
    "modal" {:children :blocks
             :strings {:title :plain_text
                       :submit :plain_text
-                      :close :plain_text}}
+                      :close :plain_text}
+            :update-keys {:private_metadata transit/write}}
    "actions" {:children :elements}
-   "input" {:strings {:label :plain_text}
+   "input" {:strings {:label :plain_text
+                      :hint :plain_text}
             :child :element}
    "context" {:children :elements}
    "plain_text_input" {:strings {:placeholder :plain_text}}})
@@ -52,10 +55,16 @@
                    (assoc props k [wrap-with v])
                    props))) props wrappers))
 
+(defn update-some [m updaters]
+  (reduce-kv (fn [m k f]
+               (if (contains? m k)
+                 (update m k f)
+                 m)) m updaters))
+
 (defn apply-schema [tag props body]
   (let [tag-type (type-string tag)
         {:as tag-schema
-         :keys [child children strings]} (schema tag-type)
+         :keys [child children strings update-keys]} (schema tag-type)
         children? (seq body)
         error (cond (and children? (not child) (not children))
                     (str "Tag does not support children: " tag ", props: " props)
@@ -69,7 +78,8 @@
                (cond-> (and children? child) (assoc child (first body)))
                (cond-> (and children? children) (assoc children body))
                (merge props)
-               (cond-> strings (wrap-strings strings))))))
+               (cond-> strings (wrap-strings strings))
+               (cond-> update-keys (update-some update-keys))))))
 
 (defn has-props? [form]
   (map? (nth form 1 nil)))

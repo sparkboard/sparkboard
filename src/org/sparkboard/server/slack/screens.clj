@@ -4,7 +4,8 @@
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
-            [org.sparkboard.js-convert :refer [clj->json json->clj]]))
+            [org.sparkboard.js-convert :refer [clj->json json->clj]]
+            [taoensso.timbre :as log]))
 
 (defn channel-link [id]
   (str "<#" id ">"))
@@ -61,7 +62,8 @@
        [:button {:action_id "admin:customize-messages-modal-open"}
         "Customize Messages"]
        [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
-                                                                    :slack/team-id]))} "Reinstall App"]]
+                                                                    :slack/team-id]))} "Reinstall App"]
+       [:button {:action_id "checks-test-open"} "State test"]]
       [:section (str "_Updated "
                      (->> (java.util.Date.)
                           (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
@@ -129,13 +131,23 @@
                       (map (fn [{:keys [name_normalized id]}]
                              {:value id :text [:plain_text name_normalized]}))))))
 
+(defn checkbox-options [m selected options]
+  ;; checkbox selection state is represented by copying
+  ;; active checkboxes into a separate list of :initial_options
+  (->> options
+       (reduce (fn [m option]
+                 (-> m
+                     (update :options (fnil conj []) option)
+                     (cond-> (contains? selected (:value option))
+                             (update :initial_options (fnil conj []) option)))) m)))
+
 (defn team-broadcast-modal-compose
-  ([context] (team-broadcast-modal-compose context nil))
-  ([context private-data]
+  ([context] (team-broadcast-modal-compose context {}))
+  ([context local-state]
    [:modal {:title [:plain_text "Compose Broadcast"]
             :submit [:plain_text "Submit"]
             :callback_id "team-broadcast-modal-compose"
-            :private_metadata (or (some-> private-data (clj->json)) "")}
+            :private_metadata local-state}
     ;; NB: private metadata is a String of max 3000 chars
     ;; See https://api.slack.com/reference/surfaces/views
 
@@ -162,6 +174,22 @@
        :options [{:value "collect-in-thread"
                   :text [:md "Collect responses in a thread"]}]}]]]))
 
+(defn state-test-modal [context payload state]
+  [:modal {:title "State test"}
+   [:actions
+    [:button {:action_id "counter+"}
+     (str "Clicked " (when-let [i (state "counter")]
+                       (str "(" i ")")))]
+    [:checkboxes
+     (checkbox-options {:action_id "checks-test"}
+                       (state "checks-test")
+                       [{:value "value-test-1"
+                         :text [:md (str "Check 1 " (when (contains? (state "checks-test") "value-test-1")
+                                                      "(checked)"))]}
+                        {:value "value-test-2"
+                         :text [:md (str "Check 2 " (when (contains? (state "checks-test") "value-test-2")
+                                                      "(checked)"))]}])]]])
+
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
   [firebase-key {:keys [message response-channel]}]
@@ -183,7 +211,7 @@
   [original-msg firebase-key]
   [:modal {:title [:plain_text "Project Update"]
            :callback_id "team-broadcast-response"
-           :private_metadata (clj->json {:broadcast/firebase-key firebase-key})
+           :private_metadata {:broadcast/firebase-key firebase-key}
            :submit "Send"}
    [:input {:type "input"
             :label original-msg
