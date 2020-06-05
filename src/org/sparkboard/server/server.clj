@@ -276,7 +276,7 @@
         (let [{:keys [slack/bot-token]} (team-context team-id)
               domain (-> (http/get+ (str slack/base-uri "team.info")
                                     {:query {:token bot-token
-                                             :team "T014098L9FD"}})
+                                             :team team-id}})
                          (slack-ok! 500 "Could not read team info")
                          :team :domain)]
           (if invite-link
