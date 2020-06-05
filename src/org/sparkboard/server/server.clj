@@ -212,7 +212,8 @@
     (fire-jvm/set-value broadcast-ref
                         {:message message
                          :response-channel response-channel
-                         :response-thread (when collect-in-thread thread)})
+                         :response-thread (when collect-in-thread thread)
+                         :broadcast-type (:broadcast-type opts)})
     (mapv #(slack/web-api "chat.postMessage"
                           {:auth/token (:slack/bot-token context)}
                           {:channel (:channel-id %)
@@ -249,24 +250,32 @@
       (request-updates context
                        {:message (decode-text-input (:broadcast2:text-input action-values))
                         :response-channel (:broadcast2:channel-select action-values)
-                        :collect-in-thread (contains? (:broadcast-options action-values) "collect-in-thread")})
+                        :collect-in-thread (contains? (:broadcast-options action-values) "collect-in-thread")
+                        :broadcast-type (:broadcast-type action-values)})
 
-      ;; User broadcast response: describe current status
+      ;; User broadcast response: describe current status / ask for help
       "team-broadcast-response"
-      (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                     (let [reply-ref-path (:broadcast/firebase-key private-metadata)
-                           broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
+      (let [reply-ref-path (:broadcast/firebase-key private-metadata)
+            broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
+        ;; If user asked for help, let them know help is on the way.
+        (slack/web-api "chat.postEphemeral" {:auth/token (:slack/bot-token context)}
+                       {:channel (-> reply-ref-path fire-jvm/read :from-channel-id)
+                        :text "A mentor or organizer will join you shortly in your channel."
+                        :user (-> payload :user :id)})
+        ;; Forward user response to designated channel
+        (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
                        {:blocks (hiccup/->blocks-json
-                                  (screens/team-broadcast-response-msg
-                                    (-> payload :user :id)
-                                    (-> reply-ref-path fire-jvm/read :from-channel-id)
-                                    (-> (or (get-in state [:sb-project-status1 :user:status-input])
-                                            (get-in state [:sb-project-achievement1 :user:achievement-input])
-                                            (get-in state [:sb-project-help1 :user:help-input]))
-                                        :value
-                                        decode-text-input)))
+                                 (screens/team-broadcast-response-msg
+                                  (-> payload :user :id)
+                                  (-> reply-ref-path fire-jvm/read :from-channel-id)
+                                  (-> (or (get-in state [:sb-project-status1 :user:status-input])
+                                          (get-in state [:sb-project-achievement1 :user:achievement-input])
+                                          (get-in state [:sb-project-help1 :user:help-input]))
+                                      :value
+                                      decode-text-input)))
                         :channel (-> broadcast :response-channel)
                         :thread_ts (-> broadcast :response-thread)}))
+      
       "invite-link-modal"
       (do
         (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
