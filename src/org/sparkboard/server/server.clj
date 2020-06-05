@@ -140,10 +140,17 @@
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
       (-> req :params :token)))
 
-(defn text-response [status message]
+;; TODO
+;; return nicely formatted pages
+(defn return-text [status message]
   {:status status
-   :body message
-   :headers {"Content-Type" "text/plain"}})
+   :headers {"Content-Type" "text/plain"}
+   :body message})
+
+(defn return-html [status message]
+  {:status status
+   :headers {"Content-Type" "text/html"}
+   :body message})
 
 (comment
   ;; I thought this would be a nicer way to send welcome messages,
@@ -164,6 +171,26 @@
 
 (defn mention [user-id]
   (str "<@" user-id "> "))
+
+(defn slack-ok! [resp status message]
+  (if (:ok resp)
+    resp
+    (throw (ex-info message {:status status
+                             :resp resp}))))
+
+(defn slack-channel-namify [s]
+  (-> s
+      (str/replace #"\s+" "-")
+      (str/lower-case)
+      (str/replace #"[^\w\-_\d]" "")
+      (as-> s (subs s 0 (min 80 (count s))))))
+
+(defmacro log-call [form]
+  ;;
+  `(do (log/info :call/forms (quote ~(first form)) ~@(rest form))
+       (let [v# ~form]
+         (log/info :call/value v#)
+         v#)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Individual/second-tier handlers
@@ -320,17 +347,8 @@
         (log/error [:unhandled-event (:type payload)]))))
   (ring.http/ok))
 
-;; TODO
-;; return nicely formatted pages
-(defn return-text [status message]
-  {:status status
-   :headers {"Content-Type" "text/plain"}
-   :body message})
-
-(defn return-html [status message]
-  {:status status
-   :headers {"Content-Type" "text/html"}
-   :body message})
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Middleware
 
 (defn wrap-sparkboard-verify
   "must be a Sparkboard server request"
@@ -347,16 +365,14 @@
                                                              :token token})
           (return-text 401 "Invalid token"))))))
 
-(defn slack-ok! [resp status message]
-  (if (:ok resp)
-    resp
-    (throw (ex-info message {:status status
-                             :resp resp}))))
-
 (defn invite-user [req {:keys [slack/team-id
                                slack/invite-link
                                slack/team-domain
                                sparkboard/account-id]}]
+  ;; TODO - this page can subscribe to /account/$/slack-team/$/user-id,
+  ;;        wait for linking to occur,
+  ;;        and then show a "Continue" button ... ?
+  ;;        (sign user in to firebase by creating a custom token, & passing it to the page)
   (return-html 200
                (str "<p>"
                     "You've been invited to <b>" team-domain "</b> on Slack. Please <a href='" invite-link "'>accept the invitation</a> to continue, then follow the instructions to link your Sparkboard account."
@@ -380,38 +396,14 @@
                                              :team "T014098L9FD"}})
                          (slack-ok! 500 "Could not read team info")
                          :team :domain)]
-          (cond user-id (f req)
-                invite-link (invite-user req (merge slack-team
-                                                    slack-user
-                                                    token-claims
-                                                    {:slack/team-domain domain}))
-                ;; TODO - this page can subscribe to /account/$/slack-team/$/user-id,
-                ;;        wait for linking to occur,
-                ;;        and then show a "Continue" button ... ?
-                ;;        ...can sign user in by creating a custom token, passing it to the page...
-                :else (let []
-                        (return-html 200
-                                     (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
-                                          "Please contact an organizer.")))))))))
-
-(defn slack-channel-namify [s]
-  (-> s
-      (str/replace #"\s+" "-")
-      (str/lower-case)
-      (str/replace #"[^\w\-_\d]" "")
-      (as-> s (subs s 0 (min 80 (count s))))))
-
-(defmacro log-call [form]
-  ;;
-  `(do (log/info :call/forms (quote ~(first form)) ~@(rest form))
-       (let [v# ~form]
-         (log/info :call/value v#)
-         v#)))
-
-(defn user-info [{:slack/keys [user-id bot-token]}]
-  (http/get+ (str slack/base-uri "users.info")              ;; `web-api` fn does not work b/c queries are broken
-             {:query {:user user-id
-                      :token bot-token}}))
+          (if invite-link
+            (invite-user req (merge slack-team
+                                    slack-user
+                                    token-claims
+                                    {:slack/team-domain domain}))
+            (return-html 200
+                         (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
+                              "Please contact an organizer."))))))))
 
 (defn find-or-create-channel [{:sparkboard/keys [board-id
                                                  account-id
@@ -549,12 +541,12 @@
     (try (f req)
          (catch Exception e
            (log/error (ex-message e) (ex-data e))
-           (text-response
+           (return-text
              (:status (ex-data e) 500)
              (ex-message e)))
          (catch java.lang.AssertionError e
            (log/error (ex-message e) (ex-data e))
-           (text-response
+           (return-text
              (:status (ex-data e) 500)
              (ex-message e))))))
 
