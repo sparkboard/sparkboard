@@ -1,6 +1,6 @@
 (ns org.sparkboard.server.slack.hiccup
   (:require [clojure.string :as str]
-            [org.sparkboard.js-convert :refer [clj->json]]))
+            [org.sparkboard.js-convert :refer [clj->json kw->js]]))
 
 (def schema
   "hiccup<->block metadata. Supports:
@@ -21,8 +21,14 @@
               :strings {:text :md}}
    "home" {:children :blocks}
    "modal" {:children :blocks
-            :strings {:title :plain_text}}
-   "actions" {:children :elements}})
+            :strings {:title :plain_text
+                      :submit :plain_text
+                      :close :plain_text}}
+   "actions" {:children :elements}
+   "input" {:strings {:label :plain_text}
+            :child :element}
+   "context" {:children :elements}
+   "plain_text_input" {:strings {:placeholder :plain_text}}})
 
 
 (declare ->blocks)
@@ -93,6 +99,7 @@
                                              :else (conj out child)))) [] form)
         (map? form) (reduce-kv (fn [m k v]
                                  (assoc m k (->blocks v))) {} form)
+        (keyword? form) (kw->js form)
         :else form))
 
 (defn remove-redundant-defaults [defaults props]

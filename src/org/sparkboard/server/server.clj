@@ -30,14 +30,12 @@
 
 (def log-levels
   (or (env/config :dev.logging/levels)
-      (case (env/config :env "dev")
-        "dev" '{:all :trace
-                org.sparkboard.server.server :trace
-                org.sparkboard.server.slack.core :trace}
+      (case (env/config :env)
         "staging" '{:all :info
                     org.sparkboard.slack.oauth :trace
                     org.sparkboard.server.server :trace}
-        "prod" {:all :warn})))
+        "prod" {:all :warn}
+        '{:all :info})))
 
 (-> {:middleware [(timbre-patterns/middleware
                     (reduce-kv
@@ -73,34 +71,36 @@
   (log/debug "[block-actions] payload" payload)
   (let [view-id (get-in payload [:container :view_id])
         [action-id firebase-key] (str/split (-> payload :actions first :action_id)
-                                            (re-pattern screens/action-id-separator))]
+                                            (re-pattern screens/action-id-separator))
+        modal! (fn
+                 ([blocks]
+                  (slack/web-api "views.open"
+                                 {:auth/token (:slack/bot-token context)}
+                                 {:trigger_id (:trigger_id payload)
+                                  :view (hiccup/->blocks-json blocks)}))
+                 ([view-id blocks]
+                  (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
+                                 {:view_id view-id
+                                  :view (hiccup/->blocks-json blocks)})))]
     (case action-id
+      "admin:customize-messages-modal-open" (modal! (screens/customize-messages-modal context))
+      "admin:invite-link-modal-open" (modal! (screens/invite-link-modal context))
       "admin:team-broadcast"
       (case (get-in payload [:view :type])
-        "home" (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
-                              {:trigger_id (:trigger_id payload)
-                               :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))})
-        "modal" (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
-                               {:view_id view-id
-                                :view (hiccup/->blocks-json (screens/team-broadcast-modal-compose context))}))
+        "home" (modal! (screens/team-broadcast-modal-compose context))
+        "modal" (modal! view-id (screens/team-broadcast-modal-compose context)))
 
       "user:team-broadcast-response"                        ; "Post an Update" button (user opens modal to respond to broadcast)
       (let [firebase-path (str "/slack-broadcast/" firebase-key)
             firebase-child-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
         (fire-jvm/set-value firebase-child-ref
                             {:responding-from-channel (-> payload :channel :name)})
-        (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
-                       {:trigger_id (:trigger_id payload)
-                        :view (hiccup/->blocks-json
-                                (screens/team-broadcast-response
-                                  (-> payload :message :blocks first :text :text) ; broadcast msg
-                                  (str firebase-path "/replies/" (.getKey firebase-child-ref))))}))
+        (modal! (screens/team-broadcast-response
+                  (-> payload :message :blocks first :text :text) ; broadcast msg
+                  (str firebase-path "/replies/" (.getKey firebase-child-ref)))))
 
       "broadcast2:channel-select"                           ; refresh same view then save selection in private metadata
-      (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
-                     {:view_id view-id
-                      :view (hiccup/->blocks-json
-                              (screens/team-broadcast-modal-compose context (-> payload :actions first :selected_conversation)))})
+      (modal! view-id (screens/team-broadcast-modal-compose context (-> payload :actions first :selected_conversation)))
 
       ;; Default: failure XXX `throw`?
       (log/error [:unhandled-block-action (-> payload :actions first :action-id)]))))
@@ -114,8 +114,10 @@
     (def BOT-TOKEN bot-token)
     (def BOT-USER-ID bot-user-id)
     {:slack/team-id team-id
+     :slack/team team
      :slack/bot-token bot-token
      :slack/bot-user-id bot-user-id
+     :slack/invite-link (:invite-link team)
      :sparkboard/board-id (:board-id team)}))
 
 (defn user-context [user-id]
@@ -127,7 +129,7 @@
 (defn slack-context
   "Returns context-map expected by functions handling Slack events"
   [team-id user-id]
-  {:pre [team-id user-id]}
+  {:pre [team-id user-id (string? user-id)]}
   (merge (team-context team-id)
          (user-context user-id)
          {:slack/app-id (-> env/config :slack :app-id)
@@ -138,11 +140,36 @@
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
       (-> req :params :token)))
 
+(defn text-response [status message]
+  {:status status
+   :body message
+   :headers {"Content-Type" "text/plain"}})
+
+(comment
+  ;; I thought this would be a nicer way to send welcome messages,
+  ;; but it doesn't work (I think because the user doesn't yet have
+  ;; an active session when the team_join event fires)
+  (defn message-ephemeral! [context channel blocks]
+    (slack/web-api "chat.postEphemeral"
+                   {:auth/token (:slack/bot-token context)}
+                   {:channel channel
+                    :user (:slack/user-id context)
+                    :blocks (hiccup/->blocks-json blocks)})))
+
+(defn message-user! [context blocks]
+  (slack/web-api "chat.postMessage"
+                 {:auth/token (:slack/bot-token context)}
+                 {:channel (:slack/user-id context)
+                  :blocks (hiccup/->blocks-json blocks)}))
+
+(defn mention [user-id]
+  (str "<@" user-id "> "))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Individual/second-tier handlers
 
 (defn request-updates [context msg reply-channel]
-  (let [reply-channel-name (slack/channel-name reply-channel (:slack/bot-token context))
+  (let [reply-channel-name (:name_normalized (slack/channel-info reply-channel (:slack/bot-token context)))
         firebase-ref (.push (fire-jvm/->ref "/slack-broadcast"))]
     (fire-jvm/set-value firebase-ref
                         {:message msg
@@ -157,22 +184,29 @@
                                                                      reply-channel-name))})
           (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
+(defn update-user-home-tab! [context]
+  (slack/web-api "views.publish" {:auth/token (:slack/bot-token context)}
+                 {:user_id (:slack/user-id context)
+                  :view (hiccup/->blocks-json (screens/home context))}))
+
 (defn submission
   "Handler for 'Submit' press on any Slack modal."
   [context payload]
   (log/debug "[submission!] payload:" payload)
-  (let [state (get-in payload [:view :state :values])]
-    (cond
+  (let [state (get-in payload [:view :state :values])
+        action-values (->> (apply merge (vals state))
+                           (reduce-kv (fn [m k {:keys [value]}] (assoc m k value)) {}))
+        callback-id (-> payload :view :callback_id)]
+    (log/trace :action-values action-values)
+    (case callback-id
       ;; Admin broadcast: request for project update
-      (-> state :sb-input1 :broadcast2:text-input)
+      "team-broadcast-modal-compose"
       (request-updates context
-                       (decode-text-input (get-in state [:sb-input1 :broadcast2:text-input :value]))
+                       (decode-text-input (:broadcast2:text-input action-values))
                        (get-in payload [:view :private_metadata]))
 
       ;; User broadcast response: describe current status
-      (or (-> state :sb-project-status1 :user:status-input)
-          (-> state :sb-project-achievement1 :user:achievement-input)
-          (-> state :sb-project-help1 :user:help-input))
+      "team-broadcast-response"
       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
                      (let [firebase-key (get-in payload [:view :private_metadata])]
                        {:blocks (hiccup/->blocks-json
@@ -184,19 +218,31 @@
                                             (get-in state [:sb-project-help1 :user:help-input]))
                                         :value
                                         decode-text-input)))
-                        :channel (:channel-id (:reply-to (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref firebase-key))))))})))))
+                        :channel (:channel-id (:reply-to (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref firebase-key))))))}))
+      "invite-link-modal"
+      (do
+        (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
+                            (:invite-link-input action-values))
+        (update-user-home-tab!
+          ;; update team-context to propagate invite-link change
+          (merge context (team-context (:slack/team-id context)))))
+      "customize-messages-modal"
+      (fire-jvm/update-value (str "/slack-team/" (:slack/team-id context) "/custom-messages") action-values)
+      (log/error "Unhandled modal submission" callback-id))))
 
-(defn send-welcome-message! [context {:as user :keys [id]}]
-  (let [url (urls/link-sparkboard-account context)]
-    ;; TODO
-    ;; send welcome message to user, with a button (using ^url) to link their new Slack account with Sparkboard.
-    )
-  )
-
-(defn update-user-home-tab! [context]
-  (slack/web-api "views.publish" {:auth/token (:slack/bot-token context)}
-                 {:user_id (:slack/user-id context)
-                  :view (hiccup/->blocks-json (screens/home context))}))
+(defn send-welcome-message! [context]
+  (message-user! context
+                 [[:section
+                   (str (mention (:slack/user-id context))
+                        " "
+                        (screens/team-message context :welcome))]
+                  [:actions
+                   [:button {:style "primary"
+                             :url (urls/link-sparkboard-account context)}
+                    "Connect to Sparkboard"]]
+                  [:context
+                   [:plain_text
+                    "This is a link to sparkboard.com, where you can register or sign in to link your account."]]]))
 
 (defn link-account! [context {:as params
                               :keys [slack/team-id
@@ -209,6 +255,10 @@
      :slack/user-id user-id
      :sparkboard/account-id account-id})
   (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
+  (message-user! context [[:section
+                           (str (mention (:slack/user-id context))
+                                " "
+                                (screens/team-message context :welcome-confirmation))]])
   (ring.http/ok))
 
 (defn mock-slack-link-proxy [{{:as token-claims
@@ -235,12 +285,15 @@
   [params]
   (try-future
     (let [evt (:event params)
-          context (slack-context (:team_id params) (:user evt))]
+          user-id (if (map? (:user evt)) (:id (:user evt)) (:user evt))
+          context (slack-context (:team_id params) user-id)]
       (log/debug "[event] evt:" evt)
       (log/debug "[event] context:" context)
       (case (get evt :type)
-        "app_home_opened" (update-user-home-tab! context)
-        "team_join" (send-welcome-message! context (:user evt))
+        "app_home_opened" (case (:tab evt)
+                            "home" (update-user-home-tab! context)
+                            nil)
+        "team_join" (send-welcome-message! context)
         nil)))
   (ring.http/ok))
 
@@ -267,12 +320,14 @@
         (log/error [:unhandled-event (:type payload)]))))
   (ring.http/ok))
 
-(defn respond-str [status message]
+;; TODO
+;; return nicely formatted pages
+(defn return-text [status message]
   {:status status
    :headers {"Content-Type" "text/plain"}
    :body message})
 
-(defn respond-html [status message]
+(defn return-html [status message]
   {:status status
    :headers {"Content-Type" "text/html"}
    :body message})
@@ -290,7 +345,7 @@
           (log/warn "Sparkboard token verification failed." {:uri (:uri req)
                                                              :claims claims
                                                              :token token})
-          (respond-str 401 "Invalid token"))))))
+          (return-text 401 "Invalid token"))))))
 
 (defn slack-ok! [resp status message]
   (if (:ok resp)
@@ -299,40 +354,45 @@
                              :resp resp}))))
 
 (defn invite-user [req {:keys [slack/team-id
-                               slack/invitation-link
+                               slack/invite-link
+                               slack/team-domain
                                sparkboard/account-id]}]
-  (respond-html 200
-                (str "Please <a href='" invitation-link "'>join our Slack community,</a>
-                                         follow the instructions to link your Sparkboard account, and then
-                                         reload this page.")))
+  (return-html 200
+               (str "<p>"
+                    "You've been invited to <b>" team-domain "</b> on Slack. Please <a href='" invite-link "'>accept the invitation</a> to continue, then follow the instructions to link your Sparkboard account."
+                    "</p>"
+                    "<p>(If you already have a <a href='https://" team-domain ".slack.com'>" team-domain ".slack.com</a> account, link your account by clicking the Sparkboard app in the sidebar.)</p>")))
 
 (defn wrap-sparkboard-invite [f]
   (fn [req]
     (let [{:as token-claims
            :sparkboard/keys [account-id board-id]} (:auth/token-claims req)
-          _ (log/info :token-claims token-claims)
           {:as slack-team
-           :slack/keys [team-id invitation-link]} (slack-db/board->team board-id)
+           :slack/keys [team-id invite-link]} (slack-db/board->team board-id)
           {:as slack-user
            :keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
                                                                 :sparkboard/account-id account-id})]
-      (cond user-id (f req)
-            invitation-link (invite-user req (merge slack-team
+      (if user-id
+        (f req)
+        (let [{:keys [slack/bot-token]} (team-context team-id)
+              domain (-> (http/get+ (str slack/base-uri "team.info")
+                                    {:query {:token bot-token
+                                             :team "T014098L9FD"}})
+                         (slack-ok! 500 "Could not read team info")
+                         :team :domain)]
+          (cond user-id (f req)
+                invite-link (invite-user req (merge slack-team
                                                     slack-user
-                                                    token-claims))
-            ;; TODO - this page can subscribe to /account/$/slack-team/$/user-id,
-            ;;        wait for linking to occur,
-            ;;        and then show a "Continue" button ... ?
-            ;;        ...can sign user in by creating a custom token, passing it to the page...
-            :else (let [{:keys [slack/bot-token]} (team-context team-id)
-                        domain (-> (http/get+ (str slack/base-uri "team.info")
-                                              {:query {:token bot-token
-                                                       :team "T014098L9FD"}})
-                                   (slack-ok! 500 "Could not read team info")
-                                   :team :domain)]
-                    (respond-html  200
-                                   (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
-                                        "Please contact an organizer.")))))))
+                                                    token-claims
+                                                    {:slack/team-domain domain}))
+                ;; TODO - this page can subscribe to /account/$/slack-team/$/user-id,
+                ;;        wait for linking to occur,
+                ;;        and then show a "Continue" button ... ?
+                ;;        ...can sign user in by creating a custom token, passing it to the page...
+                :else (let []
+                        (return-html 200
+                                     (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
+                                          "Please contact an organizer.")))))))))
 
 (defn slack-channel-namify [s]
   (-> s
@@ -482,11 +542,6 @@
 
 (comment
   (fire-tokens/decode token))
-
-(defn text-response [status message]
-  {:status status
-   :body message
-   :headers {"Content-Type" "text/plain"}})
 
 (defn wrap-handle-errors [f]
   (fn [req]

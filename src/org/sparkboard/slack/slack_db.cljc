@@ -104,14 +104,15 @@
                                  :account-id :sparkboard/account-id}))))
 
 (defn board->team [board-id]
-  (log/spy (some->> (fire/read "/slack-team"
-                               {:query [:orderBy "board-id"
-                                        :equalTo board-id
-                                        :limitToFirst 1]})
-                    (fire/map->list :slack/team-id)
-                    first
-                    (#(set/rename-keys % {:board-id :sparkboard/board-id
-                                          :team-name :slack/team-name})))))
+  (some->> (fire/read "/slack-team"
+                      {:query [:orderBy "board-id"
+                               :equalTo board-id
+                               :limitToFirst 1]})
+           (fire/map->list :slack/team-id)
+           first
+           (#(set/rename-keys % {:board-id :sparkboard/board-id
+                                 :invite-link :slack/invite-link
+                                 :team-name :slack/team-name}))))
 
 (defn board-domain [board-id]
   (fire/read (str "/settings/" board-id "/domain")))

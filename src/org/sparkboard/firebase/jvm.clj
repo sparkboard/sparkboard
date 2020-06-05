@@ -121,6 +121,7 @@
     @p))
 
 (defn custom-token
+  ;; we can pass a custom token to the browser & use it to sign in to Firebase/Sparkboard
   ([uid] (.createCustomToken @auth uid))
   ([uid claims] (.createCustomToken @auth uid claims)))
 
