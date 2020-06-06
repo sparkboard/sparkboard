@@ -111,8 +111,11 @@
                                     (log/info :updater-receives-values action_id values)
                                     (on-action state (get values action_id)))))) {} on_actions)))
 
+;; formatting
 (defn blockquote [text]
   (str "> " (str/replace text "\n" "\n> ")))
+(defn link [text url]
+  (str "<" url "|" text ">"))
 
 (defmacro defmodal [modal-name initial-state argv body]
   (let [modal-str (str modal-name)

@@ -182,10 +182,10 @@
 
 (defn team-broadcast-response
   "User response to broadcast - text field for project status update"
-  [original-msg firebase-key]
+  [original-msg private-metadata]
   [:modal {:title [:plain_text "Project Update"]
            :callback_id "team-broadcast-response"
-           :private_metadata {:broadcast/firebase-key firebase-key}
+           :private_metadata private-metadata
            :submit "Send"}
    [:input {:type "input"
             :label original-msg

@@ -425,16 +425,27 @@
      :view_submission/team-broadcast-response
      (fn [_ context]
        (let [values (view/view-values (-> context :slack/payload :view))]
-         (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                        (let [reply-ref-path (:broadcast/firebase-key values)
-                              broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
-                          {:blocks (hiccup/->blocks-json
-                                     (screens/team-broadcast-response-msg
-                                       (:slack/user-id context)
-                                       (-> reply-ref-path fire-jvm/read :from-channel-id)
-                                       (decode-text-input (:user:status-input values))))
-                           :channel (-> broadcast :response-channel)
-                           :thread_ts (-> broadcast :response-thread)}))))
+         (log/info :broadcast-response-values values)
+         (let [{:keys [channel]
+                {:keys [ts]} :message} (slack/web-api "chat.postMessage"
+                                                      (let [reply-ref-path (:broadcast/reply-path values)
+                                                            broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
+                                                        {:blocks (hiccup/->blocks-json
+                                                                   (screens/team-broadcast-response-msg
+                                                                     (:slack/user-id context)
+                                                                     (-> reply-ref-path fire-jvm/read :from-channel-id)
+                                                                     (decode-text-input (:user:status-input values))))
+                                                         :channel (-> broadcast :response-channel)
+                                                         :thread_ts (-> broadcast :response-thread)}))
+               {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel channel
+                                                                       :message_ts ts})]
+           (slack/web-api "chat.postMessage"
+                          (let [{:keys [broadcast/reply-ts
+                                        broadcast/reply-channel]} values]
+                            {:channel reply-channel
+                             :ts reply-ts
+                             :blocks (hiccup/->blocks-json
+                                       [[:section (str "Thanks for your response! " (view/link "See what you wrote." permalink))]])})))))
 
      :view_submission/invite-link-modal
      (fn [_ context]
@@ -470,12 +481,15 @@
        ; "Post an Update" button (user opens modal to respond to broadcast)
 
        (let [broadcast-id (-> payload :actions first :block_id transit/read :broadcast/firebase-key)
-             firebase-path (str "/slack-broadcast/" broadcast-id)
-             reply-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
+             broadcast-path (str "/slack-broadcast/" broadcast-id)
+             reply-ref (.push (fire-jvm/->ref (str broadcast-path "/replies")))
+             reply-path (str broadcast-path "/replies/" (.getKey reply-ref))]
          (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
          (slack/views-open (screens/team-broadcast-response
                              (-> payload :message :blocks first :text :text) ; broadcast msg
-                             (str firebase-path "/replies/" (.getKey reply-ref))))))}))
+                             {:broadcast/reply-path reply-path
+                              :broadcast/reply-ts (-> payload :message :ts)
+                              :broadcast/reply-channel (-> payload :channel :id)}))))}))
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
@@ -502,7 +516,7 @@
                                                 ("view_submission" "view_closed") (-> payload :view :callback_id)
                                                 "block_actions" (-> payload :actions first :action_id)))]
                       [handler-id (assoc context :slack/payload payload)]))]
-          (log/debug :handler handler-id)
+          (log/debug handler-id context)
           (binding [slack/*request* context]
             ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
              handler-id context))))
