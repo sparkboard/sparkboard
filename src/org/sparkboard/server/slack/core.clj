@@ -85,12 +85,18 @@
 
 (def channel-info
   (memoize
-    (fn [channel-id token]
+    (fn [token channel-id]
       (-> (web-api "conversations.info" {:auth/token token} {:channel channel-id})
           :channel))))
 
-(defn user-info [{:slack/keys [user-id bot-token]}]
-  (-> (web-api "users.info" {:auth/token bot-token} {:user user-id})
+(def team-info
+  (memoize
+    (fn [token team-id]
+      (-> (web-api "team.info" {:auth/token token} {:team team-id})
+          :team))))
+
+(defn user-info [token user-id]
+  (-> (web-api "users.info" {:auth/token token} {:user user-id})
       :user))
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -132,7 +138,7 @@
             :body
             json/read-value))
 
-  (time (channel-info "C0121SEV6Q2" (-> env/config :slack :bot-user-oauth-token)))
+  (time (channel-info (-> env/config :slack :bot-user-oauth-token) "C0121SEV6Q2"))
 
   )
 
