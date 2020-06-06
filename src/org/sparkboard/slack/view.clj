@@ -1,5 +1,6 @@
 (ns org.sparkboard.slack.view
-  (:require [clojure.walk :as walk]
+  (:require [clojure.string :as str]
+            [clojure.walk :as walk]
             [org.sparkboard.js-convert :refer [kw->js]]
             [org.sparkboard.server.slack.core :as slack]
             [taoensso.timbre :as log]))
@@ -59,27 +60,28 @@
 
 (defn modal-updater
   "Returns a handler that will update a modal, given:
-   - modal-fn, accepts [context, payload, state] & returns a [:modal ..] hiccup form
+   - modal-fn, accepts [context, state] & returns a [:modal ..] hiccup form
    - reducer, a function of [state] that returns a new state"
   [modal-fn on-action]
-  (fn [k context {:keys [view actions] :as payload}]
+  (fn [k {:as context
+          {:keys [view actions]} :slack/payload}]
     (log/info :actions-values (actions-values actions) actions)
     (let [prev-state (:private_metadata view)
           next-state (on-action prev-state (actions-values actions))]
       (log/info :prev prev-state :next next-state)
       (slack/views-update (:id view)
-                          (-> (modal-fn context payload next-state)
+                          (-> (modal-fn context next-state)
                               (assoc-in [1 :private_metadata] next-state))))))
 
 (defn modal-opener
   "Returns a handler that will open a modal, given:
-   - modal-fn, accepts [context, payload, state] & returnsn a [:modal ..] hiccup form
+   - modal-fn, accepts [context, state] & returnsn a [:modal ..] hiccup form
    - initial-state, a map"
-  [modal-fn initial-state f]
-  (fn [_ context payload]
-    (-> (modal-fn context payload initial-state)
+  [modal-fn initial-state open-fn]
+  (fn [_ context]
+    (-> (modal-fn context initial-state)
         (assoc-in [1 :private_metadata] initial-state)
-        f)))
+        open-fn)))
 
 (defn add-ns [parent action-id]
   (cond (string? action-id) (str parent ":" action-id)
@@ -108,6 +110,9 @@
                                   (fn [state values]
                                     (log/info :updater-receives-values action_id values)
                                     (on-action state (get values action_id)))))) {} on_actions)))
+
+(defn blockquote [text]
+  (str "> " (str/replace text "\n" "\n> ")))
 
 (defmacro defmodal [modal-name initial-state argv body]
   (let [modal-str (str modal-name)

@@ -217,7 +217,7 @@
 
 (view/defmodal multi-select-modal
   {}
-  [context payload state]
+  [context state]
   [:modal {:title "Multi-Select examples"}
    [:section
     {:accessory
@@ -263,7 +263,7 @@
 (view/defmodal checks-test
   {:counter 0
    :checks-test #{"value-test-1"}}
-  [context payload state]
+  [context state]
   [:modal {:title "State test"}
    [:actions
     [:button {:action_id "counter+"
