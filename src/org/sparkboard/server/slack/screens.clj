@@ -40,7 +40,7 @@
         (str "Link Account")]])))
 
 (defn admin-menu [context]
-  (when (:is_admin (slack/user-info context))
+  (when (:is_admin (slack/user-info (:slack/bot-token context) (:slack/user-id context)))
     (list
       [:section "🛠 ADMIN ACTIONS\n"]
       [:divider]

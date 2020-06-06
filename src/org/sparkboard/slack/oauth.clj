@@ -80,7 +80,7 @@
     (let [{app-id :app_id
            :keys [bot_user_id
                   access_token]
-           {team-id :id team-name :name} :team
+           {team-id :id team-name :name team-domain :domain} :team
            {user-id :id} :authed_user} response]
       (log/trace :redirect/response response)
       ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
@@ -96,21 +96,19 @@
           (assert (= token-team team-id) "Reinstall must be to the same team"))
 
         (when board-id
-          (log/debug 'slack-db/link-team-to-board!
-                     (slack-db/link-team-to-board!
-                       {:slack/team-id team-id
-                        :sparkboard/board-id board-id})))
-        (log/debug 'slack-db/install-app!
-                   (slack-db/install-app!
+          (log/spy (slack-db/link-team-to-board!
                      {:slack/team-id team-id
-                      :slack/team-name team-name
-                      :slack/app-id app-id
-                      :slack/bot-token access_token
-                      :slack/bot-user-id bot_user_id}))
+                      :sparkboard/board-id board-id})))
+        (log/spy (slack-db/install-app!
+                   #:slack{:team-id team-id
+                           :team-name team-name
+                           :team-domain team-domain
+                           :app-id app-id
+                           :bot-token access_token
+                           :bot-user-id bot_user_id}))
         (when account-id
-          (log/debug 'slack-db/link-user-to-account!
-                     (slack-db/link-user-to-account!
-                       {:slack/team-id team-id
-                        :slack/user-id user-id
-                        :sparkboard/account-id account-id})))
-        (http/found (urls/slack-home app-id team-id))))))
+          (log/spy (slack-db/link-user-to-account!
+                     {:slack/team-id team-id
+                      :slack/user-id user-id
+                      :sparkboard/account-id account-id})))
+        (http/found (urls/app-redirect {:app app-id :team team-id :domain team-domain}))))))

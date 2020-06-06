@@ -67,15 +67,16 @@
   (str/replace s "+" " "))
 
 (defn team-context [team-id]
+  {:pre [team-id]}
   ;; context we derive from team-id
   (let [app-id (-> env/config :slack :app-id)
         team (slack-db/linked-team team-id)
-        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
-    (def APP-ID app-id)
-    (def BOT-TOKEN bot-token)
-    (def BOT-USER-ID bot-user-id)
+        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])
+        {:keys [domain name]} (slack/team-info bot-token team-id)]
     {:slack/team-id team-id
      :slack/team team
+     :slack/team-name name
+     :slack/team-domain domain
      :slack/bot-token bot-token
      :slack/bot-user-id bot-user-id
      :slack/invite-link (:invite-link team)
@@ -276,18 +277,13 @@
                                                                 :sparkboard/account-id account-id})]
       (if user-id
         (f req)
-        (let [{:keys [slack/bot-token]} (team-context team-id)
-              domain (-> (http/get+ (str slack/base-uri "team.info")
-                                    {:query {:token bot-token
-                                             :team team-id}})
-                         (slack-ok! 500 "Could not read team info")
-                         :team :domain)]
-          (if invite-link
-            (invite-user req (merge slack-team
-                                    slack-user
-                                    token-claims
-                                    {:slack/team-domain domain}))
-            (return-html 200
+        (if invite-link
+          (invite-user req (merge slack-team
+                                  slack-user
+                                  token-claims
+                                  (team-context team-id)))
+          (return-html 200
+                       (let [domain (:slack/team-domain (team-context team-id))]
                          (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
                               "Please contact an organizer."))))))))
 
@@ -348,6 +344,7 @@
                                                                      :project-title project-title})]
     (ring.http/found
       (urls/app-redirect {:app (-> env/config :slack :app-id)
+                          :domain (:slack/team-domain (team-context team-id))
                           :team team-id
                           :channel channel-id}))))
 
@@ -526,13 +523,20 @@
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
                              (handle-slack-api-request params slack-api-handlers))
                "slack-api/oauth-redirect" slack-oauth/redirect
-               "slack/server-action" (wrap-sparkboard-verify sparkboard-action
-                                                             :sparkboard/server-request?)
-               ["slack/project-channel/" :project-id] (-> nav-project-channel
-                                                          (wrap-sparkboard-invite)
-                                                          (wrap-sparkboard-verify :sparkboard/account-id
-                                                                                  :sparkboard/board-id))
-               "slack/install" slack-oauth/install-redirect}
+               "slack/" {"server-action" (wrap-sparkboard-verify sparkboard-action
+                                                                 :sparkboard/server-request?)
+                         ["project-channel/" :project-id] (-> nav-project-channel
+                                                              (wrap-sparkboard-invite)
+                                                              (wrap-sparkboard-verify :sparkboard/account-id
+                                                                                      :sparkboard/board-id))
+                         "install" slack-oauth/install-redirect
+                         "app-redirect" (fn [{{:as query :keys [team]} :params}]
+                                          (assert team "Slack team not provided")
+                                          (ring.http/found
+                                            (urls/app-redirect
+                                              (assoc query
+                                                :app (-> env/config :slack :app-id)
+                                                :domain (:slack/team-domain (team-context team))))))}}
               (when (not= "prod" (env/config :env))
                 {"slack/install-local"
                  (fn [req] (ring.http/found (urls/install-slack-app {:dev/local? true})))})
