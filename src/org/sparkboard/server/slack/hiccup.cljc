@@ -1,7 +1,7 @@
 (ns org.sparkboard.server.slack.hiccup
   (:require [clojure.string :as str]
-            [org.sparkboard.transit :as transit]
-            [org.sparkboard.js-convert :refer [clj->json kw->js]]))
+            [org.sparkboard.js-convert :refer [clj->json kw->js]]
+            [org.sparkboard.transit :as transit]))
 
 (def schema
   "hiccup<->block metadata. Supports:
@@ -31,7 +31,13 @@
                       :hint :plain_text}
             :child :element}
    "context" {:children :elements}
-   "plain_text_input" {:strings {:placeholder :plain_text}}})
+   "users_select" {:strings {:placeholder :plain_text}}
+   "plain_text_input" {:strings {:placeholder :plain_text}}
+   "multi_static_select" {:strings {:placeholder :plain_text}}
+   "multi_users_select" {:strings {:placeholder :plain_text}}
+   "multi_external_select" {:strings {:placeholder :plain_text}}
+   "multi_conversations_select" {:strings {:placeholder :plain_text}}
+   "multi_channels_select" {:strings {:placeholder :plain_text}}})
 
 
 (declare ->blocks)
@@ -93,6 +99,9 @@
 
 (defn hiccup? [form] (and (vector? form) (keyword? (first form))))
 
+(defn kw->underscore [k]
+  (str/replace (name k) "-" "_"))
+
 (defn ->blocks
   "Converts hiccup to blocks"
   [form]
@@ -110,6 +119,7 @@
         (map? form) (reduce-kv (fn [m k v]
                                  (assoc m k (->blocks v))) {} form)
         (keyword? form) (kw->js form)
+        (symbol? form) (name form)
         :else form))
 
 (defn remove-redundant-defaults [defaults props]

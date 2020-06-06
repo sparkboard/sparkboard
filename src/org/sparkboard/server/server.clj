@@ -15,6 +15,8 @@
             [org.sparkboard.slack.oauth :as slack-oauth]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.slack.view :as view]
+            [org.sparkboard.transit :as transit]
             [org.sparkboard.util :as u]
             [org.sparkboard.util.future :refer [try-future]]
             [ring.adapter.jetty :refer [run-jetty]]
@@ -23,8 +25,7 @@
             [ring.util.http-response :as ring.http]
             [ring.util.request]
             [taoensso.timbre :as log]
-            [timbre-ns-pattern-level :as timbre-patterns]
-            [org.sparkboard.transit :as transit])
+            [timbre-ns-pattern-level :as timbre-patterns])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
@@ -180,9 +181,11 @@
           (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 (defn update-user-home-tab! [context]
-  (slack/web-api "views.publish" {:auth/token (:slack/bot-token context)}
+  (slack/web-api "views.publish"
+                 {:auth/token (:slack/bot-token context)}
                  {:user_id (:slack/user-id context)
-                  :view (hiccup/->blocks-json (screens/home context))}))
+                  :view (hiccup/->blocks-json
+                          (screens/home context))}))
 
 (defn send-welcome-message! [context]
   (message-user! context
@@ -343,7 +346,6 @@
                                                                      :account-id account-id
                                                                      :project-id project-id
                                                                      :project-title project-title})]
-    (log/trace :nav-to-channel channel-id)
     (ring.http/found
       (urls/app-redirect {:app (-> env/config :slack :app-id)
                           :team team-id
@@ -390,209 +392,120 @@
     (case action
       :link-account! (link-account! context params))))
 
-(defn action-value [action]
-  (case (:type action)
-    "checkboxes" (->> (:selected_options action)
-                      (map :value)
-                      (into #{}))
-    "static_select" (-> action :selected_option :value)
-    "plain_text_input" (:value action)
-    "button" nil
-    (do
-      (log/warn :not-parsing-action action)
-      action)))
-
-(defn actions-values [actions]
-  (into {} (map (juxt :action_id action-value)) actions))
-
-(defn view-values [view]
-  (->> (apply merge (vals (:values (:state view))))
-       (reduce-kv (fn [m k action]
-                    (assoc m k (action-value action))) {})
-       (merge (:private_metadata view))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Testing local-state
-
-(defn modal-updater
-  "Returns a handler that will update a modal, given:
-   - modal-fn, accepts [context, payload, state] & returnsn a [:modal ..] hiccup form
-   - reducer, a function of [state] that returns a new state"
-  [modal-fn reducer]
-  (fn [k context {:keys [view actions] :as payload} {:keys [modal!]}]
-    (let [next-state (reducer (merge (:private_metadata view) (actions-values actions)))]
-      (modal! (:id view)
-              (-> (modal-fn context payload next-state)
-                  (assoc-in [1 :private_metadata] next-state))))))
-
-(defn modal-opener
-  "Returns a handler that will open a modal, given:
-   - modal-fn, accepts [context, payload, state] & returnsn a [:modal ..] hiccup form
-   - initial-state, a map"
-  [modal-fn initial-state]
-  (fn [_ context payload {:keys [modal!]}]
-    (modal! (-> (modal-fn context payload initial-state)
-                (assoc-in [1 :private_metadata] initial-state)))))
-
-;; TODO
-;; a modal 'builder' function that will return all of the handlers
-;; needed to support a modal + its local state updates
-(comment
-  (modal-builder "my-modal"
-                 {:initial-state {:n 0}}
-                 (fn [state]
-                   [:modal {:title "Hello"}
-                    [:actions
-                     [:button {:modal/action-id "counter+"
-                               :modal/on-action #(update % :n inc)}
-                      (str "Counter: " (:n state))]]]))
-  ;; this would return
-  {:block_actions/my-modal-open ...
-   :block_actions/my-modal-counter+ ...})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def slack-api-handlers
-  {
-   ;;;;;;;;;;;;;;;;;;;;;
-   ;; testing local-state
-   :block_actions/checks-test-open
-   (modal-opener screens/state-test-modal {})
-   :block_actions/checks-test
-   (modal-updater screens/state-test-modal identity)        ;; default behaviour: merge action-values with state
-   :block_actions/counter+
-   (modal-updater screens/state-test-modal
-                  (fn [state] (update state "counter" (fnil inc 0))))
+  (merge
+    screens/checks-test
+    screens/multi-select-modal
+    {:shortcut/UNSET
+     ;; TODO existing shortcuts don't have callback_id set?
+     (fn [callback-id context payload]
+       (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
+                      {:trigger_id (:trigger_id payload)
+                       :view (hiccup/->blocks-json (screens/shortcut-modal context))}))
+     :event/app_home_opened
+     (fn [_ context event]
+       (case (:tab event)
+         "home" (update-user-home-tab! context)
+         nil))
 
-   :shortcut/UNSET
-   ;; TODO existing shortcuts don't have callback_id set?
-   (fn [callback-id context payload]
-     (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
-                    {:trigger_id (:trigger_id payload)
-                     :view (hiccup/->blocks-json (screens/shortcut-modal context))}))
-   :event/app_home_opened
-   (fn [_ context event]
-     (case (:tab event)
-       "home" (update-user-home-tab! context)
-       nil))
+     :event/team_join
+     (fn [_ context event] (send-welcome-message! context))
 
-   :event/team_join
-   (fn [_ context event] (send-welcome-message! context))
+     :view_submission/team-broadcast-modal-compose
+     (fn [_ context payload]
+       (let [values (view/view-values (:view payload))]
+         (request-updates context
+                          {:message (decode-text-input (:broadcast2:text-input values))
+                           :response-channel (:broadcast2:channel-select values)
+                           :collect-in-thread (contains? (:broadcast-options values) "collect-in-thread")})))
 
-   :view_submission/team-broadcast-modal-compose
-   (fn [_ context payload]
-     (let [values (view-values (:view payload))]
-       (request-updates context
-                        {:message (decode-text-input (:broadcast2:text-input values))
-                         :response-channel (:broadcast2:channel-select values)
-                         :collect-in-thread (contains? (:broadcast-options values) "collect-in-thread")})))
+     ;; User broadcast response: describe current status
+     :view_submission/team-broadcast-response
+     (fn [_ context payload]
+       (let [values (view/view-values (:view payload))]
+         (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
+                        (let [reply-ref-path (:broadcast/firebase-key values)
+                              broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
+                          {:blocks (hiccup/->blocks-json
+                                     (screens/team-broadcast-response-msg
+                                       (:slack/user-id context)
+                                       (-> reply-ref-path fire-jvm/read :from-channel-id)
+                                       (decode-text-input (:user:status-input values))))
+                           :channel (-> broadcast :response-channel)
+                           :thread_ts (-> broadcast :response-thread)}))))
 
-   ;; User broadcast response: describe current status
-   :view_submission/team-broadcast-response
-   (fn [_ context payload]
-     (let [values (view-values (:view payload))]
-       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                      (let [reply-ref-path (:broadcast/firebase-key values)
-                            broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
-                        {:blocks (hiccup/->blocks-json
-                                   (screens/team-broadcast-response-msg
-                                     (:slack/user-id context)
-                                     (-> reply-ref-path fire-jvm/read :from-channel-id)
-                                     (decode-text-input (:user:status-input values))))
-                         :channel (-> broadcast :response-channel)
-                         :thread_ts (-> broadcast :response-thread)}))))
+     :view_submission/invite-link-modal
+     (fn [_ context payload]
+       (let [values (view/view-values (:view payload))]
+         (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
+                             (:invite-link-input values))
+         (update-user-home-tab!
+           ;; update team-context to propagate invite-link change
+           (merge context (team-context (:slack/team-id context))))))
 
-   :view_submission/invite-link-modal
-   (fn [_ context payload]
-     (let [values (view-values (:view payload))]
-       (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
-                           (:invite-link-input values))
-       (update-user-home-tab!
-         ;; update team-context to propagate invite-link change
-         (merge context (team-context (:slack/team-id context))))))
+     :view_submission/customize-messages-modal
+     (fn [_ context payload]
+       (let [values (view/view-values (:view payload))]
+         (fire-jvm/update-value (str "/slack-team/" (:slack/team-id context) "/custom-messages") values)))
 
-   :view_submission/customize-messages-modal
-   (fn [_ context payload]
-     (let [values (view-values (:view payload))]
-       (log/info :values values :payload payload :view (:view payload))
-       (fire-jvm/update-value (str "/slack-team/" (:slack/team-id context) "/custom-messages") values)))
+     :block_actions/admin:customize-messages-modal-open
+     (fn [_ context payload]
+       (slack/views-open (screens/customize-messages-modal context)))
 
-   :block_actions/admin:customize-messages-modal-open
-   (fn [_ context payload {:keys [modal!]}]
-     (modal! (screens/customize-messages-modal context)))
+     :block_actions/admin:invite-link-modal-open
+     (fn [_ context payload]
+       (slack/views-open (screens/invite-link-modal context)))
 
-   :block_actions/admin:invite-link-modal-open
-   (fn [_ context payload {:keys [modal!]}]
-     (modal! (screens/invite-link-modal context)))
+     :block_actions/admin:team-broadcast
+     (fn [_ context {:as payload :keys [view]}]
+       (case (:type view)
+         "home" (slack/views-open (screens/team-broadcast-modal-compose context))
+         "modal" (slack/views-update (:id view) (screens/team-broadcast-modal-compose context))))
 
-   :block_actions/admin:team-broadcast
-   (fn [_ context {:as payload :keys [view]} {:keys [modal!]}]
-     (case (:type view)
-       "home" (modal! (screens/team-broadcast-modal-compose context))
-       "modal" (modal! (:id view) (screens/team-broadcast-modal-compose context))))
+     :block_actions/user:team-broadcast-response
+     (fn [_ context payload]
+       ; "Post an Update" button (user opens modal to respond to broadcast)
 
-   :block_actions/user:team-broadcast-response
-   (fn [_ context payload {:keys [modal! action-id-suffix]}]
-     ; "Post an Update" button (user opens modal to respond to broadcast)
-     (let [firebase-path (str "/slack-broadcast/" action-id-suffix)
-           reply-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
-       (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
-       (modal! (screens/team-broadcast-response
-                 (-> payload :message :blocks first :text :text) ; broadcast msg
-                 (str firebase-path "/replies/" (.getKey reply-ref))))))})
+       (let [broadcast-id (-> payload :actions first :block_id transit/read :broadcast/firebase-key)
+             firebase-path (str "/slack-broadcast/" broadcast-id)
+             reply-ref (.push (fire-jvm/->ref (str firebase-path "/replies")))]
+         (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
+         (slack/views-open (screens/team-broadcast-response
+                             (-> payload :message :blocks first :text :text) ; broadcast msg
+                             (str firebase-path "/replies/" (.getKey reply-ref))))))}))
 
-(defn handle-slack-api-request [params handlers]
-  (let [params (cond-> params (:payload params) (update :payload json->clj))]
-    (log/trace "[slack-api]" params)
-    (if (:challenge params)
-      (ring.http/ok (:challenge params))
-      (do
-        (try-future
-          (let [[handler-id & args]
-                (cond (:event params)
-                      (let [event-type (:type (:event params))
-                            event (:event params)
-                            user-id (if (map? (:user event)) (:id (:user event)) (:user event))
-                            context (slack-context (:team_id params) user-id)]
-                        [(keyword "event" event-type) context event])
+(defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
+  (log/trace "[slack-api]" params)
+  (if challenge
+    (ring.http/ok challenge)
+    (do
+      (try-future
+        (let [[handler-id context data]
+              (cond event
+                    [(keyword "event" (:type event))
+                     (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
+                     event]
 
-                      (:payload params)
-                      (let [{:as payload
-                             :keys [user team]
-                             payload-type :type} (-> (:payload params)
-                                                     (update-in [:view :private_metadata] #(if (str/blank? %)
-                                                                                             {}
-                                                                                             (transit/read %))))
-                            context (slack-context (:id team) (:id user))]
-                        (case payload-type
-                          "shortcut"
-                          [(keyword payload-type (:callback_id payload "UNSET")) context payload]
-
-                          ("view_submission" "view_closed")
-                          [(keyword payload-type (-> payload :view :callback_id)) context payload]
-
-                          "block_actions"
-                          (let [[action-id action-id-suffix] (-> payload :actions first :action_id
-                                                                 (str/split (re-pattern screens/action-id-separator)))]
-                            [(keyword payload-type action-id)
-                             context
-                             payload
-                             {:action-id-suffix action-id-suffix
-                              :modal! (fn
-                                        ([blocks]
-                                         (log/info :modal! (hiccup/->blocks blocks))
-                                         (slack/web-api "views.open"
-                                                        {:auth/token (:slack/bot-token context)}
-                                                        {:trigger_id (:trigger_id payload)
-                                                         :view (hiccup/->blocks-json blocks)}))
-                                        ([view-id blocks]
-                                         (slack/web-api "views.update" {:auth/token (:slack/bot-token context)}
-                                                        {:view_id view-id
-                                                         :view (hiccup/->blocks-json blocks)})))}])))
-                      :else (log/error [:unhandled-request params]))]
-            (log/info :handler handler-id)
-            (-> (handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-                (apply handler-id args))))
-        (ring.http/ok)))))
+                    payload
+                    (let [payload (-> (json->clj payload)
+                                      (update-in [:view :private_metadata]
+                                                 #(if (str/blank? %) {} (transit/read %))))
+                          context (-> (slack-context (-> payload :team :id) (-> payload :user :id))
+                                      (assoc :slack/trigger-id (:trigger_id payload)
+                                             :slack/view-hash (-> payload :view :hash)))
+                          handler-id (keyword (:type payload)
+                                              (case (:type payload)
+                                                "shortcut" (:callback_id payload "UNSET")
+                                                ("view_submission" "view_closed") (-> payload :view :callback_id)
+                                                "block_actions" (-> payload :actions first :action_id)))]
+                      [handler-id context payload]))]
+          (log/debug :handler handler-id :data data)
+          (binding [slack/*request* context]
+            ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+             handler-id context data))))
+      (ring.http/ok))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]

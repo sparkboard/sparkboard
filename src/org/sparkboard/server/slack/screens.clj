@@ -1,10 +1,13 @@
 (ns org.sparkboard.server.slack.screens
-  (:require [clojure.string :as str]
-            [org.sparkboard.slack.urls :as urls]
+  (:require [clojure.pprint :as pp]
+            [clojure.string :as str]
             [org.sparkboard.firebase.jvm :as fire-jvm]
+            [org.sparkboard.js-convert :refer [clj->json json->clj]]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
-            [org.sparkboard.js-convert :refer [clj->json json->clj]]
+            [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.slack.view :as view]
+            [org.sparkboard.transit :as transit]
             [taoensso.timbre :as log]))
 
 (defn channel-link [id]
@@ -25,8 +28,6 @@
 (defn team-message [context k]
   (or (get-in context [:slack/team :custom-messages k])
       (get-in team-messages [k :default])))
-
-(def action-id-separator "::")
 
 (defn link-account [context]
   (let [linking-url (urls/link-sparkboard-account context)]
@@ -63,7 +64,7 @@
         "Customize Messages"]
        [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                     :slack/team-id]))} "Reinstall App"]
-       [:button {:action_id "checks-test-open"} "State test"]]
+       [:button {:action_id 'checks-test:open} "Form Examples (dev)"]]
       [:section (str "_Updated "
                      (->> (java.util.Date.)
                           (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
@@ -131,16 +132,6 @@
                       (map (fn [{:keys [name_normalized id]}]
                              {:value id :text [:plain_text name_normalized]}))))))
 
-(defn checkbox-options [m selected options]
-  ;; checkbox selection state is represented by copying
-  ;; active checkboxes into a separate list of :initial_options
-  (->> options
-       (reduce (fn [m option]
-                 (-> m
-                     (update :options (fnil conj []) option)
-                     (cond-> (contains? selected (:value option))
-                             (update :initial_options (fnil conj []) option)))) m)))
-
 (defn team-broadcast-modal-compose
   ([context] (team-broadcast-modal-compose context {}))
   ([context local-state]
@@ -174,22 +165,6 @@
        :options [{:value "collect-in-thread"
                   :text [:md "Collect responses in a thread"]}]}]]]))
 
-(defn state-test-modal [context payload state]
-  [:modal {:title "State test"}
-   [:actions
-    [:button {:action_id "counter+"}
-     (str "Clicked " (when-let [i (state "counter")]
-                       (str "(" i ")")))]
-    [:checkboxes
-     (checkbox-options {:action_id "checks-test"}
-                       (state "checks-test")
-                       [{:value "value-test-1"
-                         :text [:md (str "Check 1 " (when (contains? (state "checks-test") "value-test-1")
-                                                      "(checked)"))]}
-                        {:value "value-test-2"
-                         :text [:md (str "Check 2 " (when (contains? (state "checks-test") "value-test-2")
-                                                      "(checked)"))]}])]]])
-
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
   [firebase-key {:keys [message response-channel]}]
@@ -198,10 +173,9 @@
     (when response-channel
       (list
         [:actions
+         {:block_id (transit/write {:broadcast/firebase-key firebase-key})}
          [:button {:style "primary"
-                   :action_id (str "user:team-broadcast-response"
-                                   action-id-separator
-                                   firebase-key)
+                   :action_id "user:team-broadcast-response"
                    :value "click_me_123"}
           "Post an Update"]]
         [:context [:md (str "Replies will be sent to " (channel-link response-channel))]]))))
@@ -240,3 +214,102 @@
 (comment
   (hiccup/->blocks team-broadcast-modal-compose)
   (hiccup/->blocks [:md "hi"]))
+
+(view/defmodal multi-select-modal
+  {}
+  [context payload state]
+  [:modal {:title "Multi-Select examples"}
+   [:section
+    {:accessory
+     [:multi_static_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-static-select"
+           :on_action (fn [state value] (assoc state :multi-select value))
+           :options [{:value "multi-1"
+                      :text [:plain_text "Multi 1"]}
+                     {:value "multi-2"
+                      :text [:plain_text "Multi 2"]}
+                     {:value "multi-3"
+                      :text [:plain_text "Multi 3"]}]}
+          (view/assoc-options :initial_options (:multi-select state)))]}
+    "Multi-select"]
+   [:section
+    {:accessory
+     [:multi_users_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-users-select"
+           :on_action (fn [state value] (assoc state :multi-users-select value))}
+          (view/assoc-some :initial_users (:multi-users-select state)))]}
+    "Multi-users-select"]
+
+   [:section
+    {:accessory
+     [:multi_conversations_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-conversations-select"
+           :on_action (fn [state value] (assoc state :multi-conversations-select value))}
+          (view/assoc-some :initial_conversations (:multi-conversations-select state)))]}
+    "Multi-conversations-select"]
+
+   [:section
+    {:accessory
+     [:multi_channels_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-channels-select"
+           :on_action (fn [state value] (assoc state :multi-channels-select value))}
+          (view/assoc-some :initial_channels (:multi-channels-select state)))]}
+    "Multi-channels-select"]])
+
+(view/defmodal checks-test
+  {:counter 0
+   :checks-test #{"value-test-1"}}
+  [context payload state]
+  [:modal {:title "State test"}
+   [:actions
+    [:button {:action_id "counter+"
+              :on_action (fn [state _] (update state :counter inc))}
+     (str "Clicked " (str "(" (:counter state) ")"))]
+    [:datepicker (-> {:action_id "date-eg"
+                      :on_action (fn [state value] (assoc state :date value))}
+                     (view/assoc-some :initial_date (:date state)))]
+
+    [:overflow {:action_id "overflow-eg"
+                :on_action (fn [state value] (assoc state :overflow value))
+                :options [{:value "o1"
+                           :text [:plain_text "O1"]}
+                          {:value "o2"
+                           :text [:plain_text "O2"]}]}]
+    [:users_select
+     (-> {:placeholder "Pick a person"
+          :action_id "users-select-eg"
+          :on_action (fn [state user] (assoc state :user user))}
+         (view/assoc-some :initial_user (:user state)))]
+
+    [:radio_buttons
+     (-> {:action_id "radio-eg"
+          :on_action (fn [state value] (assoc state :radio value))
+          :options [{:value "r1"
+                     :text [:plain_text "Radio 1"]}
+                    {:value "r2"
+                     :text [:plain_text "Radio 2"]}]
+          :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}
+         (view/assoc-option :initial_option (:radio state)))]
+
+    [:checkboxes
+     (-> {:action_id "checks-test"
+          :on_action (fn [state value] (assoc state :checks value))
+          :options [{:value "value-test-1"
+                     :text [:md "Check 1"]}
+                    {:value "value-test-2"
+                     :text [:md "Check 2"]}]}
+         (view/assoc-options :initial_options (:checks state)))]
+
+    [:button {:action_id :multi-select-modal:push} "Multi-Select"]]
+
+
+   (when-not (:hide-state? state)
+     [:section (with-out-str (pp/pprint state))])
+   [:actions
+    [:button {:action_id "toggle-state-view"
+              :on_action (fn [state value] (update state :hide-state? not))}
+     (if (:hide-state? state) "show state" "hide state")]]])
