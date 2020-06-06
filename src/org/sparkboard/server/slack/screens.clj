@@ -1,10 +1,14 @@
 (ns org.sparkboard.server.slack.screens
-  (:require [clojure.string :as str]
-            [org.sparkboard.slack.urls :as urls]
+  (:require [clojure.pprint :as pp]
+            [clojure.string :as str]
             [org.sparkboard.firebase.jvm :as fire-jvm]
+            [org.sparkboard.js-convert :refer [clj->json json->clj]]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
-            [org.sparkboard.js-convert :refer [clj->json json->clj]]))
+            [org.sparkboard.slack.urls :as urls]
+            [org.sparkboard.slack.view :as view]
+            [org.sparkboard.transit :as transit]
+            [taoensso.timbre :as log]))
 
 (defn channel-link [id]
   (str "<#" id ">"))
@@ -24,8 +28,6 @@
 (defn team-message [context k]
   (or (get-in context [:slack/team :custom-messages k])
       (get-in team-messages [k :default])))
-
-(def action-id-separator "::")
 
 (defn link-account [context]
   (let [linking-url (urls/link-sparkboard-account context)]
@@ -61,7 +63,8 @@
        [:button {:action_id "admin:customize-messages-modal-open"}
         "Customize Messages"]
        [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
-                                                                    :slack/team-id]))} "Reinstall App"]]
+                                                                    :slack/team-id]))} "Reinstall App"]
+       [:button {:action_id 'checks-test:open} "Form Examples (dev)"]]
       [:section (str "_Updated "
                      (->> (java.util.Date.)
                           (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
@@ -130,12 +133,12 @@
                              {:value id :text [:plain_text name_normalized]}))))))
 
 (defn team-broadcast-modal-compose
-  ([context] (team-broadcast-modal-compose context nil))
-  ([context private-data]
+  ([context] (team-broadcast-modal-compose context {}))
+  ([context local-state]
    [:modal {:title [:plain_text "Compose Broadcast"]
             :submit [:plain_text "Submit"]
             :callback_id "team-broadcast-modal-compose"
-            :private_metadata (or (some-> private-data (clj->json)) "")}
+            :private_metadata local-state}
     ;; NB: private metadata is a String of max 3000 chars
     ;; See https://api.slack.com/reference/surfaces/views
 
@@ -170,20 +173,19 @@
     (when response-channel
       (list
         [:actions
+         {:block_id (transit/write {:broadcast/firebase-key firebase-key})}
          [:button {:style "primary"
-                   :action_id (str "user:team-broadcast-response"
-                                   action-id-separator
-                                   firebase-key)
+                   :action_id "user:team-broadcast-response"
                    :value "click_me_123"}
           "Post an Update"]]
         [:context [:md (str "Replies will be sent to " (channel-link response-channel))]]))))
 
 (defn team-broadcast-response
   "User response to broadcast - text field for project status update"
-  [original-msg firebase-key]
+  [original-msg private-metadata]
   [:modal {:title [:plain_text "Project Update"]
            :callback_id "team-broadcast-response"
-           :private_metadata (clj->json {:broadcast/firebase-key firebase-key})
+           :private_metadata private-metadata
            :submit "Send"}
    [:input {:type "input"
             :label original-msg
@@ -212,3 +214,102 @@
 (comment
   (hiccup/->blocks team-broadcast-modal-compose)
   (hiccup/->blocks [:md "hi"]))
+
+(view/defmodal multi-select-modal
+  {}
+  [context state]
+  [:modal {:title "Multi-Select examples"}
+   [:section
+    {:accessory
+     [:multi_static_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-static-select"
+           :on_action (fn [state value] (assoc state :multi-select value))
+           :options [{:value "multi-1"
+                      :text [:plain_text "Multi 1"]}
+                     {:value "multi-2"
+                      :text [:plain_text "Multi 2"]}
+                     {:value "multi-3"
+                      :text [:plain_text "Multi 3"]}]}
+          (view/assoc-options :initial_options (:multi-select state)))]}
+    "Multi-select"]
+   [:section
+    {:accessory
+     [:multi_users_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-users-select"
+           :on_action (fn [state value] (assoc state :multi-users-select value))}
+          (view/assoc-some :initial_users (:multi-users-select state)))]}
+    "Multi-users-select"]
+
+   [:section
+    {:accessory
+     [:multi_conversations_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-conversations-select"
+           :on_action (fn [state value] (assoc state :multi-conversations-select value))}
+          (view/assoc-some :initial_conversations (:multi-conversations-select state)))]}
+    "Multi-conversations-select"]
+
+   [:section
+    {:accessory
+     [:multi_channels_select
+      (-> {:placeholder "Select some..."
+           :action_id "multi-channels-select"
+           :on_action (fn [state value] (assoc state :multi-channels-select value))}
+          (view/assoc-some :initial_channels (:multi-channels-select state)))]}
+    "Multi-channels-select"]])
+
+(view/defmodal checks-test
+  {:counter 0
+   :checks-test #{"value-test-1"}}
+  [context state]
+  [:modal {:title "State test"}
+   [:actions
+    [:button {:action_id "counter+"
+              :on_action (fn [state _] (update state :counter inc))}
+     (str "Clicked " (str "(" (:counter state) ")"))]
+    [:datepicker (-> {:action_id "date-eg"
+                      :on_action (fn [state value] (assoc state :date value))}
+                     (view/assoc-some :initial_date (:date state)))]
+
+    [:overflow {:action_id "overflow-eg"
+                :on_action (fn [state value] (assoc state :overflow value))
+                :options [{:value "o1"
+                           :text [:plain_text "O1"]}
+                          {:value "o2"
+                           :text [:plain_text "O2"]}]}]
+    [:users_select
+     (-> {:placeholder "Pick a person"
+          :action_id "users-select-eg"
+          :on_action (fn [state user] (assoc state :user user))}
+         (view/assoc-some :initial_user (:user state)))]
+
+    [:radio_buttons
+     (-> {:action_id "radio-eg"
+          :on_action (fn [state value] (assoc state :radio value))
+          :options [{:value "r1"
+                     :text [:plain_text "Radio 1"]}
+                    {:value "r2"
+                     :text [:plain_text "Radio 2"]}]
+          :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}
+         (view/assoc-option :initial_option (:radio state)))]
+
+    [:checkboxes
+     (-> {:action_id "checks-test"
+          :on_action (fn [state value] (assoc state :checks value))
+          :options [{:value "value-test-1"
+                     :text [:md "Check 1"]}
+                    {:value "value-test-2"
+                     :text [:md "Check 2"]}]}
+         (view/assoc-options :initial_options (:checks state)))]
+
+    [:button {:action_id :multi-select-modal:push} "Multi-Select"]]
+
+
+   (when-not (:hide-state? state)
+     [:section (with-out-str (pp/pprint state))])
+   [:actions
+    [:button {:action_id "toggle-state-view"
+              :on_action (fn [state value] (update state :hide-state? not))}
+     (if (:hide-state? state) "show state" "hide state")]]])
