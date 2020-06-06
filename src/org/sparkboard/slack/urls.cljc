@@ -18,11 +18,9 @@
        "staging" (str "http://" domain ".sparkboard.org")
        "prod" (str "https://" domain)))))
 
-(defn app-redirect [params]
-  (str "https://slack.com/app_redirect?" (uri/map->query-string params)))
-
-(defn slack-home [app-id team-id]
-  (app-redirect {:team team-id :app app-id}))
+(defn app-redirect [{:as params :keys [app team domain]}]
+  {:pre [app team domain]}
+  (str "https://" domain "." "slack.com/app_redirect?" (uri/map->query-string (dissoc params :domain))))
 
 (defn install-slack-app
   "Returns a link that will lead user to install/reinstall app to a workspace"
@@ -58,8 +56,6 @@
 
 (defn link-sparkboard-account
   "Sends the user to Sparkboard to link their account, then redirects them back to Slack"
-  [context]
-  (on-sparkboard context
-                 (slack-home (:slack/app-id context)
-                             (:slack/team-id context))))
+  [{:as context :slack/keys [app-id team-id team-domain]}]
+  (on-sparkboard context (app-redirect {:app app-id :team team-id :domain team-domain})))
 
