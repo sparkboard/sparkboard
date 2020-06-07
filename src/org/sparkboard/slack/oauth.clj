@@ -12,12 +12,14 @@
 
 (def slack-config (-> env/config :slack))
 
-(def required-scopes ["channels:read"
+(def required-scopes ["channels:join"
                       "channels:manage"
-                      "channels:join"
+                      "channels:read"
                       "chat:write"
+                      "chat.write.public"
                       "commands"
                       "groups:read"
+                      "reminders:write"
                       "team:read"
                       "users:read"
                       "users:read.email"])
