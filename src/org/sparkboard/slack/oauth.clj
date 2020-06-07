@@ -14,6 +14,7 @@
 
 (def required-scopes ["channels:read"
                       "channels:manage"
+                      "channels:join"
                       "chat:write"
                       "commands"
                       "groups:read"

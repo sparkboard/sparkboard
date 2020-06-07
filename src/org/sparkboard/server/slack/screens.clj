@@ -123,8 +123,8 @@
   [:modal {:title "Sparkboard"}
    (main-menu context)])
 
-(defn destination-channel-groups [{:keys [slack/bot-token
-                                          slack/bot-user-id]}]
+(defn destination-channel-options [{:keys [slack/bot-token
+                                           slack/bot-user-id]}]
   (->> (slack/web-api "conversations.list"
                       {:auth/token bot-token}
                       {:exclude_archived true
@@ -153,20 +153,23 @@
       {:multiline true,
        :action_id "broadcast2:text-input"
        :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}]]
-    [:input
-     {:label "Send responses to channel:"
-      :optional true}
-     [:static_select
-      {:placeholder [:plain_text "Select a channel..."],
-       :options (destination-channel-groups context)
-       :action_id "broadcast2:channel-select"}]]
-    [:input
-     {:label "Options"
-      :optional true}
-     [:checkboxes
-      {:action_id "broadcast-options"
-       :options [{:value "collect-in-thread"
-                  :text [:md "Collect responses in a thread"]}]}]]]))
+    (if-let [options (seq (destination-channel-options context))]
+      (list
+        [:input
+         {:label "Send responses to channel:"
+          :optional true}
+         [:static_select
+          {:placeholder [:plain_text "Select a channel..."],
+           :options options
+           :action_id "broadcast2:channel-select"}]]
+        [:input
+         {:label "Options"
+          :optional true}
+         [:checkboxes
+          {:action_id "broadcast-options"
+           :options [{:value "collect-in-thread"
+                      :text [:md "Collect responses to a thread"]}]}]])
+      [:section [:md "💡 Add this app to a channel to enable collection of responses."]])]))
 
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
