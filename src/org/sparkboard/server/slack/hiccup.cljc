@@ -1,7 +1,8 @@
 (ns org.sparkboard.server.slack.hiccup
   (:require [clojure.string :as str]
             [org.sparkboard.js-convert :refer [clj->json kw->js]]
-            [org.sparkboard.transit :as transit]))
+            [org.sparkboard.transit :as transit]
+            [taoensso.timbre :as log]))
 
 (def schema
   "hiccup<->block metadata. Supports:
@@ -165,7 +166,9 @@
         (into (empty form) (map ->hiccup) form)
         :else form))
 
-(def ->blocks-json (comp clj->json ->blocks))
+(defn ->blocks-json [hiccup]
+  (log/trace :blocks hiccup)
+  (-> hiccup ->blocks clj->json))
 
 (comment
 

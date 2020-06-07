@@ -1,7 +1,6 @@
 (ns org.sparkboard.slack.urls
   (:require [org.sparkboard.firebase.tokens :as tokens]
             [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.promise :as p]
             [org.sparkboard.server.env :as env]
             [taoensso.timbre :as log]
             [lambdaisland.uri :as uri]
@@ -25,18 +24,17 @@
 (defn install-slack-app
   "Returns a link that will lead user to install/reinstall app to a workspace"
   [& [{:as params
-       :keys [sparkboard/jvm-root
-              sparkboard/board-id
+       :keys [sparkboard/board-id
               sparkboard/account-id
               slack/team-id
-              reinstall?]
-       :or {jvm-root (-> env/config :sparkboard/jvm-root)}}]]
-  {:pre [(or team-id                                        ;; reinstall
+              reinstall?]}]]
+  {:pre [(or team-id                                        ;; reinstall specific team
              (and board-id account-id)                      ;; new install + link board
-             reinstall?
+             reinstall?                                     ;; reinstall anything
              )]}
-  (str jvm-root "/slack/install?state=" (tokens/encode (dissoc params :sparkboard/jvm-root)
-                                                       {:expires-in (* 60 60 24 60)})))
+  (str (-> env/config :sparkboard/jvm-root)
+       "/slack/install?state=" (tokens/encode (dissoc params :sparkboard/jvm-root)
+                                              {:expires-in (* 60 60 24 60)})))
 
 (defn on-sparkboard [{:as context
                       :slack/keys [team-id app-id user-id]
@@ -44,11 +42,12 @@
                       :keys [env]} redirect]
   {:pre [env board-id user-id team-id redirect]}
   (log/trace ::on-sparkboard redirect context)
-  (p/let [domain (slack-db/board-domain board-id)
-          payload (-> context
-                      (select-keys [:slack/team-id
-                                    :slack/user-id])
-                      (assoc :redirect redirect))]
+  (let [domain (slack-db/board-domain board-id)
+        payload (-> context
+                    (select-keys [:slack/team-id
+                                  :slack/user-id])
+                    (assoc :redirect redirect))]
+    (assert domain "on-sparkboard requires domain")
     (log/trace :sparkboard/slack-link payload)
     (str (sparkboard-host env domain)
          "/slack-link?token=" (tokens/encode payload))))
@@ -56,5 +55,6 @@
 (defn link-sparkboard-account
   "Sends the user to Sparkboard to link their account, then redirects them back to Slack"
   [{:as context :slack/keys [app-id team-id team-domain]}]
-  (on-sparkboard context (app-redirect {:app app-id :team team-id :domain team-domain})))
+  (on-sparkboard context
+                 (app-redirect {:app app-id :team team-id :domain team-domain})))
 

@@ -61,7 +61,7 @@
                  (.build))
         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
     (when-not (:ok rsp)
-      (tap> (-> rsp :response_metadata :messages))
+      (log/error (-> rsp :response_metadata :messages))
       (throw (ex-info (str "web-api failure: slack/" family-method) {:rsp rsp :config config :body body})))
     (log/debug "[web-api] POST rsp:" rsp)
     rsp))

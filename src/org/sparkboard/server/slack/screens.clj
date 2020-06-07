@@ -30,7 +30,7 @@
       (get-in team-messages [k :default])))
 
 (defn link-account [context]
-  (let [linking-url (urls/link-sparkboard-account context)]
+  (when-let [linking-url (urls/link-sparkboard-account context)]
     (list
       [:section (str "Please link your Sparkboard account:")]
       [:actions
@@ -62,8 +62,9 @@
       [:actions
        [:button {:action_id "admin:customize-messages-modal-open"}
         "Customize Messages"]
-       [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
-                                                                    :slack/team-id]))} "Reinstall App"]
+       [:button {:url (str (:sparkboard/jvm-root context)
+                           "/slack/reinstall/"
+                           (:slack/team-id context))} "Reinstall App"]
        [:button {:url (urls/link-sparkboard-account context)} "Re-Link Account"]
        [:button {:action_id 'checks-test:open} "Form Examples (dev)"]]
       [:section (str "_Updated "
@@ -71,17 +72,18 @@
                           (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
                      ". App " (:slack/app-id context) ", Team " (:slack/team-id context))])))
 
-(defn main-menu [context]
+(defn main-menu [{:as context :sparkboard/keys [board-id account-id]}]
   (list
-    (if-let [board-id (:sparkboard/board-id context)]
-      (let [{:keys [title domain]} (fire-jvm/read (str "settings/" board-id))]
-        [:section
-         {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
-         (str "This Slack team is connected to *" title "* on Sparkboard.")])
+
+    (when (and board-id (not account-id))
+      (link-account context))
+
+    (if-let [{:keys [title domain]} (some->> board-id (str "settings/") fire-jvm/read)]
+      [:section
+       {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
+       (str "This Slack team is connected to *" title "* on Sparkboard.")]
       [:section "No Sparkboard is linked to this Slack workspace."])
 
-    (when-not (:sparkboard/account-id context)
-      (link-account context))
     [:divider]
     (admin-menu context)))
 

@@ -184,7 +184,6 @@
 
 (defn update-user-home-tab! [context]
   (slack/web-api "views.publish"
-                 {:auth/token (:slack/bot-token context)}
                  {:user_id (:slack/user-id context)
                   :view (hiccup/->blocks-json
                           (screens/home context))}))
@@ -546,7 +545,10 @@
                                               (assoc query
                                                 :app (-> env/config :slack :app-id)
                                                 :domain (:slack/team-domain (team-context team))))))
-                         "reinstall" (fn [req] (ring.http/found (urls/install-slack-app {:reinstall? true})))}}
+                         "reinstall" {"" (fn [req]
+                                           (ring.http/found (urls/install-slack-app {:reinstall? true})))
+                                      ["/" :team-id] (fn [{{:keys [team-id]} :params}]
+                                                       (ring.http/found (urls/install-slack-app {:slack/team-id team-id})))}}}
               (when (env/config :dev/mock-sparkboard? true)
                 {["mock/" :domain] {"/slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)
                                     [[#".*" :catchall]]
