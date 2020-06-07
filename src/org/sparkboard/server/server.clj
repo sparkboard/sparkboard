@@ -545,10 +545,8 @@
                                             (urls/app-redirect
                                               (assoc query
                                                 :app (-> env/config :slack :app-id)
-                                                :domain (:slack/team-domain (team-context team))))))}}
-              (when (not= "prod" (env/config :env))
-                {"slack/install-local"
-                 (fn [req] (ring.http/found (urls/install-slack-app {:dev/local? true})))})
+                                                :domain (:slack/team-domain (team-context team))))))
+                         "reinstall" (fn [req] (ring.http/found (urls/install-slack-app {:reinstall? true})))}}
               (when (env/config :dev/mock-sparkboard? true)
                 {["mock/" :domain] {"/slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)
                                     [[#".*" :catchall]]

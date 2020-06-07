@@ -33,8 +33,7 @@
   [{:keys [query-params] :as req}]
   (log/trace :install-redirect/req req)
   (let [{:strs [state]} query-params
-        {:keys [dev/local?
-                slack/team-id
+        {:keys [slack/team-id
                 sparkboard/board-id]} (tokens/decode state)
         error (when board-id
                 (when-let [entry (slack-db/board->team board-id)]
@@ -67,7 +66,7 @@
          :keys [sparkboard/board-id
                 sparkboard/account-id
                 slack/team-id
-                dev/local?]} (tokens/decode state)
+                reinstall?]} (tokens/decode state)
         ;; use the code from Slack to request an access token
         response (get+ (str base-uri "oauth.v2.access")
                        {:query {:code code
@@ -76,7 +75,7 @@
                                 :redirect_uri (str (:sparkboard/jvm-root env/config) "/slack-api/oauth-redirect")}})
         _ (assert (or (and board-id account-id)
                       team-id
-                      local?) "token must include board-id and account-id")]
+                      reinstall?) "token must include board-id and account-id")]
     (let [{app-id :app_id
            :keys [bot_user_id
                   access_token]

@@ -29,11 +29,11 @@
               sparkboard/board-id
               sparkboard/account-id
               slack/team-id
-              dev/local?]
+              reinstall?]
        :or {jvm-root (-> env/config :sparkboard/jvm-root)}}]]
   {:pre [(or team-id                                        ;; reinstall
              (and board-id account-id)                      ;; new install + link board
-             local?
+             reinstall?
              )]}
   (str jvm-root "/slack/install?state=" (tokens/encode (dissoc params :sparkboard/jvm-root)
                                                        {:expires-in (* 60 60 24 60)})))
