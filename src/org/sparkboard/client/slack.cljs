@@ -64,12 +64,12 @@
         (if slack-user
           [:p
            "Thank you for joining!"
-           [button {:href redirect} "Continue to Slack"]]
+           [button {:href redirect} "Continue"]]
           [:div
            [:p
             "You are invited to join " [:b team-name] " on Slack."]
            [:div.tc
-            [button {:href invite-link} "Accept Invitation"]]
+            [button {:href invite-link :target "_blank"} "Accept Invitation"]]
 
            [:p "Already a member of "
             [:a.b.black.no-underline {:href team-link} team-domain ".slack.com"]
