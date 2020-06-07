@@ -28,7 +28,9 @@
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]
-            [timbre-ns-pattern-level :as timbre-patterns])
+            [timbre-ns-pattern-level :as timbre-patterns]
+            [mhuebert.cljs-static.html :as html]
+            [hiccup.util :refer [raw-string]])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
@@ -583,15 +585,18 @@
   (some-> (ring.response/resource-response path {:root "public"})
           (ring.response/content-type (ring.mime-type/ext-mime-type path))))
 
-(def single-page-app-html
-  (delay (let [body (-> (io/resource "public/index.html")
-                        (slurp)
-                        (str/replace "SPARKBOARD_CONFIG_TEXT" env/client-config)
-                        (str/replace "app.js" (str "app.js?v=" (.getTime (java.util.Date.)))))]
-           {:status 200
-            :headers {"Content-Type" "text/html"
-                      "Content-Length" (str (count body))}
-            :body body})))
+(def spa-page
+  (memoize
+    (fn [config]
+      (-> {:body
+           (str (html/html-page {:title "Sparkboard"
+                                 :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
+                                 :scripts/body [{:src (str "/js/compiled/app.js?v=" (.getTime (java.util.Date.)))}]
+                                 :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
+                                         (raw-string (transit/write config))]
+                                        [:div#web]]}))}
+          (ring.response/content-type "text/html")
+          (ring.response/status 200)))))
 
 (defn wrap-static-first [f]
   ;; serve static files before all the other middleware, logging, etc.
@@ -604,14 +609,14 @@
   (fn [f]
     (fn [req]
       (or (f req)
-          @single-page-app-html))))
+          (spa-page env/client-config)))))
 
 (def app
   (-> (bidi.ring/make-handler routes)
-      wrap-static-fallback
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
       wrap-slack-verify
+      wrap-static-fallback
       wrap-handle-errors
       wrap-static-first))
 
