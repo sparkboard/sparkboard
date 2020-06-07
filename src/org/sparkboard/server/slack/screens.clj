@@ -43,7 +43,7 @@
 (defn admin-menu [context]
   (when (:is_admin (slack/user-info (:slack/bot-token context) (:slack/user-id context)))
     (list
-      [:section "📎 Admin"]
+      [:section "*Manage*"]
       [:actions
        [:button {:style "primary"
                  :action_id "admin:team-broadcast"}
@@ -62,14 +62,19 @@
                               :url (str (:sparkboard/jvm-root context)
                                         "/slack/reinstall/"
                                         (:slack/team-id context))
-                              :text [:plain_text "Re-install App"]}]}] ]
+                              :text [:plain_text "Re-install App"]}]}]]
 
-      [:section "🛠 Dev"]
-      [:actions [:button {:action_id 'checks-test:open} "Form Examples"]]
-      [:section (str "_Updated "
-                     (->> (java.util.Date.)
-                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
-                     ". App " (:slack/app-id context) ", Team " (:slack/team-id context))])))
+      [:divider]
+      [:section
+       {
+        ;:accessory [:button {:action_id 'checks-test:open} "Form Examples"]
+
+        :fields [[:md
+                  (str "_Updated: "
+                       (->> (java.util.Date.)
+                            (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
+                       "_")]
+                 [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}])))
 
 (defn main-menu [{:as context :sparkboard/keys [board-id account-id]}]
   (list
@@ -136,7 +141,7 @@
   ([context] (team-broadcast-modal-compose context {}))
   ([context local-state]
    (let [project-teams (slack-db/team->all-linked-channels (:slack/team-id context))]
-     [:modal {:title [:plain_text "Compose Broadcast"]
+     [:modal {:title [:plain_text "Team Broadcast"]
               :submit [:plain_text "Send"]
               :callback_id "team-broadcast-modal-compose"
               :private_metadata local-state}

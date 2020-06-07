@@ -406,7 +406,7 @@
   (merge
     screens/checks-test
     screens/multi-select-modal
-    {:shortcut/UNSET
+    {:shortcut/main-menu
      ;; TODO existing shortcuts don't have callback_id set?
      (fn [context]
        (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
