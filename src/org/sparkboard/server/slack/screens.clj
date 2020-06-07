@@ -5,6 +5,7 @@
             [org.sparkboard.js-convert :refer [clj->json json->clj]]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
+            [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as view]
             [org.sparkboard.transit :as transit]
@@ -138,38 +139,36 @@
 (defn team-broadcast-modal-compose
   ([context] (team-broadcast-modal-compose context {}))
   ([context local-state]
-   [:modal {:title [:plain_text "Compose Broadcast"]
-            :submit [:plain_text "Submit"]
-            :callback_id "team-broadcast-modal-compose"
-            :private_metadata local-state}
-    ;; NB: private metadata is a String of max 3000 chars
-    ;; See https://api.slack.com/reference/surfaces/views
-
-    [:section "Sends a prompt to *all project teams*."]
-    [:divider]
-    [:input
-     {:label [:plain_text "Message:"]}
-     [:plain_text_input
-      {:multiline true,
-       :action_id "broadcast2:text-input"
-       :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}]]
-    (if-let [options (seq (destination-channel-options context))]
-      (list
-        [:input
-         {:label "Send responses to channel:"
-          :optional true}
-         [:static_select
-          {:placeholder [:plain_text "Select a channel..."],
-           :options options
-           :action_id "broadcast2:channel-select"}]]
-        [:input
-         {:label "Options"
-          :optional true}
-         [:checkboxes
-          {:action_id "broadcast-options"
-           :options [{:value "collect-in-thread"
-                      :text [:md "Collect responses to a thread"]}]}]])
-      [:section [:md "💡 Add this app to a channel to enable collection of responses."]])]))
+   (let [project-teams (slack-db/team->all-linked-channels (:slack/team-id context))]
+     [:modal {:title [:plain_text "Compose Broadcast"]
+              :submit [:plain_text "Send"]
+              :callback_id "team-broadcast-modal-compose"
+              :private_metadata local-state}
+      ;; NB: private metadata is a String of max 3000 chars
+      ;; See https://api.slack.com/reference/surfaces/views
+      [:input
+       {:label [:plain_text "Message"]}
+       [:plain_text_input
+        {:multiline true,
+         :action_id "broadcast2:text-input"
+         :placeholder (str "Write something to send to all " (count project-teams) " project teams.")}]]
+      (if-let [options (seq (destination-channel-options context))]
+        (list
+          [:input
+           {:label "Collect responses:"
+            :optional true}
+           [:static_select
+            {:placeholder [:plain_text "Destination channel"],
+             :options options
+             :action_id "broadcast2:channel-select"}]]
+          [:input
+           {:label "Options"
+            :optional true}
+           [:checkboxes
+            {:action_id "broadcast-options"
+             :options [{:value "collect-in-thread"
+                        :text [:md "Put responses in a thread"]}]}]])
+        [:section [:md "💡 Add this app to a channel to enable collection of responses."]])])))
 
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
