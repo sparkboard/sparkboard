@@ -29,5 +29,4 @@
 (def client-config
   (-> config
       (select-keys [:firebase/app-config :sparkboard/jvm-root])
-      (assoc :slack/app-id (-> config :slack :app-id))
-      (transit/write)))
+      (assoc :slack/app-id (-> config :slack :app-id))))

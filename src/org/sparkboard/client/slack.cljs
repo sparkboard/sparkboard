@@ -43,7 +43,7 @@
                                   team-domain
                                   team-name
                                   redirect-encoded]} :query-params}]
-  (j/let [^:js {:keys [uid displayName photoURL]} (:user @firebase/auth-state)
+  (j/let [^:js {:keys [uid displayName photoURL email]} (:user @firebase/auth-state)
           slack-user (use-value (when uid [:account uid :slack-team team-id :user-id]))
           team-link (str "https://" team-domain ".slack.com")
           app-id (-> env/config :slack/app-id)
@@ -59,7 +59,8 @@
            [:div.flex.items-center.f4
             (when photoURL
               [:img.br3.w3.mr3 {:src photoURL}])
-            [:div.mr3 "Hello, " displayName ". "]]])
+            [:div.mr3 "Hello, " displayName "."
+             [:div.f6.gray email ]]]])
         (if slack-user
           [:p
            "Thank you for joining!"

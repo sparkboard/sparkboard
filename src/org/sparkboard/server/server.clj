@@ -186,6 +186,7 @@
 
 (defn update-user-home-tab! [context]
   (slack/web-api "views.publish"
+                 {:auth/token (:slack/bot-token context)}
                  {:user_id (:slack/user-id context)
                   :view (hiccup/->blocks-json
                           (screens/home context))}))

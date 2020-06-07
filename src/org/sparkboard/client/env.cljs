@@ -2,7 +2,7 @@
   (:require [org.sparkboard.transit :as transit]
             [applied-science.js-interop :as j]))
 
-(def config (-> (j/get-in js/window [:SPARKBOARD_CONFIG :textContent])
-                transit/read))
-
+(def config
+  (-> (j/get-in js/window [:SPARKBOARD_CONFIG :textContent])
+      transit/read))
 
