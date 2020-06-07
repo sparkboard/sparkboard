@@ -66,8 +66,7 @@
 
       [:divider]
       [:section
-       {
-        ;:accessory [:button {:action_id 'checks-test:open} "Form Examples"]
+       {:accessory [:button {:action_id 'checks-test:open} "Dev: Form Examples"]
 
         :fields [[:md
                   (str "_Updated: "
@@ -201,10 +200,10 @@
 
 (defn team-broadcast-response-msg [from-user-id from-channel-id msg]
   [[:divider]
-   [:section [:md (str "_Project:_ * " (channel-link from-channel-id) "*, "
-                       "_User:_ " (mention from-user-id))]]
-   {:type "section",
-    :text {:type "plain_text", :text msg, :emoji true}}
+   [:section
+    [:md
+     (str "from " (mention from-user-id) " in " (channel-link from-channel-id) ":\n"
+          (view/blockquote msg))]]
    #_{:type "actions",
       :elements [{:type "button",
                   :text {:type "plain_text",
@@ -228,94 +227,96 @@
    [:section
     {:accessory
      [:multi_static_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-static-select"
-           :on_action (fn [state value] (assoc state :multi-select value))
-           :options [{:value "multi-1"
-                      :text [:plain_text "Multi 1"]}
-                     {:value "multi-2"
-                      :text [:plain_text "Multi 2"]}
-                     {:value "multi-3"
-                      :text [:plain_text "Multi 3"]}]}
-          (view/assoc-options :initial_options (:multi-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-static-select"
+       ::view/action (fn [value] (swap! state assoc :multi-select value))
+       :options [{:value "multi-1"
+                  :text [:plain_text "Multi 1"]}
+                 {:value "multi-2"
+                  :text [:plain_text "Multi 2"]}
+                 {:value "multi-3"
+                  :text [:plain_text "Multi 3"]}]
+       ::view/value (:multi-select @state)}]}
     "Multi-select"]
    [:section
     {:accessory
      [:multi_users_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-users-select"
-           :on_action (fn [state value] (assoc state :multi-users-select value))}
-          (view/assoc-some :initial_users (:multi-users-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-users-select"
+       ::view/action (fn [value] (swap! state assoc :multi-users-select value))
+       ::view/value (:multi-users-select @state)}]}
     "Multi-users-select"]
 
    [:section
     {:accessory
      [:multi_conversations_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-conversations-select"
-           :on_action (fn [state value] (assoc state :multi-conversations-select value))}
-          (view/assoc-some :initial_conversations (:multi-conversations-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-conversations-select"
+       ::view/action (fn [value] (swap! state assoc :multi-conversations-select value))
+       ::view/value (:multi-conversations-select @state)}]}
     "Multi-conversations-select"]
 
    [:section
     {:accessory
      [:multi_channels_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-channels-select"
-           :on_action (fn [state value] (assoc state :multi-channels-select value))}
-          (view/assoc-some :initial_channels (:multi-channels-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-channels-select"
+       ::view/action (fn [value] (swap! state assoc :multi-channels-select value))
+       ::view/value (:multi-channels-select @state)}]}
     "Multi-channels-select"]])
 
 (view/defmodal checks-test
   {:counter 0
+   :show-state? true
    :checks-test #{"value-test-1"}}
   [context state]
   [:modal {:title "State test"}
    [:actions
     [:button {:action_id "counter+"
-              :on_action (fn [state _] (update state :counter inc))}
-     (str "Clicked " (str "(" (:counter state) ")"))]
-    [:datepicker (-> {:action_id "date-eg"
-                      :on_action (fn [state value] (assoc state :date value))}
-                     (view/assoc-some :initial_date (:date state)))]
+              ::view/action (fn [_] (swap! state update :counter inc))}
+     (str "Clicked " (str "(" (:counter @state) ")"))]
+    [:datepicker {:action_id "date-eg"
+                  ::view/action (fn [value] (swap! state assoc :date value))
+                  ::view/value (:date @state)}]
 
     [:overflow {:action_id "overflow-eg"
-                :on_action (fn [state value] (assoc state :overflow value))
+                ::view/action (fn [value] (swap! state assoc :overflow value))
                 :options [{:value "o1"
                            :text [:plain_text "O1"]}
                           {:value "o2"
                            :text [:plain_text "O2"]}]}]
+
     [:users_select
-     (-> {:placeholder "Pick a person"
-          :action_id "users-select-eg"
-          :on_action (fn [state user] (assoc state :user user))}
-         (view/assoc-some :initial_user (:user state)))]
+     {:placeholder "Pick a person"
+      :action_id "users-select-eg"
+      ::view/action (fn [user] (swap! state assoc :user user))
+      ::view/value (:user @state)}]
 
     [:radio_buttons
-     (-> {:action_id "radio-eg"
-          :on_action (fn [state value] (assoc state :radio value))
-          :options [{:value "r1"
-                     :text [:plain_text "Radio 1"]}
-                    {:value "r2"
-                     :text [:plain_text "Radio 2"]}]
-          :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}
-         (view/assoc-option :initial_option (:radio state)))]
+     {:action_id "radio-eg"
+      ::view/action (fn [value] (swap! state assoc :radio value))
+      ::view/value (:radio @state)
+      :options [{:value "r1"
+                 :text [:plain_text "Radio 1"]}
+                {:value "r2"
+                 :text [:plain_text "Radio 2"]}]
+      :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}]
 
     [:checkboxes
-     (-> {:action_id "checks-test"
-          :on_action (fn [state value] (assoc state :checks value))
-          :options [{:value "value-test-1"
-                     :text [:md "Check 1"]}
-                    {:value "value-test-2"
-                     :text [:md "Check 2"]}]}
-         (view/assoc-options :initial_options (:checks state)))]
+     {:action_id "checks-test"
+      ::view/action (fn [value] (swap! state assoc :checks value))
+      ::view/value (:checks @state)
+      :options [{:value "value-test-1"
+                 :text [:md "Check 1"]}
+                {:value "value-test-2"
+                 :text [:md "Check 2"]}]}]
 
     [:button {:action_id :multi-select-modal:push} "Multi-Select"]]
 
 
-   (when-not (:hide-state? state)
-     [:section (with-out-str (pp/pprint state))])
+   (when (:show-state? @state)
+     [:section (with-out-str (pp/pprint @state))])
    [:actions
     [:button {:action_id "toggle-state-view"
-              :on_action (fn [state value] (update state :hide-state? not))}
-     (if (:hide-state? state) "show state" "hide state")]]])
+              ::view/action (fn [_] (swap! state update :show-state? not))}
+     (if (:show-state? @state) "hide state" "show state")]]])

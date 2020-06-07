@@ -404,8 +404,7 @@
 
 (defn slack-api-handlers []
   (merge
-    screens/checks-test
-    screens/multi-select-modal
+    @view/registry
     {:shortcut/main-menu
      ;; TODO existing shortcuts don't have callback_id set?
      (fn [context]
@@ -422,7 +421,7 @@
 
      :view_submission/team-broadcast-modal-compose
      (fn [context]
-       (let [values (view/view-values (-> context :slack/payload :view))]
+       (let [values (view/input-values (-> context :slack/payload :view))]
          (request-updates context
                           {:message (decode-text-input (:broadcast2:text-input values))
                            :response-channel (:broadcast2:channel-select values)
@@ -431,11 +430,12 @@
      ;; User broadcast response: describe current status
      :view_submission/team-broadcast-response
      (fn [context]
-       (let [values (view/view-values (-> context :slack/payload :view))]
+       (let [values (view/input-values (-> context :slack/payload :view))
+             local-state (-> context :slack/payload :view :private_metadata)]
          (log/info :broadcast-response-values values)
          (let [{:keys [channel]
                 {:keys [ts]} :message} (slack/web-api "chat.postMessage"
-                                                      (let [reply-ref-path (:broadcast/reply-path values)
+                                                      (let [reply-ref-path (:broadcast/reply-path local-state)
                                                             broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
                                                         {:blocks (hiccup/->blocks-json
                                                                    (screens/team-broadcast-response-msg
@@ -448,7 +448,7 @@
                                                                        :message_ts ts})]
            (slack/web-api "chat.postMessage"
                           (let [{:keys [broadcast/reply-ts
-                                        broadcast/reply-channel]} values]
+                                        broadcast/reply-channel]} local-state]
                             {:channel reply-channel
                              :ts reply-ts
                              :blocks (hiccup/->blocks-json
@@ -456,7 +456,7 @@
 
      :view_submission/invite-link-modal
      (fn [context]
-       (let [values (view/view-values (-> context :slack/payload :view))]
+       (let [values (view/input-values (-> context :slack/payload :view))]
          (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
                              (:invite-link-input values))
          (update-user-home-tab!
@@ -465,7 +465,7 @@
 
      :view_submission/customize-messages-modal
      (fn [context]
-       (let [values (view/view-values (-> context :slack/payload :view))]
+       (let [values (view/input-values (-> context :slack/payload :view))]
          (fire-jvm/update-value (str "/slack-team/" (:slack/team-id context) "/custom-messages") values)))
 
      :block_actions/admin:customize-messages-modal-open

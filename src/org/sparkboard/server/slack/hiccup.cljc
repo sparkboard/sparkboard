@@ -68,10 +68,50 @@
                  (update m k f)
                  m)) m updaters))
 
+(defn assoc-some [m k v]
+  (if v
+    (assoc m k v)
+    m))
+
+(defn- all-options [{:keys [options option-groups]}]
+  (concat options (->> option-groups (mapcat :options))))
+
+(defn assoc-option
+  [m as-key value]
+  (assoc-some m as-key (first (filter #(= (:value %) value) (all-options m)))))
+
+(defn assoc-options
+  [m as-key values]
+  (assoc-some m as-key (seq (filter #(contains? values (:value %)) (all-options m)))))
+
+(defn set-value [m tag value]
+  (if (nil? value)
+    m
+    (case tag
+      "checkboxes" (assoc-options m :initial_options value)
+      "radio_buttons" (assoc-option m :initial_option value)
+      "users_select" (assoc-some m :initial_user value)
+      "datepicker" (assoc-some m :initial_date value)
+      "multi_channels_select" (assoc-some m :initial_channels value)
+      "multi_conversations_select" (assoc-some m :initial_conversations value)
+      "multi_static_select" (assoc-options m :initial_options value)
+      "multi_users_select" (assoc-some m :initial_users value)
+      "plain_text_input" (assoc-some m :initial_value value))))
+
+(def view-value-key :org.sparkboard.slack.view/value)
+
+(defn normalize-value [m]
+  (let [v (get m view-value-key ::not-found)]
+    (if (= v ::not-found)
+      m
+      (-> m
+          (set-value (:type m) v)
+          (dissoc view-value-key)))))
+
 (defn apply-schema [tag props body]
-  (let [tag-type (type-string tag)
+  (let [type-str (type-string tag)
         {:as tag-schema
-         :keys [child children strings update-keys]} (schema tag-type)
+         :keys [child children strings update-keys]} (schema type-str)
         children? (seq body)
         error (cond (and children? (not child) (not children))
                     (str "Tag does not support children: " tag ", props: " props)
@@ -81,12 +121,13 @@
       (throw (ex-info error {:tag tag :body body})))
 
     (merge (-> (:defaults tag-schema)
-               (assoc :type (or (:type tag-schema) tag-type))
+               (assoc :type (or (:type tag-schema) type-str))
                (cond-> (and children? child) (assoc child (first body)))
                (cond-> (and children? children) (assoc children body))
                (merge props)
-               (cond-> strings (wrap-strings strings))
-               (cond-> update-keys (update-some update-keys))))))
+               (cond-> strings (wrap-strings strings)
+                       update-keys (update-some update-keys))
+               (normalize-value)))))
 
 (defn has-props? [form]
   (map? (nth form 1 nil)))
