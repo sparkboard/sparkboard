@@ -586,7 +586,8 @@
 (def single-page-app-html
   (delay (let [body (-> (io/resource "public/index.html")
                         (slurp)
-                        (str/replace "SPARKBOARD_CONFIG_TEXT" env/client-config))]
+                        (str/replace "SPARKBOARD_CONFIG_TEXT" env/client-config)
+                        (str/replace "app.js" (str "app.js?v=" (.getTime (java.util.Date.)))))]
            {:status 200
             :headers {"Content-Type" "text/html"
                       "Content-Length" (str (count body))}

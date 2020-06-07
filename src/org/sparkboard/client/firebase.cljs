@@ -40,7 +40,8 @@
 
 (defn init []
 
-  (j/call app :initializeApp (clj->js (env/config :firebase/app-config)))
+  (let [firebase-config (clj->js (env/config :firebase/app-config))]
+    (j/call app :initializeApp firebase-config))
 
   (j/call @auth :onAuthStateChanged
           (fn [user]
