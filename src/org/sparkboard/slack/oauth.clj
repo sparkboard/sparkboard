@@ -1,6 +1,6 @@
 (ns org.sparkboard.slack.oauth
   (:require [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.server.slack.core :refer [web-api base-uri]]
+            [org.sparkboard.server.slack.core :as slack :refer [web-api base-uri]]
             [org.sparkboard.firebase.tokens :as tokens]
             [lambdaisland.uri :as uri]
             [clojure.string :as str]
@@ -80,9 +80,10 @@
     (let [{app-id :app_id
            :keys [bot_user_id
                   access_token]
-           {team-id :id team-name :name team-domain :domain} :team
-           {user-id :id} :authed_user} response]
-      (log/trace :redirect/response response)
+           {team-id :id} :team
+           {user-id :id} :authed_user} response
+          {:as team-info team-name :name team-domain :domain} (slack/team-info access_token team-id)]
+      (log/trace :team-info team-info)
       ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
       ;; this app on.
       (let [user-response (get+ (str base-uri "users.info")

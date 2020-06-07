@@ -41,7 +41,8 @@
               [:a.blue.pointer.underline-hover {:on-click #(j/call @firebase/auth :signOut)} "Sign Out"]]
              [:div.f6.mt3 [:b "id token: "] id-token]]))))
 
-(v/defview auth-header [{:keys [locale]}]
+(v/defview auth-header [{:keys [locale]
+                         :or {locale :en}}]
   [after-promise {:promise (firebase/ui-deps locale)
                   :fallback "Loading.."}
    [auth-header*]])

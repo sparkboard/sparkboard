@@ -1,10 +1,13 @@
 (ns org.sparkboard.slack.slack-db
   (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.pprint :as pp]
             [org.sparkboard.promise :as p]
             [org.sparkboard.firebase.admin-db-api :as fire]
             [taoensso.timbre :as log]))
 
+(defn join [segments]
+  (->> segments (map name) (str/join "/")))
 ;; Read & write links between Slack and Sparkboard
 ;;
 ;; Firebase schema -
@@ -70,6 +73,9 @@
 
 (defn linked-team [team-id]
   (fire/read (str "/slack-team/" team-id)))
+
+(defn bot-token [app-id team-id]
+  (fire/read (join [:slack-team team-id :app app-id :bot-token])))
 
 ;; lookups by index
 

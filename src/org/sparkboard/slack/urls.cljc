@@ -55,6 +55,6 @@
 
 (defn link-sparkboard-account
   "Sends the user to Sparkboard to link their account, then redirects them back to Slack"
-  [{:as context :slack/keys [app-id team-id team-domain*]}]
-  (on-sparkboard context (app-redirect {:app app-id :team team-id :domain @team-domain*})))
+  [{:as context :slack/keys [app-id team-id team-domain]}]
+  (on-sparkboard context (app-redirect {:app app-id :team team-id :domain team-domain})))
 

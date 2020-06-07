@@ -2,6 +2,7 @@
   (:require [applied-science.js-interop :as j]
             #?(:cljs [cljs.reader :refer [read-string]])
             [org.sparkboard.resource :as rc]
+            [org.sparkboard.transit :as transit]
             [org.sparkboard.js-convert :refer [json->clj clj->json]])
   #?(:clj (:import java.util.Base64)))
 
@@ -24,3 +25,9 @@
 
 (def config
   (or (read-config) {}))
+
+(def client-config
+  (-> config
+      (select-keys [:firebase/app-config :sparkboard/jvm-root])
+      (assoc :slack/app-id (-> config :slack :app-id))
+      (transit/write)))

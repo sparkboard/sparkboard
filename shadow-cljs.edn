@@ -12,7 +12,9 @@
                                    {:title "Sparkboard"
                                     :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
                                     :scripts/body [{:src "/js/compiled/app.js"}]
-                                    :body [:div#web]})})]
+                                    :body [:div#web
+                                           [:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
+                                            SPARKBOARD_CONFIG_TEXT]]})})]
    :devtools {:preloads [triple.view.react.preload]}}}}
 
 #_(shadow/watch :web)

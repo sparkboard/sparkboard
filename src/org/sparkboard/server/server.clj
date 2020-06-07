@@ -77,7 +77,7 @@
         {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
     {:slack/team-id team-id
      :slack/team team
-     :slack/team-domain* (delay (:name (slack/team-info bot-token team-id)))
+     :slack/team-domain (:domain (slack/team-info bot-token team-id))
      :slack/bot-token bot-token
      :slack/bot-user-id bot-user-id
      :slack/invite-link (:invite-link team)
@@ -208,7 +208,7 @@
       (str "/slack/link-complete?"
            (uri/map->query-string {:slack (urls/app-redirect {:app (:slack/app-id context)
                                                               :team team-id
-                                                              :domain @(:slack/team-domain* context)})
+                                                              :domain (:slack/team-domain context)})
                                    :sparkboard (-> (slack-db/board-domain (:sparkboard/board-id context))
                                                    (urls/sparkboard-host))})))))
 
@@ -297,7 +297,7 @@
                                   (team-context team-id)
                                   {:redirect (str (:uri req) "?" (:query-string req))}))
           (return-html 200
-                       (let [domain @(:slack/team-domain* (team-context team-id))]
+                       (let [domain (:slack/team-domain (team-context team-id))]
                          (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
                               "Please contact an organizer."))))))))
 
@@ -349,7 +349,7 @@
 (defn project-channel-deep-link [{:keys [slack/team-id
                                          slack/channel-id]}]
   (urls/app-redirect {:app (-> env/config :slack :app-id)
-                      :domain @(:slack/team-domain* (team-context team-id))
+                      :domain (:slack/team-domain (team-context team-id))
                       :team team-id
                       :channel channel-id}))
 
@@ -531,21 +531,21 @@
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
                              (handle-slack-api-request params (slack-api-handlers)))
-               "slack-api/oauth-redirect" slack-oauth/redirect
+               "slack-api/oauth-redirect" #'slack-oauth/redirect
                "slack/" {"link-account" (wrap-sparkboard-verify (comp link-account! :auth/token-claims)
                                                                 :sparkboard/server-request?)
                          ["project-channel/" :project-id] (-> nav-project-channel
                                                               (wrap-sparkboard-invite)
                                                               (wrap-sparkboard-verify :sparkboard/account-id
                                                                                       :sparkboard/board-id))
-                         "install" slack-oauth/install-redirect
+                         "install" #'slack-oauth/install-redirect
                          "app-redirect" (fn [{{:as query :keys [team]} :params}]
                                           (assert team "Slack team not provided")
                                           (ring.http/found
                                             (urls/app-redirect
                                               (assoc query
                                                 :app (-> env/config :slack :app-id)
-                                                :domain @(:slack/team-domain* (team-context team))))))}}
+                                                :domain (:slack/team-domain (team-context team))))))}}
               (when (not= "prod" (env/config :env))
                 {"slack/install-local"
                  (fn [req] (ring.http/found (urls/install-slack-app {:dev/local? true})))})
@@ -574,6 +574,7 @@
            (log/error (ex-message e)
                       (ex-data e)
                       (ex-cause e))
+           (log/error e)
            (return-text
              (:status (ex-data e) 500)
              (ex-message e))))))
@@ -581,6 +582,15 @@
 (defn public-resource [path]
   (some-> (ring.response/resource-response path {:root "public"})
           (ring.response/content-type (ring.mime-type/ext-mime-type path))))
+
+(def single-page-app-html
+  (delay (let [body (-> (io/resource "public/index.html")
+                        (slurp)
+                        (str/replace "SPARKBOARD_CONFIG_TEXT" env/client-config))]
+           {:status 200
+            :headers {"Content-Type" "text/html"
+                      "Content-Length" (str (count body))}
+            :body body})))
 
 (defn wrap-static-first [f]
   ;; serve static files before all the other middleware, logging, etc.
@@ -590,11 +600,10 @@
 
 (def wrap-static-fallback
   ;; fall back to index.html -- TODO: re-use the client router to serve 404s for unknown paths
-  (let [fallback (public-resource "index.html")]
-    (fn [f]
-      (fn [req]
-        (or (f req)
-            fallback)))))
+  (fn [f]
+    (fn [req]
+      (or (f req)
+          @single-page-app-html))))
 
 (def app
   (-> (bidi.ring/make-handler routes)
