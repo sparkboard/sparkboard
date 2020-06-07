@@ -63,8 +63,8 @@
    - modal-fn, accepts [context, state] & returns a [:modal ..] hiccup form
    - reducer, a function of [state] that returns a new state"
   [modal-fn on-action]
-  (fn [k {:as context
-          {:keys [view actions]} :slack/payload}]
+  (fn [{:as context
+        {:keys [view actions]} :slack/payload}]
     (log/info :actions-values (actions-values actions) actions)
     (let [prev-state (:private_metadata view)
           next-state (on-action prev-state (actions-values actions))]
@@ -78,7 +78,7 @@
    - modal-fn, accepts [context, state] & returnsn a [:modal ..] hiccup form
    - initial-state, a map"
   [modal-fn initial-state open-fn]
-  (fn [_ context]
+  (fn [context]
     (-> (modal-fn context initial-state)
         (assoc-in [1 :private_metadata] initial-state)
         open-fn)))

@@ -4,7 +4,7 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [kitchen-async.promise :as p]
-            [org.sparkboard.server.env :as env]
+            [org.sparkboard.client.env :as env]
             [triple.view.react.experimental.atom :as ratom]
             [org.sparkboard.client.loaders :as loaders]))
 
@@ -39,10 +39,8 @@
 ;; initial setup
 
 (defn init []
-  (comment
-    ;; TODO
-    ;; client-env
-    (j/call app :initializeApp (.parse js/JSON (env/get :firebase/app-config))))
+
+  (j/call app :initializeApp (clj->js (env/config :firebase/app-config)))
 
   (j/call @auth :onAuthStateChanged
           (fn [user]
@@ -51,5 +49,6 @@
               (p/let [token (j/call user :getIdToken)]
                 (reset! auth-state
                         {:status :signed-in
+                         :uid (j/get user :uid)
                          :user user
                          :id-token token}))))))

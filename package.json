@@ -2,13 +2,13 @@
     "private": true,
     "license": "UNLICENSED",
     "dependencies": {
-        "firebase": "^7.14.1",
+        "firebase": "^7.15.0",
         "isomorphic-unfetch": "^3.0.0",
         "jsonwebtoken": "^8.5.1",
         "md5": "2.2.1",
-        "react": "^0.0.0-experimental-e5d06e34b",
-        "react-dom": "^0.0.0-experimental-e5d06e34b",
-        "react-refresh": "^0.0.0-experimental-e5d06e34b"
+        "react": "^0.0.0-experimental-33c3af284",
+        "react-dom": "^0.0.0-experimental-33c3af284",
+        "react-refresh": "^0.0.0-experimental-33c3af284"
     },
     "devDependencies": {
         "heroku": "^7.41.1",

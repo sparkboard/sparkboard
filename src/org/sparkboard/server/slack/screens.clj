@@ -64,6 +64,7 @@
         "Customize Messages"]
        [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
                                                                     :slack/team-id]))} "Reinstall App"]
+       [:button {:url (urls/link-sparkboard-account context)} "Re-Link Account"]
        [:button {:action_id 'checks-test:open} "Form Examples (dev)"]]
       [:section (str "_Updated "
                      (->> (java.util.Date.)

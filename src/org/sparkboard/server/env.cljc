@@ -15,10 +15,12 @@
                  (update m k update-fn)
                  m)) m updaters))
 
+(defn read-config []
+  (some-> (or (env-var :SPARKBOARD_CONFIG)
+              (rc/some-inline-resource "/.local.config.edn"))
+          (read-string)
+          (update-some {:firebase/app-config json->clj
+                        :firebase/service-account json->clj})))
+
 (def config
-  (or (some-> (or (env-var :SPARKBOARD_CONFIG)
-                  (rc/some-inline-resource "/.local.config.edn"))
-              (read-string)
-              (update-some {:firebase/app-config json->clj
-                            :firebase/service-account json->clj}))
-      {}))
+  (or (read-config) {}))

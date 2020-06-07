@@ -1,4 +1,4 @@
-{:paths ["src" "classes"]
+{:paths ["src" "classes" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         com.cognitect/transit-clj {:mvn/version "1.0.324"}
@@ -7,13 +7,6 @@
         jonotin {:local/root "vendor/jonotin"}
         com.google.guava/guava {:mvn/version "23.0"}        ;; resolves version conflict
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
-
-        ;; system
-        mount {:mvn/version "0.1.16"}
-
-        ;; environment/config
-        aero {:mvn/version "1.1.5"}
-        mhuebert/shadow-env {:mvn/version "0.1.6"}
 
         ;; util
         metosin/jsonista {:mvn/version "0.2.5"}
@@ -35,6 +28,7 @@
         bidi {:mvn/version "2.1.6"}
         ring-middleware-format {:mvn/version "0.7.4"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
+        metosin/reitit {:mvn/version "0.5.2"}
 
         ;; frontend
         thheller/shadow-cljs {:mvn/version "2.9.10"}

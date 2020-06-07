@@ -1,19 +1,20 @@
 {:deps true
- :paths ["src"]
- :dev-http {1245 "public"}
  :nrepl {:write-port-file true}
  :builds
  {:web
   {:target :browser
    :modules {:app {:init-fn org.sparkboard.client/init}}
-   :output-dir "public/js/compiled"
+   :output-dir "resources/public/js/compiled"
    :asset-path "/js/compiled"
-   :build-hooks [(shadow-env.core/hook)
-                 (mhuebert.cljs-static/assets!
-                   {:public-path "public"
+   :build-hooks [(mhuebert.cljs-static/assets!
+                   {:public-path "resources/public"
                     "index.html" (mhuebert.cljs-static/html
                                    {:title "Sparkboard"
                                     :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
                                     :scripts/body [{:src "/js/compiled/app.js"}]
                                     :body [:div#web]})})]
    :devtools {:preloads [triple.view.react.preload]}}}}
+
+#_(shadow/watch :web)
+#_(shadow/stop-worker :web)
+#_(shadow/release :web)

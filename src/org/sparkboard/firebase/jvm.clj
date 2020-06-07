@@ -125,6 +125,10 @@
   ([uid] (.createCustomToken @auth uid))
   ([uid claims] (.createCustomToken @auth uid claims)))
 
+(defn email->uid [email]
+  (some-> (.getUserByEmail @auth email)
+          (.getUid)))
+
 (comment
 
   (time (set-value "/test" {:a {:b (rand-int 1000)
