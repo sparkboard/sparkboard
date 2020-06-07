@@ -43,31 +43,29 @@
 (defn admin-menu [context]
   (when (:is_admin (slack/user-info (:slack/bot-token context) (:slack/user-id context)))
     (list
-      [:section "🛠 ADMIN ACTIONS\n"]
-      [:divider]
-      [:section
-       {:accessory [:button {:style "primary"
-                             :action_id "admin:team-broadcast"
-                             :value "click_me_123"}
-                    "Compose Broadcast"]}
-       "*Team Broadcast:* send a message to all teams."]
-
-      (let [{:keys [slack/invite-link]} context]
-        [:section
-         {:accessory [:button {:action_id "admin:invite-link-modal-open"}
-                      (str (if invite-link "Update" "Add") " invite link")]}
-         (str "*Invite Link:* "
-              (str "let users from Sparkboard to join this Slack workspace."
-                   (when-not invite-link "\n⚠️ Missing invite link")))])
-
+      [:section "📎 Admin"]
       [:actions
-       [:button {:action_id "admin:customize-messages-modal-open"}
-        "Customize Messages"]
-       [:button {:url (str (:sparkboard/jvm-root context)
-                           "/slack/reinstall/"
-                           (:slack/team-id context))} "Reinstall App"]
-       [:button {:url (urls/link-sparkboard-account context)} "Re-Link Account"]
-       [:button {:action_id 'checks-test:open} "Form Examples (dev)"]]
+       [:button {:style "primary"
+                 :action_id "admin:team-broadcast"}
+        "Team Broadcast"]
+       [:button {:action_id "admin:customize-messages-modal-open"} "Customize Messages"]
+
+       (let [{:keys [slack/invite-link]} context]
+         [:button {:action_id "admin:invite-link-modal-open"}
+          (str (if invite-link "Change" "⚠️ Add") " invite link")])
+
+       [:overflow {:action_id "admin-overflow"
+                   :options [{:value "re-link"
+                              :url (urls/link-sparkboard-account context)
+                              :text [:plain_text "Re-Link Account"]}
+                             {:value "re-install"
+                              :url (str (:sparkboard/jvm-root context)
+                                        "/slack/reinstall/"
+                                        (:slack/team-id context))
+                              :text [:plain_text "Re-install App"]}]}] ]
+
+      [:section "🛠 Dev"]
+      [:actions [:button {:action_id 'checks-test:open} "Form Examples"]]
       [:section (str "_Updated "
                      (->> (java.util.Date.)
                           (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
@@ -81,11 +79,9 @@
 
     (if-let [{:keys [title domain]} (some->> board-id (str "settings/") fire-jvm/read)]
       [:section
-       {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
-       (str "This Slack team is connected to *" title "* on Sparkboard.")]
+       {:accessory [:button {:url (urls/sparkboard-host domain)} "View Board"]}
+       (str "Connected to *" title "* on Sparkboard.")]
       [:section "No Sparkboard is linked to this Slack workspace."])
-
-    [:divider]
     (admin-menu context)))
 
 (defn home [context]
