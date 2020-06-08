@@ -69,6 +69,9 @@
     (->ref path)
     (reify-value-listener on-value on-error)))
 
+(defn ref-path [ref]
+  (-> ref (.getPath) str))
+
 (defn read [path]
   (let [p (promise)]
     (listen-once path
@@ -124,6 +127,10 @@
   ;; we can pass a custom token to the browser & use it to sign in to Firebase/Sparkboard
   ([uid] (.createCustomToken @auth uid))
   ([uid claims] (.createCustomToken @auth uid claims)))
+
+(defn email->uid [email]
+  (some-> (.getUserByEmail @auth email)
+          (.getUid)))
 
 (comment
 

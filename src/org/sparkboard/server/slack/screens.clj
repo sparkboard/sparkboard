@@ -5,16 +5,11 @@
             [org.sparkboard.js-convert :refer [clj->json json->clj]]
             [org.sparkboard.server.slack.core :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
+            [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as view]
             [org.sparkboard.transit :as transit]
             [taoensso.timbre :as log]))
-
-(defn channel-link [id]
-  (str "<#" id ">"))
-
-(defn mention [user-id]
-  (str "<@" user-id "> "))
 
 (def team-messages
   {:welcome
@@ -30,7 +25,7 @@
       (get-in team-messages [k :default])))
 
 (defn link-account [context]
-  (let [linking-url (urls/link-sparkboard-account context)]
+  (when-let [linking-url (urls/link-sparkboard-account context)]
     (list
       [:section (str "Please link your Sparkboard account:")]
       [:actions
@@ -42,46 +37,49 @@
 (defn admin-menu [context]
   (when (:is_admin (slack/user-info (:slack/bot-token context) (:slack/user-id context)))
     (list
-      [:section "🛠 ADMIN ACTIONS\n"]
+      [:section "*Manage*"]
+      [:actions
+       [:button {:style "primary"
+                 :action_id "admin:team-broadcast"}
+        "Team Broadcast"]
+       [:button {:action_id "admin:customize-messages-modal-open"} "Customize Messages"]
+
+       (let [{:keys [slack/invite-link]} context]
+         [:button {:action_id "admin:invite-link-modal-open"}
+          (str (if invite-link "Change" "⚠️ Add") " invite link")])
+
+       [:overflow {:action_id "admin-overflow"
+                   :options [{:value "re-link"
+                              :url (urls/link-sparkboard-account context)
+                              :text [:plain_text "Re-Link Account"]}
+                             {:value "re-install"
+                              :url (str (:sparkboard/jvm-root context)
+                                        "/slack/reinstall/"
+                                        (:slack/team-id context))
+                              :text [:plain_text "Re-install App"]}]}]]
+
       [:divider]
       [:section
-       {:accessory [:button {:style "primary"
-                             :action_id "admin:team-broadcast"
-                             :value "click_me_123"}
-                    "Compose Broadcast"]}
-       "*Team Broadcast:* send a message to all teams."]
+       {:accessory [:button {:action_id 'checks-test:open} "Dev: Form Examples"]
 
-      (let [{:keys [slack/invite-link]} context]
-        [:section
-         {:accessory [:button {:action_id "admin:invite-link-modal-open"}
-                      (str (if invite-link "Update" "Add") " invite link")]}
-         (str "*Invite Link:* "
-              (str "let users from Sparkboard to join this Slack workspace."
-                   (when-not invite-link "\n⚠️ Missing invite link")))])
+        :fields [[:md
+                  (str "_Updated: "
+                       (->> (java.util.Date.)
+                            (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
+                       "_")]
+                 [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}])))
 
-      [:actions
-       [:button {:action_id "admin:customize-messages-modal-open"}
-        "Customize Messages"]
-       [:button {:url (urls/install-slack-app (select-keys context [:sparkboard/jvm-root
-                                                                    :slack/team-id]))} "Reinstall App"]
-       [:button {:action_id 'checks-test:open} "Form Examples (dev)"]]
-      [:section (str "_Updated "
-                     (->> (java.util.Date.)
-                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d"))) "_"
-                     ". App " (:slack/app-id context) ", Team " (:slack/team-id context))])))
-
-(defn main-menu [context]
+(defn main-menu [{:as context :sparkboard/keys [board-id account-id]}]
   (list
-    (if-let [board-id (:sparkboard/board-id context)]
-      (let [{:keys [title domain]} (fire-jvm/read (str "settings/" board-id))]
-        [:section
-         {:accessory [:button {:url (urls/sparkboard-host domain)} "Visit Board"]}
-         (str "This Slack team is connected to *" title "* on Sparkboard.")])
-      [:section "No Sparkboard is linked to this Slack workspace."])
 
-    (when-not (:sparkboard/account-id context)
+    (when (and board-id (not account-id))
       (link-account context))
-    [:divider]
+
+    (if-let [{:keys [title domain]} (some->> board-id (str "settings/") fire-jvm/read)]
+      [:section
+       {:accessory [:button {:url (urls/sparkboard-host domain)} "View Board"]}
+       (str "Connected to *" title "* on Sparkboard.")]
+      [:section "No Sparkboard is linked to this Slack workspace."])
     (admin-menu context)))
 
 (defn home [context]
@@ -120,8 +118,8 @@
   [:modal {:title "Sparkboard"}
    (main-menu context)])
 
-(defn destination-channel-groups [{:keys [slack/bot-token
-                                          slack/bot-user-id]}]
+(defn destination-channel-options [{:keys [slack/bot-token
+                                           slack/bot-user-id]}]
   (->> (slack/web-api "conversations.list"
                       {:auth/token bot-token}
                       {:exclude_archived true
@@ -135,50 +133,52 @@
 (defn team-broadcast-modal-compose
   ([context] (team-broadcast-modal-compose context {}))
   ([context local-state]
-   [:modal {:title [:plain_text "Compose Broadcast"]
-            :submit [:plain_text "Submit"]
-            :callback_id "team-broadcast-modal-compose"
-            :private_metadata local-state}
-    ;; NB: private metadata is a String of max 3000 chars
-    ;; See https://api.slack.com/reference/surfaces/views
-
-    [:section "Sends a prompt to *all project teams*."]
-    [:divider]
-    [:input
-     {:label [:plain_text "Message:"]}
-     [:plain_text_input
-      {:multiline true,
-       :action_id "broadcast2:text-input"
-       :initial_value "It's 2 o'clock! Please post a brief update of your team's progress so far today."}]]
-    [:input
-     {:label "Send responses to channel:"
-      :optional true}
-     [:static_select
-      {:placeholder [:plain_text "Select a channel..."],
-       :options (destination-channel-groups context)
-       :action_id "broadcast2:channel-select"}]]
-    [:input
-     {:label "Options"
-      :optional true}
-     [:checkboxes
-      {:action_id "broadcast-options"
-       :options [{:value "collect-in-thread"
-                  :text [:md "Collect responses in a thread"]}]}]]]))
+   (let [project-teams (slack-db/team->all-linked-channels (:slack/team-id context))]
+     [:modal {:title [:plain_text "Team Broadcast"]
+              :submit [:plain_text "Send"]
+              :callback_id "team-broadcast-modal-compose"
+              :private_metadata local-state}
+      ;; NB: private metadata is a String of max 3000 chars
+      ;; See https://api.slack.com/reference/surfaces/views
+      [:input
+       {:label [:plain_text "Message"]}
+       [:plain_text_input
+        {:multiline true,
+         :action_id "broadcast2:text-input"
+         :placeholder (str "Write something to send to all " (count project-teams) " project teams.")}]]
+      (if-let [options (seq (destination-channel-options context))]
+        (list
+          [:input
+           {:label "Collect responses:"
+            :optional true}
+           [:static_select
+            {:placeholder [:plain_text "Destination channel"],
+             :options options
+             :action_id "broadcast2:channel-select"}]]
+          [:input
+           {:label "Options"
+            :optional true}
+           [:checkboxes
+            {:action_id "broadcast-options"
+             :options [{:value "collect-in-thread"
+                        :text [:md "Put responses in a thread"]}]}]])
+        [:section [:md "💡 Add this app to a channel to enable collection of responses."]])])))
 
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
-  [firebase-key {:keys [message response-channel]}]
+  [firebase-key {:keys [message response-channel]} sender-name]
   (list
-    [:section [:md message]]
+    [:section [:md
+               (when sender-name (str "from *" sender-name "*:\n"))
+               (view/blockquote message)]]
     (when response-channel
-      (list
-        [:actions
-         {:block_id (transit/write {:broadcast/firebase-key firebase-key})}
-         [:button {:style "primary"
-                   :action_id "user:team-broadcast-response"
-                   :value "click_me_123"}
-          "Post an Update"]]
-        [:context [:md (str "Replies will be sent to " (channel-link response-channel))]]))))
+      (list [:actions
+             {:block_id (transit/write {:broadcast/firebase-key firebase-key})}
+             [:button {:style "primary"
+                       :action_id "user:team-broadcast-response"}
+              "Reply"]]
+            [:context
+             [:md "Replies will be sent to " (view/channel-link response-channel)]]))))
 
 (defn team-broadcast-response
   "User response to broadcast - text field for project status update"
@@ -193,23 +193,16 @@
     [:plain_text_input {:multiline true
                         :action_id "user:status-input"}]]])
 
-(defn team-broadcast-response-msg [from-user-id from-channel-id msg]
-  [[:divider]
-   [:section [:md (str "_Project:_ * " (channel-link from-channel-id) "*, "
-                       "_User:_ " (mention from-user-id))]]
-   {:type "section",
-    :text {:type "plain_text", :text msg, :emoji true}}
-   #_{:type "actions",
-      :elements [{:type "button",
-                  :text {:type "plain_text",
-                         :text "Go to channel",             ; FIXME (project->channel project)
-                         :emoji true},
-                  :value "click_me_123"}
-                 {:type "button",
-                  :text {:type "plain_text",
-                         :text "View project",              ; FIXME sparkboard project URL
-                         :emoji true}
-                  :value "click_me_123"}]}])
+(defn team-broadcast-response-msg [board-id from-user-id from-channel-id msg]
+  (let [domain (some-> board-id slack-db/board-domain)
+        project-id (some-> (slack-db/linked-channel from-channel-id) :project-id)
+        project-url (when (and domain project-id)
+                          (str (urls/sparkboard-host domain) "/project/" project-id))]
+    [[:divider]
+     [:section
+      (when project-url {:accessory [:button {:url project-url} "Project Page"]})
+      [:md "from " (view/mention from-user-id) " in " (view/channel-link from-channel-id) ":\n"]]
+     [:section [:md (view/blockquote msg)]]]))
 
 (comment
   (hiccup/->blocks team-broadcast-modal-compose)
@@ -222,94 +215,96 @@
    [:section
     {:accessory
      [:multi_static_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-static-select"
-           :on_action (fn [state value] (assoc state :multi-select value))
-           :options [{:value "multi-1"
-                      :text [:plain_text "Multi 1"]}
-                     {:value "multi-2"
-                      :text [:plain_text "Multi 2"]}
-                     {:value "multi-3"
-                      :text [:plain_text "Multi 3"]}]}
-          (view/assoc-options :initial_options (:multi-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-static-select"
+       ::view/action (fn [value] (swap! state assoc :multi-select value))
+       :options [{:value "multi-1"
+                  :text [:plain_text "Multi 1"]}
+                 {:value "multi-2"
+                  :text [:plain_text "Multi 2"]}
+                 {:value "multi-3"
+                  :text [:plain_text "Multi 3"]}]
+       ::view/value (:multi-select @state)}]}
     "Multi-select"]
    [:section
     {:accessory
      [:multi_users_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-users-select"
-           :on_action (fn [state value] (assoc state :multi-users-select value))}
-          (view/assoc-some :initial_users (:multi-users-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-users-select"
+       ::view/action (fn [value] (swap! state assoc :multi-users-select value))
+       ::view/value (:multi-users-select @state)}]}
     "Multi-users-select"]
 
    [:section
     {:accessory
      [:multi_conversations_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-conversations-select"
-           :on_action (fn [state value] (assoc state :multi-conversations-select value))}
-          (view/assoc-some :initial_conversations (:multi-conversations-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-conversations-select"
+       ::view/action (fn [value] (swap! state assoc :multi-conversations-select value))
+       ::view/value (:multi-conversations-select @state)}]}
     "Multi-conversations-select"]
 
    [:section
     {:accessory
      [:multi_channels_select
-      (-> {:placeholder "Select some..."
-           :action_id "multi-channels-select"
-           :on_action (fn [state value] (assoc state :multi-channels-select value))}
-          (view/assoc-some :initial_channels (:multi-channels-select state)))]}
+      {:placeholder "Select some..."
+       :action_id "multi-channels-select"
+       ::view/action (fn [value] (swap! state assoc :multi-channels-select value))
+       ::view/value (:multi-channels-select @state)}]}
     "Multi-channels-select"]])
 
 (view/defmodal checks-test
   {:counter 0
+   :show-state? true
    :checks-test #{"value-test-1"}}
   [context state]
   [:modal {:title "State test"}
    [:actions
     [:button {:action_id "counter+"
-              :on_action (fn [state _] (update state :counter inc))}
-     (str "Clicked " (str "(" (:counter state) ")"))]
-    [:datepicker (-> {:action_id "date-eg"
-                      :on_action (fn [state value] (assoc state :date value))}
-                     (view/assoc-some :initial_date (:date state)))]
+              ::view/action (fn [_] (swap! state update :counter inc))}
+     (str "Clicked " (str "(" (:counter @state) ")"))]
+    [:datepicker {:action_id "date-eg"
+                  ::view/action (fn [value] (swap! state assoc :date value))
+                  ::view/value (:date @state)}]
 
     [:overflow {:action_id "overflow-eg"
-                :on_action (fn [state value] (assoc state :overflow value))
+                ::view/action (fn [value] (swap! state assoc :overflow value))
                 :options [{:value "o1"
                            :text [:plain_text "O1"]}
                           {:value "o2"
                            :text [:plain_text "O2"]}]}]
+
     [:users_select
-     (-> {:placeholder "Pick a person"
-          :action_id "users-select-eg"
-          :on_action (fn [state user] (assoc state :user user))}
-         (view/assoc-some :initial_user (:user state)))]
+     {:placeholder "Pick a person"
+      :action_id "users-select-eg"
+      ::view/action (fn [user] (swap! state assoc :user user))
+      ::view/value (:user @state)}]
 
     [:radio_buttons
-     (-> {:action_id "radio-eg"
-          :on_action (fn [state value] (assoc state :radio value))
-          :options [{:value "r1"
-                     :text [:plain_text "Radio 1"]}
-                    {:value "r2"
-                     :text [:plain_text "Radio 2"]}]
-          :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}
-         (view/assoc-option :initial_option (:radio state)))]
+     {:action_id "radio-eg"
+      ::view/action (fn [value] (swap! state assoc :radio value))
+      ::view/value (:radio @state)
+      :options [{:value "r1"
+                 :text [:plain_text "Radio 1"]}
+                {:value "r2"
+                 :text [:plain_text "Radio 2"]}]
+      :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}]
 
     [:checkboxes
-     (-> {:action_id "checks-test"
-          :on_action (fn [state value] (assoc state :checks value))
-          :options [{:value "value-test-1"
-                     :text [:md "Check 1"]}
-                    {:value "value-test-2"
-                     :text [:md "Check 2"]}]}
-         (view/assoc-options :initial_options (:checks state)))]
+     {:action_id "checks-test"
+      ::view/action (fn [value] (swap! state assoc :checks value))
+      ::view/value (:checks @state)
+      :options [{:value "value-test-1"
+                 :text [:md "Check 1"]}
+                {:value "value-test-2"
+                 :text [:md "Check 2"]}]}]
 
     [:button {:action_id :multi-select-modal:push} "Multi-Select"]]
 
 
-   (when-not (:hide-state? state)
-     [:section (with-out-str (pp/pprint state))])
+   (when (:show-state? @state)
+     [:section (with-out-str (pp/pprint @state))])
    [:actions
     [:button {:action_id "toggle-state-view"
-              :on_action (fn [state value] (update state :hide-state? not))}
-     (if (:hide-state? state) "show state" "hide state")]]])
+              ::view/action (fn [_] (swap! state update :show-state? not))}
+     (if (:show-state? @state) "hide state" "show state")]]])

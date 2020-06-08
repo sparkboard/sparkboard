@@ -9,6 +9,14 @@ Contents:
 
 ----
 
+## Develop locally
+
+1. yarn install
+1. Start a JVM process with `yarn shadow-cljs`
+1. Open a REPL with your favorite editor, reading the port from `.nrepl-port`
+1. `(shadow/watch :web)` compiles/reloads the client (not much there yet)
+1. `org.sparkboard.server.server/-main` starts the server
+
 ## Receive Slack events with your local server
 
 Slack uses webhooks to tell us when events happen, so we need to expose our local server

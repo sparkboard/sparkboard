@@ -60,6 +60,8 @@ jobs:
       - name: Yarn
         if: steps.cache-yarn.outputs.cache-hit != 'true'
         run: yarn
+      - name: Shadow-cljs
+        run: yarn shadow-cljs release web --debug
 
       - name: Install Heroku java plugin
         run: yarn heroku plugins:install java

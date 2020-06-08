@@ -1,7 +1,8 @@
 (ns org.sparkboard.server.slack.hiccup
   (:require [clojure.string :as str]
             [org.sparkboard.js-convert :refer [clj->json kw->js]]
-            [org.sparkboard.transit :as transit]))
+            [org.sparkboard.transit :as transit]
+            [taoensso.timbre :as log]))
 
 (def schema
   "hiccup<->block metadata. Supports:
@@ -14,10 +15,12 @@
 
   {"button" {:child :text
              :strings {:text :plain_text}}
-   "plain_text" {:child :text
-                 :defaults {:emoji true}}
-   "md" {:child :text
-         :type "mrkdwn"}
+   "plain_text" {:children :text
+                 :defaults {:emoji true}
+                 :update-keys {:text str/join}}
+   "md" {:children :text
+         :type "mrkdwn"
+         :update-keys {:text str/join}}
    "section" {:child :text
               :strings {:text :md}}
    "home" {:children :blocks}
@@ -39,11 +42,7 @@
    "multi_conversations_select" {:strings {:placeholder :plain_text}}
    "multi_channels_select" {:strings {:placeholder :plain_text}}})
 
-
 (declare ->blocks)
-
-(defn wrap-string [k s]
-  (if (string? s) [k s] s))
 
 (def aliases
   (reduce-kv (fn [m k {:keys [type]}]
@@ -67,10 +66,50 @@
                  (update m k f)
                  m)) m updaters))
 
+(defn assoc-some [m k v]
+  (if v
+    (assoc m k v)
+    m))
+
+(defn- all-options [{:keys [options option-groups]}]
+  (concat options (->> option-groups (mapcat :options))))
+
+(defn assoc-option
+  [m as-key value]
+  (assoc-some m as-key (first (filter #(= (:value %) value) (all-options m)))))
+
+(defn assoc-options
+  [m as-key values]
+  (assoc-some m as-key (seq (filter #(contains? values (:value %)) (all-options m)))))
+
+(defn set-value [m tag value]
+  (if (nil? value)
+    m
+    (case tag
+      "checkboxes" (assoc-options m :initial_options value)
+      "radio_buttons" (assoc-option m :initial_option value)
+      "users_select" (assoc-some m :initial_user value)
+      "datepicker" (assoc-some m :initial_date value)
+      "multi_channels_select" (assoc-some m :initial_channels value)
+      "multi_conversations_select" (assoc-some m :initial_conversations value)
+      "multi_static_select" (assoc-options m :initial_options value)
+      "multi_users_select" (assoc-some m :initial_users value)
+      "plain_text_input" (assoc-some m :initial_value value))))
+
+(def view-value-key :org.sparkboard.slack.view/value)
+
+(defn normalize-value [m]
+  (let [v (get m view-value-key ::not-found)]
+    (if (= v ::not-found)
+      m
+      (-> m
+          (set-value (:type m) v)
+          (dissoc view-value-key)))))
+
 (defn apply-schema [tag props body]
-  (let [tag-type (type-string tag)
+  (let [type-str (type-string tag)
         {:as tag-schema
-         :keys [child children strings update-keys]} (schema tag-type)
+         :keys [child children strings update-keys]} (schema type-str)
         children? (seq body)
         error (cond (and children? (not child) (not children))
                     (str "Tag does not support children: " tag ", props: " props)
@@ -80,22 +119,16 @@
       (throw (ex-info error {:tag tag :body body})))
 
     (merge (-> (:defaults tag-schema)
-               (assoc :type (or (:type tag-schema) tag-type))
+               (assoc :type (or (:type tag-schema) type-str))
                (cond-> (and children? child) (assoc child (first body)))
                (cond-> (and children? children) (assoc children body))
                (merge props)
-               (cond-> strings (wrap-strings strings))
-               (cond-> update-keys (update-some update-keys))))))
+               (cond-> strings (wrap-strings strings)
+                       update-keys (update-some update-keys))
+               (normalize-value)))))
 
 (defn has-props? [form]
   (map? (nth form 1 nil)))
-
-(defn props? [x] (not= ::not-found x))
-
-(defn parse-props [form]
-  (if (map? (nth form 1 nil))
-    (update form 1 ->blocks)
-    form))
 
 (defn hiccup? [form] (and (vector? form) (keyword? (first form))))
 
@@ -165,7 +198,11 @@
         (into (empty form) (map ->hiccup) form)
         :else form))
 
-(def ->blocks-json (comp clj->json ->blocks))
+(defn ->blocks-json [hiccup]
+  (log/trace :hiccup hiccup)
+  (let [blocks (->blocks hiccup)]
+    (log/trace :blocks blocks)
+    (clj->json blocks)))
 
 (comment
 

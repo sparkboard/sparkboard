@@ -1,6 +1,6 @@
 (ns org.sparkboard.slack.oauth
   (:require [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.server.slack.core :refer [web-api base-uri]]
+            [org.sparkboard.server.slack.core :as slack :refer [web-api base-uri]]
             [org.sparkboard.firebase.tokens :as tokens]
             [lambdaisland.uri :as uri]
             [clojure.string :as str]
@@ -12,11 +12,14 @@
 
 (def slack-config (-> env/config :slack))
 
-(def required-scopes ["channels:read"
+(def required-scopes ["channels:join"
                       "channels:manage"
+                      "channels:read"
                       "chat:write"
+                      "chat:write.public"
                       "commands"
                       "groups:read"
+                      "reminders:write"
                       "team:read"
                       "users:read"
                       "users:read.email"])
@@ -33,8 +36,7 @@
   [{:keys [query-params] :as req}]
   (log/trace :install-redirect/req req)
   (let [{:strs [state]} query-params
-        {:keys [dev/local?
-                slack/team-id
+        {:keys [slack/team-id
                 sparkboard/board-id]} (tokens/decode state)
         error (when board-id
                 (when-let [entry (slack-db/board->team board-id)]
@@ -67,7 +69,7 @@
          :keys [sparkboard/board-id
                 sparkboard/account-id
                 slack/team-id
-                dev/local?]} (tokens/decode state)
+                reinstall?]} (tokens/decode state)
         ;; use the code from Slack to request an access token
         response (get+ (str base-uri "oauth.v2.access")
                        {:query {:code code
@@ -76,13 +78,14 @@
                                 :redirect_uri (str (:sparkboard/jvm-root env/config) "/slack-api/oauth-redirect")}})
         _ (assert (or (and board-id account-id)
                       team-id
-                      local?) "token must include board-id and account-id")]
+                      reinstall?) "token must include board-id and account-id")]
     (let [{app-id :app_id
            :keys [bot_user_id
                   access_token]
-           {team-id :id team-name :name team-domain :domain} :team
-           {user-id :id} :authed_user} response]
-      (log/trace :redirect/response response)
+           {team-id :id} :team
+           {user-id :id} :authed_user} response
+          {:as team-info team-name :name team-domain :domain} (slack/team-info access_token team-id)]
+      (log/trace :team-info team-info)
       ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
       ;; this app on.
       (let [user-response (get+ (str base-uri "users.info")
