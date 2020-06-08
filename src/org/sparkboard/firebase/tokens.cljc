@@ -35,6 +35,7 @@
 (defn decode [token]
   (p/let [key @public-key
           decoded (jwt/decode token key)]
+
     (with-meta (:claims decoded) decoded)))
 
 (comment

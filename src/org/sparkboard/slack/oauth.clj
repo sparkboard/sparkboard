@@ -36,8 +36,11 @@
   [{:keys [query-params] :as req}]
   (log/trace :install-redirect/req req)
   (let [{:strs [state]} query-params
-        {:keys [slack/team-id
+        _ (assert state "oauth install requires state param")
+        {:as token
+         :keys [slack/team-id
                 sparkboard/board-id]} (tokens/decode state)
+        _ (log/trace :token-claims token)
         error (when board-id
                 (when-let [entry (slack-db/board->team board-id)]
                   (when (not= board-id (:sparkboard/board-id entry))

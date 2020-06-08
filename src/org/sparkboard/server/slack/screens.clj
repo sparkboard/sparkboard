@@ -35,41 +35,40 @@
         (str "Link Account")]])))
 
 (defn admin-menu [context]
-  (when (:is_admin (slack/user-info (:slack/bot-token context) (:slack/user-id context)))
-    (list
-      [:section "*Manage*"]
-      [:actions
-       [:button {:style "primary"
-                 :action_id "admin:team-broadcast"}
-        "Team Broadcast"]
-       [:button {:action_id "admin:customize-messages-modal-open"} "Customize Messages"]
+  (list
+    [:section "*Manage*"]
+    [:actions
+     [:button {:style "primary"
+               :action_id "admin:team-broadcast"}
+      "Team Broadcast"]
+     [:button {:action_id "admin:customize-messages-modal-open"} "Customize Messages"]
 
-       (let [{:keys [slack/invite-link]} context]
-         [:button {:action_id "admin:invite-link-modal-open"}
-          (str (if invite-link "Change" "⚠️ Add") " invite link")])
+     (let [{:keys [slack/invite-link]} context]
+       [:button {:action_id "admin:invite-link-modal-open"}
+        (str (if invite-link "Change" "⚠️ Add") " invite link")])
 
-       [:overflow {:action_id "admin-overflow"
-                   :options [{:value "re-link"
-                              :url (urls/link-sparkboard-account context)
-                              :text [:plain_text "Re-Link Account"]}
-                             {:value "re-install"
-                              :url (str (:sparkboard/jvm-root context)
-                                        "/slack/reinstall/"
-                                        (:slack/team-id context))
-                              :text [:plain_text "Re-install App"]}]}]]
+     [:overflow {:action_id "admin-overflow"
+                 :options [{:value "re-link"
+                            :url (urls/link-sparkboard-account context)
+                            :text [:plain_text "Re-Link Account"]}
+                           {:value "re-install"
+                            :url (str (:sparkboard/jvm-root context)
+                                      "/slack/reinstall/"
+                                      (:slack/team-id context))
+                            :text [:plain_text "Re-install App"]}]}]]
 
-      [:divider]
-      [:section
-       {:accessory [:button {:action_id 'checks-test:open} "Dev: Form Examples"]
+    [:divider]
+    [:section
+     {:accessory [:button {:action_id 'checks-test:open} "Dev: Form Examples"]
 
-        :fields [[:md
-                  (str "_Updated: "
-                       (->> (java.util.Date.)
-                            (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
-                       "_")]
-                 [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}])))
+      :fields [[:md
+                (str "_Updated: "
+                     (->> (java.util.Date.)
+                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
+                     "_")]
+               [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}]))
 
-(defn main-menu [{:as context :sparkboard/keys [board-id account-id]}]
+(defn main-menu [{:as context :sparkboard/keys [board-id account-id] :slack/keys [bot-token user-id]}]
   (list
 
     (when (and board-id (not account-id))
@@ -80,7 +79,9 @@
        {:accessory [:button {:url (urls/sparkboard-host domain)} "View Board"]}
        (str "Connected to *" title "* on Sparkboard.")]
       [:section "No Sparkboard is linked to this Slack workspace."])
-    (admin-menu context)))
+
+    (when (and board-id account-id (:is_admin (slack/user-info bot-token user-id)))
+      (admin-menu context))))
 
 (defn home [context]
   [:home (main-menu context)])
@@ -197,7 +198,7 @@
   (let [domain (some-> board-id slack-db/board-domain)
         project-id (some-> (slack-db/linked-channel from-channel-id) :project-id)
         project-url (when (and domain project-id)
-                          (str (urls/sparkboard-host domain) "/project/" project-id))]
+                      (str (urls/sparkboard-host domain) "/project/" project-id))]
     [[:divider]
      [:section
       (when project-url {:accessory [:button {:url project-url} "Project Page"]})
