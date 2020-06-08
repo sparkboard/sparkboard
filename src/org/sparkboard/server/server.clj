@@ -381,6 +381,10 @@
             (ring.http/unauthorized))))
       (f req))))
 
+(defn wrap-timestamp [f]
+  (fn [req]
+    (f (assoc-in req [:params :debug-timestamp] (System/currentTimeMillis)))))
+
 (defn sparkboard-action
   "Event triggered by Sparkboard (legacy)"
   [{:as req :keys [params]}]
@@ -403,6 +407,7 @@
                        :view (hiccup/->blocks-json (screens/shortcut-modal context))}))
      :event/app_home_opened
      (fn [_ context]
+       (log/debug "[:event/app_home_opened]")
        (case (-> context :slack/event :tab)
          "home" (update-user-home-tab! context)
          nil))
@@ -494,29 +499,36 @@
     (ring.http/ok challenge)
     (do
       (try-future
-        (let [[handler-id context]
-              (cond event
-                    [(keyword "event" (:type event))
-                     (-> (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
-                         (assoc :slack/event event))]
+       (binding [slack/*debug-timestamp* (:debug-timestamp params)]
+         (log/debug "[inside try-future binding] slack/*debug-timestamp*:" slack/*debug-timestamp*)
+         (let [[handler-id context]
+               (cond event
+                     [(keyword "event" (:type event))
+                      (do
+                        (log/debug "[event]")
+                        (-> (slack-context (:team_id params)
+                                           (if (map? (:user event))
+                                             (:id (:user event))
+                                             (:user event)))
+                            (assoc :slack/event event)))]
 
-                    payload
-                    (let [payload (-> (json->clj payload)
-                                      (update-in [:view :private_metadata]
-                                                 #(if (str/blank? %) {} (transit/read %))))
-                          context (-> (slack-context (-> payload :team :id) (-> payload :user :id))
-                                      (assoc :slack/trigger-id (:trigger_id payload)
-                                             :slack/view-hash (-> payload :view :hash)))
-                          handler-id (keyword (:type payload)
-                                              (case (:type payload)
-                                                "shortcut" (:callback_id payload "UNSET")
-                                                ("view_submission" "view_closed") (-> payload :view :callback_id)
-                                                "block_actions" (-> payload :actions first :action_id)))]
-                      [handler-id (assoc context :slack/payload payload)]))]
-          (log/debug handler-id context)
-          (binding [slack/*request* context]
-            ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-             handler-id context))))
+                     payload
+                     (let [payload (-> (json->clj payload)
+                                       (update-in [:view :private_metadata]
+                                                  #(if (str/blank? %) {} (transit/read %))))
+                           context (-> (slack-context (-> payload :team :id) (-> payload :user :id))
+                                       (assoc :slack/trigger-id (:trigger_id payload)
+                                              :slack/view-hash (-> payload :view :hash)))
+                           handler-id (keyword (:type payload)
+                                               (case (:type payload)
+                                                 "shortcut" (:callback_id payload "UNSET")
+                                                 ("view_submission" "view_closed") (-> payload :view :callback_id)
+                                                 "block_actions" (-> payload :actions first :action_id)))]
+                       [handler-id (assoc context :slack/payload payload)]))]
+           (log/debug handler-id context)
+           (binding [slack/*request* context]
+             ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+              handler-id context)))))
       (ring.http/ok))))
 
 (def routes
@@ -573,7 +585,8 @@
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
-      wrap-slack-verify
+      ;; wrap-slack-verify
+      wrap-timestamp ;; XXX debug only
       wrap-handle-errors))
 
 (defonce server (atom nil))

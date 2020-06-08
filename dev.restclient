@@ -29,3 +29,8 @@ Content-Type: application/json
     "trigger_id": "1147868125282.1021573922947.e6ec02024540b1b39892ada6e6130b82"
   }
 }
+
+# Load testing receiver server
+GET http://localhost:4000/foo.bar
+User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0
+Content-Type: application/json

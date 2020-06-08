@@ -35,6 +35,7 @@
         bidi {:mvn/version "2.1.6"}
         ring-middleware-format {:mvn/version "0.7.4"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
+        clj-gatling {:mvn/version "0.14.0"} ; load testing
 
         ;; frontend
         thheller/shadow-cljs {:mvn/version "2.9.10"}

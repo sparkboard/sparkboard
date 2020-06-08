@@ -14,13 +14,15 @@
 
 (def ^:dynamic *request* {})
 
-(def base-uri "https://slack.com/api/")
+(def ^:dynamic *debug-timestamp* nil)
+
+  (def base-uri "http://localhost:4000/" #_"https://slack.com/api/")
 
 (defonce ^{:doc "Slack Web API RPC specification"
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
          web-api-spec
          (delay
-           (json/read-value (slurp                          ; canonical URL per https://api.slack.com/web#basics#spec
+           (json/read-value (slurp ; canonical URL per https://api.slack.com/web#basics#spec
                               "https://api.slack.com/specs/openapi/v2/slack_web.json"))))
 
 ;; TODO consider https://github.com/gnarroway/hato
@@ -32,7 +34,7 @@
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method
                                            (when query-map
-                                             (str "?" (lambdaisland.uri/map->query-string query-map))))))
+                                             (str "?" (lambdaisland.uri/map->query-string (assoc query-map :debug-timestamp *debug-timestamp*)))))))
                     (.header "Content-Type" "application/x-www-form-urlencoded")
                     (.header "Authorization" (str "Bearer " (:auth/token config)))
                     (.GET)
@@ -54,7 +56,7 @@
                     (.uri (URI/create (str base-uri family-method)))
                     (.header "Content-Type" "application/json; charset=utf-8")
                     (.header "Authorization" (str "Bearer " (:auth/token config)))
-                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
+                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string (assoc body :debug-timestamp *debug-timestamp*))))
                     (.build))
         clnt (-> (HttpClient/newBuilder)
                  (.version HttpClient$Version/HTTP_2)
@@ -90,7 +92,8 @@
           :channel))))
 
 (def team-info
-  (memoize
+  {:domain "foo" :name "bar"}
+#_  (memoize
     (fn [token team-id]
       (-> (web-api "team.info" {:auth/token token} {:team team-id})
           :team))))
