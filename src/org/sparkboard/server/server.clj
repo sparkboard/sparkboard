@@ -165,20 +165,18 @@
                                        collect-in-thread]}]
   (log/info :request-updates opts)
   (let [broadcast-ref (.push (fire-jvm/->ref "/slack-broadcast"))
+        sender-name (-> context :slack/payload :user :name)
         {thread :ts} (when response-channel
                        (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
                                       {:channel response-channel
                                        :blocks (hiccup/->blocks-json
                                                  [[:section
-                                                   (str "*Team Broadcast Sent:*\n"
-                                                        (view/blockquote message))]])}))
+                                                   [:md
+                                                    "*" sender-name "*"
+                                                    " sent a message to all teams:\n"
+                                                    (view/blockquote message)]]])}))
         blocks (hiccup/->blocks-json
-                 (screens/team-broadcast-message (.getKey broadcast-ref)
-                                                 opts
-                                                 (-> context
-                                                     :slack/payload
-                                                     :user
-                                                     :name)))]
+                 (screens/team-broadcast-message (.getKey broadcast-ref) opts sender-name))]
     (fire-jvm/set-value broadcast-ref
                         {:message message
                          :response-channel response-channel
