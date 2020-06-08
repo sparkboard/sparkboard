@@ -41,7 +41,7 @@
         "staging" '{:all :info
                     org.sparkboard.slack.oauth :trace
                     org.sparkboard.server.server :trace}
-        "prod" {:all :warn}
+        "prod" {:all :info}
         '{:all :info})))
 
 (-> {:middleware [(timbre-patterns/middleware
@@ -136,12 +136,6 @@
                  {:channel (:slack/user-id context)
                   :blocks (hiccup/->blocks-json blocks)}))
 
-(defn slack-ok! [resp status message]
-  (if (:ok resp)
-    resp
-    (throw (ex-info message {:status status
-                             :resp resp}))))
-
 (defn slack-channel-namify [s]
   (-> s
       (str/replace #"\s+" "-")
@@ -149,11 +143,11 @@
       (str/replace #"[^\w\-_\d]" "")
       (as-> s (subs s 0 (min 80 (count s))))))
 
-(defmacro log-call [form]
+(defmacro spy-args [form]
   ;;
-  `(do (log/info :call/forms (quote ~(first form)) ~@(rest form))
+  `(do (log/trace :call/forms (quote ~(first form)) ~@(rest form))
        (let [v# ~form]
-         (log/info :call/value v#)
+         (log/trace :call/value v#)
          v#)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -333,22 +327,22 @@
                               user-id]} (slack-context team-id user-id)
                 domain (slack-db/board-domain board-id)
                 project-url (str (urls/sparkboard-host domain) "/project/" project-id)
-                channel-id (-> (log-call (slack/web-api "conversations.create"
+                channel-id (-> (spy-args (slack/web-api "conversations.create"
                                                         {:auth/token bot-token}
                                                         {:user_ids [bot-user-id] ;; adding user-id here does not work
                                                          :is_private false
                                                          :name project-title}))
                                :channel
                                :id)]
-            (log-call (slack/web-api "conversations.invite"
+            (spy-args (slack/web-api "conversations.invite"
                                      {:auth/token bot-token}
                                      {:channel channel-id
                                       :users [user-id]}))
-            (log-call (slack/web-api "conversations.setTopic"
+            (spy-args (slack/web-api "conversations.setTopic"
                                      {:auth/token bot-token}
                                      {:channel channel-id
                                       :topic (view/link "View on Sparkboard" project-url)}))
-            (log-call (slack-db/link-channel-to-project! {:slack/team-id team-id
+            (spy-args (slack-db/link-channel-to-project! {:slack/team-id team-id
                                                           :slack/channel-id channel-id
                                                           :sparkboard/project-id project-id}))
             (assoc context :slack/channel-id channel-id))))))
@@ -437,7 +431,7 @@
      (fn [context]
        (let [values (view/input-values (-> context :slack/payload :view))
              local-state (-> context :slack/payload :view :private_metadata)]
-         (log/info :broadcast-response-values values)
+         (log/trace :broadcast-response-values values)
          (let [{:keys [channel]
                 {:keys [ts]} :message} (slack/web-api "chat.postMessage"
                                                       (let [reply-ref-path (:broadcast/reply-path local-state)
@@ -528,7 +522,9 @@
                                                 ("view_submission" "view_closed") (-> payload :view :callback_id)
                                                 "block_actions" (-> payload :actions first :action_id)))]
                       [handler-id (assoc context :slack/payload payload)]))]
-          (log/debug handler-id context)
+          (log/info handler-id (select-keys context [:slack/user-id
+                                                     :slack/team-id ]))
+          (log/debug :context context)
           (def LAST-CONTEXT context)
           (binding [slack/*request* context]
             ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))

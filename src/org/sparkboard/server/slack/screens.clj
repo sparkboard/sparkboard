@@ -9,7 +9,8 @@
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as view]
             [org.sparkboard.transit :as transit]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [org.sparkboard.server.env :as env]))
 
 (def team-messages
   {:welcome
@@ -58,15 +59,9 @@
                             :text [:plain_text "Re-install App"]}]}]]
 
     [:divider]
-    [:section
-     {:accessory [:button {:action_id 'checks-test:open} "Dev: Form Examples"]
-
-      :fields [[:md
-                (str "_Updated: "
-                     (->> (java.util.Date.)
-                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
-                     "_")]
-               [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}]))
+    (when-not (= "prod" (env/config :env))
+      [:actions
+       [:button {:action_id 'checks-test:open} "Dev: Form Examples"]])))
 
 (defn main-menu [{:as context :sparkboard/keys [board-id account-id] :slack/keys [bot-token user-id]}]
   (list
@@ -81,7 +76,15 @@
       [:section "No Sparkboard is linked to this Slack workspace."])
 
     (when (and board-id account-id (:is_admin (slack/user-info bot-token user-id)))
-      (admin-menu context))))
+      (admin-menu context))
+
+    [:section
+     {:fields [[:md
+                (str "_Updated: "
+                     (->> (java.util.Date.)
+                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
+                     "_")]
+               [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}]))
 
 (defn home [context]
   [:home (main-menu context)])
