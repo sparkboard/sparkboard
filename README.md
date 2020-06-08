@@ -41,3 +41,8 @@ to the internet.
 1. Navigate to `https://YOUR_NGROK_SUBDOMAIN.ngrok.io/slack/install-local` and pick a Slack workspace
 to install your dev app to. If all goes well, you will be asked to grant permissions to your app,
 and then redirected to your app's home tab in Slack.
+
+## Deployment
+
+- Pushing to `staging` branch deploys to staging server
+- `bin/promote` promotes the current staging build to production
