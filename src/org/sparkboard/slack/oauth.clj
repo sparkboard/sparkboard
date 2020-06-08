@@ -16,7 +16,7 @@
                       "channels:manage"
                       "channels:read"
                       "chat:write"
-                      "chat.write.public"
+                      "chat:write.public"
                       "commands"
                       "groups:read"
                       "reminders:write"

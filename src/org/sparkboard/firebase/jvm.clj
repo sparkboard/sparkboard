@@ -69,6 +69,9 @@
     (->ref path)
     (reify-value-listener on-value on-error)))
 
+(defn ref-path [ref]
+  (-> ref (.getPath) str))
+
 (defn read [path]
   (let [p (promise)]
     (listen-once path

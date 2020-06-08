@@ -173,7 +173,12 @@
                                                    (str "*Team Broadcast Sent:*\n"
                                                         (view/blockquote message))]])}))
         blocks (hiccup/->blocks-json
-                 (screens/team-broadcast-message (.getKey broadcast-ref) opts))]
+                 (screens/team-broadcast-message (.getKey broadcast-ref)
+                                                 opts
+                                                 (-> context
+                                                     :slack/payload
+                                                     :user
+                                                     :name)))]
     (fire-jvm/set-value broadcast-ref
                         {:message message
                          :response-channel response-channel
@@ -181,7 +186,9 @@
     (mapv #(slack/web-api "chat.postMessage"
                           {:auth/token (:slack/bot-token context)}
                           {:channel (:channel-id %)
-                           :blocks blocks})
+                           :blocks blocks
+                           :unfurl_media true
+                           :unfurl_links true})
           (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 (defn update-user-home-tab! [context]
@@ -203,7 +210,7 @@
        :sparkboard/account-id account-id})
     (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
     (message-user! context [[:section
-                             (str (screens/mention (:slack/user-id context))
+                             (str (view/mention (:slack/user-id context))
                                   " "
                                   (screens/team-message context :welcome-confirmation))]])
     (ring.http/found
@@ -219,7 +226,7 @@
     (link-account! (assoc context :sparkboard/account-id account-id))
     (message-user! context
                    [[:section
-                     (str (screens/mention (:slack/user-id context))
+                     (str (view/mention (:slack/user-id context))
                           " "
                           (screens/team-message context :welcome))]
                     [:actions
@@ -439,6 +446,7 @@
                                                             broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
                                                         {:blocks (hiccup/->blocks-json
                                                                    (screens/team-broadcast-response-msg
+                                                                     (:sparkboard/board-id context)
                                                                      (:slack/user-id context)
                                                                      (-> reply-ref-path fire-jvm/read :from-channel-id)
                                                                      (decode-text-input (:user:status-input values))))
@@ -486,15 +494,14 @@
      :block_actions/user:team-broadcast-response
      (fn [{:keys [slack/payload]}]
        ; "Post an Update" button (user opens modal to respond to broadcast)
-
        (let [broadcast-id (-> payload :actions first :block_id transit/read :broadcast/firebase-key)
-             broadcast-path (str "/slack-broadcast/" broadcast-id)
-             reply-ref (.push (fire-jvm/->ref (str broadcast-path "/replies")))
-             reply-path (str broadcast-path "/replies/" (.getKey reply-ref))]
+             broadcast-ref (fire-jvm/->ref (str "/slack-broadcast/" broadcast-id))
+             original-message (fire-jvm/read (.child broadcast-ref "message"))
+             reply-ref (-> broadcast-ref (.child "replies") (.push))]
          (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
          (slack/views-open (screens/team-broadcast-response
-                             (-> payload :message :blocks first :text :text) ; broadcast msg
-                             {:broadcast/reply-path reply-path
+                             original-message
+                             {:broadcast/reply-path (fire-jvm/ref-path reply-ref)
                               :broadcast/reply-ts (-> payload :message :ts)
                               :broadcast/reply-channel (-> payload :channel :id)}))))}))
 

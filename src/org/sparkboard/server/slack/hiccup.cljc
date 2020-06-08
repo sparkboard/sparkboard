@@ -15,10 +15,12 @@
 
   {"button" {:child :text
              :strings {:text :plain_text}}
-   "plain_text" {:child :text
-                 :defaults {:emoji true}}
-   "md" {:child :text
-         :type "mrkdwn"}
+   "plain_text" {:children :text
+                 :defaults {:emoji true}
+                 :update-keys {:text str/join}}
+   "md" {:children :text
+         :type "mrkdwn"
+         :update-keys {:text str/join}}
    "section" {:child :text
               :strings {:text :md}}
    "home" {:children :blocks}
@@ -40,11 +42,7 @@
    "multi_conversations_select" {:strings {:placeholder :plain_text}}
    "multi_channels_select" {:strings {:placeholder :plain_text}}})
 
-
 (declare ->blocks)
-
-(defn wrap-string [k s]
-  (if (string? s) [k s] s))
 
 (def aliases
   (reduce-kv (fn [m k {:keys [type]}]
@@ -132,13 +130,6 @@
 (defn has-props? [form]
   (map? (nth form 1 nil)))
 
-(defn props? [x] (not= ::not-found x))
-
-(defn parse-props [form]
-  (if (map? (nth form 1 nil))
-    (update form 1 ->blocks)
-    form))
-
 (defn hiccup? [form] (and (vector? form) (keyword? (first form))))
 
 (defn kw->underscore [k]
@@ -208,8 +199,10 @@
         :else form))
 
 (defn ->blocks-json [hiccup]
-  (log/trace :blocks hiccup)
-  (-> hiccup ->blocks clj->json))
+  (log/trace :hiccup hiccup)
+  (let [blocks (->blocks hiccup)]
+    (log/trace :blocks blocks)
+    (clj->json blocks)))
 
 (comment
 

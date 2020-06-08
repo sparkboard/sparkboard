@@ -11,12 +11,6 @@
             [org.sparkboard.transit :as transit]
             [taoensso.timbre :as log]))
 
-(defn channel-link [id]
-  (str "<#" id ">"))
-
-(defn mention [user-id]
-  (str "<@" user-id "> "))
-
 (def team-messages
   {:welcome
    {:label "Welcome message"
@@ -172,18 +166,19 @@
 
 (defn team-broadcast-message
   "Administrator broadcast to project channels, soliciting project update responses."
-  [firebase-key {:keys [message response-channel]}]
+  [firebase-key {:keys [message response-channel]} sender-name]
   (list
-    [:section [:md message]]
+    [:section [:md
+               (when sender-name (str "from *" sender-name "*:\n"))
+               (view/blockquote message)]]
     (when response-channel
-      (list
-        [:actions
-         {:block_id (transit/write {:broadcast/firebase-key firebase-key})}
-         [:button {:style "primary"
-                   :action_id "user:team-broadcast-response"
-                   :value "click_me_123"}
-          "Post an Update"]]
-        [:context [:md (str "Replies will be sent to " (channel-link response-channel))]]))))
+      (list [:actions
+             {:block_id (transit/write {:broadcast/firebase-key firebase-key})}
+             [:button {:style "primary"
+                       :action_id "user:team-broadcast-response"}
+              "Reply"]]
+            [:context
+             [:md "Replies will be sent to " (view/channel-link response-channel)]]))))
 
 (defn team-broadcast-response
   "User response to broadcast - text field for project status update"
@@ -198,23 +193,16 @@
     [:plain_text_input {:multiline true
                         :action_id "user:status-input"}]]])
 
-(defn team-broadcast-response-msg [from-user-id from-channel-id msg]
-  [[:divider]
-   [:section
-    [:md
-     (str "from " (mention from-user-id) " in " (channel-link from-channel-id) ":\n"
-          (view/blockquote msg))]]
-   #_{:type "actions",
-      :elements [{:type "button",
-                  :text {:type "plain_text",
-                         :text "Go to channel",             ; FIXME (project->channel project)
-                         :emoji true},
-                  :value "click_me_123"}
-                 {:type "button",
-                  :text {:type "plain_text",
-                         :text "View project",              ; FIXME sparkboard project URL
-                         :emoji true}
-                  :value "click_me_123"}]}])
+(defn team-broadcast-response-msg [board-id from-user-id from-channel-id msg]
+  (let [domain (some-> board-id slack-db/board-domain)
+        project-id (some-> (slack-db/linked-channel from-channel-id) :project-id)
+        project-url (when (and domain project-id)
+                          (str (urls/sparkboard-host domain) "/project/" project-id))]
+    [[:divider]
+     [:section
+      (when project-url {:accessory [:button {:url project-url} "Project Page"]})
+      [:md "from " (view/mention from-user-id) " in " (view/channel-link from-channel-id) ":\n"]]
+     [:section [:md (view/blockquote msg)]]]))
 
 (comment
   (hiccup/->blocks team-broadcast-modal-compose)
