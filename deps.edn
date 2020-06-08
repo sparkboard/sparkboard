@@ -37,6 +37,8 @@
 
         ;; schema
         metosin/malli {:mvn/version "0.0.1-SNAPSHOT"}
+
+        nrepl/nrepl {:mvn/version "0.7.0"}
         }
  :aliases
  {:build
