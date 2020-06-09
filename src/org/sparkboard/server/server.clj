@@ -498,39 +498,43 @@
                               :broadcast/reply-ts (-> payload :message :ts)
                               :broadcast/reply-channel (-> payload :channel :id)}))))}))
 
+(defn exec-sync? [handler-id]
+  (#{"view_submission"} (namespace handler-id)))
+
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
     (ring.http/ok challenge)
-    (do
-      (try-future
-        (let [[handler-id context]
-              (cond event
-                    [(keyword "event" (:type event))
-                     (-> (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
-                         (assoc :slack/event event))]
+    (let [[handler-id context]
+          (cond event
+                [(keyword "event" (:type event))
+                 (-> (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
+                     (assoc :slack/event event))]
 
-                    payload
-                    (let [payload (-> (json->clj payload)
-                                      (update-in [:view :private_metadata]
-                                                 #(if (str/blank? %) {} (transit/read %))))
-                          context (-> (slack-context (-> payload :team :id) (-> payload :user :id))
-                                      (assoc :slack/trigger-id (:trigger_id payload)
-                                             :slack/view-hash (-> payload :view :hash)))
-                          handler-id (keyword (:type payload)
-                                              (case (:type payload)
-                                                "shortcut" (:callback_id payload "UNSET")
-                                                ("view_submission" "view_closed") (-> payload :view :callback_id)
-                                                "block_actions" (-> payload :actions first :action_id)))]
-                      [handler-id (assoc context :slack/payload payload)]))]
-          (log/info handler-id (select-keys context [:slack/user-id
-                                                     :slack/team-id ]))
-          (log/debug :context context)
-          (def LAST-CONTEXT context)
-          (binding [slack/*request* context]
-            ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-             (assoc context ::handler-id handler-id)))))
-      (ring.http/ok))))
+                payload
+                (let [payload (-> (json->clj payload)
+                                  (update-in [:view :private_metadata]
+                                             #(if (str/blank? %) {} (transit/read %))))
+                      context (-> (slack-context (-> payload :team :id) (-> payload :user :id))
+                                  (assoc :slack/trigger-id (:trigger_id payload)
+                                         :slack/view-hash (-> payload :view :hash)))
+                      handler-id (keyword (:type payload)
+                                          (case (:type payload)
+                                            "shortcut" (:callback_id payload "UNSET")
+                                            ("view_submission" "view_closed") (-> payload :view :callback_id)
+                                            "block_actions" (-> payload :actions first :action_id)))]
+                  [handler-id (assoc context :slack/payload payload)]))
+          exec! #(binding [slack/*request* context]
+                   ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+                    (assoc context ::handler-id handler-id)))]
+      (log/info handler-id (select-keys context [:slack/user-id :slack/team-id]))
+      (log/debug :context context)
+      (def LAST-CONTEXT context)
+      (if (exec-sync? handler-id)
+        (or (exec!)
+            (ring.http/ok))
+        (do (try-future (exec!))
+            (ring.http/ok))))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]

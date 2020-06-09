@@ -97,7 +97,8 @@
       "multi_users_select" (assoc-some m :initial_users value)
       "plain_text_input" (assoc-some m :initial_value value))))
 
-(def view-value-key :org.sparkboard.slack.view/value)
+;; this is a special key that controls the "initial value" of any field
+(def view-value-key :set-value)
 
 (defn normalize-value [m]
   (let [v (get m view-value-key ::not-found)]

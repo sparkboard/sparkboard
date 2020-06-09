@@ -1,19 +1,20 @@
 (ns org.sparkboard.slack.view
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
-            [org.sparkboard.js-convert :refer [kw->js]]
+            [org.sparkboard.js-convert :refer [kw->js clj->json]]
             [org.sparkboard.server.slack.core :as slack]
             [taoensso.timbre :as log]
             [org.sparkboard.server.slack.hiccup :as hiccup]
-            [org.sparkboard.util :as u]))
+            [org.sparkboard.util :as u]
+            [clojure.set :as set]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; formatting helpers
 
 (defn truncate [s max-len]
   (if (> (count s) max-len)
     (str (subs s 0 (dec max-len)) "…")
     s))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; helpers for formatting in Slack's mrkdwn
 
 (defn blockquote [text]
   (str "> " (str/replace text "\n" "\n> ")))
@@ -81,120 +82,160 @@
 ;; - unsure about using an atom for this api - may change action-fns to
 ;;   be pure functions of [state, value, context] => new state
 
-(defn render [{:as view :keys [render-fn actions view-name]} context state]
-  (binding [*view* view]
-    (-> (render-fn (assoc context ::view view
-                                  ::actions actions
-                                  ::state (atom state)))
-        (assoc-in [1 :private_metadata] state)
-        (assoc-in [1 :callback_id] view-name))))
+(defn render [view context & {:keys [state props]}]
+  (let [{::keys [render-fn view-name]} view]
+    (binding [*view* view]
+      (-> (render-fn {:context context
+                      :state (atom state)
+                      :props props})
+          (assoc-in [1 :private_metadata] state)
+          (assoc-in [1 :callback_id] view-name)))))
 
 (defn view-api [hiccup method context opts]
   (slack/web-api method
                  {:auth/token (:slack/bot-token context)}
-                 (merge {:view (hiccup/->blocks-json hiccup)}
-                        opts)))
+                 (->> {:view (hiccup/->blocks-json hiccup)}
+                      (merge opts)
+                      (reduce-kv (fn [m k v] (cond-> m (some? v) (assoc k v))) {}))))
 
-(defn open! [view context]
-  (-> (render view context (:initial-state view))
+(defn trigger [context]
+  {:post [(some? %)]}
+  (-> context :slack/payload :trigger_id))
+
+(defn open! [context view & {:keys [props]}]
+  (-> (render view context :state (:initial-state view) :props props)
       (view-api "views.open"
                 context
-                {:trigger_id (-> context :slack/payload :trigger_id)})))
+                {:trigger_id (trigger context)})))
 
-(defn push! [view context]
-  (-> (render view context (:initial-state view))
+(defn push! [context view & {:keys [props]}]
+  (-> (render view context :state (:initial-state view) :props props)
       (view-api "views.push"
                 context
-                {:trigger_id (-> context :slack/payload :trigger_id)})))
+                {:trigger_id (trigger context)})))
 
-(defn update! [view context state]
-  (-> (render view context state)
+(defn replace! [context view & {:keys [props view-id]}]
+  (-> (render view context :state (:initial-state view) :props props)
       (view-api "views.update"
                 context
-                {:hash (-> context :slack/payload :view :hash)
-                 :view_id (-> context :slack/payload :view :id)})))
+                {:view_id view-id
+                 :trigger_id (trigger context)})))
 
-(defn set-home! [view context state user-id]
-  (-> (render view context (or state (:initial-state view)))
+(defn update! [context view & {:keys [props state view-id hash]}]
+  (let [state (or state
+                  (when (= (::view-name view)
+                           (-> context :slack/payload :view :callback_id))
+                    (-> context :slack/payload :view :private_metadata)))]
+    (-> (render view context :state state :props props)
+        (view-api "views.update"
+                  context
+                  {:hash (or hash (-> context :slack/payload :view :hash))
+                   :view_id (or view-id (-> context :slack/payload :view :id))
+                   :trigger_id (trigger context)}))))
+
+(defn home! [context view & {:keys [props user-id]}]
+  {:pre [user-id]}
+  (-> (render context view :state (:initial-state view) :props props)
       (view-api "views.publish"
                 context
                 {:user_id user-id})))
 
-(defn handle-home-opened! [view context]
-  (-> (render view context (or (-> context :slack/payload :view :private_metadata (u/guard seq))
-                               (:initial-state view)))
+(defn handle-home-opened! [context view & {:keys [props]}]
+  (-> (render context view :state (-> context :slack/payload :view :private_metadata) :props props)
       (view-api "views.publish"
                 context
                 {:user_id (:slack/user-id context)})))
 
 (defn handle-block-action
   "Calls a block action with [context, state-atom, block-value]"
-  [context view action-id action-fn ]
+  [context view action-id action-fn]
   (let [prev-state (-> context :slack/payload :view :private_metadata)
         all-values (-> context :slack/payload :actions actions-values)
         value (get all-values action-id)
         context (assoc context ::view view)
         state-atom (atom prev-state)
-        _ (action-fn context state-atom value)
+        _ (action-fn {:context context :state state-atom :value value :view view})
         next-state @state-atom]
     (log/trace action-id action-value {:prev-state prev-state
                                        :next-state next-state})
     (when (and next-state (not= prev-state next-state))
-      (update! view context next-state))))
+      (update! context view :state next-state))))
+
+(defn return-json [status body]
+  {:status 200
+   :headers {"Content-Type" "application/json"}
+   :body (clj->json body)})
 
 (defn handle-form-callback
   "Calls a form action with [context, state-atom, input-values]"
-  [context form-fn]
-  (let [rsp-view (-> context :slack/payload :view)]
-    (form-fn context (atom (:private_metadata rsp-view)) (input-values rsp-view))))
+  [context kind form-fn]
+  (let [rsp-view (-> context :slack/payload :view)
+        result (form-fn {:context context
+                         :state (atom (:private_metadata rsp-view))
+                         :value (input-values rsp-view)})]
+    (case kind
+      :close result
+      :submit (when-let [[action view] result]
+                (assert (and (#{:push :update} action)
+                             "on-submit should return [:push <view>] or [:update <view>] or nil"))
+                (return-json 200
+                             {:response_action action
+                              :view (hiccup/->blocks view)})))))
+
+(defn scoped-id [view-name k]
+  ;; actions need globally-unique names, so we append them to their parent modal's name
+  (str view-name ":" (name k)))
 
 (defn make-view* [{:as view
-                   :keys [view-name
-                          actions
-                          on-submit
+                   ::keys [view-name actions]
+                   :keys [on-submit
                           on-close]}]
-  (let [scoped-id #(str view-name ":" (name %))
-        view (assoc view :actions (reduce (fn [m action-name] (assoc m action-name (scoped-id action-name))) {} (keys actions)))
-        view (reduce-kv (fn [m action-name action-fn]
-                          (let [id (scoped-id action-name)]
+  (let [view (reduce-kv (fn [m action-name action-fn]
+                          (let [id (scoped-id view-name action-name)]
                             (-> m
-                                (assoc-in [:handlers (keyword "block_actions" id)]
+                                (assoc-in [::actions action-name] id)
+                                (assoc-in [::handlers (keyword "block_actions" id)]
                                           #(handle-block-action % view id action-fn)))))
                         view
                         actions)
         view (cond-> view
                      on-submit
-                     (assoc-in [:handlers (keyword "view_submission" view-name)] #(handle-form-callback % on-submit))
+                     (assoc-in [::handlers (keyword "view_submission" view-name)]
+                               #(handle-form-callback % :submit on-submit))
                      on-close
-                     (assoc-in [:handlers (keyword "view_close" view-name)] #(handle-form-callback % on-submit)))]
-    view))
+                     (assoc-in [::handlers (keyword "view_close" view-name)]
+                               #(handle-form-callback % :close on-submit)))]
+    (-> view
+        (merge (::actions view))            ;; expose :actions as bare key
+        (dissoc ::actions))))
 
-(defmacro defmodal [name-sym & args]
-  (let [[options [argv body]] (if (map? (first args))
-                                [(first args) (rest args)]
-                                [nil args])
+(defmacro defview
+  "Defines a modal or home surface"
+  [name-sym & args]
+  (let [[options [argv & body]] (if (map? (first args))
+                                  [(first args) (rest args)]
+                                  [nil args])
         view-name (str name-sym)
-        options (atom options)
+        options (atom (set/rename-keys options {:actions ::actions}))
         body (walk/postwalk
                (fn [x]
                  (if-not (map? x)
                    x
-                   (cond (::action x)
-                         (let [action-form (::action x)
-                               action-sym (second action-form)
-                               action-k (keyword (name action-sym))
-                               _ (assert (and (symbol? action-sym)))]
-                           (swap! options assoc-in [:actions action-k] action-form)
-                           (-> (dissoc x ::action)
-                               (assoc :action_id `(-> *view* :actions ~action-k))))
-                         (::on-submit x) (do (swap! options assoc :on-submit (::on-submit x))
-                                             (dissoc x ::on-submit))
-                         (::on-close x) (do (swap! options assoc :on-close (::on-close x))
-                                            (dissoc x ::on-close))
-                         :else x))) body)]
+                   (cond (:action x)
+                         (if (map? (:action x))
+                           (let [[action-k action-form] (first (:action x))]
+                             (swap! options update ::actions merge (:action x))
+                             (-> (dissoc x :action)
+                                 (assoc :action-id (scoped-id view-name action-k))))
+                           (set/rename-keys x {:action :action-id}))
+                         (:on-submit x) (do (swap! options assoc :on-submit (:on-submit x))
+                                            (dissoc x :on-submit))
+                         (:on-close x) (do (swap! options assoc :on-close (:on-close x))
+                                           (dissoc x :on-close))
+                         :else x))) (last body))]
     `(do (def ~name-sym
-           (make-view* (merge {:view-name ~view-name
-                               :render-fn (fn ~name-sym ~argv ~body)}
+           (make-view* (merge {::view-name ~view-name
+                               ::render-fn (fn ~name-sym ~argv ~body)}
                               ~(deref options))))
-         (swap! registry merge (:handlers ~name-sym))
+         (swap! registry merge (::handlers ~name-sym))
          #'~name-sym)))

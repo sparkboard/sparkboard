@@ -63,7 +63,7 @@
     [:divider]
     (when-not (= "prod" (env/config :env))
       [:actions
-       [:button {:action-id (-> checks-test :actions :open)}
+       [:button {:action (:open! checks-test)}
         "Dev: Form Examples"]])))
 
 (defn main-menu [{:as context :sparkboard/keys [board-id account-id] :slack/keys [bot-token user-id]}]
@@ -230,18 +230,24 @@
   (hiccup/->blocks team-broadcast-modal-compose)
   (hiccup/->blocks [:md "hi"]))
 
-(view/defmodal multi-select-modal
-  [{::view/keys [state]}]
+(view/defview result-modal
+  [{:keys [props]}]
+  [:modal {:title "Result"} [:section (str props)]])
+
+(view/defview multi-select-modal
+  [{:keys [state]}]
   [:modal {:title "Multi-Select examples"
            :submit "Submit"
-           ::view/on-submit (fn [context] (log/info :ON_SUBMIT context))}
+           :on-submit (fn [{:keys [value context]}]
+                        [:push (view/render result-modal context :props (str value))])}
    [:section
     {:accessory
      [:multi_static_select
       {:placeholder "Select some..."
-       ::view/action (fn static [context state value]
-                       (swap! state assoc :static value))
-       ::view/value (:static @state)
+       :action {:select-static                              ;; an :action must be a map of {local-id, fn}
+                (fn [{:keys [state value]}]
+                  (swap! state assoc :static value))}
+       :set-value (:static @state)
        :options [{:value "multi-1"
                   :text [:plain_text "Multi 1"]}
                  {:value "multi-2"
@@ -253,18 +259,20 @@
     {:accessory
      [:multi_users_select
       {:placeholder "Select some..."
-       ::view/action (fn users [context state value]
-                       (swap! state assoc :users value))
-       ::view/value (:users @state)}]}
+       :action {:users
+                (fn [{:keys [state value]}]
+                  (swap! state assoc :users value))}
+       :set-value (:users @state)}]}
     "Multi-users-select"]
 
    [:section
     {:accessory
      [:multi_conversations_select
       {:placeholder "Select some..."
-       ::view/action (fn conversations [context state value]
-                       (swap! state assoc :conversations value))
-       ::view/value (:conversations @state)}]}
+       :action {:conversations
+                (fn [{:keys [state value]}]
+                  (swap! state assoc :conversations value))}
+       :set-value (:conversations @state)}]}
     "Multi-conversations-select"]
 
    [:input
@@ -273,40 +281,23 @@
      {:placeholder "Select some..."
       :action-id :multi-channel}]]])
 
-(view/defmodal checks-test
+(view/defview checks-test
   {:initial-state {:counter 0
                    :show-state? true
                    :checks-test #{"value-test-1"}}
-   :actions {:open
-             (fn [context state _] (view/open! (::view/view context) context))
-             :datepicker
-             (fn [context state value] (swap! state assoc :datepicker value))
-             :overflow
-             (fn [context state value] (swap! state assoc :overflow value))
-             :users_select
-             (fn [context state value] (swap! state assoc :users_select value))
-             :radio_buttons
-             (fn [context state value] (swap! state assoc :radio_buttons value))
-             :checkboxes
-             (fn [context state value] (swap! state assoc :checkboxes value))
-             :toggle-state-view
-             (fn [context state value] (swap! state update :show-state? not))
-             :multi-select-open
-             (fn [context state value]
-               (view/push! multi-select-modal context)
-               nil)}}
-  [{::view/keys [actions state]}]
+   :actions {:open! (fn [{:keys [context view]}] (view/open! context view))}}
+  [{:keys [state props]}]
   [:modal {:title "State test"}
    [:actions
-    [:button {::view/action
-              (fn counter [context state _]
-                (log/info :COUNTER_STATE state)
-                (swap! state update :counter inc))}
+    [:button {:action {:counter (fn [{:keys [state]}]
+                                  (swap! state update :counter inc))}}
      (str "Clicked " (str "(" (:counter @state) ")"))]
-    [:datepicker {:action-id (:datepicker actions)
-                  ::view/value (:datepicker @state)}]
+    [:datepicker {:action {:datepicker (fn [{:keys [state value]}]
+                                         (swap! state assoc :datepicker value))}
+                  :set-value (:datepicker @state)}]
 
-    [:overflow {:action-id (:overflow actions)
+    [:overflow {:action {:overflow (fn [{:keys [state value]}]
+                                     (swap! state assoc :overflow value))}
                 :options [{:value "o1"
                            :text [:plain_text "O1"]}
                           {:value "o2"
@@ -314,15 +305,20 @@
 
     [:users_select
      {:placeholder "Pick a person"
-      :action-id (:users_select actions)
-      ::view/value (:users_select @state)}]
+      :action {:users_select (fn [{:keys [state value]}]
+                               (swap! state assoc :users_select value))}
+      :set-value (:users_select @state)}]
 
-    [:button {:action-id (:multi-select-open actions)} "Open multi-select modal"]]
+    [:button {:action
+              {:open-select-modal (fn [{:keys [context]}]
+                                    (view/push! context multi-select-modal))}}
+     "Open multi-select modal"]]
+
    [:actions
-
     [:radio_buttons
-     {:action-id (:radio_buttons actions)
-      ::view/value (:radio_buttons @state)
+     {:action {:radio_buttons (fn [{:keys [state value]}]
+                                (swap! state assoc :radio_buttons value))}
+      :set-value (:radio_buttons @state)
       :options [{:value "r1"
                  :text [:plain_text "Radio 1"]}
                 {:value "r2"
@@ -330,8 +326,9 @@
       :initial_option {:value "r1" :text [:plain_text "Radio 1"]}}]
 
     [:checkboxes
-     {:action-id (:checkboxes actions)
-      ::view/value (:checkboxes @state)
+     {:action {:checkboxes (fn [{:keys [state value]}]
+                             (swap! state assoc :checkboxes value))}
+      :set-value (:checkboxes @state)
       :options [{:value "value-test-1"
                  :text [:md "Check 1"]}
                 {:value "value-test-2"
@@ -340,5 +337,5 @@
    (when (:show-state? @state)
      [:section (with-out-str (pp/pprint @state))])
    [:actions
-    [:button {:action-id (:toggle-state-view actions)}
+    [:button {:action {:toggle-state-view (fn [{:keys [state]}] (swap! state update :show-state? not))}}
      (if (:show-state? @state) "hide state" "show state")]]])

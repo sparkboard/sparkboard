@@ -28,7 +28,7 @@
 (defn web-api-get
   ;; do we want a 2-arity without `query-map`?
   [family-method config query-map]
-  (log/debug "[web-api-get] query-map:" query-map)
+  (log/debug "[web-api-get] query-map:" family-method query-map)
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method
                                            (when query-map
