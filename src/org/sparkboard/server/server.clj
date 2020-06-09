@@ -497,13 +497,28 @@
                               :broadcast/reply-ts (-> payload :message :ts)
                               :broadcast/reply-channel (-> payload :channel :id)}))))}))
 
+(defonce queue
+  (java.util.concurrent.LinkedBlockingQueue.))
+
+(def queue-consumer
+  "Async processor. Primarily for Slack actions over HTTP, in parallel
+  with the direct HTTP/200 response."
+  (try-future (while true
+                (let [[ctx f & args] (.take queue)]
+                  (log/warn "[Q]")
+                  (binding [slack/*request* ctx]
+                    (log/warn "[Q] Evaluating:" (apply f args)))))))
+
+(comment
+  (.put queue [{} inc 5])
+
+  )
+
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
     (ring.http/ok challenge)
-    (do
-      (try-future
-        (let [[handler-id context]
+    (do (let [[handler-id context]
               (cond event
                     [(keyword "event" (:type event))
                      (-> (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
@@ -522,14 +537,14 @@
                                                 ("view_submission" "view_closed") (-> payload :view :callback_id)
                                                 "block_actions" (-> payload :actions first :action_id)))]
                       [handler-id (assoc context :slack/payload payload)]))]
-          (log/info handler-id (select-keys context [:slack/user-id
-                                                     :slack/team-id ]))
+          (log/info handler-id (select-keys context [:slack/user-id :slack/team-id ]))
           (log/debug :context context)
           (def LAST-CONTEXT context)
-          (binding [slack/*request* context]
-            ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-             (assoc context ::handler-id handler-id)))))
-      (ring.http/ok))))
+          (.put queue
+                [context
+                 (handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+                 (assoc context ::handler-id handler-id)]))
+        (ring.http/ok))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
@@ -626,7 +641,8 @@
 
 (defn stop-server! []
   (when-not (nil? @server)
-    (.stop @server)))
+    (.stop @server)
+    (.clear queue)))
 
 (defn restart-server!
   "Setup fn.
