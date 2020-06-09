@@ -42,7 +42,7 @@
         "staging" '{:all :info
                     org.sparkboard.slack.oauth :trace
                     org.sparkboard.server.server :trace}
-        "prod" {:all :info}
+        "prod" {:all :warn}
         '{:all :info})))
 
 (-> {:middleware [(timbre-patterns/middleware
@@ -636,7 +636,8 @@
   [port]
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false}))
-  (nrepl/start-server :bind "localhost" :port 7888))
+  (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev
+    (nrepl/start-server :bind "localhost" :port 7888)))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
