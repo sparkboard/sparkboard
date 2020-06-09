@@ -16,7 +16,7 @@
 
 (def ^:dynamic *debug-timestamp* nil)
 
-  (def base-uri "http://localhost:4000/" #_"https://slack.com/api/")
+(def base-uri "https://slack.com/api/")
 
 (defonce ^{:doc "Slack Web API RPC specification"
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
