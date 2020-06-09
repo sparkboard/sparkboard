@@ -92,15 +92,19 @@
           :channel))))
 
 (def team-info
-  {:domain "foo" :name "bar"}
+  (do (Thread/sleep 1000)
+      {:domain "foo" :name "bar"})
 #_  (memoize
     (fn [token team-id]
       (-> (web-api "team.info" {:auth/token token} {:team team-id})
           :team))))
 
 (defn user-info [token user-id]
-  (-> (web-api "users.info" {:auth/token token} {:user user-id})
-      :user))
+  (do (Thread/sleep 1000)
+      {:is_admin true}
+      #_
+      (-> (web-api "users.info" {:auth/token token} {:user user-id})
+          :user)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; views endpoints, wrwapped to include hash + trigger_id from context

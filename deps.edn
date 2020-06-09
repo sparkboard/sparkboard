@@ -49,4 +49,5 @@
  {:build
   {:extra-deps
    {uberdeps {:mvn/version "0.1.8"}}
-   :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar" "--main-class" "org.sparkboard.server.server"]}}}
+   :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar" "--main-class" "org.sparkboard.server.server"]
+   :jvm-opts ["-Xms2G" "-Xmx2G"]}}}

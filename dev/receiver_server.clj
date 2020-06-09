@@ -1,4 +1,5 @@
-(ns receiver-server
+(ns repl.sparkboard-receiver-server
+  ;; NB: run in a *separate* JVM/REPL
   (:require [bidi.ring]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
@@ -22,13 +23,10 @@
 (def app
   (-> #_(bidi.ring/make-handler routes)
       (fn [req] (let [now-ts (System/currentTimeMillis)
-                     start-ts (-> req :params :debug-timestamp Long/parseLong)
-                     rsp {:now-timestamp now-ts
-                          :params-timestamp start-ts
-                          :lag (- now-ts start-ts)}]
-                 (spit (str "debug-server." start-ts)
-                       rsp)
-                 (http/ok rsp)))
+                     start-ts (-> req :params :debug-timestamp Long/parseLong)]
+                 (spit "debug-server.log" (str (- now-ts start-ts) "\n")
+                       :append true)
+                 (http/ok)))
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format :formats [:json])))
 
