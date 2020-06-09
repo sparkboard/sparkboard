@@ -497,8 +497,15 @@
                               :broadcast/reply-ts (-> payload :message :ts)
                               :broadcast/reply-channel (-> payload :channel :id)}))))}))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Async processing (mostly parallel Slack HTTP responses)
+
 (defonce queue
   (java.util.concurrent.LinkedBlockingQueue.))
+
+(defonce pool
+  (java.util.concurrent.Executors/newFixedThreadPool (.availableProcessors (Runtime/getRuntime))))
 
 (def queue-consumer
   "Async processor. Primarily for Slack actions over HTTP, in parallel
@@ -507,7 +514,9 @@
                 (let [[ctx f & args] (.take queue)]
                   (log/warn "[Q]")
                   (binding [slack/*request* ctx]
-                    (log/warn "[Q] Evaluating:" (apply f args)))))))
+                    (log/warn "[Q] Evaluating:"
+                              (.submit ^java.util.concurrent.ExecutorService pool
+                                       ^Callable (apply f args))))))))
 
 (comment
   (.put queue [{} inc 5])
