@@ -137,7 +137,22 @@
 (defn team-broadcast-modal-compose
   ([context] (team-broadcast-modal-compose context {}))
   ([context local-state]
-   (let [project-teams (slack-db/team->all-linked-channels (:slack/team-id context))]
+   (let [project-channels (into #{}
+                                (map :channel-id)
+                                (slack-db/team->all-linked-channels (:slack/team-id context)))
+         destination-channel-options
+         (->> (slack/web-api "conversations.list"
+                             {:exclude_archived true
+                              :types "public_channel,private_channel"})
+              :channels
+              (into [] (comp (filter :is_member)
+                             (remove (comp project-channels :id))
+                             (map (fn [{:keys [name_normalized id]}]
+                                    {:value id
+                                     :text [:plain_text
+                                            ;; found error in production - max length of option text is 74 chars
+                                            ;; TODO - truncate in hiccup layer?
+                                            (view/truncate name_normalized 40)]})))))]
      [:modal {:title [:plain_text "Team Broadcast"]
               :submit [:plain_text "Send"]
               :callback_id "team-broadcast-modal-compose"
@@ -149,15 +164,15 @@
        [:plain_text_input
         {:multiline true,
          :action_id "broadcast2:text-input"
-         :placeholder (str "Write something to send to all " (count project-teams) " project teams.")}]]
-      (if-let [options (seq (destination-channel-options context))]
+         :placeholder (str "Write something to send to all " (count project-channels) " project teams.")}]]
+      (if (seq destination-channel-options)
         (list
           [:input
            {:label "Collect responses:"
             :optional true}
            [:static_select
             {:placeholder [:plain_text "Destination channel"],
-             :options options
+             :options destination-channel-options
              :action_id "broadcast2:channel-select"}]]
           [:input
            {:label "Options"
