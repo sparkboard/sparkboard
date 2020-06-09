@@ -42,6 +42,7 @@
    "multi_conversations_select" {:strings {:placeholder :plain_text}}
    "multi_channels_select" {:strings {:placeholder :plain_text}}})
 
+
 (declare ->blocks)
 
 (def aliases
@@ -141,7 +142,7 @@
   (cond (hiccup? form)
         (let [tag (first form)
               props? (has-props? form)
-              props (when props? (->blocks (nth form 1)))
+              props (when props? (nth form 1))
               body (drop (if props? 2 1) form)]
           (->blocks (apply-schema tag props body)))
         (sequential? form) (reduce (fn [out child]
@@ -150,7 +151,7 @@
                                              (sequential? child) (into out child)
                                              :else (conj out child)))) [] form)
         (map? form) (reduce-kv (fn [m k v]
-                                 (assoc m k (->blocks v))) {} form)
+                                 (assoc m (kw->underscore k) (->blocks v))) {} form)
         (keyword? form) (kw->js form)
         (symbol? form) (name form)
         :else form))
@@ -254,3 +255,4 @@
                    :action_id "broadcast2:channel-select"
                    :filter {:include ["public" "private"]}}]}
      "*Post responses to channel:*"]))
+
