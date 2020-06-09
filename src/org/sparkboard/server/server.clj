@@ -142,7 +142,7 @@
       (str/replace #"\s+" "-")
       (str/lower-case)
       (str/replace #"[^\w\-_\d]" "")
-      (as-> s (subs s 0 (min 80 (count s))))))
+      (view/truncate 70)))
 
 (defmacro spy-args [form]
   ;;
