@@ -399,10 +399,6 @@
             (ring.http/unauthorized))))
       (f req))))
 
-(defn wrap-timestamp [f]
-  (fn [req]
-    (f (assoc-in req [:params :debug-timestamp] (System/currentTimeMillis)))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -646,8 +642,7 @@
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
-      ;; wrap-slack-verify
-      wrap-timestamp ;; XXX debug only
+      wrap-slack-verify
       wrap-static-fallback
       wrap-handle-errors
       wrap-static-first))

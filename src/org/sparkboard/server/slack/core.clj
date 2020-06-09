@@ -31,13 +31,10 @@
   ;; do we want a 2-arity without `query-map`?
   [family-method config query-map]
   (log/debug "[web-api-get] query-map:" query-map)
-  (do (Thread/sleep (+ 500 (rand-int 1000)))
-      {:domain "foo" :name "bar"})  
-  #_
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method
                                            (when query-map
-                                             (str "?" (lambdaisland.uri/map->query-string (assoc query-map :debug-timestamp *debug-timestamp*)))))))
+                                             (str "?" (lambdaisland.uri/map->query-string query-map))))))
                     (.header "Content-Type" "application/x-www-form-urlencoded")
                     (.header "Authorization" (str "Bearer " (:auth/token config)))
                     (.GET)
@@ -55,14 +52,11 @@
 (defn web-api-post
   [family-method config body]
   (log/debug "[web-api-post] body:" body)
-  (do (Thread/sleep (+ 500 (rand-int 1000)))
-      {:domain "foo" :name "bar"})  
-  #_
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method)))
                     (.header "Content-Type" "application/json; charset=utf-8")
                     (.header "Authorization" (str "Bearer " (:auth/token config)))
-                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string (assoc body :debug-timestamp *debug-timestamp*))))
+                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
                     (.build))
         clnt (-> (HttpClient/newBuilder)
                  (.version HttpClient$Version/HTTP_2)
@@ -138,7 +132,6 @@
 
   ;; bot token only for local dev experiments
   (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)} {:a "b"})
-
   
   (time (-> (client/get (str base-uri "conversations.info")
                         {:query-params {:token (-> env/config :slack :bot-user-oauth-token)
