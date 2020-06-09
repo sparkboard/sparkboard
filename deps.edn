@@ -16,6 +16,7 @@
         clj-http {:mvn/version "3.10.1"}
         lambdaisland/uri {:mvn/version "1.3.45"}
         commons-codec/commons-codec {:mvn/version "1.14"}
+        clj-gatling {:mvn/version "0.14.0"} ; load testing
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}
@@ -42,4 +43,5 @@
  {:build
   {:extra-deps
    {uberdeps {:mvn/version "0.1.8"}}
-   :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar" "--main-class" "org.sparkboard.server.server"]}}}
+   :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar" "--main-class" "org.sparkboard.server.server"]
+   :jvm-opts ["-Xms2G" "-Xmx2G"]}}}

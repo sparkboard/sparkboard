@@ -399,6 +399,11 @@
             (ring.http/unauthorized))))
       (f req))))
 
+(defn wrap-timestamp [f]
+  (fn [req]
+    (f (assoc-in req [:params :debug-timestamp] (System/currentTimeMillis)))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn slack-api-handlers []
@@ -511,15 +516,14 @@
   "Async processor. Primarily for Slack actions over HTTP, in parallel
   with the direct HTTP/200 response."
   (try-future (while true
-                (let [[ctx f & args] (.take queue)]
-                  (log/warn "[Q]")
-                  (binding [slack/*request* ctx]
-                    (log/warn "[Q] Evaluating:"
-                              (.submit ^java.util.concurrent.ExecutorService pool
-                                       ^Callable (apply f args))))))))
+                (let [[ctx debug-ts f & args] (.take queue)]
+                  (.submit ^java.util.concurrent.ExecutorService pool
+                           ^Callable #(binding [slack/*request* ctx
+                                                slack/*debug-timestamp* debug-ts]
+                                        (apply f args)))))))
 
 (comment
-  (.put queue [{} inc 5])
+  (.put queue [{} 5 inc 5])
 
   )
 
@@ -551,6 +555,7 @@
           (def LAST-CONTEXT context)
           (.put queue
                 [context
+                 (:debug-timestamp params)
                  (handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
                  (assoc context ::handler-id handler-id)]))
         (ring.http/ok))))
@@ -641,7 +646,8 @@
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
-      wrap-slack-verify
+      ;; wrap-slack-verify
+      wrap-timestamp ;; XXX debug only
       wrap-static-fallback
       wrap-handle-errors
       wrap-static-first))

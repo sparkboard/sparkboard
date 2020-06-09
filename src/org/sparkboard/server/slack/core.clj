@@ -14,13 +14,15 @@
 
 (def ^:dynamic *request* {})
 
-(def base-uri "https://slack.com/api/")
+(def ^:dynamic *debug-timestamp* nil)
+
+  (def base-uri "http://localhost:4000/" #_"https://slack.com/api/")
 
 (defonce ^{:doc "Slack Web API RPC specification"
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
          web-api-spec
          (delay
-           (json/read-value (slurp                          ; canonical URL per https://api.slack.com/web#basics#spec
+           (json/read-value (slurp ; canonical URL per https://api.slack.com/web#basics#spec
                               "https://api.slack.com/specs/openapi/v2/slack_web.json"))))
 
 ;; TODO consider https://github.com/gnarroway/hato
@@ -29,10 +31,13 @@
   ;; do we want a 2-arity without `query-map`?
   [family-method config query-map]
   (log/debug "[web-api-get] query-map:" query-map)
+  (do (Thread/sleep (+ 500 (rand-int 1000)))
+      {:domain "foo" :name "bar"})  
+  #_
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method
                                            (when query-map
-                                             (str "?" (lambdaisland.uri/map->query-string query-map))))))
+                                             (str "?" (lambdaisland.uri/map->query-string (assoc query-map :debug-timestamp *debug-timestamp*)))))))
                     (.header "Content-Type" "application/x-www-form-urlencoded")
                     (.header "Authorization" (str "Bearer " (:auth/token config)))
                     (.GET)
@@ -50,11 +55,14 @@
 (defn web-api-post
   [family-method config body]
   (log/debug "[web-api-post] body:" body)
+  (do (Thread/sleep (+ 500 (rand-int 1000)))
+      {:domain "foo" :name "bar"})  
+  #_
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method)))
                     (.header "Content-Type" "application/json; charset=utf-8")
                     (.header "Authorization" (str "Bearer " (:auth/token config)))
-                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string body)))
+                    (.POST (HttpRequest$BodyPublishers/ofString (json/write-value-as-string (assoc body :debug-timestamp *debug-timestamp*))))
                     (.build))
         clnt (-> (HttpClient/newBuilder)
                  (.version HttpClient$Version/HTTP_2)
@@ -95,9 +103,8 @@
       (-> (web-api "team.info" {:auth/token token} {:team team-id})
           :team))))
 
-(defn user-info [token user-id]
-  (-> (web-api "users.info" {:auth/token token} {:user user-id})
-      :user))
+(defn user-info [token user-id]  
+  (:user (web-api "users.info" {:auth/token token} {:user user-id})))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; views endpoints, wrwapped to include hash + trigger_id from context
@@ -130,8 +137,9 @@
   (http-verb "views.publish")                               ;; XXX this seems to be a mistake on Slack's part: it's GET in the spec but POST in the docs
 
   ;; bot token only for local dev experiments
-  (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)})
+  (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)} {:a "b"})
 
+  
   (time (-> (client/get (str base-uri "conversations.info")
                         {:query-params {:token (-> env/config :slack :bot-user-oauth-token)
                                         :channel "C014Y501S2G"}})
