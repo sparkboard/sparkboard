@@ -14,8 +14,6 @@
 
 (def ^:dynamic *request* {})
 
-(def ^:dynamic *debug-timestamp* nil)
-
 (def base-uri "https://slack.com/api/")
 
 (defonce ^{:doc "Slack Web API RPC specification"

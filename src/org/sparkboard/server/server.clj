@@ -541,8 +541,7 @@
           (log/debug :context context)
           (def LAST-CONTEXT context)
           (.submit ^java.util.concurrent.ExecutorService pool
-                   ^Callable #(binding [slack/*request* context
-                                        slack/*debug-timestamp* (:debug-timestamp params)]
+                   ^Callable #(binding [slack/*request* context]
                                 ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
                                  (assoc context ::handler-id handler-id)))))
         (ring.http/ok))))
