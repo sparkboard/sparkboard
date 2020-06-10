@@ -547,7 +547,8 @@
           (log/debug :context context)
           (def LAST-CONTEXT context)
           (.submit ^java.util.concurrent.ExecutorService pool
-                   ^Callable #(binding [slack/*request* context]
+                   ^Callable #(binding [slack/*request* context
+                                        slack/*ts* (:debug-timestamp params)]
                                 ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
                                  (assoc context ::handler-id handler-id)))))
         (ring.http/ok))))
@@ -634,12 +635,17 @@
       (or (f req)
           (spa-page env/client-config)))))
 
+(defn wrap-timestamp [f]
+  (fn [req]
+    (f (assoc-in req [:params :debug-timestamp] (System/currentTimeMillis)))))
+
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
-      wrap-slack-verify
+      ;; wrap-slack-verify
       wrap-static-fallback
+      wrap-timestamp
       wrap-handle-errors
       wrap-static-first))
 
@@ -669,5 +675,4 @@
 
   (.shutdown pool)
   (.shutdownNow pool)
-
   )
