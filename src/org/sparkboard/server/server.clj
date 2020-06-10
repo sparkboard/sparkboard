@@ -643,10 +643,7 @@
 
 (defn stop-server! []
   (some-> @server (.stop))
-  (some-> @nrepl-server (nrepl/stop-server))
-  (.shutdown pool)
-  (Thread/sleep 1000)
-  (.shutdownNow pool))
+  (some-> @nrepl-server (nrepl/stop-server)))
 
 (defn restart-server!
   "Setup fn.
@@ -664,5 +661,8 @@
 
 (comment
   (-main)
+
+  (.shutdown pool)
+  (.shutdownNow pool)
 
   )
