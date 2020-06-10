@@ -502,26 +502,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Async processing (mostly parallel Slack HTTP responses)
 
-(defonce queue
-  (java.util.concurrent.LinkedBlockingQueue.))
-
 (defonce pool
   (java.util.concurrent.Executors/newFixedThreadPool (.availableProcessors (Runtime/getRuntime))))
-
-(def queue-consumer
-  "Async processor. Primarily for Slack actions over HTTP, in parallel
-  with the direct HTTP/200 response."
-  (try-future (while true
-                (let [[ctx debug-ts f & args] (.take queue)]
-                  (.submit ^java.util.concurrent.ExecutorService pool
-                           ^Callable #(binding [slack/*request* ctx
-                                                slack/*debug-timestamp* debug-ts]
-                                        (apply f args)))))))
-
-(comment
-  (.put queue [{} 5 inc 5])
-
-  )
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
@@ -549,11 +531,11 @@
           (log/info handler-id (select-keys context [:slack/user-id :slack/team-id ]))
           (log/debug :context context)
           (def LAST-CONTEXT context)
-          (.put queue
-                [context
-                 (:debug-timestamp params)
-                 (handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-                 (assoc context ::handler-id handler-id)]))
+          (.submit ^java.util.concurrent.ExecutorService pool
+                   ^Callable #(binding [slack/*request* context
+                                        slack/*debug-timestamp* (:debug-timestamp params)]
+                                ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+                                 (assoc context ::handler-id handler-id)))))
         (ring.http/ok))))
 
 (def routes
@@ -652,7 +634,9 @@
 (defn stop-server! []
   (when-not (nil? @server)
     (.stop @server)
-    (.clear queue)))
+    (.shutdown pool)
+    (Thread/sleep 1000)
+    (.shutdownNow pool)))
 
 (defn restart-server!
   "Setup fn.
