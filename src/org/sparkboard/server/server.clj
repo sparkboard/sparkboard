@@ -655,7 +655,7 @@
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false}))
   (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev
-    (nrepl/start-server :bind "localhost" :port 7888)))
+    (reset! nrepl-server (nrepl/start-server :bind "localhost" :port 7888))))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
