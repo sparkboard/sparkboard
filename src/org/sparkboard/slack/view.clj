@@ -5,6 +5,10 @@
             [org.sparkboard.server.slack.core :as slack]
             [taoensso.timbre :as log]))
 
+(defn truncate [s max-len]
+  (if (> (count s) max-len)
+    (str (subs s 0 (dec max-len)) "…")
+    s))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; helpers for formatting in Slack's mrkdwn

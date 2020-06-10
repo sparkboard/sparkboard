@@ -30,7 +30,8 @@
             [taoensso.timbre :as log]
             [timbre-ns-pattern-level :as timbre-patterns]
             [mhuebert.cljs-static.html :as html]
-            [hiccup.util :refer [raw-string]])
+            [hiccup.util :refer [raw-string]]
+            [nrepl.server :as nrepl])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
@@ -41,7 +42,7 @@
         "staging" '{:all :info
                     org.sparkboard.slack.oauth :trace
                     org.sparkboard.server.server :trace}
-        "prod" {:all :info}
+        "prod" {:all :warn}
         '{:all :info})))
 
 (-> {:middleware [(timbre-patterns/middleware
@@ -141,7 +142,7 @@
       (str/replace #"\s+" "-")
       (str/lower-case)
       (str/replace #"[^\w\-_\d]" "")
-      (as-> s (subs s 0 (min 80 (count s))))))
+      (view/truncate 70)))
 
 (defmacro spy-args [form]
   ;;
@@ -638,20 +639,23 @@
       wrap-static-first))
 
 (defonce server (atom nil))
+(defonce nrepl-server (atom nil))
 
 (defn stop-server! []
-  (when-not (nil? @server)
-    (.stop @server)
-    (.shutdown pool)
-    (Thread/sleep 1000)
-    (.shutdownNow pool)))
+  (some-> @server (.stop))
+  (some-> @nrepl-server (nrepl/stop-server))
+  (.shutdown pool)
+  (Thread/sleep 1000)
+  (.shutdownNow pool))
 
 (defn restart-server!
   "Setup fn.
   Starts HTTP server, stopping existing HTTP server first if necessary."
   [port]
   (stop-server!)
-  (reset! server (run-jetty #'app {:port port :join? false})))
+  (reset! server (run-jetty #'app {:port port :join? false}))
+  (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev
+    (nrepl/start-server :bind "localhost" :port 7888)))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
