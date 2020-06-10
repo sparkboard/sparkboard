@@ -502,8 +502,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Async processing (mostly parallel Slack HTTP responses)
 
+(def goetz
+  "Number of threads to have in a thread pool, per Brian Goetz's 'Java Concurrency in Practice' formula'"
+  (let [; approximate total time (ms) waiting on Firebase or Slack requests:
+        wait-time    1000
+        ; approximate time (ms) processing requests:
+        service-time 10]
+    (int (* (.availableProcessors (Runtime/getRuntime))
+            (+ 1 (/ wait-time service-time))))))
+
 (defonce pool
-  (java.util.concurrent.Executors/newFixedThreadPool (.availableProcessors (Runtime/getRuntime))))
+  (java.util.concurrent.Executors/newFixedThreadPool goetz))
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
