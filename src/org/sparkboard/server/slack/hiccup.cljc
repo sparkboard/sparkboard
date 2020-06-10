@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [org.sparkboard.js-convert :refer [clj->json kw->js]]
             [org.sparkboard.transit :as transit]
+            [org.sparkboard.util :as u]
             [taoensso.timbre :as log]))
 
 (def schema
@@ -60,12 +61,6 @@
                  (if (string? v)
                    (assoc props k [wrap-with v])
                    props))) props wrappers))
-
-(defn update-some [m updaters]
-  (reduce-kv (fn [m k f]
-               (if (contains? m k)
-                 (update m k f)
-                 m)) m updaters))
 
 (defn assoc-some [m k v]
   (if v
@@ -126,7 +121,7 @@
                (cond-> (and children? children) (assoc children body))
                (merge props)
                (cond-> strings (wrap-strings strings)
-                       update-keys (update-some update-keys))
+                       update-keys (u/update-some update-keys))
                (normalize-value)))))
 
 (defn has-props? [form]
@@ -256,4 +251,3 @@
                    :action_id "broadcast2:channel-select"
                    :filter {:include ["public" "private"]}}]}
      "*Post responses to channel:*"]))
-

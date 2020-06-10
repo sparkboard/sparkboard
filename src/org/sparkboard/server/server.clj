@@ -3,20 +3,24 @@
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
             [clojure.java.io :as io]
+            [clojure.set :as set]
             [clojure.string :as str]
+            [hiccup.util :refer [raw-string]]
             [lambdaisland.uri :as uri]
+            [mhuebert.cljs-static.html :as html]
+            [nrepl.server :as nrepl]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.http :as http]
             [org.sparkboard.js-convert :refer [json->clj clj->json]]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.server.slack.core :as slack]
+            [org.sparkboard.server.slack.api :as slack]
             [org.sparkboard.server.slack.hiccup :as hiccup]
             [org.sparkboard.server.slack.screens :as screens]
             [org.sparkboard.slack.oauth :as slack-oauth]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.slack.view :as view]
+            [org.sparkboard.slack.view :as v]
             [org.sparkboard.transit :as transit]
             [org.sparkboard.util :as u]
             [org.sparkboard.util.future :refer [try-future]]
@@ -28,10 +32,7 @@
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]
-            [timbre-ns-pattern-level :as timbre-patterns]
-            [mhuebert.cljs-static.html :as html]
-            [hiccup.util :refer [raw-string]]
-            [nrepl.server :as nrepl])
+            [timbre-ns-pattern-level :as timbre-patterns])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
@@ -65,44 +66,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Utility fns
-
-(defn decode-text-input [s]
-  ;; Slack appears to use some (?) of
-  ;; `application/x-www-form-urlencoded` for at least multiline text
-  ;; input, specifically replacing spaces with `+`
-  (str/replace s "+" " "))
-
-(defn team-context [team-id]
-  {:pre [team-id]}
-  ;; context we derive from team-id
-  (let [app-id (-> env/config :slack :app-id)
-        team (slack-db/linked-team team-id)
-        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
-    {:slack/team-id team-id
-     :slack/team team
-     :slack/team-domain (:domain (slack/team-info bot-token team-id))
-     :slack/bot-token bot-token
-     :slack/bot-user-id bot-user-id
-     :slack/invite-link (:invite-link team)
-     :sparkboard/board-id (:board-id team)}))
-
-(defn user-context [user-id]
-  ;; context we derive from user-id
-  (let [user (slack-db/linked-user user-id)]
-    {:sparkboard/account-id (:account-id user)
-     :slack/user-id user-id}))
-
-(defn slack-context
-  "Returns context-map expected by functions handling Slack events"
-  [team-id user-id]
-  {:pre [team-id user-id (string? user-id)]}
-  (let [context (merge (team-context team-id)
-                       (user-context user-id)
-                       {:slack/app-id (-> env/config :slack :app-id)
-                        :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
-                        :env (:env env/config "dev")})]
-    (log/debug "[slack-context]:" context)
-    context))
 
 (defn req-token [req]
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
@@ -142,7 +105,7 @@
       (str/replace #"\s+" "-")
       (str/lower-case)
       (str/replace #"[^\w\-_\d]" "")
-      (view/truncate 70)))
+      (v/truncate 70)))
 
 (defmacro spy-args [form]
   ;;
@@ -154,56 +117,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Individual/second-tier handlers
 
-(defn request-updates [context {:as opts
-                                :keys [message
-                                       response-channel
-                                       collect-in-thread]}]
-  (log/info :request-updates opts)
-  (let [broadcast-ref (.push (fire-jvm/->ref "/slack-broadcast"))
-        sender-name (-> context :slack/payload :user :name)
-        {thread :ts} (when response-channel
-                       (slack/web-api "chat.postMessage" {:auth/token (:slack/bot-token context)}
-                                      {:channel response-channel
-                                       :blocks (hiccup/->blocks-json
-                                                 [[:section
-                                                   [:md
-                                                    "*" sender-name "*"
-                                                    " sent a message to all teams:\n"
-                                                    (view/blockquote message)]]])}))
-        blocks (hiccup/->blocks-json
-                 (screens/team-broadcast-message (.getKey broadcast-ref) opts sender-name))]
-    (fire-jvm/set-value broadcast-ref
-                        {:message message
-                         :response-channel response-channel
-                         :response-thread (when collect-in-thread thread)})
-    (mapv #(slack/web-api "chat.postMessage"
-                          {:auth/token (:slack/bot-token context)}
-                          {:channel (:channel-id %)
-                           :blocks blocks
-                           :unfurl_media true
-                           :unfurl_links true})
-          (slack-db/team->all-linked-channels (:slack/team-id context)))))
-
-(defn update-user-home-tab! [context]
-  (slack/web-api "views.publish"
-                 {:auth/token (:slack/bot-token context)}
-                 {:user_id (:slack/user-id context)
-                  :view (hiccup/->blocks-json
-                          (screens/home context))}))
-
 (defn link-account! [{:keys [slack/team-id
                              slack/user-id
                              sparkboard/account-id]}]
-  (let [context (slack-context team-id user-id)]
+  (let [context (slack-db/slack-context team-id user-id)]
     ;; TODO
     ;; visible confirmation step to link the two accounts?
     (slack-db/link-user-to-account!                         ;; link the accounts
       {:slack/team-id team-id
        :slack/user-id user-id
        :sparkboard/account-id account-id})
-    (update-user-home-tab! (assoc context :sparkboard/account-id account-id))
+    (v/home! screens/home (assoc context :sparkboard/account-id account-id) user-id)
     (message-user! context [[:section
-                             (str (view/mention (:slack/user-id context))
+                             (str (v/mention (:slack/user-id context))
                                   " "
                                   (screens/team-message context :welcome-confirmation))]])
     (ring.http/found
@@ -219,7 +145,7 @@
     (link-account! (assoc context :sparkboard/account-id account-id))
     (message-user! context
                    [[:section
-                     (str (view/mention (:slack/user-id context))
+                     (str (v/mention (:slack/user-id context))
                           " "
                           (screens/team-message context :welcome))]
                     [:actions
@@ -239,7 +165,7 @@
                                       redirect]} :auth/token-claims
                               :as req}]
   (when-not account-id
-    (link-account! (merge (slack-context team-id user-id)
+    (link-account! (merge (slack-db/slack-context team-id user-id)
                           token-claims
                           {:sparkboard/account-id "MOCK_SPARKBOARD_ACCOUNT"})))
   (if (str/starts-with? redirect "http")
@@ -296,10 +222,10 @@
           (invite-user req (merge slack-team
                                   slack-user
                                   token-claims
-                                  (team-context team-id)
+                                  (slack-db/team-context team-id)
                                   {:redirect (str (:uri req) "?" (:query-string req))}))
           (return-html 200
-                       (let [domain (:slack/team-domain (team-context team-id))]
+                       (let [domain (:slack/team-domain (slack-db/team-context team-id))]
                          (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
                               "Please contact an organizer."))))))))
 
@@ -325,7 +251,7 @@
           (let [{:as context
                  :slack/keys [bot-token
                               bot-user-id
-                              user-id]} (slack-context team-id user-id)
+                              user-id]} (slack-db/slack-context team-id user-id)
                 domain (slack-db/board-domain board-id)
                 project-url (str (urls/sparkboard-host domain) "/project/" project-id)
                 channel-id (-> (spy-args (slack/web-api "conversations.create"
@@ -342,7 +268,7 @@
             (spy-args (slack/web-api "conversations.setTopic"
                                      {:auth/token bot-token}
                                      {:channel channel-id
-                                      :topic (view/link "View on Sparkboard" project-url)}))
+                                      :topic (v/link "View on Sparkboard" project-url)}))
             (spy-args (slack-db/link-channel-to-project! {:slack/team-id team-id
                                                           :slack/channel-id channel-id
                                                           :sparkboard/project-id project-id}))
@@ -351,7 +277,7 @@
 (defn project-channel-deep-link [{:keys [slack/team-id
                                          slack/channel-id]}]
   (urls/app-redirect {:app (-> env/config :slack :app-id)
-                      :domain (:slack/team-domain (team-context team-id))
+                      :domain (:slack/team-domain (slack-db/team-context team-id))
                       :team team-id
                       :channel channel-id}))
 
@@ -404,137 +330,51 @@
 
 (defn slack-api-handlers []
   (merge
-    @view/registry
-    {:shortcut/main-menu
-     ;; TODO existing shortcuts don't have callback_id set?
-     (fn [context]
-       (slack/web-api "views.open" {:auth/token (:slack/bot-token context)}
-                      {:trigger_id (-> context :slack/payload :trigger_id)
-                       :view (hiccup/->blocks-json (screens/shortcut-modal context))}))
-     :event/app_home_opened
-     (fn [context]
-       (case (-> context :slack/event :tab)
-         "home" (update-user-home-tab! context)
-         nil))
+    @v/registry
+    {:shortcut/main-menu (partial v/open! screens/shortcut-modal)
+     :event/app_home_opened (partial v/handle-home-opened! screens/home)
+     :event/team_join link-account-for-new-user}))
 
-     :event/team_join link-account-for-new-user
-
-     :view_submission/team-broadcast-modal-compose
-     (fn [context]
-       (let [values (view/input-values (-> context :slack/payload :view))]
-         (request-updates context
-                          {:message (decode-text-input (:broadcast2:text-input values))
-                           :response-channel (:broadcast2:channel-select values)
-                           :collect-in-thread (contains? (:broadcast-options values) "collect-in-thread")})))
-
-     ;; User broadcast response: describe current status
-     :view_submission/team-broadcast-response
-     (fn [context]
-       (let [values (view/input-values (-> context :slack/payload :view))
-             local-state (-> context :slack/payload :view :private_metadata)]
-         (log/trace :broadcast-response-values values)
-         (let [{:keys [channel]
-                {:keys [ts]} :message} (slack/web-api "chat.postMessage"
-                                                      (let [reply-ref-path (:broadcast/reply-path local-state)
-                                                            broadcast (fire-jvm/read (.getParent (.getParent (fire-jvm/->ref reply-ref-path))))]
-                                                        {:blocks (hiccup/->blocks-json
-                                                                   (screens/team-broadcast-response-msg
-                                                                     (:sparkboard/board-id context)
-                                                                     (:slack/user-id context)
-                                                                     (-> reply-ref-path fire-jvm/read :from-channel-id)
-                                                                     (decode-text-input (:user:status-input values))))
-                                                         :channel (-> broadcast :response-channel)
-                                                         :thread_ts (-> broadcast :response-thread)}))
-               {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel channel
-                                                                       :message_ts ts})]
-           (slack/web-api "chat.postMessage"
-                          (let [{:keys [broadcast/reply-ts
-                                        broadcast/reply-channel]} local-state]
-                            {:channel reply-channel
-                             :ts reply-ts
-                             :blocks (hiccup/->blocks-json
-                                       [[:section (str "Thanks for your response! " (view/link "See what you wrote." permalink))]])})))))
-
-     :view_submission/invite-link-modal
-     (fn [context]
-       (let [values (view/input-values (-> context :slack/payload :view))]
-         (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
-                             (:invite-link-input values))
-         (update-user-home-tab!
-           ;; update team-context to propagate invite-link change
-           (merge context (team-context (:slack/team-id context))))))
-
-     :view_submission/customize-messages-modal
-     (fn [context]
-       (let [values (view/input-values (-> context :slack/payload :view))]
-         (fire-jvm/update-value (str "/slack-team/" (:slack/team-id context) "/custom-messages") values)))
-
-     :block_actions/admin:customize-messages-modal-open
-     (fn [context]
-       (slack/views-open (screens/customize-messages-modal context)))
-
-     :block_actions/admin:invite-link-modal-open
-     (fn [context]
-       (slack/views-open (screens/invite-link-modal context)))
-
-     :block_actions/admin:team-broadcast
-     (fn [context]
-       (let [view (-> context :slack/payload :view)]
-         (case (:type view)
-           "home" (slack/views-open (screens/team-broadcast-modal-compose context))
-           "modal" (slack/views-update (:id view) (screens/team-broadcast-modal-compose context)))))
-
-     :block_actions/user:team-broadcast-response
-     (fn [{:keys [slack/payload]}]
-       ; "Post an Update" button (user opens modal to respond to broadcast)
-       (let [broadcast-id (-> payload :actions first :block_id transit/read :broadcast/firebase-key)
-             broadcast-ref (fire-jvm/->ref (str "/slack-broadcast/" broadcast-id))
-             original-message (fire-jvm/read (.child broadcast-ref "message"))
-             reply-ref (-> broadcast-ref (.child "replies") (.push))]
-         (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
-         (slack/views-open (screens/team-broadcast-response
-                             original-message
-                             {:broadcast/reply-path (fire-jvm/ref-path reply-ref)
-                              :broadcast/reply-ts (-> payload :message :ts)
-                              :broadcast/reply-channel (-> payload :channel :id)}))))}))
-
-(defn exec-sync? [handler-id]
-  (#{"view_submission"} (namespace handler-id)))
+(defn missing-handler [{::keys [handler-id]}]
+  ;; this is not always an error
+  ;; (actions are 'fired' even for things like clicking a button with a url)
+  ;; TODO - naming convention for action-ids that should be ignored
+  (log/warn :unhandled-request handler-id))
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
     (ring.http/ok challenge)
-    (let [[handler-id context]
+    (let [context
           (cond event
-                [(keyword "event" (:type event))
-                 (-> (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
-                     (assoc :slack/event event))]
+                (-> (slack-db/slack-context (:team_id params)
+                                            (if (map? (:user event)) ;; sometimes `user` is an id string, sometimes a map containing the id
+                                              (:id (:user event))
+                                              (:user event)))
+                    (assoc :slack/event event
+                           ::handler-id (keyword "event" (:type event))))
 
                 payload
                 (let [payload (-> (json->clj payload)
-                                  (update-in [:view :private_metadata]
-                                             #(if (str/blank? %) {} (transit/read %))))
-                      context (-> (slack-context (-> payload :team :id) (-> payload :user :id))
-                                  (assoc :slack/trigger-id (:trigger_id payload)
-                                         :slack/view-hash (-> payload :view :hash)))
-                      handler-id (keyword (:type payload)
-                                          (case (:type payload)
-                                            "shortcut" (:callback_id payload "UNSET")
-                                            ("view_submission" "view_closed") (-> payload :view :callback_id)
-                                            "block_actions" (-> payload :actions first :action_id)))]
-                  [handler-id (assoc context :slack/payload payload)]))
-          exec! #(binding [slack/*request* context]
-                   ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-                    (assoc context ::handler-id handler-id)))]
-      (log/info handler-id (select-keys context [:slack/user-id :slack/team-id]))
-      (log/debug :context context)
-      (def LAST-CONTEXT context)
-      (if (exec-sync? handler-id)
-        (or (exec!)
-            (ring.http/ok))
-        (do (try-future (exec!))
-            (ring.http/ok))))))
+                                  ;; private_metadata is deserialized here, and serialized in `slack.hiccup`
+                                  (update-in [:view :private_metadata] #(if (str/blank? %) {} (transit/read %)))
+                                  (set/rename-keys {:private_metadata :private_metadata}))]
+                  (-> (slack-db/slack-context (-> payload :team :id) (-> payload :user :id))
+                      (assoc :slack/payload payload
+                             ::handler-id (keyword (or (case (:type payload)
+                                                         "shortcut" (str "shortcut/" (:callback_id payload))
+                                                         "view_submission" (keyword (-> payload :view :callback_id) "submit")
+                                                         "view_closed" (keyword (-> payload :view :callback_id) "close")
+                                                         "block_actions" (-> payload :actions first :action_id))
+                                                       (str (:type payload) "/" "UNSET")))))))
+          handler (handlers (::handler-id context) missing-handler)]
+      (log/debug (::handler-id context) context)
+      (binding [slack/*context* context]
+        (if (:response-action? (meta handler))              ;; mark handlers that return a value with :synchronous? metadata
+          (or (handler context)
+              (ring.http/ok))
+          (do (try-future (handler context))
+              (ring.http/ok)))))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
@@ -553,7 +393,7 @@
                                             (urls/app-redirect
                                               (assoc query
                                                 :app (-> env/config :slack :app-id)
-                                                :domain (:slack/team-domain (team-context team))))))
+                                                :domain (:slack/team-domain (slack-db/team-context team))))))
                          "reinstall" {"" (fn [req]
                                            (ring.http/found (urls/install-slack-app {:reinstall? true})))
                                       ["/" :team-id] (fn [{{:keys [team-id]} :params}]
