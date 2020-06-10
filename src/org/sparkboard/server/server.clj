@@ -512,7 +512,13 @@
           (+ 1 (/ wait-time service-time)))))
 
 (defonce pool
-  (java.util.concurrent.Executors/newFixedThreadPool (goetz 1000 10)))
+  (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
+
+(comment
+  (.submit ^java.util.concurrent.ExecutorService pool
+           ^Callable #(log/info (inc 5)))
+  
+  )
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
