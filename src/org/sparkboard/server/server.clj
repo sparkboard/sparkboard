@@ -546,11 +546,11 @@
           (log/info handler-id (select-keys context [:slack/user-id :slack/team-id ]))
           (log/debug :context context)
           (def LAST-CONTEXT context)
-          (.submit ^java.util.concurrent.ExecutorService pool
-                   ^Callable #(binding [slack/*request* context
-                                        slack/*ts* (:debug-timestamp params)]
-                                ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-                                 (assoc context ::handler-id handler-id)))))
+          (.execute ^java.util.concurrent.ExecutorService pool
+                    ^Callable #(binding [slack/*request* context
+                                         slack/*ts* (:debug-timestamp params)]
+                                 ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+                                  (assoc context ::handler-id handler-id)))))
         (ring.http/ok))))
 
 (def routes
