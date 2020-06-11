@@ -520,6 +520,14 @@
   
   )
 
+;; Declare JVM-wide uncaught exception handler, so exceptions on the
+;; thread pool are logged as errors instead of merely printed.
+;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
+(Thread/setDefaultUncaughtExceptionHandler
+ (reify Thread$UncaughtExceptionHandler
+   (uncaughtException [_ thread ex]
+     (log/error ex "Uncaught exception on" (.getName thread)))))
+
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
@@ -546,10 +554,11 @@
           (log/info handler-id (select-keys context [:slack/user-id :slack/team-id ]))
           (log/debug :context context)
           (def LAST-CONTEXT context)
-          (.submit ^java.util.concurrent.ExecutorService pool
-                   ^Callable #(binding [slack/*request* context]
-                                ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-                                 (assoc context ::handler-id handler-id)))))
+          (.execute ^java.util.concurrent.ExecutorService pool
+                    ^Callable #(binding [slack/*request* context
+                                         slack/*ts* (:debug-timestamp params)]
+                                 ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+                                  (assoc context ::handler-id handler-id)))))
         (ring.http/ok))))
 
 (def routes
@@ -634,12 +643,17 @@
       (or (f req)
           (spa-page env/client-config)))))
 
+(defn wrap-timestamp [f]
+  (fn [req]
+    (f (assoc-in req [:params :debug-timestamp] (System/currentTimeMillis)))))
+
 (def app
   (-> (bidi.ring/make-handler routes)
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
-      wrap-slack-verify
+      ;; wrap-slack-verify
       wrap-static-fallback
+      wrap-timestamp
       wrap-handle-errors
       wrap-static-first))
 
@@ -669,5 +683,4 @@
 
   (.shutdown pool)
   (.shutdownNow pool)
-
   )
