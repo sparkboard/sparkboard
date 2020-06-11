@@ -5,13 +5,27 @@
             [clojure.string :as str]))
 
 (v/defview counter
+  "simple usage of the `state` atom"
   {:initial-state 1}
   [{:as context :keys [state]}]
-  [:modal {:title (str "Counter")}
+  [:modal {:title (str "Counter!")}
    [:section
     [:md (str/join (take @state (repeat "🍎")))]]
    [:actions
-    [:button {:action-id {:count! (fn [{:keys [state]}] (swap! state inc))}} "Inc!"]]])
+    [:button {:action-id
+              {:count!                                      ;; this ID will be expanded to `counter/count!`
+               (fn [{:keys [state]}] (swap! state inc))}} "Inc!"]]])
+
+;; defview returns (basically) function that you see here, wrapped to take care of
+;; setting dynamic context. metadata is added which includes the handlers registered
+;; for the view, and the actions that were found.
+(comment
+  (meta counter)
+  ;; =>
+  {:initial-state 1,
+   :actions {:count! :counter/count!},
+   :view-name "counter",
+   :handlers #:counter{:count! ...}})
 
 
 (v/defview modals-submit
@@ -20,6 +34,10 @@
            :submit "Submit"
            :on-submit (fn [{:keys [state input-values]}]
                         (swap! state assoc :submitted input-values))}
+   [:context
+    [:md
+     "An `on-submit` handler swaps our `:state` atom with the `input-values` "
+     "from the modal."]]
    [:input
     {:label "Text field"}
     [:plain-text-input
@@ -38,7 +56,7 @@
      [:button {:text "Push"
                :action-id
                {:push (partial v/push! (constantly [:modal {:title "Pushed"} [:section [:md "🍎"]]]))}}]}
-    [:md "Pushes a modal onto the stack"]]
+    [:md "Push a modal onto the stack"]]
 
    [:section
     {:accessory
@@ -47,7 +65,7 @@
                {:replace (fn [context]
                            (v/replace! (constantly [:modal {:title "Replaced"} [:section [:md "🍎"]]])
                                        context))}}]}
-    [:md "Replaces the current modal"]]
+    [:md "Replace the current modal"]]
 
    [:section
     {:accessory
@@ -60,7 +78,7 @@
   [{:keys [state]}]
   [:modal {:title "Multi-Select examples"
            :submit "Submit"
-           :on-submit (fn [{:as context :keys [input-values state]}]
+           :on-submit (fn [{:keys [input-values state]}]
                         [:update [:modal {:title "Result"}
                                   [:section
                                    [:md (str {:values (str input-values)
@@ -70,16 +88,13 @@
      [:multi-static-select
       {:placeholder "Select some..."
        :action-id {:static
-                   (fn [{:keys [state value] :as context}]
-                     (log/info :CCC context)
+                   (fn [{:keys [state value]}]
                      (swap! state assoc :multi-static value))}
        :set-value (:multi-static @state)
        :options [{:value "multi-1"
                   :text [:plain-text "Multi 1"]}
                  {:value "multi-2"
-                  :text [:plain-text "Multi 2"]}
-                 {:value "multi-3"
-                  :text [:plain-text "Multi 3"]}]}]}
+                  :text [:plain-text "Multi 2"]}]}]}
     [:md "Multi-select (section)"]]
    [:section
     {:accessory
@@ -155,8 +170,9 @@
    (when (:show-state? @state)
      [:section [:md (with-out-str (pp/pprint @state))]])
    [:actions
-    [:button {:action-id {:toggle-state-view
-                          (fn [{:keys [state]}] (swap! state update :show-state? not))}}
+    [:button {:action-id
+              {:toggle-state-view
+               (fn [{:keys [state]}] (swap! state update :show-state? not))}}
      (if (:show-state? @state) "hide state" "show state")]]])
 
 (v/defview branching-submit [{:as context :keys [state]}]
@@ -168,6 +184,8 @@
    {:title "Branching submit"
     :submit "Submit"
     :on-submit (fn [{:keys [input-values]}]
+                 ;; on-submit can return a vector of [#{:update, :push}, hiccup]
+                 ;; to replace the current modal or push a new one.
                  [:update [:modal {:title "Result"}
                            [:section [:md (str input-values)]]]])}
    [:context [:md
@@ -195,7 +213,6 @@
 (v/defview dev-overflow [_]
   [:overflow
    {:action-id {:overflow (fn [{:as context :keys [state value]}]
-                            (log/info :OVEFLOW value)
                             (case value
                               "counter" (v/open! counter context)
                               "modals-open" (v/open! modals-open context)

@@ -20,7 +20,6 @@
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as v]
             [org.sparkboard.transit :as transit]
-            [org.sparkboard.util.future :refer [try-future]]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
             [ring.middleware.format]
@@ -204,7 +203,7 @@
       (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
             {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
                                                                   :sparkboard/account-id account-id})
-            project-title (v/slack-channel-namify (str "project-" project-title))]
+            project-title (v/format-channel-name (str "project-" project-title))]
         (assert (not (str/blank? project-title)) "Project title is required")
         ;; possible states:
         ;; - user is a member of the workspace, but the account is not yet linked
@@ -321,7 +320,7 @@
           (+ 1 (/ wait-time service-time)))))
 
 (defonce pool
-  (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
+         (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
 
 (comment
   (.submit ^java.util.concurrent.ExecutorService pool
@@ -333,9 +332,9 @@
 ;; thread pool are logged as errors instead of merely printed.
 ;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
 (Thread/setDefaultUncaughtExceptionHandler
- (reify Thread$UncaughtExceptionHandler
-   (uncaughtException [_ thread ex]
-     (log/error ex "Uncaught exception on" (.getName thread)))))
+  (reify Thread$UncaughtExceptionHandler
+    (uncaughtException [_ thread ex]
+      (log/error (str "Uncaught exception on" (.getName thread)) ex))))
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
@@ -411,17 +410,20 @@
     (log/info :URI (:uri req))
     (try (f req)
          (catch Exception e
-           (log/error (ex-message e)
-                      (ex-data e)
-                      (ex-cause e))
+           (if (env/config :dev.logging/tap?)
+             (log/error (ex-message e) e)
+             (log/error (ex-message e)
+                        (ex-data e)
+                        (ex-cause e)))
            (return-text
              (:status (ex-data e) 500)
              (ex-message e)))
          (catch java.lang.AssertionError e
-           (log/error (ex-message e)
-                      (ex-data e)
-                      (ex-cause e))
-           (log/error e)
+           (if (env/config :dev.logging/tap?)
+             (log/error (ex-message e) e)
+             (log/error (ex-message e)
+                        (ex-data e)
+                        (ex-cause e)))
            (return-text
              (:status (ex-data e) 500)
              (ex-message e))))))
@@ -488,7 +490,6 @@
 
 (comment
   (-main)
-
   (.shutdown pool)
   (.shutdownNow pool)
 

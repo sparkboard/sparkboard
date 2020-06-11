@@ -17,7 +17,7 @@
     (str (subs s 0 (dec max-len)) "…")
     s))
 
-(defn slack-channel-namify [s]
+(defn format-channel-name [s]
   (-> s
       (str/replace #"\s+" "-")
       (str/lower-case)
@@ -103,20 +103,22 @@
   {:post [(some? %)]}
   (-> context :slack/payload :trigger_id))
 
-(defn initial-state [view context] (:initial-state (meta view) (:initial-state context)))
+(defn initial-state [view context]
+  ;; can override the initial-state of the view by setting it in context
+  (:initial-state context (:initial-state (meta view))))
 
 (defn open!
   "Opens a modal"
   [view context]
   (view-api "views.open"
-            (view (assoc context :state (initial-state view context)))
+            (view (assoc context :state (atom (initial-state view context))))
             {:trigger_id (trigger context)}))
 
 (defn push!
   "Pushes new modal to the stack"
   [view context]
   (view-api "views.push"
-            (view (assoc context :state (initial-state view context)))
+            (view (assoc context :state (atom (initial-state view context))))
             {:trigger_id (trigger context)}))
 
 (defn replace!
@@ -124,7 +126,7 @@
   [view context]
   (let [{:keys [hash id]} (-> context :slack/payload :view)]
     (view-api "views.update"
-              (view (assoc context :state (initial-state view context)))
+              (view (assoc context :state (atom (initial-state view context))))
               {:hash hash
                :view_id id
                :trigger_id (trigger context)})))
@@ -134,17 +136,19 @@
   [view context user-id]
   {:pre [user-id]}
   (view-api "views.publish"
-            (view (assoc context :state (initial-state view context)))
+            (view (assoc context :state (atom (initial-state view context))))
             {:user_id user-id}))
 
 (defn handle-home-opened!
   [view context]
   (view-api "views.publish"
-            (view (assoc context :state (or (-> context :slack/payload :view :private_metadata)
-                                            (initial-state view context))))
+            (view (assoc context :state (atom (or (-> context :slack/payload :view :private_metadata)
+                                                  (initial-state view context)))))
             {:user_id (:slack/user-id context)}))
 
-(def ^:dynamic *view-opts* nil)
+(def ^:dynamic *namespace*
+  "Current view namespace, a string, used to resolve local IDs and create global IDs"
+  nil)
 
 (defn handle-block-action
   "Calls a block action with [context, state-atom, block-value]"
@@ -154,18 +158,17 @@
         actions (-> context :slack/payload :actions)
         values (-> context :slack/payload :actions actions-values)
         value (get values action-id)
-        _ (binding [*view-opts* (meta view)]
+        _ (binding [*namespace* (:view-name (meta view))]
             (action-fn (assoc context
                          :state state-atom
                          :action-values values
                          :block-id (-> actions first :block_id)
                          :value (get values action-id)
-                         :view view)))
-        next-state @state-atom]
-    (log/trace action-id value {:prev-state prev-state :next-state next-state})
-    (when (and next-state (not= prev-state next-state))
+                         :view view)))]
+    (log/trace action-id value {:prev-state prev-state :next-state @state-atom})
+    (when (and @state-atom (not= prev-state @state-atom))
       (view-api "views.update"
-                (view (assoc context :state next-state))
+                (view (assoc context :state state-atom))
                 {:hash hash
                  :view_id id
                  :trigger_id (trigger context)}))))
@@ -181,13 +184,13 @@
   (let [rsp-view (-> context :slack/payload :view)
         prev-state (:private_metadata rsp-view)
         state (atom prev-state)
-        result (binding [*view-opts* (meta view)]
+        result (binding [*namespace* (:view-name (meta view))]
                  (form-fn (assoc context
                             :state state
                             :input-values (input-values rsp-view))))
         result (if (= prev-state @state)
                  result
-                 [:update (view (assoc context :state @state))])]
+                 [:update (view (assoc context :state state))])]
     (case kind
       :close result
       :submit (when-let [[action view] (u/guard result vector?)]
@@ -201,42 +204,40 @@
   "Scopes an id to current view"
   ;; actions need globally-unique names, so we append them to their parent modal's name
   ([k]
-   {:pre [*view-opts*]}
-   (id (::view-name *view-opts*) k))
+   {:pre [*namespace*]}
+   (id *namespace* k))
   ([view-name k]
    (if (simple-keyword? k)
      (keyword view-name (name k))
      k)))
 
-(defn view-fn [{:as view-opts ::keys [view-name render-fn]}]
+(defn view-fn [{:as view-opts :keys [view-name render-fn]}]
   (with-meta
     (fn [ctx]
-      (let [ctx (update ctx :state #(cond-> % (not (instance? Atom %)) (atom)))
-            hiccup (binding [*view-opts* view-opts] (render-fn ctx))
-            private-metadata @(:state ctx)
+      (let [hiccup (binding [*namespace* view-name] (render-fn ctx))
             tag (first hiccup)]
         (cond-> hiccup
                 (#{:modal} tag) (update-in [1 :callback-id] #(or % view-name))
                 (#{:modal :home} tag) (with-meta ctx)
-                (and (#{:modal :home} tag)
-                     (some? private-metadata)) (assoc-in [1 :private_metadata] @(:state ctx)))))
+                (#{:modal :home} tag) (assoc-in [1 :private_metadata] (some-> (:state ctx) (deref))))))
     view-opts))
 
 (defn make-view* [{:as view-opts
-                   ::keys [view-name actions render-fn]
-                   :keys [on-submit
+                   :keys [view-name
+                          action-fns
+                          on-submit
                           on-close]}]
-  (let [view (view-fn view-opts)
+  (let [view (with-meta (view-fn view-opts) (select-keys view-opts [:initial-state :actions :view-name]))
         handlers (merge (reduce-kv (fn [m action-name action-fn]
                                      (let [id (id view-name action-name)]
                                        (assoc m (as-kw id) #(handle-block-action % view id action-fn))))
                                    {}
-                                   actions)
+                                   action-fns)
                         (when on-submit
                           {(keyword view-name "submit") ^:response-action? #(handle-form-callback % view :submit on-submit)})
                         (when on-close
                           {(keyword view-name "close") #(handle-form-callback % view :close on-submit)}))]
-    (vary-meta view assoc ::handlers handlers)))
+    (vary-meta view assoc :handlers handlers)))
 
 (defmacro defview
   "Defines a modal or home surface"
@@ -257,7 +258,8 @@
                          (cond (map? (:action-id x))
                                (let [[action-k action-form] (first (:action-id x))
                                      action-id (id view-name action-k)]
-                                 (swap! options update ::actions assoc action-id action-form)
+                                 (swap! options assoc-in [:action-fns action-id] action-form)
+                                 (swap! options assoc-in [:actions action-k] action-id)
                                  (assoc x :action-id action-id))
                                (keyword? (:action-id x)) (update x :action-id (partial id view-name))
                                :else x)
@@ -268,8 +270,8 @@
                          :else x))) (last body))]
     (log/info :actions (::actions @options))
     `(do (def ~name-sym
-           (make-view* (merge {::view-name ~view-name
-                               ::render-fn (fn ~name-sym ~argv ~body)}
+           (make-view* (merge {:view-name ~view-name
+                               :render-fn (fn ~name-sym ~argv ~body)}
                               ~(deref options))))
-         (swap! registry merge (::handlers (meta ~name-sym)))
+         (swap! registry merge (:handlers (meta ~name-sym)))
          #'~name-sym)))
