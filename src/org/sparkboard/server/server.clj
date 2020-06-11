@@ -400,6 +400,7 @@
             (ring.http/unauthorized))))
       (f req))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn slack-api-handlers []
@@ -498,13 +499,40 @@
                               :broadcast/reply-ts (-> payload :message :ts)
                               :broadcast/reply-channel (-> payload :channel :id)}))))}))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Async processing (mostly parallel Slack HTTP responses)
+
+(defn goetz
+  "Number of threads to have in a thread pool, per Brian Goetz's 'Java Concurrency in Practice' formula'.
+  `wait-time`    = approximate total time (ms) waiting (e.g. on Firebase or Slack requests)
+  `service-time` = approximate time (ms) processing requests"
+  [wait-time service-time]
+  (int (* (.availableProcessors (Runtime/getRuntime))
+          (+ 1 (/ wait-time service-time)))))
+
+(defonce pool
+  (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
+
+(comment
+  (.submit ^java.util.concurrent.ExecutorService pool
+           ^Callable #(log/info (inc 5)))
+  
+  )
+
+;; Declare JVM-wide uncaught exception handler, so exceptions on the
+;; thread pool are logged as errors instead of merely printed.
+;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
+(Thread/setDefaultUncaughtExceptionHandler
+ (reify Thread$UncaughtExceptionHandler
+   (uncaughtException [_ thread ex]
+     (log/error ex "Uncaught exception on" (.getName thread)))))
+
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
     (ring.http/ok challenge)
-    (do
-      (try-future
-        (let [[handler-id context]
+    (do (let [[handler-id context]
               (cond event
                     [(keyword "event" (:type event))
                      (-> (slack-context (:team_id params) (if (map? (:user event)) (:id (:user event)) (:user event)))
@@ -523,14 +551,14 @@
                                                 ("view_submission" "view_closed") (-> payload :view :callback_id)
                                                 "block_actions" (-> payload :actions first :action_id)))]
                       [handler-id (assoc context :slack/payload payload)]))]
-          (log/info handler-id (select-keys context [:slack/user-id
-                                                     :slack/team-id ]))
+          (log/info handler-id (select-keys context [:slack/user-id :slack/team-id ]))
           (log/debug :context context)
           (def LAST-CONTEXT context)
-          (binding [slack/*request* context]
-            ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
-             (assoc context ::handler-id handler-id)))))
-      (ring.http/ok))))
+          (.execute ^java.util.concurrent.ExecutorService pool
+                    ^Callable #(binding [slack/*request* context]
+                                 ((handlers handler-id (fn [& args] (log/error :unhandled-request handler-id args)))
+                                  (assoc context ::handler-id handler-id)))))
+        (ring.http/ok))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
@@ -637,7 +665,7 @@
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false}))
   (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev
-    (nrepl/start-server :bind "localhost" :port 7888)))
+    (reset! nrepl-server (nrepl/start-server :bind "localhost" :port 7888))))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
@@ -646,5 +674,8 @@
 
 (comment
   (-main)
+
+  (.shutdown pool)
+  (.shutdownNow pool)
 
   )
