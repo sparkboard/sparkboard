@@ -74,9 +74,6 @@
                           :multiline true
                           :action-id k}]])])
 
-
-
-
 (defn team-broadcast-response [board-id from-user-id from-channel-id msg]
   (let [domain (some-> board-id slack-db/board-domain)
         project-id (some-> (slack-db/linked-channel from-channel-id) :project-id)
@@ -84,9 +81,10 @@
                       (str (urls/sparkboard-host domain) "/project/" project-id))]
     [[:divider]
      [:section
-      [:md (when project-url {:accessory [:button {:url project-url} "Project Page"]})]
-      [:md "from " (v/mention from-user-id) " in " (v/channel-link from-channel-id) ":\n"]]
-     [:section [:md (v/blockquote msg)]]]))
+      {:accessory (when project-url [:button {:url project-url} "Project Page"])}
+      [:md
+       "from " (v/mention from-user-id) " in " (v/channel-link from-channel-id) ":\n"
+       (v/blockquote msg)]]]))
 
 (v/defview team-broadcast-response-compose
   "User response to broadcast - text field for project status update"

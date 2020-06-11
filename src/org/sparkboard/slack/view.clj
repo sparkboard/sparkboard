@@ -179,10 +179,15 @@
   "Calls a form action with [context, state-atom, input-values]"
   [context view kind form-fn]
   (let [rsp-view (-> context :slack/payload :view)
+        prev-state (:private_metadata rsp-view)
+        state (atom prev-state)
         result (binding [*view-opts* (meta view)]
                  (form-fn (assoc context
-                            :state (atom (:private_metadata rsp-view))
-                            :input-values (input-values rsp-view))))]
+                            :state state
+                            :input-values (input-values rsp-view))))
+        result (if (= prev-state @state)
+                 result
+                 [:update (view (assoc context :state @state))])]
     (case kind
       :close result
       :submit (when-let [[action view] (u/guard result vector?)]

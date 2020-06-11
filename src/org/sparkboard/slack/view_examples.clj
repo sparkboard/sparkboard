@@ -14,26 +14,47 @@
     [:button {:action-id {:count! (fn [{:keys [state]}] (swap! state inc))}} "Inc!"]]])
 
 
-(v/defview modals
+(v/defview modals-submit
+  [{:keys [state]}]
+  [:modal {:title "Modals: Submission"
+           :submit "Submit"
+           :on-submit (fn [{:keys [state input-values]}]
+                        (swap! state assoc :submitted input-values))}
+   [:input
+    {:label "Text field"}
+    [:plain-text-input
+     {:action-id :text-field}]]
+   (when-let [submitted (:submitted @state)]
+     (list
+       [:divider]
+       [:section [:md "*SUBMITTED:*\n" submitted]]))])
+
+(v/defview modals-open
   [_]
-  [:modal {:title "Modals"}
-   [:actions
-    [:button {:text "Replace"
-              :action-id
-              {:replace (fn [context]
-                          (v/replace! (constantly [:modal {:title "Replaced"}
-                                                   [:section [:md "🍎"]]])
-                                      context))}}]
-    [:button {:text "Push"
-              :action-id
-              {:push (partial v/push! (constantly [:modal {:title "Pushed"}
-                                                   [:section [:md "🍎"]]]))}}]]
-   [:context [:md "Open does not work because a modal is already open - use `push` or `replace` instead."]]
-   [:actions
-    [:button {:text "Open (invalid)"
-              :action-id
-              {:open (partial v/open! (constantly [:modal {:title "Opened"}
-                                                   [:section [:md "🍎"]]]))}}]]])
+  [:modal {:title "Modals: Opening"}
+
+   [:section
+    {:accessory
+     [:button {:text "Push"
+               :action-id
+               {:push (partial v/push! (constantly [:modal {:title "Pushed"} [:section [:md "🍎"]]]))}}]}
+    [:md "Pushes a modal onto the stack"]]
+
+   [:section
+    {:accessory
+     [:button {:text "Replace"
+               :action-id
+               {:replace (fn [context]
+                           (v/replace! (constantly [:modal {:title "Replaced"} [:section [:md "🍎"]]])
+                                       context))}}]}
+    [:md "Replaces the current modal"]]
+
+   [:section
+    {:accessory
+     [:button {:text "Open 💀️️"
+               :action-id
+               {:open (partial v/open! (constantly [:modal {:title "Opened"} [:section [:md "🍎"]]]))}}]}
+    [:md "Open will not work here because a modal already exists"]]])
 
 (v/defview multi-select-modal
   [{:keys [state]}]
@@ -177,13 +198,16 @@
                             (log/info :OVEFLOW value)
                             (case value
                               "counter" (v/open! counter context)
-                              "modals" (v/open! modals context)
+                              "modals-open" (v/open! modals-open context)
+                              "modals-submit" (v/open! modals-submit context)
                               "all-field-types" (v/open! all-field-types context)
                               "branching-submit" (v/open! branching-submit context)))}
     :options [{:value "counter"
                :text [:plain-text "Counter"]}
-              {:value "modals"
-               :text [:plain-text "Modals"]}
+              {:value "modals-open"
+               :text [:plain-text "Modals: Open"]}
+              {:value "modals-submit"
+               :text [:plain-text "Modals: Submit"]}
               {:value "all-field-types"
                :text [:plain-text "All field types"]}
               {:value "branching-submit"

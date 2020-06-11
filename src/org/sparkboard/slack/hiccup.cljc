@@ -140,7 +140,9 @@
                                              (sequential? child) (into out child)
                                              :else (conj out child)))) [] form)
         (map? form) (reduce-kv (fn [m k v]
-                                 (assoc m (kw->underscore k) (blocks v))) {} form)
+                                 (cond-> m
+                                   (some? v)                ;; prune keys for nil values - slack doesn't like them
+                                   (assoc (kw->underscore k) (blocks v)))) {} form)
         (keyword? form) (kw->js form)
         (symbol? form) (name form)
         :else form))
