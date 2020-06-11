@@ -21,7 +21,7 @@
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
          web-api-spec
          (delay
-           (json/read-value (slurp                          ; canonical URL per https://api.slack.com/web#basics#spec
+           (json/read-value (slurp ; canonical URL per https://api.slack.com/web#basics#spec
                               "https://api.slack.com/specs/openapi/v2/slack_web.json"))))
 
 ;; TODO consider https://github.com/gnarroway/hato
@@ -97,9 +97,8 @@
       (-> (web-api "team.info" {:auth/token token} {:team team-id})
           :team))))
 
-(defn user-info [token user-id]
-  (-> (web-api "users.info" {:auth/token token} {:user user-id})
-      :user))
+(defn user-info [token user-id]  
+  (:user (web-api "users.info" {:auth/token token} {:user user-id})))
 
 (defn message-user! [context blocks]
   (web-api "chat.postMessage"
@@ -117,8 +116,8 @@
   (http-verb "views.publish")                               ;; XXX this seems to be a mistake on Slack's part: it's GET in the spec but POST in the docs
 
   ;; bot token only for local dev experiments
-  (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)})
-
+  (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)} {:a "b"})
+  
   (time (-> (client/get (str base-uri "conversations.info")
                         {:query-params {:token (-> env/config :slack :bot-user-oauth-token)
                                         :channel "C014Y501S2G"}})

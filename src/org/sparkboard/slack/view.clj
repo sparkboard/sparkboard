@@ -93,14 +93,11 @@
 ;;   be pure functions of [state, value, context] => new state
 
 (defn view-api
-  ([method hiccup opts]
-   (view-api method hiccup opts (meta hiccup)))
-  ([method hiccup opts context]
-   {:pre [context]}
-   (slack/web-api method
-                  (->> {:view hiccup}
-                       (merge opts)
-                       #_(reduce-kv (fn [m k v] (cond-> m (some? v) (assoc k v))) {})))))
+  [method hiccup opts]
+  (slack/web-api method
+                 (->> {:view hiccup}
+                      (merge opts)
+                      #_(reduce-kv (fn [m k v] (cond-> m (some? v) (assoc k v))) {}))))
 
 (defn trigger [context]
   {:post [(some? %)]}
@@ -140,7 +137,8 @@
             (view (assoc context :state (initial-state view context)))
             {:user_id user-id}))
 
-(defn handle-home-opened! [view context]
+(defn handle-home-opened!
+  [view context]
   (view-api "views.publish"
             (view (assoc context :state (or (-> context :slack/payload :view :private_metadata)
                                             (initial-state view context))))
@@ -216,7 +214,7 @@
                 (#{:modal} tag) (update-in [1 :callback-id] #(or % view-name))
                 (#{:modal :home} tag) (with-meta ctx)
                 (and (#{:modal :home} tag)
-                     (seq private-metadata)) (assoc-in [1 :private_metadata] @(:state ctx)))))
+                     (some? private-metadata)) (assoc-in [1 :private_metadata] @(:state ctx)))))
     view-opts))
 
 (defn make-view* [{:as view-opts

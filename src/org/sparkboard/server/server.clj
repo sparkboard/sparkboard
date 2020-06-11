@@ -308,6 +308,35 @@
   (when (not= "no-op" (namespace handler-id))
     (log/error :unhandled-request handler-id)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Async processing (mostly parallel Slack HTTP responses)
+
+(defn goetz
+  "Number of threads to have in a thread pool, per Brian Goetz's 'Java Concurrency in Practice' formula'.
+  `wait-time`    = approximate total time (ms) waiting (e.g. on Firebase or Slack requests)
+  `service-time` = approximate time (ms) processing requests"
+  [wait-time service-time]
+  (int (* (.availableProcessors (Runtime/getRuntime))
+          (+ 1 (/ wait-time service-time)))))
+
+(defonce pool
+  (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
+
+(comment
+  (.submit ^java.util.concurrent.ExecutorService pool
+           ^Callable #(log/info (inc 5)))
+
+  )
+
+;; Declare JVM-wide uncaught exception handler, so exceptions on the
+;; thread pool are logged as errors instead of merely printed.
+;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
+(Thread/setDefaultUncaughtExceptionHandler
+ (reify Thread$UncaughtExceptionHandler
+   (uncaughtException [_ thread ex]
+     (log/error ex "Uncaught exception on" (.getName thread)))))
+
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
@@ -324,7 +353,7 @@
                 payload
                 (let [payload (-> (json->clj payload)
                                   ;; private_metadata is deserialized here, and serialized in `slack.hiccup`
-                                  (update-in [:view :private_metadata] #(if (str/blank? %) {} (transit/read %)))
+                                  (update-in [:view :private_metadata] #(if (str/blank? %) nil (transit/read %)))
                                   (set/rename-keys {:private_metadata :private_metadata}))]
                   (-> (slack-db/slack-context (-> payload :team :id) (-> payload :user :id))
                       (assoc :slack/payload payload
@@ -334,14 +363,16 @@
                                             "view_closed" (keyword (-> payload :view :callback_id) "close")
                                             "block_actions" (keyword (-> payload :actions first :action_id))
                                             (keyword "UNKNOWN_PAYLOAD_TYPE" (:type payload "nil")))))))
-          handler (handlers (::handler-id context) missing-handler)]
+          handler (handlers (::handler-id context) missing-handler)
+          exec #(binding [slack/*context* context] (handler context))]
       (log/debug (::handler-id context) context)
-      (binding [slack/*context* context]
-        (if (:response-action? (meta handler))
-          (or (handler context)
-              (ring.http/ok))
-          (do (try-future (handler context))
-              (ring.http/ok)))))))
+      (if (:response-action? (meta handler))
+        ;; eval & return result
+        (or (exec)
+            (ring.http/ok))
+        ;; eval on thread, return ok immediately
+        (do (.execute ^java.util.concurrent.ExecutorService pool ^Callable exec)
+            (ring.http/ok))))))
 
 (def routes
   ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
@@ -448,7 +479,7 @@
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false}))
   (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev
-    (nrepl/start-server :bind "localhost" :port 7888)))
+    (reset! nrepl-server (nrepl/start-server :bind "localhost" :port 7888))))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
@@ -457,5 +488,8 @@
 
 (comment
   (-main)
+
+  (.shutdown pool)
+  (.shutdownNow pool)
 
   )

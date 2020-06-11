@@ -27,7 +27,7 @@
 (v/defview link-account [context]
   (when-let [linking-url (urls/link-sparkboard-account context)]
     (list
-      [:section (str "Please link your Sparkboard account:")]
+      [:section [:md "Please link your Sparkboard account:"]]
       [:actions
        [:button {:style "primary"
                  :url linking-url
@@ -84,7 +84,7 @@
                       (str (urls/sparkboard-host domain) "/project/" project-id))]
     [[:divider]
      [:section
-      (when project-url {:accessory [:button {:url project-url} "Project Page"]})
+      [:md (when project-url {:accessory [:button {:url project-url} "Project Page"]})]
       [:md "from " (v/mention from-user-id) " in " (v/channel-link from-channel-id) ":\n"]]
      [:section [:md (v/blockquote msg)]]]))
 
@@ -112,7 +112,8 @@
                (slack/web-api "chat.postMessage"
                               {:channel (:broadcast/reply-channel @state)
                                :ts (:broadcast/reply-ts @state)
-                               :blocks [[:section (str "Thanks for your response! " (v/link "See what you wrote." permalink))]]})))}
+                               :blocks [[:section
+                                         [:md "Thanks for your response! " (v/link "See what you wrote." permalink)]]]})))}
    [:input {:type "input"
             :label (:original-message @state)
             :block-id "sb-project-status1"}
@@ -124,9 +125,10 @@
   ;; this is a *message* which is never updated
   [{:broadcast/keys [message response-channel id]}]
   (list
-    [:section [:md
-               #_(when sender-name (str "from *" sender-name "*:\n"))
-               (v/blockquote message)]]
+    [:section
+     [:md
+      #_(when sender-name (str "from *" sender-name "*:\n"))
+      (v/blockquote message)]]
     (when response-channel
       (list [:actions
              {:block-id id}                                 ;; store hidden state in a message...
@@ -211,7 +213,7 @@
                                               :collect-in-thread (contains? options "collect-in-thread")}))
                           [:update
                            [:modal {:title "Thanks!"}
-                            [:section "Broadcast received."]]])}
+                            [:section [:md "Broadcast received."]]]])}
      ;; NB: private metadata is a String of max 3000 chars
      ;; See https://api.slack.com/reference/surfaces/views
      [:input
@@ -240,7 +242,7 @@
 
 (v/defview admin-menu [context]
   (list
-    [:section "*Manage*"]
+    [:section [:md "*Manage*"]]
     [:actions
      [:button {:style "primary"
                :action-id {:compose (fn [context]
@@ -259,15 +261,8 @@
                             :url (str (:sparkboard/jvm-root context)
                                       "/slack/reinstall/"
                                       (:slack/team-id context))
-                            :text [:plain-text "Re-install App"]}]}]]
+                            :text [:plain-text "Re-install App"]}]}]]))
 
-    [:divider]
-    (when-not (= "prod" (env/config :env))
-      [:actions
-       [:button {:action-id {:open-checks-test (partial v/open! examples/checks-test)}}
-        "Dev: Form Examples"]
-       [:button {:action-id {:branching-modal (partial v/open! examples/branching-submit)}}
-        "Dev: Branching submit"]])))
 (defn main-menu [{:as context :sparkboard/keys [board-id account-id] :slack/keys [bot-token user-id]}]
   (list
 
@@ -277,14 +272,16 @@
     (if-let [{:keys [title domain]} (some->> board-id (str "settings/") fire-jvm/read)]
       [:section
        {:accessory [:button {:url (urls/sparkboard-host domain)} "View Board"]}
-       (str "Connected to *" title "* on Sparkboard.")]
-      [:section "No Sparkboard is linked to this Slack workspace."])
+       [:md "Connected to *" title "* on Sparkboard."]]
+      [:section
+       [:md "No Sparkboard is linked to this Slack workspace."]])
 
     (when (and board-id account-id (:is_admin (slack/user-info bot-token user-id)))
       (admin-menu context))
-
     [:section
-     {:fields [[:md
+     {:accessory (when-not (= "prod" (env/config :env))
+                   (examples/dev-overflow context))
+      :fields [[:md
                 (str "_Updated: "
                      (->> (java.util.Date.)
                           (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
