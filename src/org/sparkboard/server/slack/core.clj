@@ -43,7 +43,8 @@
                  (.version HttpClient$Version/HTTP_2)
                  (.build))
         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
-    (log/info "[web-api-get] ts" (- (System/currentTimeMillis) (or *ts* 0)))
+    (when *ts*
+      (log/info "[web-api-get] ts" (- (System/currentTimeMillis) (or *ts* 0))))
     (log/debug "[web-api] GET rsp:" rsp)
     (when-not (:ok rsp)
       (log/error (-> rsp :response_metadata :messages))
@@ -63,7 +64,8 @@
                  (.version HttpClient$Version/HTTP_2)
                  (.build))
         rsp (json->clj (.body (.send clnt request (HttpResponse$BodyHandlers/ofString))))]
-    (log/info "[web-api-post] ts" (- (System/currentTimeMillis) (or *ts* 0)))
+    (when *ts*
+      (log/info "[web-api-post] ts" (- (System/currentTimeMillis) (or *ts* 0))))
     (when-not (:ok rsp)
       (log/error (-> rsp :response_metadata :messages))
       (throw (ex-info (str "web-api failure: slack/" family-method) {:rsp rsp :config config :body body})))
