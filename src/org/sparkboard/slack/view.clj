@@ -2,9 +2,9 @@
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
             [org.sparkboard.js-convert :refer [kw->js clj->json]]
-            [org.sparkboard.server.slack.api :as slack]
+            [org.sparkboard.slack.api :as slack]
             [taoensso.timbre :as log]
-            [org.sparkboard.server.slack.hiccup :as hiccup]
+            [org.sparkboard.slack.hiccup :as hiccup]
             [org.sparkboard.util :as u]
             [clojure.set :as set])
   (:import (clojure.lang Atom)))
@@ -16,6 +16,13 @@
   (if (> (count s) max-len)
     (str (subs s 0 (dec max-len)) "…")
     s))
+
+(defn slack-channel-namify [s]
+  (-> s
+      (str/replace #"\s+" "-")
+      (str/lower-case)
+      (str/replace #"[^\w\-_\d]" "")
+      (truncate 70)))
 
 (defn blockquote [text]
   (str "> " (str/replace text "\n" "\n> ")))
@@ -101,33 +108,33 @@
 
 (defn initial-state [view context] (:initial-state (meta view) (:initial-state context)))
 
-(defn open! [view context]
+(defn open!
+  "Opens a modal"
+  [view context]
   (view-api "views.open"
             (view (assoc context :state (initial-state view context)))
             {:trigger_id (trigger context)}))
 
-(defn push! [view context]
+(defn push!
+  "Pushes new modal to the stack"
+  [view context]
   (view-api "views.push"
             (view (assoc context :state (initial-state view context)))
             {:trigger_id (trigger context)}))
 
-(defn replace! [view context view-id]
-  (view-api "views.update"
-            (view (assoc context :state (initial-state view context)))
-            {:view_id view-id
-             :trigger_id (trigger context)}))
+(defn replace!
+  "Replaces modal at top of stack"
+  [view context]
+  (let [{:keys [hash id]} (-> context :slack/payload :view)]
+    (view-api "views.update"
+              (view (assoc context :state (initial-state view context)))
+              {:hash hash
+               :view_id id
+               :trigger_id (trigger context)})))
 
-(defn update! [view context]
-  (view-api "views.update"
-            (view (update context :state
-                          #(or % (when (= (::view-name (meta view))
-                                          (-> context :slack/payload :view :callback_id))
-                                   (-> context :slack/payload :view :private_metadata)))))
-            {:hash (-> context :slack/payload :view :hash)
-             :view_id (-> context :slack/payload :view :id)
-             :trigger_id (trigger context)}))
-
-(defn home! [view context user-id]
+(defn home!
+  "Set home tab for user-id"
+  [view context user-id]
   {:pre [user-id]}
   (view-api "views.publish"
             (view (assoc context :state (initial-state view context)))
@@ -144,7 +151,7 @@
 (defn handle-block-action
   "Calls a block action with [context, state-atom, block-value]"
   [context view action-id action-fn]
-  (let [prev-state (-> context :slack/payload :view :private_metadata)
+  (let [{:keys [hash id] prev-state :private_metadata} (-> context :slack/payload :view)
         state-atom (atom prev-state)
         actions (-> context :slack/payload :actions)
         values (-> context :slack/payload :actions actions-values)
@@ -159,7 +166,11 @@
         next-state @state-atom]
     (log/trace action-id value {:prev-state prev-state :next-state next-state})
     (when (and next-state (not= prev-state next-state))
-      (update! view (assoc context :state next-state)))))
+      (view-api "views.update"
+                (view (assoc context :state next-state))
+                {:hash hash
+                 :view_id id
+                 :trigger_id (trigger context)}))))
 
 (defn return-json [status body]
   {:status status
@@ -181,7 +192,7 @@
                                  "on-submit should return [:push <view>] or [:update <view>] or nil"))
                     (return-json 200
                                  {:response_action action
-                                  :view (hiccup/->blocks view)}))))))
+                                  :view (hiccup/blocks view)}))))))
 
 (defn id
   "Scopes an id to current view"
@@ -239,14 +250,14 @@
                (fn [x]
                  (if-not (map? x)
                    x
-                   (cond (:action x)
-                         (-> (cond (map? (:action x))
-                                   (let [[action-k action-form] (first (:action x))
-                                         action-id (id view-name action-k)]
-                                     (swap! options update ::actions assoc action-id action-form)
-                                     (assoc x :action action-id))
-                                   (keyword? (:action x)) (update x :action (partial id view-name)))
-                             (set/rename-keys {:action :action-id}))
+                   (cond (:action-id x)
+                         (cond (map? (:action-id x))
+                               (let [[action-k action-form] (first (:action-id x))
+                                     action-id (id view-name action-k)]
+                                 (swap! options update ::actions assoc action-id action-form)
+                                 (assoc x :action-id action-id))
+                               (keyword? (:action-id x)) (update x :action-id (partial id view-name))
+                               :else x)
                          (:on-submit x) (do (swap! options assoc :on-submit (:on-submit x))
                                             (dissoc x :on-submit))
                          (:on-close x) (do (swap! options assoc :on-close (:on-close x))

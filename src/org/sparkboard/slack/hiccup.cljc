@@ -1,9 +1,10 @@
-(ns org.sparkboard.server.slack.hiccup
+(ns org.sparkboard.slack.hiccup
   (:require [clojure.string :as str]
             [org.sparkboard.js-convert :refer [clj->json kw->js]]
             [org.sparkboard.transit :as transit]
             [org.sparkboard.util :as u]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.walk :as walk]))
 
 (def schema
   "hiccup<->block metadata. Supports:
@@ -43,9 +44,6 @@
    "multi_conversations_select" {:strings {:placeholder :plain_text}}
    "multi_channels_select" {:strings {:placeholder :plain_text}}})
 
-
-(declare ->blocks)
-
 (def aliases
   (reduce-kv (fn [m k {:keys [type]}]
                (cond-> m
@@ -62,21 +60,16 @@
                    (assoc props k [wrap-with v])
                    props))) props wrappers))
 
-(defn assoc-some [m k v]
-  (if v
-    (assoc m k v)
-    m))
-
 (defn- all-options [{:keys [options option-groups]}]
   (concat options (->> option-groups (mapcat :options))))
 
 (defn assoc-option
   [m as-key value]
-  (assoc-some m as-key (first (filter #(= (:value %) value) (all-options m)))))
+  (u/assoc-some m as-key (first (filter #(= (:value %) value) (all-options m)))))
 
 (defn assoc-options
   [m as-key values]
-  (assoc-some m as-key (seq (filter #(contains? values (:value %)) (all-options m)))))
+  (u/assoc-some m as-key (seq (filter #(contains? values (:value %)) (all-options m)))))
 
 (defn set-value [m tag value]
   (if (nil? value)
@@ -84,13 +77,13 @@
     (case tag
       "checkboxes" (assoc-options m :initial_options value)
       "radio_buttons" (assoc-option m :initial_option value)
-      "users_select" (assoc-some m :initial_user value)
-      "datepicker" (assoc-some m :initial_date value)
-      "multi_channels_select" (assoc-some m :initial_channels value)
-      "multi_conversations_select" (assoc-some m :initial_conversations value)
+      "users_select" (u/assoc-some m :initial_user value)
+      "datepicker" (u/assoc-some m :initial_date value)
+      "multi_channels_select" (u/assoc-some m :initial_channels value)
+      "multi_conversations_select" (u/assoc-some m :initial_conversations value)
       "multi_static_select" (assoc-options m :initial_options value)
-      "multi_users_select" (assoc-some m :initial_users value)
-      "plain_text_input" (assoc-some m :initial_value value))))
+      "multi_users_select" (u/assoc-some m :initial_users value)
+      "plain_text_input" (u/assoc-some m :initial_value value))))
 
 ;; this is a special key that controls the "initial value" of any field
 (def view-value-key :set-value)
@@ -132,7 +125,7 @@
 (defn kw->underscore [k]
   (str/replace (name k) "-" "_"))
 
-(defn ->blocks
+(defn blocks
   "Converts hiccup to blocks"
   [form]
   (cond (hiccup? form)
@@ -140,110 +133,51 @@
               props? (has-props? form)
               props (when props? (nth form 1))
               body (drop (if props? 2 1) form)]
-          (->blocks (apply-schema tag props body)))
+          (blocks (apply-schema tag props body)))
         (sequential? form) (reduce (fn [out child]
-                                     (let [child (->blocks child)]
+                                     (let [child (blocks child)]
                                        (cond (nil? child) out
                                              (sequential? child) (into out child)
                                              :else (conj out child)))) [] form)
         (map? form) (reduce-kv (fn [m k v]
-                                 (assoc m (kw->underscore k) (->blocks v))) {} form)
+                                 (assoc m (kw->underscore k) (blocks v))) {} form)
         (keyword? form) (kw->js form)
         (symbol? form) (name form)
         :else form))
 
-(defn remove-redundant-defaults [defaults props]
-  (reduce-kv
-    (fn [props k v]
-      (cond-> props
-        (= v (get defaults k))
-        (dissoc k))) props defaults))
-
-(defn unwrap-strings [strings props]
-  (reduce-kv
-    (fn [props k wrap-tag]
-      (let [[tag maybe-string] (get props k)
-            unwrap? (and (string? maybe-string)
-                         (= (type-string tag) (type-string wrap-tag)))]
-        (if unwrap?
-          (assoc props k maybe-string)
-          props)))
-    props strings))
-
-(defn ->hiccup
-  "Converts blocks to hiccup"
-  [form]
-  (cond (and (map? form) (:type form))
-        (let [type-name (type-string (:type form))
-              type-key (keyword type-name)
-              {:keys [child children
-                      defaults strings]} (schema type-name)
-              props (->> (dissoc form :type)
-                         (reduce-kv (fn [props k v] (assoc props k (->hiccup v))) {})
-                         (remove-redundant-defaults defaults)
-                         (unwrap-strings strings))
-              child-elements (some->> (seq (cond child (some-> (get props child) (vector))
-                                                 children (get props children)))
-                                      (map ->hiccup))
-              props (-> props
-                        (dissoc child children)
-                        (not-empty))]
-          (cond-> [type-key]
-            props (conj props)
-            child-elements (into child-elements)))
-        (sequential? form)
-        (into (empty form) (map ->hiccup) form)
-        :else form))
-
-(defn ->blocks-json [hiccup]
+(defn blocks-json [hiccup]
   (log/trace :hiccup hiccup)
-  (let [blocks (->blocks hiccup)]
+  (let [blocks (blocks hiccup)]
     (log/trace :blocks blocks)
     (clj->json blocks)))
 
 (comment
 
-  (= (->hiccup
-       {:type "mrkdwn"
-        :text "Hello"})
-     [:md "Hello"])
+  (walk/keywordize-keys (blocks
+                          [:button {:url "http://..."} "Apple"]))
 
-  (= (->hiccup
-       {:type "button"
-        :text {:emoji true, :type "plain_text", :text "What"}})
-     [:button "What"])
 
-  (= (->blocks
+  (blocks
+    [:modal {:title "Hi"}])
+
+  (= (blocks
        [:section {:blocks (list
                             (list
                               (list 1 2)))}])
      ;; nested lists are flattened
-     {:type "section"
-      :blocks [1 2]})
+     {"type" "section"
+      "blocks" [1 2]})
 
-
-  (defn round-trip? [x]
-    (let [blocks (->blocks x)
-          hiccup (->hiccup blocks)]
-      (if (= x hiccup)
-        true
-        {:x x
-         :blocks blocks
-         :hiccup hiccup})))
-
-  (round-trip?
-    [:modal {:title "Hi"}])
-
-  (round-trip?
+  (blocks
     (list
       [:md "Hello"]
       [:button "What"]))
 
-  (round-trip?
+  (blocks
     [:home
      [:section "Hello, _friend_."]])
 
-  (round-trip?
+  (blocks
     [:section
      {:accessory [:conversations_select
                   {:placeholder

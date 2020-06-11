@@ -1,12 +1,12 @@
-(ns org.sparkboard.server.slack.screens
+(ns org.sparkboard.slack.screens
   (:require [clojure.pprint :as pp]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.js-convert :refer [clj->json json->clj]]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.server.slack.api :as slack]
+            [org.sparkboard.slack.api :as slack]
+            [org.sparkboard.slack.view-examples :as examples]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.slack.view :as v]
             [org.sparkboard.slack.view :as v]
             [org.sparkboard.util.future :refer [try-future]]
             [taoensso.timbre :as log]))
@@ -31,7 +31,7 @@
       [:actions
        [:button {:style "primary"
                  :url linking-url
-                 :action :url}
+                 :action-id :no-op/link-sparkboard}
         (str "Link Account")]])))
 
 (declare home)
@@ -46,11 +46,11 @@
                                  (merge context (slack-db/team-context (:slack/team-id context)))
                                  (:slack/user-id context)))}
    [:input {:label "Link"
-            :optional true
-            :element [:plain-text_input
-                      {:set-value (or (:slack/invite-link context) "")
-                       :placeholder "Paste the invite link from Slack here..."
-                       :action :invite-link}]}]
+            :optional true}
+    [:plain-text-input
+     {:set-value (or (:slack/invite-link context) "")
+      :placeholder "Paste the invite link from Slack here..."
+      :action-id :invite-link}]]
    [:context
     [:md
      (str "Learn how to create an invite link:\n"
@@ -69,7 +69,7 @@
          :let [db-value (get-in context [:slack/team :custom-messages k] "")]]
      [:input {:label label
               :optional true}
-      [:plain-text_input {:initial_value db-value
+      [:plain-text-input {:set-value db-value
                           :placeholder default
                           :multiline true
                           :action-id k}]])])
@@ -115,9 +115,9 @@
                                :blocks [[:section (str "Thanks for your response! " (v/link "See what you wrote." permalink))]]})))}
    [:input {:type "input"
             :label (:original-message @state)
-            :block_id "sb-project-status1"}
-    [:plain-text_input {:multiline true
-                        :action :user-reply}]]])
+            :block-id "sb-project-status1"}
+    [:plain-text-input {:multiline true
+                        :action-id :user-reply}]]])
 
 (v/defview team-broadcast-content
   "Administrator broadcast to project channels, soliciting project update responses."
@@ -131,20 +131,21 @@
       (list [:actions
              {:block-id id}                                 ;; store hidden state in a message...
              [:button {:style "primary"
-                       :action {"user:team-broadcast-response"
-                                (fn [{:as context :keys [slack/payload]}]
-                                  (let [broadcast-id (:block-id context) ;; ...read the hidden state
-                                        broadcast-ref (fire-jvm/->ref (str "/slack-broadcast/" broadcast-id))
-                                        original-message (fire-jvm/read (.child broadcast-ref "message"))
-                                        reply-ref (-> broadcast-ref (.child "replies") (.push))]
-                                    (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
-                                    (v/open! team-broadcast-response-compose
-                                             (assoc context
-                                               :initial-state {:original-message original-message
-                                                               :broadcast/path (fire-jvm/ref-path broadcast-ref)
-                                                               :broadcast/reply-path (fire-jvm/ref-path reply-ref)
-                                                               :broadcast/reply-ts (-> payload :message :ts)
-                                                               :broadcast/reply-channel (-> payload :channel :id)}))))}}
+                       :action-id
+                       {"user:team-broadcast-response"
+                        (fn [{:as context :keys [slack/payload]}]
+                          (let [broadcast-id (:block-id context) ;; ...read the hidden state
+                                broadcast-ref (fire-jvm/->ref (str "/slack-broadcast/" broadcast-id))
+                                original-message (fire-jvm/read (.child broadcast-ref "message"))
+                                reply-ref (-> broadcast-ref (.child "replies") (.push))]
+                            (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
+                            (v/open! team-broadcast-response-compose
+                                     (assoc context
+                                       :initial-state {:original-message original-message
+                                                       :broadcast/path (fire-jvm/ref-path broadcast-ref)
+                                                       :broadcast/reply-path (fire-jvm/ref-path reply-ref)
+                                                       :broadcast/reply-ts (-> payload :message :ts)
+                                                       :broadcast/reply-channel (-> payload :channel :id)}))))}}
               "Reply"]]
             [:context
              [:md "Replies will be sent to " (v/channel-link response-channel)]]))))
@@ -202,7 +203,6 @@
                                            (v/truncate name_normalized 40)]})))))]
     [:modal {:title [:plain-text "Team Broadcast"]
              :submit [:plain-text "Send"]
-             :callback_id "team-broadcast-modal-compose"
              :on-submit (fn [{:as context {:keys [message response-channel options]} :input-values}]
                           (try-future
                             (send-broadcast! context
@@ -216,144 +216,42 @@
      ;; See https://api.slack.com/reference/surfaces/views
      [:input
       {:label [:plain-text "Message"]}
-      [:plain-text_input
+      [:plain-text-input
        {:multiline true,
-        :action :message
+        :action-id :message
         :placeholder (str "Write something to send to all " (count project-channels) " project teams.")}]]
      (if (seq destination-channel-options)
        (list
          [:input
           {:label "Collect responses:"
            :optional true}
-          [:static_select
+          [:static-select
            {:placeholder [:plain-text "Destination channel"],
             :options destination-channel-options
-            :action :response-channel}]]
+            :action-id :response-channel}]]
          [:input
           {:label "Options"
            :optional true}
           [:checkboxes
-           {:action :options
+           {:action-id :options
             :options [{:value "collect-in-thread"
                        :text [:md "Put responses in a thread"]}]}]])
        [:section [:md "💡 Add this app to a channel to enable collection of responses."]])]))
-
-(v/defview multi-select-modal
-  [{:keys [state]}]
-  [:modal {:title "Multi-Select examples"
-           :submit "Submit"
-           :on-submit (fn [{:as context :keys [input-values state]}]
-                        [:update [:modal {:title "Result"}
-                                  [:section (str {:values (str input-values)
-                                                  :state (str @state)})]]])}
-   [:section
-    {:accessory
-     [:multi_static_select
-      {:placeholder "Select some..."
-       :action {:static                                     ;; an :action must be a map of {local-id, fn}
-                (fn [{:keys [state value] :as context}]
-                  (log/info :CCC context)
-                  (swap! state assoc :multi-static value))}
-       :set-value (:multi-static @state)
-       :options [{:value "multi-1"
-                  :text [:plain-text "Multi 1"]}
-                 {:value "multi-2"
-                  :text [:plain-text "Multi 2"]}
-                 {:value "multi-3"
-                  :text [:plain-text "Multi 3"]}]}]}
-    "Multi-select (section)"]
-   [:section
-    {:accessory
-     [:multi_users_select
-      {:placeholder "Select some..."
-       :action {:users
-                (fn [{:keys [state value]}]
-                  (swap! state assoc :users value))}
-       :set-value (:users @state)}]}
-    "Multi-users-select (section)"]
-
-   [:input
-    {:label "Multi-conversations-select (input)"
-     :optional true}
-    [:multi_conversations_select
-     {:placeholder "Select some..."
-      :action :multi-conversations
-      :set-value (:conversations @state)}]]
-
-   [:input
-    {:label "Multi-channels-select (input)"
-     :optional true}
-    [:multi_channels_select
-     {:placeholder "Select some..."
-      :action :multi-channels}]]])
-
-(v/defview checks-test
-  {:initial-state {:counter 0
-                   :show-state? true
-                   :checkboxes #{"value-test-1"}}}
-  [{:keys [state props]}]
-  [:modal {:title "State test"}
-   [:actions
-    [:button {:action {:counter (fn [{:keys [state]}]
-                                  (swap! state update :counter inc))}}
-     (str "Clicked " (str "(" (:counter @state) ")"))]
-    [:datepicker {:action {:datepicker (fn [{:keys [state value]}]
-                                         (swap! state assoc :datepicker value))}
-                  :set-value (:datepicker @state)}]
-
-    [:overflow {:action {:overflow (fn [{:keys [state value]}]
-                                     (swap! state assoc :overflow value))}
-                :options [{:value "o1"
-                           :text [:plain-text "O1"]}
-                          {:value "o2"
-                           :text [:plain-text "O2"]}]}]
-
-    [:users-select
-     {:placeholder "Pick a person"
-      :action {:users-select (fn [{:keys [state value]}]
-                               (swap! state assoc :users-select value))}
-      :set-value (:users-select @state)}]
-
-    [:button {:action
-              {:open-select-modal (partial v/push! multi-select-modal)}}
-     "Open multi-select modal"]]
-
-   [:actions
-    [:radio-buttons
-     {:action {:radio-buttons (fn [{:keys [state value]}]
-                                (swap! state assoc :radio-buttons value))}
-      :set-value (:radio-buttons @state "r2")
-      :options [{:value "r1"
-                 :text [:plain-text "Radio 1"]}
-                {:value "r2"
-                 :text [:plain-text "Radio 2"]}]}]
-
-    [:checkboxes
-     {:action {:checkboxes (fn [{:keys [state value]}]
-                             (swap! state assoc :checkboxes value))}
-      :set-value (:checkboxes @state)
-      :options [{:value "value-test-1"
-                 :text [:md "Check 1"]}
-                {:value "value-test-2"
-                 :text [:md "Check 2"]}]}]]
-
-   (when (:show-state? @state)
-     [:section (with-out-str (pp/pprint @state))])
-   [:actions
-    [:button {:action {:toggle-state-view (fn [{:keys [state]}] (swap! state update :show-state? not))}}
-     (if (:show-state? @state) "hide state" "show state")]]])
 
 (v/defview admin-menu [context]
   (list
     [:section "*Manage*"]
     [:actions
      [:button {:style "primary"
-               :action {:compose (partial v/open! team-broadcast-compose)}} "Team Broadcast"]
-     [:button {:action {:customize-messages (partial v/open! customize-messages-modal)}} "Customize Messages"]
-     [:button {:action {:invite-link-modal (partial v/open! invite-link-modal)}}
+               :action-id {:compose (fn [context]
+                                      (case (-> context :slack/payload :view :type)
+                                        "home" (v/open! team-broadcast-compose context)
+                                        "modal" (v/replace! team-broadcast-compose context)))}} "Team Broadcast"]
+     [:button {:action-id {:customize-messages (partial v/open! customize-messages-modal)}} "Customize Messages"]
+     [:button {:action-id {:invite-link-modal (partial v/open! invite-link-modal)}}
       (str (if (:slack/invite-link context) "Change" "⚠️ Add") " invite link")]
 
-     [:overflow {:action-id "admin-overflow"
+     [:overflow {:action-id :no-op/re-link
                  :options [{:value "re-link"
                             :url (urls/link-sparkboard-account context)
                             :text [:plain-text "Re-Link Account"]}
@@ -366,9 +264,10 @@
     [:divider]
     (when-not (= "prod" (env/config :env))
       [:actions
-       [:button {:action {:open-checks-test #(v/open! checks-test %)}}
-        "Dev: Form Examples"]])))
-
+       [:button {:action-id {:open-checks-test (partial v/open! examples/checks-test)}}
+        "Dev: Form Examples"]
+       [:button {:action-id {:branching-modal (partial v/open! examples/branching-submit)}}
+        "Dev: Branching submit"]])))
 (defn main-menu [{:as context :sparkboard/keys [board-id account-id] :slack/keys [bot-token user-id]}]
   (list
 

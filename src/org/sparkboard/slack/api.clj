@@ -1,10 +1,10 @@
-(ns org.sparkboard.server.slack.api
+(ns org.sparkboard.slack.api
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
             [lambdaisland.uri]
             [org.sparkboard.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.server.slack.hiccup :as hiccup]
+            [org.sparkboard.slack.hiccup :as hiccup]
             [taoensso.timbre :as log]
             [org.sparkboard.util :as u])
   (:import [java.net.http HttpClient HttpRequest
@@ -82,8 +82,8 @@
   ([family-method params]
    (web-api family-method {:auth/token (:slack/bot-token *context*)} params))
   ([family-method config params]
-   ((http-verb family-method) family-method config (u/update-some params {:blocks hiccup/->blocks-json
-                                                                          :view hiccup/->blocks-json}))))
+   ((http-verb family-method) family-method config (u/update-some params {:blocks hiccup/blocks-json
+                                                                          :view hiccup/blocks-json}))))
 
 (def channel-info
   (memoize
@@ -100,6 +100,12 @@
 (defn user-info [token user-id]
   (-> (web-api "users.info" {:auth/token token} {:user user-id})
       :user))
+
+(defn message-user! [context blocks]
+  (web-api "chat.postMessage"
+           {:auth/token (:slack/bot-token context)}
+           {:channel (:slack/user-id context)
+            :blocks (hiccup/blocks-json blocks)}))
 
 (comment
   (http-verb "users.list")

@@ -5,7 +5,7 @@
             [org.sparkboard.promise :as p]
             [org.sparkboard.firebase.admin-db-api :as fire]
             [taoensso.timbre :as log]
-            [org.sparkboard.server.slack.api :as slack]
+            [org.sparkboard.slack.api :as slack]
             [org.sparkboard.server.env :as env]))
 
 (defn join [segments]

@@ -11,18 +11,15 @@
             [nrepl.server :as nrepl]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
-            [org.sparkboard.http :as http]
             [org.sparkboard.js-convert :refer [json->clj clj->json]]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.server.slack.api :as slack]
-            [org.sparkboard.server.slack.hiccup :as hiccup]
-            [org.sparkboard.server.slack.screens :as screens]
+            [org.sparkboard.slack.api :as slack]
             [org.sparkboard.slack.oauth :as slack-oauth]
+            [org.sparkboard.slack.screens :as screens]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as v]
             [org.sparkboard.transit :as transit]
-            [org.sparkboard.util :as u]
             [org.sparkboard.util.future :refer [try-future]]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
@@ -71,41 +68,10 @@
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
       (-> req :params :token)))
 
-;; TODO
-;; return nicely formatted pages
 (defn return-text [status message]
   {:status status
    :headers {"Content-Type" "text/plain"}
    :body message})
-
-(defn return-html [status message]
-  {:status status
-   :headers {"Content-Type" "text/html"}
-   :body message})
-
-(comment
-  ;; I thought this would be a nicer way to send welcome messages,
-  ;; but it doesn't work (I think because the user doesn't yet have
-  ;; an active session when the team_join event fires)
-  (defn message-ephemeral! [context channel blocks]
-    (slack/web-api "chat.postEphemeral"
-                   {:auth/token (:slack/bot-token context)}
-                   {:channel channel
-                    :user (:slack/user-id context)
-                    :blocks (hiccup/->blocks-json blocks)})))
-
-(defn message-user! [context blocks]
-  (slack/web-api "chat.postMessage"
-                 {:auth/token (:slack/bot-token context)}
-                 {:channel (:slack/user-id context)
-                  :blocks (hiccup/->blocks-json blocks)}))
-
-(defn slack-channel-namify [s]
-  (-> s
-      (str/replace #"\s+" "-")
-      (str/lower-case)
-      (str/replace #"[^\w\-_\d]" "")
-      (v/truncate 70)))
 
 (defmacro spy-args [form]
   ;;
@@ -128,10 +94,10 @@
        :slack/user-id user-id
        :sparkboard/account-id account-id})
     (v/home! screens/home (assoc context :sparkboard/account-id account-id) user-id)
-    (message-user! context [[:section
-                             (str (v/mention (:slack/user-id context))
-                                  " "
-                                  (screens/team-message context :welcome-confirmation))]])
+    (slack/message-user! context
+      [[:section
+        (str (v/mention (:slack/user-id context)) " "
+             (screens/team-message context :welcome-confirmation))]])
     (ring.http/found
       (str "/slack/link-complete?"
            (uri/map->query-string {:slack (urls/app-redirect {:app (:slack/app-id context)
@@ -143,19 +109,19 @@
 (defn link-account-for-new-user [context]
   (if-let [account-id (some-> context :slack/event :user :profile :email fire-jvm/email->uid)]
     (link-account! (assoc context :sparkboard/account-id account-id))
-    (message-user! context
-                   [[:section
-                     (str (v/mention (:slack/user-id context))
-                          " "
-                          (screens/team-message context :welcome))]
-                    [:actions
-                     [:button {:style "primary"
-                               :url (urls/link-sparkboard-account context)}
-                      "Link Sparkboard Account"]]
-                    [:context
-                     [:plain_text
-                      (str "Welcome here! Please click to link your account with Sparkboard, "
-                           "where we keep track of all active projects.")]]])))
+    (slack/message-user! context
+      [[:section
+        (str (v/mention (:slack/user-id context))
+             " "
+             (screens/team-message context :welcome))]
+       [:actions
+        [:button {:style "primary"
+                  :url (urls/link-sparkboard-account context)}
+         "Link Sparkboard Account"]]
+       [:context
+        [:plain_text
+         (str "Welcome here! Please click to link your account with Sparkboard, "
+              "where we keep track of all active projects.")]]])))
 
 (defn mock-slack-link-proxy [{{:as token-claims
                                :keys [slack/user-id
@@ -224,10 +190,11 @@
                                   token-claims
                                   (slack-db/team-context team-id)
                                   {:redirect (str (:uri req) "?" (:query-string req))}))
-          (return-html 200
-                       (let [domain (:slack/team-domain (slack-db/team-context team-id))]
-                         (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
-                              "Please contact an organizer."))))))))
+          {:status 200
+           :headers {"Content-Type" "text/html"}
+           :body (let [domain (:slack/team-domain (slack-db/team-context team-id))]
+                   (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
+                        "Please contact an organizer."))})))))
 
 (defn find-or-create-channel [{:sparkboard/keys [board-id
                                                  account-id
@@ -237,7 +204,7 @@
       (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
             {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
                                                                   :sparkboard/account-id account-id})
-            project-title (slack-channel-namify (str "project-" project-title))]
+            project-title (v/slack-channel-namify (str "project-" project-title))]
         (assert (not (str/blank? project-title)) "Project title is required")
         ;; possible states:
         ;; - user is a member of the workspace, but the account is not yet linked
@@ -336,10 +303,10 @@
      :event/team_join link-account-for-new-user}))
 
 (defn missing-handler [{::keys [handler-id]}]
-  ;; this is not always an error
-  ;; (actions are 'fired' even for things like clicking a button with a url)
-  ;; TODO - naming convention for action-ids that should be ignored
-  (log/warn :unhandled-request handler-id))
+  ;; block_action events are sent even for things like buttons with URLs.
+  ;; set an action-id of :no-op for these to avoid seeing a warning/error.
+  (when (not= "no-op" (namespace handler-id))
+    (log/error :unhandled-request handler-id)))
 
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
@@ -361,16 +328,16 @@
                                   (set/rename-keys {:private_metadata :private_metadata}))]
                   (-> (slack-db/slack-context (-> payload :team :id) (-> payload :user :id))
                       (assoc :slack/payload payload
-                             ::handler-id (keyword (or (case (:type payload)
-                                                         "shortcut" (str "shortcut/" (:callback_id payload))
-                                                         "view_submission" (keyword (-> payload :view :callback_id) "submit")
-                                                         "view_closed" (keyword (-> payload :view :callback_id) "close")
-                                                         "block_actions" (-> payload :actions first :action_id))
-                                                       (str (:type payload) "/" "UNSET")))))))
+                             ::handler-id (case (:type payload)
+                                            "shortcut" (keyword "shortcut" (:callback_id payload))
+                                            "view_submission" (keyword (-> payload :view :callback_id) "submit")
+                                            "view_closed" (keyword (-> payload :view :callback_id) "close")
+                                            "block_actions" (keyword (-> payload :actions first :action_id))
+                                            (keyword "UNKNOWN_PAYLOAD_TYPE" (:type payload "nil")))))))
           handler (handlers (::handler-id context) missing-handler)]
       (log/debug (::handler-id context) context)
       (binding [slack/*context* context]
-        (if (:response-action? (meta handler))              ;; mark handlers that return a value with :synchronous? metadata
+        (if (:response-action? (meta handler))
           (or (handler context)
               (ring.http/ok))
           (do (try-future (handler context))
