@@ -520,6 +520,14 @@
   
   )
 
+;; Declare JVM-wide uncaught exception handler, so exceptions on the
+;; thread pool are logged as errors instead of merely printed.
+;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
+(Thread/setDefaultUncaughtExceptionHandler
+ (reify Thread$UncaughtExceptionHandler
+   (uncaughtException [_ thread ex]
+     (log/error ex "Uncaught exception on" (.getName thread)))))
+
 (defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
   (log/trace "[slack-api]" params)
   (if challenge
