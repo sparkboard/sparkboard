@@ -120,16 +120,17 @@
             :block-id "sb-project-status1"}
     [:plain-text-input {:multiline true
                         :action-id :user-reply}]]
-   [:context [:md "Your reply will be posted to "
-              (v/channel-link
-                (-> (:broadcast/path @state)
-                    (fire-jvm/read)
-                    :response-channel))]]])
+   [:context [:md "Your reply will be posted to #"
+              (-> (:broadcast/path @state)
+                  (fire-jvm/read)
+                  :response-channel
+                  (->> (slack/channel-info (:slack/bot-token context)))
+                  :name_normalized)]]])
 
 (v/defview team-broadcast-content
   "Administrator broadcast to project channels, soliciting project update responses."
   ;; this is a *message* which is never updated
-  [{:broadcast/keys [message response-channel id]}]
+  [{:as context :broadcast/keys [message response-channel id]}]
   (list
     [:section
      [:md
@@ -158,7 +159,9 @@
                                                        :broadcast/reply-channel (-> payload :channel :id)}))))}}
               "Reply"]]
             [:context
-             [:md "Replies will be sent to " (v/channel-link response-channel)]]))))
+             [:md "Replies will be sent to #" (:name_normalized (slack/channel-info
+                                                                  (:slack/bot-token context)
+                                                                  response-channel))]]))))
 
 (defn send-broadcast! [context {:as opts
                                 :keys [message
