@@ -99,6 +99,7 @@
   "Opens a modal"
   [view context]
   (slack/web-api "views.open"
+                 {:auth/token (:slack/bot-token context)}
                  {:view (view (assoc context :state (atom (initial-state view context))))
                   :trigger_id (trigger context)}))
 
@@ -106,6 +107,7 @@
   "Pushes new modal to the stack"
   [view context]
   (slack/web-api "views.push"
+                 {:auth/token (:slack/bot-token context)}
                  {:trigger_id (trigger context)
                   :view (view (assoc context :state (atom (initial-state view context))))}))
 
@@ -114,6 +116,7 @@
   [view context]
   (let [{:keys [hash id]} (-> context :slack/payload :view)]
     (slack/web-api "views.update"
+                   {:auth/token (:slack/bot-token context)}
                    {:view (view (assoc context :state (atom (initial-state view context))))
                     :hash hash
                     :view_id id
@@ -124,12 +127,14 @@
   [view context user-id]
   {:pre [user-id]}
   (slack/web-api "views.publish"
+                 {:auth/token (:slack/bot-token context)}
                  {:view (view (assoc context :state (atom (initial-state view context))))
                   :user_id user-id}))
 
 (defn handle-home-opened!
   [view context]
   (slack/web-api "views.publish"
+                 {:auth/token (:slack/bot-token context)}
                  {:view (view (assoc context :state (atom (or (-> context :slack/payload :view :private_metadata)
                                                               (initial-state view context)))))
                   :user_id (:slack/user-id context)}))
