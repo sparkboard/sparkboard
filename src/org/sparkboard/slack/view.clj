@@ -80,24 +80,12 @@
                     (assoc m (keyword (name k)) (action-value action))) {})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; WIP - api for making views with local state
+;; API for making views with local state
 
-(defonce registry (atom {}))
-(comment
-  (reset! registry nil))
-;; the following is WIP
-;; issues TBD:
-;; - can be extended to support `home` screens as well as modals
-;; - a way expose action-ids for opening modals / updating home screen
-;; - unsure about using an atom for this api - may change action-fns to
-;;   be pure functions of [state, value, context] => new state
-
-(defn view-api
-  [method hiccup opts]
-  (slack/web-api method
-                 (->> {:view hiccup}
-                      (merge opts)
-                      #_(reduce-kv (fn [m k v] (cond-> m (some? v) (assoc k v))) {}))))
+(defonce registry
+         ;; views generated with `defview` register callback functions here. these are necessarily global -
+         ;; they must be triggered by HTTP requests sent from Slack.
+         (atom {}))
 
 (defn trigger [context]
   {:post [(some? %)]}
@@ -110,41 +98,41 @@
 (defn open!
   "Opens a modal"
   [view context]
-  (view-api "views.open"
-            (view (assoc context :state (atom (initial-state view context))))
-            {:trigger_id (trigger context)}))
+  (slack/web-api "views.open"
+                 {:view (view (assoc context :state (atom (initial-state view context))))
+                  :trigger_id (trigger context)}))
 
 (defn push!
   "Pushes new modal to the stack"
   [view context]
-  (view-api "views.push"
-            (view (assoc context :state (atom (initial-state view context))))
-            {:trigger_id (trigger context)}))
+  (slack/web-api "views.push"
+                 {:trigger_id (trigger context)
+                  :view (view (assoc context :state (atom (initial-state view context))))}))
 
 (defn replace!
   "Replaces modal at top of stack"
   [view context]
   (let [{:keys [hash id]} (-> context :slack/payload :view)]
-    (view-api "views.update"
-              (view (assoc context :state (atom (initial-state view context))))
-              {:hash hash
-               :view_id id
-               :trigger_id (trigger context)})))
+    (slack/web-api "views.update"
+                   {:view (view (assoc context :state (atom (initial-state view context))))
+                    :hash hash
+                    :view_id id
+                    :trigger_id (trigger context)})))
 
 (defn home!
   "Set home tab for user-id"
   [view context user-id]
   {:pre [user-id]}
-  (view-api "views.publish"
-            (view (assoc context :state (atom (initial-state view context))))
-            {:user_id user-id}))
+  (slack/web-api "views.publish"
+                 {:view (view (assoc context :state (atom (initial-state view context))))
+                  :user_id user-id}))
 
 (defn handle-home-opened!
   [view context]
-  (view-api "views.publish"
-            (view (assoc context :state (atom (or (-> context :slack/payload :view :private_metadata)
-                                                  (initial-state view context)))))
-            {:user_id (:slack/user-id context)}))
+  (slack/web-api "views.publish"
+                 {:view (view (assoc context :state (atom (or (-> context :slack/payload :view :private_metadata)
+                                                              (initial-state view context)))))
+                  :user_id (:slack/user-id context)}))
 
 (def ^:dynamic *namespace*
   "Current view namespace, a string, used to resolve local IDs and create global IDs"
@@ -167,11 +155,11 @@
                          :view view)))]
     (log/trace action-id value {:prev-state prev-state :next-state @state-atom})
     (when (and @state-atom (not= prev-state @state-atom))
-      (view-api "views.update"
-                (view (assoc context :state state-atom))
-                {:hash hash
-                 :view_id id
-                 :trigger_id (trigger context)}))))
+      (slack/web-api "views.update"
+                     {:view (view (assoc context :state state-atom))
+                      :hash hash
+                      :view_id id
+                      :trigger_id (trigger context)}))))
 
 (defn return-json [status body]
   {:status status
@@ -240,7 +228,17 @@
     (vary-meta view assoc :handlers handlers)))
 
 (defmacro defview
-  "Defines a modal or home surface"
+  "Defines a modal or home surface. Behaves mostly like `defn`, returns a function which accepts 1 argument (context)
+   and should return hiccup for the view. The function's metadata will contain the handlers registered for the view.
+    Additional processing occurs:
+    - a :state atom is included in the context, which can be swap!'d within action-callbacks to trigger a re-render
+    - :action-id keys are processed to
+      (a) support inline callback functions, which are passed the context including :state and :value
+      (b) expand simple keywords into namespaced action_ids based on the parent view's name
+    - handler functions for all action-functions are added to the registry
+    - :on-submit callback will be triggered when modal is submitted and its context arg will include :input-values
+    - a modal's callback_id will be set based on the name passed to `defview`
+  See `docs/slack-views` for more details."
   [name-sym & args]
   (let [[doc args] (if (string? (first args))
                      [(first args) (rest args)]
@@ -276,5 +274,11 @@
          (swap! registry merge (:handlers (meta ~name-sym)))
          #'~name-sym)))
 
-(defn register-handlers! [m]
+(defn register-handlers!
+  "Add handlers to the view registry. Useful mainly for global events, which come in the form:
+  events api -          :event/EVENT_NAME
+  registered shortcut - :shortcut/CALLBACK_ID
+
+  We also keep block_action callbacks in the registry using just the callback_id (keywordized)"
+  [m]
   (swap! registry merge m))
