@@ -9,7 +9,8 @@
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as v]
             [org.sparkboard.util.future :refer [try-future]]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [org.sparkboard.transit :as transit]))
 
 (def team-messages
   {:welcome
@@ -99,13 +100,13 @@
              (let [{:keys [channel message]}
                    (slack/web-api "chat.postMessage"
                                   (let [{:keys [from-channel-id]} (fire-jvm/read (:broadcast/reply-path @state))
-                                                 broadcast (fire-jvm/read (:broadcast/path @state))]
-                                             {:blocks (team-broadcast-response
-                                                        (:sparkboard/board-id context)
-                                                        (:slack/user-id context)
-                                                        from-channel-id
-                                                        (:user-reply input-values))
-                                              :channel (-> broadcast :response-channel)
+                                        broadcast (fire-jvm/read (:broadcast/path @state))]
+                                    {:blocks (team-broadcast-response
+                                               (:sparkboard/board-id context)
+                                               (:slack/user-id context)
+                                               from-channel-id
+                                               (:user-reply input-values))
+                                     :channel (-> broadcast :response-channel)
                                      :thread_ts (-> broadcast :response-thread)}))
                    {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel channel
                                                                            :message_ts (:ts message)})]
@@ -136,12 +137,14 @@
       (v/blockquote message)]]
     (when response-channel
       (list [:actions
-             {:block-id id}                                 ;; store hidden state in a message...
+             ;; when passing data through a block-id, encode as transit-map to allow for extension
+             ;; and make expectation clear
+             {:block-id (transit/write {:broadcast/firebase-key id})}
              [:button {:style "primary"
                        :action-id
                        {"user:team-broadcast-response"
                         (fn [{:as context :keys [slack/payload]}]
-                          (let [broadcast-id (:block-id context) ;; ...read the hidden state
+                          (let [broadcast-id (:broadcast/firebase-key (transit/read (:block-id context))) ;; ...read the hidden state
                                 broadcast-ref (fire-jvm/->ref (str "/slack-broadcast/" broadcast-id))
                                 original-message (fire-jvm/read (.child broadcast-ref "message"))
                                 reply-ref (-> broadcast-ref (.child "replies") (.push))]
