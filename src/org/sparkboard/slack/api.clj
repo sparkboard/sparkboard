@@ -87,17 +87,21 @@
 
 (def channel-info
   (memoize
-    (fn [token channel-id]
-      (-> (web-api "conversations.info" {:auth/token token} {:channel channel-id})
-          :channel))))
+    (fn channel-info
+      ([channel-id] (channel-info (:slack/bot-token *context*) channel-id))
+      ([token channel-id]
+       (-> (web-api "conversations.info" {:auth/token token} {:channel channel-id})
+           :channel)))))
 
 (def team-info
   (memoize
-    (fn [token team-id]
-      (-> (web-api "team.info" {:auth/token token} {:team team-id})
-          :team))))
+    (fn team-info
+      ([team-id] (team-info (:slack/bot-token *context*) team-id))
+      ([token team-id]
+       (-> (web-api "team.info" {:auth/token token} {:team team-id})
+           :team)))))
 
-(defn user-info [token user-id]  
+(defn user-info [token user-id]
   (:user (web-api "users.info" {:auth/token token} {:user user-id})))
 
 (defn message-user! [context blocks]
@@ -117,7 +121,7 @@
 
   ;; bot token only for local dev experiments
   (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)} {:a "b"})
-  
+
   (time (-> (client/get (str base-uri "conversations.info")
                         {:query-params {:token (-> env/config :slack :bot-user-oauth-token)
                                         :channel "C014Y501S2G"}})

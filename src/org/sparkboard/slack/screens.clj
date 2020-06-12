@@ -40,7 +40,7 @@
   [:modal {:title "Set Invite Link"
            :submit "Save"
            :on-submit (fn [{:as context :keys [input-values]}]
-                        (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link/")
+                        (fire-jvm/set-value (str "/slack-team/" (:slack/team-id context) "/invite-link")
                                             (:invite-link input-values))
                         (v/home! home
                                  ;; update team-context to propagate invite-link change
@@ -75,102 +75,114 @@
                           :multiline true
                           :action-id k}]])])
 
-(defn team-broadcast-response [board-id from-user-id from-channel-id msg]
+(defn project-url [board-id channel-id]
   (let [domain (some-> board-id slack-db/board-domain)
-        project-id (some-> (slack-db/linked-channel from-channel-id) :project-id)
-        project-url (when (and domain project-id)
-                      (str (urls/sparkboard-host domain) "/project/" project-id))]
-    [[:divider]
-     [:section
-      {:accessory (when project-url [:button {:url project-url} "Project Page"])}
-      [:md
-       "from " (v/mention from-user-id) " in " (v/channel-link from-channel-id) ":\n"
-       (v/blockquote msg)]]]))
+        project-id (some-> (slack-db/linked-channel channel-id) :project-id)]
+    (when (and domain project-id)
+      (str (urls/sparkboard-host domain) "/project/" project-id))))
 
-(declare team-broadcast-content)
+(declare team-broadcast)
 
-(v/defview team-broadcast-response-compose
+(defn reply-to-broadcast! [{:as context
+                            :keys [state
+                                   input-values
+                                   slack/user-id
+                                   sparkboard/board-id]}]
+  (let [{:broadcast/keys [firebase-key
+                          response-channel
+                          response-thread
+                          message
+                          reply-channel
+                          reply-ts]} @state
+        {:keys [user-reply]} input-values
+        {{response-thread :ts} :message :as res}
+        (slack/web-api "chat.postMessage"
+          {:blocks [[:divider]
+                    [:section
+                     {:accessory (when-let [url (project-url board-id reply-channel)]
+                                   [:button {:url url} "Project Page"])}
+                     [:md (str "from " (v/mention user-id) " in " (v/channel-link reply-channel) ":\n"
+                               (v/blockquote user-reply))]]]
+           :text user-reply
+           :channel response-channel
+           :thread_ts response-thread})
+        {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel response-channel
+                                                                :message_ts response-thread})]
+    (try-future
+      ;; write reply to DB
+      (-> (str "/slack-broadcast/" firebase-key "/replies")
+          fire-jvm/->ref
+          (.push)
+          (fire-jvm/set-value {:message user-reply
+                               :channel-id reply-channel
+                               :user-id user-id})))
+    (slack/web-api "chat.update"
+      {:channel reply-channel
+       :ts reply-ts
+       :blocks (team-broadcast
+                 (merge context
+                        #:broadcast{:message message
+                                    :response-channel response-channel
+                                    :id firebase-key
+                                    :reply/permalink permalink}))})))
+
+(v/defview team-broadcast-reply-modal
   "User response to broadcast - text field for project status update"
   [{:as context :keys [state]}]
   ;; response => destination-thread where team-responses are collected
   ;; reply    => team-thread where the message with "Reply" button shows up
-  [:modal {:title "Project Update"
-           :submit "Send"
-           :on-submit
-           (fn [{:as context :keys [input-values state]}]
-             (log/trace :broadcast-response-values input-values)
-             (let [broadcast (fire-jvm/read (:broadcast/path @state))
-                   {:keys [channel message]}
-                   (slack/web-api "chat.postMessage"
-                                  (let [{:keys [from-channel-id]} (fire-jvm/read (:broadcast/reply-path @state))]
-                                    {:blocks (team-broadcast-response
-                                               (:sparkboard/board-id context)
-                                               (:slack/user-id context)
-                                               from-channel-id
-                                               (:user-reply input-values))
-                                     :channel (-> broadcast :response-channel)
-                                     :thread_ts (-> broadcast :response-thread)}))
-                   {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel channel
-                                                                           :message_ts (:ts message)})]
-               (slack/web-api "chat.update"
-                              {:channel (:broadcast/reply-channel @state)
-                               :ts (:broadcast/reply-ts @state)
-                               :blocks (let [{:keys [original-message]} @state]
-                                         (team-broadcast-content
-                                           {:broadcast/message original-message
-                                            :broadcast/response-channel (:response-channel broadcast)
-                                            :broadcast/id (-> @state :broadcast/path fire-jvm/->ref (.getKey))
-                                            :broadcast.reply/permalink permalink}))})))}
-   [:input {:type "input"
-            :label (:original-message @state)
-            :block-id "sb-project-status1"}
-    [:plain-text-input {:multiline true
-                        :action-id :user-reply}]]
-   [:context [:md "Your reply will be posted to #"
-              (-> (:broadcast/path @state)
-                  (fire-jvm/read)
-                  :response-channel
-                  (->> (slack/channel-info (:slack/bot-token context)))
-                  :name_normalized)]]])
+  (let [{:broadcast/keys [message
+                          response-channel]} @state]
+    [:modal {:title "Project Update"
+             :submit "Send"
+             :on-submit reply-to-broadcast!}
+     [:input {:type "input"
+              :label message
+              :block-id "sb-project-status1"}
+      [:plain-text-input {:multiline true
+                          :action-id :user-reply}]]
+     [:context [:md "Your reply will be posted to #"
+                (:name_normalized
+                  (slack/channel-info response-channel))]]]))
 
-(v/defview team-broadcast-content
-  "Administrator broadcast to project channels, soliciting project update responses."
-  ;; this is a *message* which is never updated
-  [context]
+(defn open-broadcast-reply-modal! [{:as context :keys [block-id]}]
+  (let [{:broadcast/keys [firebase-key]} (transit/read block-id)
+        {:keys [message
+                response-channel
+                response-thread]} (fire-jvm/read (str "/slack-broadcast/" firebase-key))]
+    (v/open! team-broadcast-reply-modal
+             (assoc context
+               :initial-state
+               #:broadcast{:message message
+                           :response-channel response-channel
+                           :response-thread response-thread
+                           :firebase-key firebase-key
+                           :reply-ts (-> context :slack/payload :message :ts)
+                           :reply-channel (-> context :slack/payload :channel :id)}))))
+
+(v/defview team-broadcast
+  "Message posted to all team channels"
+  [{:as context
+    :broadcast/keys [message
+                     response-channel
+                     id]
+    :reply/keys [permalink]}]
   (list
-    [:section
-     [:md
-      #_(when sender-name (str "from *" sender-name "*:\n"))
-      (v/blockquote (:broadcast/message context))]]
-    (when (:broadcast/response-channel context)
-      (list [:actions
-             ;; when passing data through a block-id, encode as transit-map to allow for extension
-             ;; and make expectation clear
-             {:block-id (transit/write {:broadcast/firebase-key (:broadcast/id context)})}
-             [:button {:style "primary"
-                       :action-id
-                       {"user:team-broadcast-response"
-                        (fn [{:as context :keys [slack/payload]}]
-                          (let [broadcast-id (:broadcast/firebase-key (transit/read (:block-id context))) ;; ...read the hidden state
-                                broadcast-ref (fire-jvm/->ref (str "/slack-broadcast/" broadcast-id))
-                                original-message (fire-jvm/read (.child broadcast-ref "message"))
-                                reply-ref (-> broadcast-ref (.child "replies") (.push))]
-                            (fire-jvm/set-value reply-ref {:from-channel-id (-> payload :channel :id)})
-                            (v/open! team-broadcast-response-compose
-                                     (assoc context
-                                       :initial-state {:original-message original-message
-                                                       :broadcast/path (fire-jvm/ref-path broadcast-ref)
-                                                       :broadcast/reply-path (fire-jvm/ref-path reply-ref)
-                                                       :broadcast/reply-ts (-> payload :message :ts)
-                                                       :broadcast/reply-channel (-> payload :channel :id)}))))}}
-              "Reply"]]
-            (if-let [permalink (:broadcast.reply/permalink context)]
-              [[:section
-                [:md "✅ Thanks for your response! " (v/link "See what you wrote." permalink)]]]
-              [:context
-               [:md "Replies will be sent to #" (:name_normalized (slack/channel-info
-                                                                    (:slack/bot-token context)
-                                                                    (:broadcast/response-channel context)))]])))))
+    [:section [:md (v/blockquote message)]]
+    (when response-channel
+      (list
+        [:actions
+         ;; when passing data through a block-id, encode as transit-map to allow for extension
+         ;; and make expectation clear
+         {:block-id (transit/write {:broadcast/firebase-key id})} ;; block-id is passed to action, below
+         [:button {:style "primary"
+                   :action-id {"user:team-broadcast-response" open-broadcast-reply-modal!}}
+          "Reply"]]
+        (if permalink
+          [[:section [:md "✅ Thanks for your response! "
+                      (v/link "See what you wrote." permalink)]]]
+          [:context
+           [:md "Replies will be sent to #" (:name_normalized (slack/channel-info response-channel))]])))))
 
 (defn send-broadcast! [context {:as opts
                                 :keys [message
@@ -178,31 +190,34 @@
                                        collect-in-thread]}]
   (let [broadcast-ref (.push (fire-jvm/->ref "/slack-broadcast"))
         sender-name (-> context :slack/payload :user :name)
+        message-text (str "*" sender-name "*"
+                          " sent a message to all teams:\n"
+                          (v/blockquote message))
         {thread :ts} (when response-channel
                        (slack/web-api "chat.postMessage"
-                                      {:channel response-channel
-                                       :blocks [[:section
-                                                 [:md
-                                                  "*" sender-name "*"
-                                                  " sent a message to all teams:\n"
-                                                  (v/blockquote message)]]]}))
+                         {:channel response-channel
+                          :text message-text
+                          :blocks [[:section [:md message-text]]]}))
         content (if response-channel
-                  {:blocks (team-broadcast-content (merge context
-                                                          #:broadcast{:id (.getKey broadcast-ref)
-                                                                      :message message
-                                                                      :response-channel response-channel}))}
+                  {:text (:message opts)
+                   :blocks (team-broadcast (merge context
+                                                  #:broadcast{:id (.getKey broadcast-ref)
+                                                              :message message
+                                                              :response-channel response-channel}))}
                   {:text (v/blockquote (:message opts))})]
     (fire-jvm/set-value broadcast-ref
-                        {:message message
+                        {:team-id (:slack/team-id context)
+                         :user-id (:slack/user-id context)
+                         :message message
                          :response-channel response-channel
                          :response-thread (when collect-in-thread thread)})
     (mapv #(slack/web-api "chat.postMessage"
-                          {:auth/token (:slack/bot-token context)}
-                          (merge
-                            content
-                            {:channel (:channel-id %)
-                             :unfurl_media true
-                             :unfurl_links true}))
+             {:auth/token (:slack/bot-token context)}
+             (merge
+               content
+               {:channel (:channel-id %)
+                :unfurl_media true
+                :unfurl_links true}))
           (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 (v/defview team-broadcast-compose
@@ -212,8 +227,8 @@
                                (slack-db/team->all-linked-channels (:slack/team-id context)))
         destination-channel-options
         (->> (slack/web-api "conversations.list"
-                            {:exclude_archived true
-                             :types "public_channel,private_channel"})
+               {:exclude_archived true
+                :types "public_channel,private_channel"})
              :channels
              (into [] (comp (filter :is_member)
                             (remove (comp project-channels :id))
