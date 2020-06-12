@@ -5,15 +5,9 @@
             [org.sparkboard.server.env :as env]
             [org.sparkboard.js-convert :refer [clj->json ->clj]]
             #?(:clj  [org.sparkboard.firebase.jvm :as fire-jvm]
-               :cljs [org.sparkboard.http :as http]))
+               :cljs [org.sparkboard.http :as http])
+            [org.sparkboard.util :as u])
   #?(:clj (:import (com.google.firebase.database DatabaseReference))))
-
-#?(:cljs
-   (defn update-some [m updaters]
-     (reduce-kv (fn [m k update-fn]
-                  (if (contains? m k)
-                    (update m k update-fn)
-                    m)) m updaters)))
 
 #?(:cljs
    (def database-url (-> env/config :firebase/app-config :databaseURL (str/replace #"/$" ""))))
@@ -26,10 +20,10 @@
                           (assoc :method method)
                           (update :query #(-> (if (map? %) % (apply hash-map %))
                                               (assoc :auth (:firebase/database-secret env/config))
-                                              (update-some {:orderBy clj->json
-                                                            :startAt clj->json
-                                                            :endAt clj->json
-                                                            :equalTo clj->json}))))))))
+                                              (u/update-some {:orderBy clj->json
+                                                              :startAt clj->json
+                                                              :endAt clj->json
+                                                              :equalTo clj->json}))))))))
 
 #?(:clj
    (defn- apply-query [ref query]

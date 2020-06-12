@@ -4,7 +4,9 @@
             [clojure.pprint :as pp]
             [org.sparkboard.promise :as p]
             [org.sparkboard.firebase.admin-db-api :as fire]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [org.sparkboard.slack.api :as slack]
+            [org.sparkboard.server.env :as env]))
 
 (defn join [segments]
   (->> segments (map name) (str/join "/")))
@@ -122,6 +124,38 @@
 
 (defn board-domain [board-id]
   (fire/read (str "/settings/" board-id "/domain")))
+
+(defn team-context [team-id]
+  {:pre [team-id]}
+  ;; context we derive from team-id
+  (let [app-id (-> env/config :slack :app-id)
+        team (linked-team team-id)
+        {:keys [bot-token bot-user-id]} (get-in team [:app (keyword app-id)])]
+    {:slack/team-id team-id
+     :slack/team team
+     :slack/team-domain (:domain (slack/team-info bot-token team-id))
+     :slack/bot-token bot-token
+     :slack/bot-user-id bot-user-id
+     :slack/invite-link (:invite-link team)
+     :sparkboard/board-id (:board-id team)}))
+
+(defn user-context [user-id]
+  ;; context we derive from user-id
+  (let [user (linked-user user-id)]
+    {:sparkboard/account-id (:account-id user)
+     :slack/user-id user-id}))
+
+(defn slack-context
+  "Returns context-map expected by functions handling Slack events"
+  [team-id user-id]
+  {:pre [team-id user-id (string? user-id)]}
+  (let [context (merge (team-context team-id)
+                       (user-context user-id)
+                       {:slack/app-id (-> env/config :slack :app-id)
+                        :sparkboard/jvm-root (-> env/config :sparkboard/jvm-root)
+                        :env (:env env/config "dev")})]
+    (log/debug "[slack-context]:" context)
+    context))
 
 (comment
 

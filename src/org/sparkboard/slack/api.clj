@@ -1,18 +1,19 @@
-(ns org.sparkboard.server.slack.core
+(ns org.sparkboard.slack.api
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
             [lambdaisland.uri]
             [org.sparkboard.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.server.slack.hiccup :as hiccup]
-            [taoensso.timbre :as log])
+            [org.sparkboard.slack.hiccup :as hiccup]
+            [taoensso.timbre :as log]
+            [org.sparkboard.util :as u])
   (:import [java.net.http HttpClient HttpRequest
                           HttpClient$Version
                           HttpRequest$BodyPublishers
                           HttpResponse$BodyHandlers]
            [java.net URI]))
 
-(def ^:dynamic *request* {})
+(def ^:dynamic *context* {})
 
 (def base-uri "https://slack.com/api/")
 
@@ -28,7 +29,7 @@
 (defn web-api-get
   ;; do we want a 2-arity without `query-map`?
   [family-method config query-map]
-  (log/debug "[web-api-get] query-map:" query-map)
+  (log/debug "[web-api-get] query-map:" family-method query-map)
   (let [request (-> (HttpRequest/newBuilder)
                     (.uri (URI/create (str base-uri family-method
                                            (when query-map
@@ -79,9 +80,10 @@
   ;; We use java HTTP client because `clj-http` fails to properly pass
   ;; JSON bodies - it does some unwanted magic internally.
   ([family-method params]
-   (web-api family-method {:auth/token (:slack/bot-token *request*)} params))
+   (web-api family-method {:auth/token (:slack/bot-token *context*)} params))
   ([family-method config params]
-   ((http-verb family-method) family-method config params)))
+   ((http-verb family-method) family-method config (u/update-some params {:blocks hiccup/blocks-json
+                                                                          :view hiccup/blocks-json}))))
 
 (def channel-info
   (memoize
@@ -98,26 +100,11 @@
 (defn user-info [token user-id]  
   (:user (web-api "users.info" {:auth/token token} {:user user-id})))
 
-;;;;;;;;;;;;;;;;;;;;;
-;; views endpoints, wrwapped to include hash + trigger_id from context
-
-(defn- views
-  ([options blocks]
-   (web-api (str "views." (:action options))
-            (merge {:view (hiccup/->blocks-json blocks)}
-                   (some->> (:slack/trigger-id *request*)
-                            (hash-map :trigger_id))
-                   (when (:view_id options)
-                     {:view_id (:view_id options)
-                      :hash (:slack/view-hash *request*)})))))
-
-(defn views-open [blocks]
-  (views {:action "open"} blocks))
-(defn views-push [blocks]
-  (views {:action "push"} blocks))
-(defn views-update [view-id blocks]
-  (views {:action "update"
-          :view_id view-id} blocks))
+(defn message-user! [context blocks]
+  (web-api "chat.postMessage"
+           {:auth/token (:slack/bot-token context)}
+           {:channel (:slack/user-id context)
+            :blocks (hiccup/blocks-json blocks)}))
 
 (comment
   (http-verb "users.list")
