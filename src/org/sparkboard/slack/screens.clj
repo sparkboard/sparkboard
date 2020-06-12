@@ -130,17 +130,17 @@
 (v/defview team-broadcast-content
   "Administrator broadcast to project channels, soliciting project update responses."
   ;; this is a *message* which is never updated
-  [{:as context :broadcast/keys [message response-channel id]}]
+  [context]
   (list
     [:section
      [:md
       #_(when sender-name (str "from *" sender-name "*:\n"))
-      (v/blockquote message)]]
-    (when response-channel
+      (v/blockquote (:broadcast/message context))]]
+    (when (:broadcast/response-channel context)
       (list [:actions
              ;; when passing data through a block-id, encode as transit-map to allow for extension
              ;; and make expectation clear
-             {:block-id (transit/write {:broadcast/firebase-key id})}
+             {:block-id (transit/write {:broadcast/firebase-key (:broadcast/id context)})}
              [:button {:style "primary"
                        :action-id
                        {"user:team-broadcast-response"
@@ -161,7 +161,7 @@
             [:context
              [:md "Replies will be sent to #" (:name_normalized (slack/channel-info
                                                                   (:slack/bot-token context)
-                                                                  response-channel))]]))))
+                                                                  (:broadcast/response-channel context)))]]))))
 
 (defn send-broadcast! [context {:as opts
                                 :keys [message
