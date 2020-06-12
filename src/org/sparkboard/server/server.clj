@@ -336,7 +336,7 @@
     (log/trace "[slack-req]" req)
     (log/trace "[slack-context]" handler-id context)
     (if challenge
-      (ring.http/ok)
+      (ring.http/ok challenge)
       (let [context (merge context (slack-db/slack-context team-id user-id))
             handler (@v/registry handler-id missing-handler)
             exec #(binding [slack/*context* context] (handler context))]
