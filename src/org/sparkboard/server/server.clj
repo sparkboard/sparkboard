@@ -292,6 +292,32 @@
             (ring.http/unauthorized))))
       (f req))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Async processing (mostly parallel Slack HTTP responses)
+
+(defn goetz
+  "Number of threads to have in a thread pool, per Brian Goetz's 'Java Concurrency in Practice' formula'.
+  `wait-time`    = approximate total time (ms) waiting (e.g. on Firebase or Slack requests)
+  `service-time` = approximate time (ms) processing requests"
+  [wait-time service-time]
+  (int (* (.availableProcessors (Runtime/getRuntime))
+          (+ 1 (/ wait-time service-time)))))
+
+(defonce pool
+         (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
+
+(comment
+  (.submit ^java.util.concurrent.ExecutorService pool
+           ^Callable #(log/info (inc 5))))
+
+;; Declare JVM-wide uncaught exception handler, so exceptions on the
+;; thread pool are logged as errors instead of merely printed.
+;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
+(Thread/setDefaultUncaughtExceptionHandler
+  (reify Thread$UncaughtExceptionHandler
+    (uncaughtException [_ thread ex]
+      (log/error (str "Uncaught exception on" (.getName thread)) ex))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (v/register-handlers! {:shortcut/main-menu (partial v/open! screens/shortcut-modal)
@@ -344,32 +370,6 @@
           (or (exec) (ring.http/ok))
           (do (.execute ^java.util.concurrent.ExecutorService pool ^Callable exec)
               (ring.http/ok)))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Async processing (mostly parallel Slack HTTP responses)
-
-(defn goetz
-  "Number of threads to have in a thread pool, per Brian Goetz's 'Java Concurrency in Practice' formula'.
-  `wait-time`    = approximate total time (ms) waiting (e.g. on Firebase or Slack requests)
-  `service-time` = approximate time (ms) processing requests"
-  [wait-time service-time]
-  (int (* (.availableProcessors (Runtime/getRuntime))
-          (+ 1 (/ wait-time service-time)))))
-
-(defonce pool
-         (java.util.concurrent.Executors/newFixedThreadPool (goetz 500 10)))
-
-(comment
-  (.submit ^java.util.concurrent.ExecutorService pool
-           ^Callable #(log/info (inc 5))))
-
-;; Declare JVM-wide uncaught exception handler, so exceptions on the
-;; thread pool are logged as errors instead of merely printed.
-;; from https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
-(Thread/setDefaultUncaughtExceptionHandler
-  (reify Thread$UncaughtExceptionHandler
-    (uncaughtException [_ thread ex]
-      (log/error (str "Uncaught exception on" (.getName thread)) ex))))
 
 (def routes
   ["/" (merge {"slack-api" handle-slack-req
