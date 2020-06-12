@@ -87,6 +87,8 @@
        "from " (v/mention from-user-id) " in " (v/channel-link from-channel-id) ":\n"
        (v/blockquote msg)]]]))
 
+(declare team-broadcast-content)
+
 (v/defview team-broadcast-response-compose
   "User response to broadcast - text field for project status update"
   [{:as context :keys [state]}]
@@ -97,10 +99,10 @@
            :on-submit
            (fn [{:as context :keys [input-values state]}]
              (log/trace :broadcast-response-values input-values)
-             (let [{:keys [channel message]}
+             (let [broadcast (fire-jvm/read (:broadcast/path @state))
+                   {:keys [channel message]}
                    (slack/web-api "chat.postMessage"
-                                  (let [{:keys [from-channel-id]} (fire-jvm/read (:broadcast/reply-path @state))
-                                        broadcast (fire-jvm/read (:broadcast/path @state))]
+                                  (let [{:keys [from-channel-id]} (fire-jvm/read (:broadcast/reply-path @state))]
                                     {:blocks (team-broadcast-response
                                                (:sparkboard/board-id context)
                                                (:slack/user-id context)
@@ -110,11 +112,15 @@
                                      :thread_ts (-> broadcast :response-thread)}))
                    {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel channel
                                                                            :message_ts (:ts message)})]
-               (slack/web-api "chat.postMessage"
+               (slack/web-api "chat.update"
                               {:channel (:broadcast/reply-channel @state)
                                :ts (:broadcast/reply-ts @state)
-                               :blocks [[:section
-                                         [:md "Thanks for your response! " (v/link "See what you wrote." permalink)]]]})))}
+                               :blocks (let [{:keys [original-message]} @state]
+                                         (team-broadcast-content
+                                           {:broadcast/message original-message
+                                            :broadcast/response-channel (:response-channel broadcast)
+                                            :broadcast/id (-> @state :broadcast/path fire-jvm/->ref (.getKey))
+                                            :broadcast.reply/permalink permalink}))})))}
    [:input {:type "input"
             :label (:original-message @state)
             :block-id "sb-project-status1"}
@@ -158,10 +164,13 @@
                                                        :broadcast/reply-ts (-> payload :message :ts)
                                                        :broadcast/reply-channel (-> payload :channel :id)}))))}}
               "Reply"]]
-            [:context
-             [:md "Replies will be sent to #" (:name_normalized (slack/channel-info
-                                                                  (:slack/bot-token context)
-                                                                  (:broadcast/response-channel context)))]]))))
+            (if-let [permalink (:broadcast.reply/permalink context)]
+              [[:section
+                [:md "✅ Thanks for your response! " (v/link "See what you wrote." permalink)]]]
+              [:context
+               [:md "Replies will be sent to #" (:name_normalized (slack/channel-info
+                                                                    (:slack/bot-token context)
+                                                                    (:broadcast/response-channel context)))]])))))
 
 (defn send-broadcast! [context {:as opts
                                 :keys [message
