@@ -89,6 +89,8 @@
 (v/defview team-broadcast-response-compose
   "User response to broadcast - text field for project status update"
   [{:as context :keys [state]}]
+  ;; response => destination-thread where team-responses are collected
+  ;; reply    => team-thread where the message with "Reply" button shows up
   [:modal {:title "Project Update"
            :submit "Send"
            :on-submit
@@ -97,13 +99,13 @@
              (let [{:keys [channel message]}
                    (slack/web-api "chat.postMessage"
                                   (let [{:keys [from-channel-id]} (fire-jvm/read (:broadcast/reply-path @state))
-                                        broadcast (fire-jvm/read (:broadcast/path @state))]
-                                    {:blocks (team-broadcast-response
-                                               (:sparkboard/board-id context)
-                                               (:slack/user-id context)
-                                               from-channel-id
-                                               (:user-reply input-values))
-                                     :channel (-> broadcast :response-channel)
+                                                 broadcast (fire-jvm/read (:broadcast/path @state))]
+                                             {:blocks (team-broadcast-response
+                                                        (:sparkboard/board-id context)
+                                                        (:slack/user-id context)
+                                                        from-channel-id
+                                                        (:user-reply input-values))
+                                              :channel (-> broadcast :response-channel)
                                      :thread_ts (-> broadcast :response-thread)}))
                    {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel channel
                                                                            :message_ts (:ts message)})]
@@ -116,7 +118,12 @@
             :label (:original-message @state)
             :block-id "sb-project-status1"}
     [:plain-text-input {:multiline true
-                        :action-id :user-reply}]]])
+                        :action-id :user-reply}]]
+   [:context [:md "Your reply will be posted to "
+              (v/channel-link
+                (-> (:broadcast/path @state)
+                    (fire-jvm/read)
+                    :response-channel))]]])
 
 (v/defview team-broadcast-content
   "Administrator broadcast to project channels, soliciting project update responses."

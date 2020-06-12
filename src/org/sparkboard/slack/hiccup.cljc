@@ -34,7 +34,15 @@
    "actions" {:children :elements}
    "input" {:strings {:label :plain_text
                       :hint :plain_text}
-            :child :element}
+            :child :element
+            :post-process (fn [{:as input :strs [block_id]
+                                {:strs [action_id]} "element"}]
+                            ;; input elements should always set a block_id. if not provided,
+                            ;; generate one based on the input element's action_id.
+                            (cond-> input
+                              (and (nil? block_id)
+                                   action_id)
+                              (assoc "block_id" (str "block_" action_id))))}
    "context" {:children :elements}
    "users_select" {:strings {:placeholder :plain_text}}
    "plain_text_input" {:strings {:placeholder :plain_text}}
@@ -96,10 +104,12 @@
           (set-value (:type m) v)
           (dissoc view-value-key)))))
 
+(declare blocks)
+
 (defn apply-schema [tag props body]
   (let [type-str (type-string tag)
         {:as tag-schema
-         :keys [child children strings update-keys]} (schema type-str)
+         :keys [child children strings update-keys post-process]} (schema type-str)
         children? (seq body)
         error (cond (and children? (not child) (not children))
                     (str "Tag does not support children: " tag ", props: " props)
@@ -107,7 +117,6 @@
                     "Tag supports only a single child")]
     (when error
       (throw (ex-info error {:tag tag :body body})))
-
     (merge (-> (:defaults tag-schema)
                (assoc :type (or (:type tag-schema) type-str))
                (cond-> (and children? child) (assoc child (first body)))
@@ -115,7 +124,9 @@
                (merge props)
                (cond-> strings (wrap-strings strings)
                        update-keys (u/update-some update-keys))
-               (normalize-value)))))
+               (normalize-value)
+               (blocks)
+               (cond-> post-process (post-process))))))
 
 (defn has-props? [form]
   (map? (nth form 1 nil)))
@@ -133,7 +144,7 @@
               props? (has-props? form)
               props (when props? (nth form 1))
               body (drop (if props? 2 1) form)]
-          (blocks (apply-schema tag props body)))
+          (apply-schema tag props body))
         (sequential? form) (reduce (fn [out child]
                                      (let [child (blocks child)]
                                        (cond (nil? child) out
@@ -186,4 +197,7 @@
                    [:plain_text "Select a channel..."],
                    :action_id "broadcast2:channel-select"
                    :filter {:include ["public" "private"]}}]}
-     "*Post responses to channel:*"]))
+     "*Post responses to channel:*"])
+
+  ;; inputs generate a block_id based on their element
+  (blocks [:input {:label "Hi"} [:plain-text-input {:action-id "hi"}]]))

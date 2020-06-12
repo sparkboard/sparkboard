@@ -178,10 +178,6 @@
      (if (:show-state? @state) "hide state" "show state")]]])
 
 (v/defview branching-submit [{:as context :keys [state]}]
-  ;; this is an example of a limitation of Slack's API.
-  ;; "input" fields only expose their values on "submit" events,
-  ;; while "action" callbacks can't update the view without clearing
-  ;; out all existing input field values.
   [:modal
    {:title "Branching submit"
     :submit "Submit"
@@ -190,14 +186,8 @@
                  ;; to replace the current modal or push a new one.
                  [:update [:modal {:title "Result"}
                            [:section [:md (str input-values)]]]])}
-   [:context [:md
-              "This example *can not work* with Slack's current API. "
-              "`Message` is an 'Input' which means its value is only exposed when we submit the modal. "
-              "The `Log to channel...` checkbox triggers an 'action' callback that mutates the view, "
-              "which _clears the value_ of all inputs. There is no workaround for this."]]
    [:input {:label "Message"}
-    [:plain-text-input {:action-id :message
-                        :placeholder "Write something - it will disappear when you check the box"}]]
+    [:plain-text-input {:action-id :message}]]
    [:actions
     [:checkboxes
      {:action-id {:options (fn [{:keys [state value]}]
@@ -206,11 +196,10 @@
       :options [{:value "log-to-channel"
                  :text [:md "Log to channel..."]}]}]]
    (when (contains? (:options @state) "log-to-channel")
-     (list
-       [:input
-        {:label "Select a channel"}
-        [:multi-conversations-select
-         {:action-id :selected-channel}]]))])
+     [:input
+      {:label "Select a channel"}
+      [:multi-conversations-select
+       {:action-id :selected-channel}]])])
 
 (v/defview dev-overflow [_]
   [:overflow
