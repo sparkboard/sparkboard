@@ -275,3 +275,6 @@
                               ~(deref options))))
          (swap! registry merge (:handlers (meta ~name-sym)))
          #'~name-sym)))
+
+(defn register-handlers! [m]
+  (swap! registry merge m))

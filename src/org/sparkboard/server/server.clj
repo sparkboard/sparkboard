@@ -294,19 +294,56 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn slack-api-handlers []
-  (merge
-    @v/registry
-    {:shortcut/main-menu (partial v/open! screens/shortcut-modal)
-     :event/app_home_opened (partial v/handle-home-opened! screens/home)
-     :event/team_join link-account-for-new-user}))
+(v/register-handlers! {:shortcut/main-menu (partial v/open! screens/shortcut-modal)
+                       :event/app_home_opened (partial v/handle-home-opened! screens/home)
+                       :event/team_join link-account-for-new-user})
 
-(defn missing-handler [{::keys [handler-id]}]
+(defn missing-handler [{:keys [:slack/handler-id]}]
   ;; block_action events are sent even for things like buttons with URLs.
   ;; set an action-id of :no-op for these to avoid seeing a warning/error.
   (when (not= "no-op" (namespace handler-id))
     (log/error :unhandled-request handler-id)))
 
+
+(defn parse-slack-params [{:as params :keys [event payload challenge]}]
+  (cond challenge
+        {:slack/challenge challenge}
+        event
+        #:slack{:event event
+                :user-id (if (map? (:user event))           ;; sometimes `user` is an id string, sometimes a map containing the id
+                           (:id (:user event))
+                           (:user event))
+                :team-id (:team_id params)
+                :handler-id (keyword "event" (:type event))}
+
+        payload
+        (let [payload (-> (json->clj payload)
+                          ;; private_metadata is deserialized here, and serialized in `slack.hiccup`
+                          (update-in [:view :private_metadata] #(if (str/blank? %) nil (transit/read %))))]
+          #:slack{:user-id (-> payload :user :id)
+                  :team-id (-> payload :team :id)
+                  :payload payload
+                  :handler-id (case (:type payload)
+                                "shortcut" (keyword "shortcut" (:callback_id payload))
+                                "view_submission" (keyword (-> payload :view :callback_id) "submit")
+                                "view_closed" (keyword (-> payload :view :callback_id) "close")
+                                "block_actions" (keyword (-> payload :actions first :action_id))
+                                (keyword "UNKNOWN_PAYLOAD_TYPE" (:type payload "nil")))})))
+
+(defn handle-slack-req [req]
+  (let [{:as context
+         :slack/keys [challenge team-id user-id handler-id]} (parse-slack-params (:params req))]
+    (log/trace "[slack-req]" req)
+    (log/trace "[slack-context]" handler-id context)
+    (if challenge
+      (ring.http/ok)
+      (let [context (merge context (slack-db/slack-context team-id user-id))
+            handler (@v/registry handler-id missing-handler)
+            exec #(binding [slack/*context* context] (handler context))]
+        (if (:response-action? (meta handler))              ;; add ^:response-action? metadata to handlers that may return a response
+          (or (exec) (ring.http/ok))
+          (do (.execute ^java.util.concurrent.ExecutorService pool ^Callable exec)
+              (ring.http/ok)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Async processing (mostly parallel Slack HTTP responses)
@@ -324,9 +361,7 @@
 
 (comment
   (.submit ^java.util.concurrent.ExecutorService pool
-           ^Callable #(log/info (inc 5)))
-
-  )
+           ^Callable #(log/info (inc 5))))
 
 ;; Declare JVM-wide uncaught exception handler, so exceptions on the
 ;; thread pool are logged as errors instead of merely printed.
@@ -336,47 +371,9 @@
     (uncaughtException [_ thread ex]
       (log/error (str "Uncaught exception on" (.getName thread)) ex))))
 
-(defn handle-slack-api-request [{:as params :keys [event payload challenge]} handlers]
-  (log/trace "[slack-api]" params)
-  (if challenge
-    (ring.http/ok challenge)
-    (let [context
-          (cond event
-                (-> (slack-db/slack-context (:team_id params)
-                                            (if (map? (:user event)) ;; sometimes `user` is an id string, sometimes a map containing the id
-                                              (:id (:user event))
-                                              (:user event)))
-                    (assoc :slack/event event
-                           ::handler-id (keyword "event" (:type event))))
-
-                payload
-                (let [payload (-> (json->clj payload)
-                                  ;; private_metadata is deserialized here, and serialized in `slack.hiccup`
-                                  (update-in [:view :private_metadata] #(if (str/blank? %) nil (transit/read %)))
-                                  (set/rename-keys {:private_metadata :private_metadata}))]
-                  (-> (slack-db/slack-context (-> payload :team :id) (-> payload :user :id))
-                      (assoc :slack/payload payload
-                             ::handler-id (case (:type payload)
-                                            "shortcut" (keyword "shortcut" (:callback_id payload))
-                                            "view_submission" (keyword (-> payload :view :callback_id) "submit")
-                                            "view_closed" (keyword (-> payload :view :callback_id) "close")
-                                            "block_actions" (keyword (-> payload :actions first :action_id))
-                                            (keyword "UNKNOWN_PAYLOAD_TYPE" (:type payload "nil")))))))
-          handler (handlers (::handler-id context) missing-handler)
-          exec #(binding [slack/*context* context] (handler context))]
-      (log/debug (::handler-id context) context)
-      (if (:response-action? (meta handler))
-        ;; eval & return result
-        (or (exec)
-            (ring.http/ok))
-        ;; eval on thread, return ok immediately
-        (do (.execute ^java.util.concurrent.ExecutorService pool ^Callable exec)
-            (ring.http/ok))))))
-
 (def routes
-  ["/" (merge {"slack-api" (fn [{:as req :keys [params]}]
-                             (handle-slack-api-request params (slack-api-handlers)))
-               "slack-api/oauth-redirect" #'slack-oauth/redirect
+  ["/" (merge {"slack-api" handle-slack-req
+               "slack-api/oauth-redirect" slack-oauth/redirect
                "slack/" {"link-account" (wrap-sparkboard-verify (comp link-account! :auth/token-claims)
                                                                 :sparkboard/server-request?)
                          ["project-channel/" :project-id] (-> nav-project-channel

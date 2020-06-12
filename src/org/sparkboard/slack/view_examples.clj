@@ -123,6 +123,7 @@
 
 (v/defview all-field-types
   {:initial-state {:show-state? true
+                   :radio-buttons "r2"
                    :checkboxes #{"value-test-1"}}}
   [{:keys [state]}]
   [:modal {:title "State test"}
@@ -152,7 +153,7 @@
      {:action-id {:radio-buttons
                   (fn [{:keys [state value]}]
                     (swap! state assoc :radio-buttons value))}
-      :set-value (:radio-buttons @state "r2")
+      :set-value (:radio-buttons @state)
       :options [{:value "r1"
                  :text [:plain-text "Radio 1"]}
                 {:value "r2"
@@ -168,7 +169,8 @@
                  :text [:md "Check 2"]}]}]]
 
    (when (:show-state? @state)
-     [:section [:md (with-out-str (pp/pprint @state))]])
+     [:section {:fields (for [[k v] @state]
+                          [:md "*" (name k) "*\n" v])}])
    [:actions
     [:button {:action-id
               {:toggle-state-view
