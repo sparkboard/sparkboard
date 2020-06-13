@@ -108,7 +108,7 @@
   (web-api "chat.postMessage"
            {:auth/token (:slack/bot-token context)}
            {:channel (:slack/user-id context)
-            :blocks (hiccup/blocks-json blocks)}))
+            :blocks blocks}))
 
 (comment
   (http-verb "users.list")
