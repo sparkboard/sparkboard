@@ -211,13 +211,14 @@
                          :message message
                          :response-channel response-channel
                          :response-thread (when collect-in-thread thread)})
-    (mapv #(slack/web-api "chat.postMessage"
-             {:auth/token (:slack/bot-token context)}
-             (merge
-               content
-               {:channel (:channel-id %)
-                :unfurl_media true
-                :unfurl_links true}))
+    (mapv #(try-future
+            (slack/web-api "chat.postMessage"
+                           {:auth/token (:slack/bot-token context)}
+                           (merge
+                            content
+                            {:channel (:channel-id %)
+                             :unfurl_media true
+                             :unfurl_links true})))
           (slack-db/team->all-linked-channels (:slack/team-id context)))))
 
 (v/defview team-broadcast-compose
