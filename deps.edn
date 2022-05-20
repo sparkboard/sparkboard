@@ -1,7 +1,5 @@
 {:paths ["src" "classes" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        org.clojure/spec.alpha {:mvn/version "0.3.218"}
-        org.clojure/core.specs.alpha {:mvn/version "0.2.62"}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         com.cognitect/transit-clj {:mvn/version "1.0.324"}
 
