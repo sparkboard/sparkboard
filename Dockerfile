@@ -4,9 +4,10 @@ WORKDIR /app
 COPY . .
 
 RUN clojure -P
-RUN clojure -A:build
+RUN bin/build
 
-FROM --platform=linux/amd64 openjdk:17-alpine
+# on M1 mac, add --platform=linux/amd64
+FROM openjdk:17-alpine
 
 COPY --from=build /app/target/sparkboard.jar sparkboard.jar
 
