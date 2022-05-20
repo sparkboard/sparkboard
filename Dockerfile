@@ -1,15 +1,17 @@
-# Use https://hub.docker.com/_/oracle-serverjre-8
-FROM temurin-18-tools-deps-1.11.1.1113-alpine
+FROM clojure as build
 
-# Make a directory
-RUN mkdir -p /app
 WORKDIR /app
+COPY . .
 
-# Copy only the target jar over
+RUN clojure -P
 RUN clojure -A:build
+
+FROM --platform=linux/amd64 openjdk:17-alpine
+
+COPY --from=build /app/target/sparkboard.jar sparkboard.jar
 
 # Open the port
 ENV PORT "8080"
 
-# Run the JAR
-CMD java -jar target/sparkboard.jar
+# Run the jar
+CMD java -jar sparkboard.jar

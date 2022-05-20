@@ -1,0 +1,1 @@
+clojure -e "(compile 'org.sparkboard.server.server)"

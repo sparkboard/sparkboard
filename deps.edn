@@ -1,10 +1,12 @@
 {:paths ["src" "classes" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.10.1"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/spec.alpha {:mvn/version "0.3.218"}
+        org.clojure/core.specs.alpha {:mvn/version "0.2.62"}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         com.cognitect/transit-clj {:mvn/version "1.0.324"}
 
         ;; Google Cloud
-        jonotin {:local/root "vendor/jonotin"}
+        jonotin/jonotin {:local/root "vendor/jonotin"}
         com.google.guava/guava {:mvn/version "23.0"}        ;; resolves version conflict
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
 
@@ -13,20 +15,20 @@
         mhuebert/kitchen-async {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         yogsototh/clj-jwt {:mvn/version "0.3.0"}
-        clj-http {:mvn/version "3.10.1"}
+        clj-http/clj-http {:mvn/version "3.10.1"}
         lambdaisland/uri {:mvn/version "1.3.45"}
         commons-codec/commons-codec {:mvn/version "1.14"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}
-        timbre-ns-pattern-level {:mvn/version "0.1.2"}
+        timbre-ns-pattern-level/timbre-ns-pattern-level {:mvn/version "0.1.2"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.19"}
 
         ;; http server
         ring/ring-jetty-adapter {:mvn/version "1.8.1"}
         ring/ring-defaults {:mvn/version "0.3.2"}
-        bidi {:mvn/version "2.1.6"}
-        ring-middleware-format {:mvn/version "0.7.4"}
+        bidi/bidi {:mvn/version "2.1.6"}
+        ring-middleware-format/ring-middleware-format {:mvn/version "0.7.4"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
         metosin/reitit {:mvn/version "0.5.2"}
 
@@ -43,5 +45,5 @@
  :aliases
  {:build
   {:extra-deps
-   {uberdeps {:mvn/version "0.1.8"}}
+   {uberdeps/uberdeps {:mvn/version "0.1.8"}}
    :main-opts ["-m" "uberdeps.uberjar" "--target" "target/sparkboard.jar" "--main-class" "org.sparkboard.server.server"]}}}
