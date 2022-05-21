@@ -4,8 +4,7 @@
                    (def prod "sparkboard-jvm"))
          build (shell "bin/build")
          deploy (shell "fly deploy -a " staging)
-         promote (let [{:as res
-                        :strs [Registry Repository Tag]} (-> (shell {:out :string}
+         promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}
                                                                (str "fly image show -a " staging " --json"))
                                                            :out
                                                            json/parse-string)
