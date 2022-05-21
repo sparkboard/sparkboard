@@ -1,0 +1,12 @@
+{:tasks {:requires ([cheshire.core :as json])
+         :init (do (def staging "sparkboard-jvm-staging")
+                   (def prod "sparkboard-jvm"))
+         build (shell "bin/build")
+         deploy (shell "fly deploy -a " staging)
+         promote (let [{:as res
+                        :strs [Registry Repository Tag]} (-> (shell {:out :string}
+                                                               (str "fly image show -a " staging " --json"))
+                                                           :out
+                                                           json/parse-string)
+                       image (str Registry "/" Repository ":" Tag)]
+                   (shell (str "fly deploy -a " prod " --image " image)))}}

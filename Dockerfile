@@ -3,7 +3,6 @@ FROM clojure as build
 WORKDIR /app
 COPY . .
 
-RUN clojure -P -A:build
 RUN bin/build
 
 # on M1 mac, add --platform=linux/amd64
