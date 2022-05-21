@@ -1,4 +1,5 @@
-{:tasks {:requires ([cheshire.core :as json])
+{:tasks {:requires ([cheshire.core :as json]
+                    [clojure.java.shell :refer [sh]])
          :init (do (def staging "sparkboard-jvm-staging")
                    (def prod "sparkboard-jvm"))
          build (shell "bin/build")
