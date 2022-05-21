@@ -41,9 +41,5 @@
         nrepl/nrepl {:mvn/version "0.7.0"}
         }
  :aliases
- {:build
-  {:extra-deps
-   {uberdeps/uberdeps {:mvn/version "0.1.8"}}
-   :main-opts ["-m" "uberdeps.uberjar"
-               "--target" "target/sparkboard.jar"
-               "--main-class" "org.sparkboard.server.server"]}}}
+ {:uberdeps
+  {:extra-deps {uberdeps/uberdeps {:mvn/version "0.1.8"}}}}}

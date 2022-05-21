@@ -1,3 +1,3 @@
 mkdir -p classes
-clojure -e "(compile 'org.sparkboard.server.server)"
-clojure -M:build
+clojure -M -e "(compile 'org.sparkboard.server.server)"
+clojure -M:uberdeps -m uberdeps.uberjar --target target/sparkboard.jar --main-class org.sparkboard.server.server
