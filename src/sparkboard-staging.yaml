@@ -1,0 +1,33 @@
+display_information:
+  name: Sparkboard-Staging
+features:
+  app_home:
+    home_tab_enabled: true
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: true
+  bot_user:
+    display_name: Sparkboard (staging)
+    always_online: false
+oauth_config:
+  redirect_urls:
+    - https://jvm-staging.sparkboard.com/slack-api
+    - https://mhuebert.ngrok.io/slack-api
+  scopes:
+    bot:
+      - channels:read
+      - groups:read
+      - users:read
+settings:
+  event_subscriptions:
+    request_url: https://jvm-staging.sparkboard.com/slack-api
+    bot_events:
+      - app_home_opened
+      - member_joined_channel
+      - team_join
+  interactivity:
+    is_enabled: true
+    request_url: https://jvm-staging.sparkboard.com/slack-api
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+
