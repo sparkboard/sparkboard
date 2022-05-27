@@ -2,7 +2,8 @@
                     [clojure.java.shell :refer [sh]])
          :init (do (def staging "sparkboard-jvm-staging")
                    (def prod "sparkboard-jvm"))
-         build (shell "bin/build")
+         build (do (shell "yarn shadow-cljs release web")
+                   (shell "bin/build"))
          deploy (shell "fly deploy -a " staging)
          promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}
                                                                (str "fly image show -a " staging " --json"))

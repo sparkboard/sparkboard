@@ -1,0 +1,47 @@
+display_information:
+  name: Sparkboard
+  description: Interdisciplinary hackathon platform
+  background_color: "#eb5600"
+features:
+  app_home:
+    home_tab_enabled: true
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: true
+  bot_user:
+    display_name: sparkboard
+    always_online: false
+  shortcuts:
+    - name: Actions...
+      type: global
+      callback_id: sparkboard
+      description: SparkBoard interactions
+oauth_config:
+  redirect_urls:
+    - https://jvm.sparkboard.com/slack-api
+  scopes:
+    bot:
+      - channels:join
+      - channels:manage
+      - channels:read
+      - chat:write
+      - chat:write.public
+      - commands
+      - groups:read
+      - reminders:write
+      - users:read
+      - team:read
+      - users:read.email
+settings:
+  event_subscriptions:
+    request_url: https://jvm.sparkboard.com/slack-api
+    bot_events:
+      - app_home_opened
+      - member_joined_channel
+      - team_join
+  interactivity:
+    is_enabled: true
+    request_url: https://jvm.sparkboard.com/slack-api
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+

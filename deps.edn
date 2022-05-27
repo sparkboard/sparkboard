@@ -30,11 +30,6 @@
         metosin/ring-http-response {:mvn/version "0.9.1"}
         metosin/reitit {:mvn/version "0.5.2"}
 
-        ;; frontend
-        thheller/shadow-cljs {:mvn/version "2.9.10"}
-        mhuebert/triple {:mvn/version "0.1.0"}
-        mhuebert/cljs-static {:mvn/version "0.1.0"}
-
         ;; schema
         metosin/malli {:mvn/version "0.0.1-SNAPSHOT"}
 

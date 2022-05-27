@@ -12,6 +12,6 @@
     },
     "devDependencies": {
         "heroku": "^7.41.1",
-        "shadow-cljs": "^2.8.96"
+        "shadow-cljs": "^2.9.10"
     }
 }
