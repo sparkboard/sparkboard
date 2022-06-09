@@ -9,8 +9,8 @@
          deploy (shell (str "flyctl deploy -a " staging))
          deploy:ci (shell (str "flyctl deploy -a " staging " --remote-only"))
          promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}
-                                                               (str "fly image show -a " staging " --json"))
+                                                               (str "flyctl image show -a " staging " --json"))
                                                            :out
                                                            json/parse-string)
                        image (str Registry "/" Repository ":" Tag)]
-                   (shell (str "fly deploy -a " prod " --image " image)))}}
+                   (shell (str "flyctl deploy -a " prod " --image " image)))}}
