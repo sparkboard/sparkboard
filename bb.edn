@@ -3,7 +3,9 @@
          :init (do (def staging "sparkboard-jvm-staging")
                    (def prod "sparkboard-jvm"))
          build (do (shell "yarn shadow-cljs release web")
-                   (shell "bin/build"))
+                   (shell "mkdir -p classes")
+                   (shell "clojure -A:uberdeps -X:aot")
+                   (shell "clojure -A:uberdeps -X:uberjar"))
          deploy (shell (str "fly deploy -a " staging))
          deploy:ci (shell (str "fly deploy -a " staging " --remote-only"))
          promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}

@@ -41,7 +41,7 @@ jobs:
           bb: 0.8.156
 
       - name: Prepare clojure deps
-        run: clojure -A:build -P
+        run: clojure -A:uberdeps -P
 
       - name: Install yarn deps
         run: yarn

@@ -1,6 +1,5 @@
 {:source-paths ["src"]
- :dependencies [[thheller/shadow-cljs "2.19.0"]
-                [mhuebert/triple "0.1.0"]
+ :dependencies [[mhuebert/triple "0.1.0"]
                 [mhuebert/cljs-static "0.1.0"]
                 [mhuebert/kitchen-async "0.1.0"]
                 [lambdaisland/uri "1.3.45"]

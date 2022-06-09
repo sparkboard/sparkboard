@@ -5,7 +5,7 @@
 
         ;; Google Cloud
         jonotin/jonotin {:local/root "vendor/jonotin"}
-        com.google.guava/guava {:mvn/version "23.0"}        ;; resolves version conflict
+        com.google.guava/guava {:mvn/version "23.0"} ;; resolves version conflict
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
 
         ;; util
@@ -36,5 +36,6 @@
         nrepl/nrepl {:mvn/version "0.7.0"}
         }
  :aliases
- {:uberdeps
-  {:extra-deps {uberdeps/uberdeps {:mvn/version "0.1.8"}}}}}
+ {:uberdeps {:extra-deps {uberdeps/uberdeps {:mvn/version "0.1.8"}}}
+  :uberjar {:exec-fn build/uberjar}
+  :aot {:exec-fn build/aot}}}
