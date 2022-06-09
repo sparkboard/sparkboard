@@ -11,43 +11,59 @@ jobs:
     environment: sparkboard-jvm-staging
 
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: cache yarn 
-      uses: c-hive/gha-yarn-cache@v2
-    - name: cache shadow-cljs
-      uses: actions/cache@v3
-      with:
-        path: .shadow-cljs
-        key: v1-shadow-cljs-${{github.ref}}-${{github.sha}}
-        restore-keys: |
-          v1-shadow-cljs-${{github.ref}}
-          v1-shadow-cljs
-    
-    - uses: skjolber/maven-cache-github-action@v1
-      with:
-        step: restore
-          
-    - name: Prepare clojure deps 
-      run: clojure -A:build -P
-    
-    - name: Install yarn deps 
-      run: yarn
-    - name: Install clojure tools
-      uses: DeLaGuardo/setup-clojure@5.0
-      with:
-        cli: 1.11.1.1113
-        bb: 0.8.156
-    
-    - name: Build
-      run: bb build
-    
-    - uses: superfly/flyctl-actions/setup-flyctl@master
-    - name: Deploy 
-      run: bb deploy:ci
-      env:
-        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      
-    - uses: skjolber/maven-cache-github-action@v1
-      with:
-        step: save  
+      - uses: actions/checkout@v3
+
+        ########################################
+        ## Cache (pre)
+
+      - name: cache yarn
+        uses: c-hive/gha-yarn-cache@v2
+      - name: cache shadow-cljs
+        uses: actions/cache@v3
+        with:
+          path: .shadow-cljs
+          key: v1-shadow-cljs-${{github.ref}}-${{github.sha}}
+          restore-keys: |
+            v1-shadow-cljs-${{github.ref}}
+            v1-shadow-cljs
+
+      - uses: skjolber/maven-cache-github-action@v1
+        with:
+          step: restore
+
+      ########################################
+      ## Install deps
+
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@5.0
+        with:
+          cli: 1.11.1.1113
+          bb: 0.8.156
+
+      - name: Prepare clojure deps
+        run: clojure -A:build -P
+
+      - name: Install yarn deps
+        run: yarn
+
+
+      ########################################
+      ## Build
+
+      - name: Build
+        run: bb build
+
+      ########################################
+      ## Deploy
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        run: bb deploy:ci
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      ########################################
+      ## Cache (post)
+      - uses: skjolber/maven-cache-github-action@v1
+        with:
+          step: save
