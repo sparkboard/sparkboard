@@ -26,10 +26,13 @@ jobs:
           restore-keys: |
             v1-shadow-cljs-${{github.ref}}
             v1-shadow-cljs
-
-      - uses: skjolber/maven-cache-github-action@v1
+      - name: cache maven
+        uses: actions/cache@v3
         with:
-          step: restore
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('deps.edn', 'shadow-cljs.edn')}}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       ########################################
       ## Install deps
@@ -61,9 +64,3 @@ jobs:
         run: bb deploy:ci
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-      ########################################
-      ## Cache (post)
-      - uses: skjolber/maven-cache-github-action@v1
-        with:
-          step: save
