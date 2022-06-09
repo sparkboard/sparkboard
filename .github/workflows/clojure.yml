@@ -33,11 +33,11 @@ jobs:
     
     - name: Install yarn deps 
       run: yarn
-    
-    - name: Setup Babashka
-      uses: turtlequeue/setup-babashka@v1.3.0
-      with:
-        babashka-version: 0.8.156
+    - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@5.0
+        with:
+          cli: 1.11.1.1113 # Clojure CLI based on tools.deps
+          bb: 0.8.156       # Babashka
     
     - name: Build
       run: bb build
