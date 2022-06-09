@@ -29,7 +29,7 @@
         ring-middleware-format/ring-middleware-format {:mvn/version "0.7.4"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
         metosin/reitit {:mvn/version "0.5.2"}
-        hiccup {:mvn/version "2.0.0-alpha2"}
+        mhuebert/cljs-static {:mvn/version "0.1.0"}
 
         ;; schema
         metosin/malli {:mvn/version "0.0.1-SNAPSHOT"}
