@@ -1,0 +1,53 @@
+name: Clojure CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    environment: sparkboard-jvm-staging
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: cache yarn 
+      uses: c-hive/gha-yarn-cache@v2
+    - name: cache shadow-cljs
+      uses: actions/cache@v3
+      with:
+        path: .shadow-cljs
+        key: v1-shadow-cljs-${{github.ref}}-${{github.sha}}
+        restore-keys: |
+          v1-shadow-cljs-${{github.ref}}
+          v1-shadow-cljs
+    
+    - uses: skjolber/maven-cache-github-action@v1
+      with:
+        step: restore
+          
+    - name: Prepare clojure deps 
+      run: clojure -A:build -P
+    
+    - name: Install yarn deps 
+      run: yarn
+    
+    - name: Setup Babashka
+      uses: turtlequeue/setup-babashka@v1.3.0
+      with:
+        babashka-version: 0.8.156
+    
+    - name: Build
+      run: bb build
+    
+    - uses: superfly/flyctl-actions/setup-flyctl@master
+    - name: Deploy 
+      run: bb deploy:ci
+      env:
+        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      
+    - uses: skjolber/maven-cache-github-action@v1
+      with:
+        step: save  
