@@ -1,17 +1,5 @@
-FROM clojure as build
-
-WORKDIR /app
-COPY . .
-
-RUN bin/build
-
-# on M1 mac, add --platform=linux/amd64
 FROM openjdk:17-alpine
+WORKDIR /app
 
-COPY --from=build /app/target/sparkboard.jar sparkboard.jar
-
-# Open the port
-ENV PORT "8080"
-
-# Run the jar
+COPY target/sparkboard.jar sparkboard.jar
 CMD java -jar sparkboard.jar

@@ -5,8 +5,5 @@
   (compile 'org.sparkboard.server.server))
 
 (defn uberjar [_]
-  (let [exclusions (into uberdeps/exclusions [#"\.DS_Store" #".*\.cljs" #"cljsjs/.*"])
-        deps (clojure.edn/read-string (slurp "deps.edn"))]
-    (binding [uberdeps/exclusions exclusions
-              uberdeps/level :warn]
-      (uberdeps/package deps "target/sparkboard.jar"))))
+  (let [deps (clojure.edn/read-string (slurp "deps.edn"))]
+    (uberdeps/package deps "target/sparkboard.jar" {:main-class 'org.sparkboard.server.server})))
