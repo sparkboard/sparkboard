@@ -1,7 +1,7 @@
 (ns org.sparkboard.firebase.jvm
   (:refer-clojure :exclude [read])
   (:require [org.sparkboard.server.env :as env]
-            [org.sparkboard.js-convert :refer [clj->json]]
+            [org.sparkboard.util.js-convert :refer [clj->json]]
             [clojure.java.io :as io]
             [clojure.walk :as walk]
             [taoensso.timbre :as log])

@@ -1,7 +1,7 @@
 (ns org.sparkboard.slack.screens
   (:require [clojure.pprint :as pp]
             [org.sparkboard.firebase.jvm :as fire-jvm]
-            [org.sparkboard.js-convert :refer [clj->json json->clj]]
+            [org.sparkboard.util.js-convert :refer [clj->json json->clj]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.slack.api :as slack]
             [org.sparkboard.slack.view-examples :as examples]

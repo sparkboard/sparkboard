@@ -1,9 +1,9 @@
 (ns org.sparkboard.server.env
   (:require [applied-science.js-interop :as j]
             #?(:cljs [cljs.reader :refer [read-string]])
-            [org.sparkboard.resource :as rc]
+            [org.sparkboard.util.resources :as rc]
             [org.sparkboard.util :as u]
-            [org.sparkboard.js-convert :refer [json->clj clj->json]])
+            [org.sparkboard.util.js-convert :refer [json->clj clj->json]])
   #?(:clj (:import java.util.Base64)))
 
 (defn env-var [k]

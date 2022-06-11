@@ -4,7 +4,7 @@
             [org.sparkboard.server.env :as env]
             [taoensso.timbre :as log]
             [lambdaisland.uri :as uri]
-            [org.sparkboard.js-convert :refer [clj->json]]))
+            [org.sparkboard.util.js-convert :refer [clj->json]]))
 
 (defn sparkboard-host
   ([domain]

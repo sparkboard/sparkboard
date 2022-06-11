@@ -10,7 +10,7 @@
             [nrepl.server :as nrepl]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
-            [org.sparkboard.js-convert :refer [json->clj]]
+            [org.sparkboard.util.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.slack.api :as slack]
             [org.sparkboard.slack.oauth :as slack-oauth]

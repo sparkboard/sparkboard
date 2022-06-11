@@ -2,7 +2,7 @@
   (:require [org.sparkboard.firebase.tokens :as tokens]
             [org.sparkboard.promise :as p]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.js-convert :refer [->clj]]))
+            [org.sparkboard.util.js-convert :refer [->clj]]))
 
 ;; this fn is called by the legacy node server and handles inbound links (from slack to sparkboard).
 (defn slack-link-proxy [legacy-session]

@@ -11,7 +11,7 @@
 (defn update-some [m updaters]
   (reduce-kv (fn [m k f]
                (let [v (get m k ::not-found)]
-                 (if #?(:clj (identical? v ::not-found) :cljs (keyword-identical? v ::not-found))
+                 (if (= ::not-found v)
                    m
                    (assoc m k (f v))))) m updaters))
 

@@ -1,6 +1,6 @@
 (ns org.sparkboard.slack.hiccup
   (:require [clojure.string :as str]
-            [org.sparkboard.js-convert :refer [clj->json kw->js]]
+            [org.sparkboard.util.js-convert :refer [clj->json kw->js]]
             [org.sparkboard.transit :as transit]
             [org.sparkboard.util :as u]
             [taoensso.timbre :as log]

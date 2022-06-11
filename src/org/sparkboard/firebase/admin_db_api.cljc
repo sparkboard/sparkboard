@@ -3,7 +3,7 @@
   (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.js-convert :refer [clj->json ->clj]]
+            [org.sparkboard.util.js-convert :refer [clj->json ->clj]]
             #?(:clj  [org.sparkboard.firebase.jvm :as fire-jvm]
                :cljs [org.sparkboard.http :as http])
             [org.sparkboard.util :as u])

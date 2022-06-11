@@ -1,4 +1,4 @@
-(ns org.sparkboard.js-convert
+(ns org.sparkboard.util.js-convert
   #?(:clj (:require
             [jsonista.core :as json]
             [clojure.walk :as walk])))

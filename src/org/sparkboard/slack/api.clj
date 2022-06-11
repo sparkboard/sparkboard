@@ -2,7 +2,7 @@
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
             [lambdaisland.uri]
-            [org.sparkboard.js-convert :refer [json->clj]]
+            [org.sparkboard.util.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.slack.hiccup :as hiccup]
             [taoensso.timbre :as log]

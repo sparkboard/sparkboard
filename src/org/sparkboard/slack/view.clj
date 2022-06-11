@@ -1,7 +1,7 @@
 (ns org.sparkboard.slack.view
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
-            [org.sparkboard.js-convert :refer [kw->js clj->json]]
+            [org.sparkboard.util.js-convert :refer [kw->js clj->json]]
             [org.sparkboard.slack.api :as slack]
             [taoensso.timbre :as log]
             [org.sparkboard.slack.hiccup :as hiccup]

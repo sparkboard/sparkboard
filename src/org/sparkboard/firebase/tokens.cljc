@@ -1,7 +1,7 @@
 (ns org.sparkboard.firebase.tokens
   (:require [org.sparkboard.server.env :as env]
             [org.sparkboard.http :as http]
-            [org.sparkboard.js-convert :refer [->js ->clj json->clj clj->json]]
+            [org.sparkboard.util.js-convert :refer [->js ->clj json->clj clj->json]]
             [org.sparkboard.firebase.jwt-rs256 :as jwt]
             [org.sparkboard.promise :as p]))
 
