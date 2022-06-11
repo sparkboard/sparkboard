@@ -1,8 +1,7 @@
 (ns org.sparkboard.slack.account-bridge-node
   (:require [org.sparkboard.firebase.tokens :as tokens]
-            [kitchen-async.promise :as p]
+            [org.sparkboard.promise :as p]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.http :as http]
             [org.sparkboard.js-convert :refer [->clj]]))
 
 ;; this fn is called by the legacy node server and handles inbound links (from slack to sparkboard).

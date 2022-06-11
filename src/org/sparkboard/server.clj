@@ -1,9 +1,8 @@
-(ns org.sparkboard.server.server
+(ns org.sparkboard.server
   "HTTP server handling Slack requests"
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
             [clojure.java.io :as io]
-            [clojure.set :as set]
             [clojure.string :as str]
             [hiccup.util :refer [raw-string]]
             [lambdaisland.uri :as uri]
@@ -11,7 +10,7 @@
             [nrepl.server :as nrepl]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
-            [org.sparkboard.js-convert :refer [json->clj clj->json]]
+            [org.sparkboard.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.slack.api :as slack]
             [org.sparkboard.slack.oauth :as slack-oauth]
@@ -38,7 +37,7 @@
       (case (env/config :env)
         "staging" '{:all :info
                     org.sparkboard.slack.oauth :trace
-                    org.sparkboard.server.server :trace}
+                    org.sparkboard.server :trace}
         "prod" {:all :warn}
         '{:all :info})))
 

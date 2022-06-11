@@ -1,6 +1,6 @@
 (ns org.sparkboard.client.loaders
   (:require [applied-science.js-interop :as j]
-            [kitchen-async.promise :as p]))
+            [org.sparkboard.promise :as p]))
 
 ;; memoized loaders for css and javascript assets.
 ;; (at least the js needs to be dynamic because it depends on the user's locale)

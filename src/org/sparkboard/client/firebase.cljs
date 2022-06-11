@@ -3,7 +3,7 @@
             ["firebase/auth"]
             ["react" :as react]
             [applied-science.js-interop :as j]
-            [kitchen-async.promise :as p]
+            [org.sparkboard.promise :as p]
             [org.sparkboard.client.env :as env]
             [triple.view.react.experimental.atom :as ratom]
             [org.sparkboard.client.loaders :as loaders]))

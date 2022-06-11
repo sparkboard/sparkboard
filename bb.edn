@@ -11,6 +11,8 @@
                    (run 'clj))
          deploy (shell (str "flyctl deploy -a " staging))
          deploy:ci (shell (str "flyctl deploy -a " staging " --remote-only"))
+
+         ;; this step is run manually after verifying a staging build.
          promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}
                                                                (str "flyctl image show -a " staging " --json"))
                                                            :out

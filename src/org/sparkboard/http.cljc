@@ -1,11 +1,11 @@
 (ns org.sparkboard.http
   "HTTP verbs for browser, node.js and jvm"
-  (:require [org.sparkboard.js-convert :refer [->clj clj->json json->clj ->js]]
+  (:require [applied-science.js-interop :as j]
+            [org.sparkboard.js-convert :refer [clj->json json->clj ->js]]
             [org.sparkboard.promise :as p]
             [clojure.string :as str]
             [org.sparkboard.transit :as transit]
             [lambdaisland.uri :as uri]
-            [taoensso.timbre :as log]
             #?@(:cljs
                 [["isomorphic-unfetch" :as fetch]
                  [applied-science.js-interop :as j]]
@@ -25,8 +25,8 @@
 
 (defn content-type [res]
   ;; TODO - use cljs-bean for stuff like this?
-  #?(:cljs (-> (j/get res :headers) (j/call :get "Content-Type"))
-     :clj  (-> res :headers (get "Content-Type"))))
+  #?(:cljs (j/call-in res [:headers :get] "Content-Type")
+     :clj  (get-in res [:headers "Content-Type"])))
 
 (defn json-body [res]
   ;; return json as Clojure body

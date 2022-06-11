@@ -3,7 +3,7 @@
             [triple.view :as v]
             [applied-science.js-interop :as j]
             [org.sparkboard.client.firebase :as firebase]
-            [kitchen-async.promise :as p]))
+            [org.sparkboard.promise :as p]))
 
 (v/defview after-promise [{:keys [fallback promise]} element]
   (let [mounted-ref (react/useRef true)

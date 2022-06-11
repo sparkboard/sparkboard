@@ -160,7 +160,7 @@
 (comment
 
   (defn then-print [& xs]
-    (p/then (p/all xs) (comp pp/pprint js->clj)))
+    (p/-> (p/all xs) ((comp pp/pprint js->clj))))
 
   (fire/set-value (str "/slack-team/" "WS1" "/parent")
                   {:body "demo"})
