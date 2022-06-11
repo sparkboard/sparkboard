@@ -6,12 +6,8 @@
             [clojure.string :as str]
             [org.sparkboard.transit :as transit]
             [lambdaisland.uri :as uri]
-            #?@(:cljs
-                [["isomorphic-unfetch" :as fetch]
-                 [applied-science.js-interop :as j]]
-                :clj
-                [[clj-http.client :as client]]))
-  #?(:clj (:import (java.util Base64))))
+            #?(:cljs ["isomorphic-unfetch" :as fetch]
+               :clj  [clj-http.client :as client])))
 
 #?(:cljs
    (defn assert-ok [^js/Response res url]
@@ -64,9 +60,9 @@
 
 (defn http-req [url {:as opts :keys [query body auth/token method]}]
   (let [opts (cond-> opts
-               token (assoc-in [:headers "Authorization"] (str "Bearer: " token))
-               body (format-req-body)
-               true (dissoc :query :auth/token))
+                     token (assoc-in [:headers "Authorization"] (str "Bearer: " token))
+                     body (format-req-body)
+                     true (dissoc :query :auth/token))
         url (cond-> url query (str "?" (uri/map->query-string query)))]
     (p/let [response #?(:cljs
                         (p/-> (fetch url (->js opts))
@@ -87,12 +83,3 @@
 (def put+ (partial-opts http-req {:method "PUT"}))
 (def post+ (partial-opts http-req {:method "POST"}))
 (def patch+ (partial-opts http-req {:method "PATCH"}))
-
-(defn decode-base64 [s]
-  #?(:cljs (.toString (.from js/Buffer s "base64"))
-     :clj  (String. (.decode (Base64/getDecoder) s))))
-
-(defn encode-base64 [s]
-  #?(:cljs (-> (new js/Buffer s)
-               (.toString "base64"))
-     :clj  (.encode (Base64/getEncoder) (.getBytes s))))
