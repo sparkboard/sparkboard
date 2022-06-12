@@ -1,10 +1,10 @@
 (ns org.sparkboard.client
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
-            [org.sparkboard.client.auth]
+            [org.sparkboard.client.auth :as auth.client]
             [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.routes :refer [routes]]
-            [org.sparkboard.client.slack]
+            [org.sparkboard.client.slack :as slack.client]
             [reitit.core :as reitit]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
@@ -24,7 +24,7 @@
 (def handlers {:home home
                :slack/invite-offer slack.client/invite-offer
                :slack/link-complete slack.client/link-complete
-               :auth-test auth/auth-header})
+               :auth-test auth.client/auth-header})
 
 (v/defview root []
   (let [{:keys [view] :as m} @!current-match]
