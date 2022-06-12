@@ -1,10 +1,10 @@
 (ns org.sparkboard.slack.hiccup
   (:require [clojure.string :as str]
-            [org.sparkboard.util.js-convert :refer [clj->json kw->js]]
-            [org.sparkboard.transit :as transit]
+            [clojure.walk :as walk]
             [org.sparkboard.util :as u]
-            [taoensso.timbre :as log]
-            [clojure.walk :as walk]))
+            [org.sparkboard.util.js-convert :refer [clj->json kw->js]]
+            [org.sparkboard.util.transit :as transit]
+            [taoensso.timbre :as log]))
 
 (def schema
   "hiccup<->block metadata. Supports:

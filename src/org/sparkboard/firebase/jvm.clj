@@ -1,14 +1,14 @@
 (ns org.sparkboard.firebase.jvm
   (:refer-clojure :exclude [read])
-  (:require [org.sparkboard.server.env :as env]
-            [org.sparkboard.util.js-convert :refer [clj->json]]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [clojure.walk :as walk]
+            [org.sparkboard.server.env :as env]
+            [org.sparkboard.util.js-convert :refer [clj->json]]
             [taoensso.timbre :as log])
   (:import (com.google.auth.oauth2 ServiceAccountCredentials)
-           (com.google.firebase FirebaseOptions$Builder FirebaseApp)
-           (com.google.firebase.database FirebaseDatabase ValueEventListener DatabaseReference DatabaseReference$CompletionListener)
-           (com.google.firebase.auth FirebaseAuth)))
+           (com.google.firebase FirebaseApp FirebaseOptions$Builder)
+           (com.google.firebase.auth FirebaseAuth)
+           (com.google.firebase.database DatabaseReference$CompletionListener FirebaseDatabase ValueEventListener)))
 
 (defonce app
          (delay

@@ -1,6 +1,6 @@
 (ns org.sparkboard.client.env
-  (:require [org.sparkboard.transit :as transit]
-            [applied-science.js-interop :as j]))
+  (:require [applied-science.js-interop :as j]
+            [org.sparkboard.util.transit :as transit]))
 
 (def config
   (-> (j/get-in js/window [:SPARKBOARD_CONFIG :textContent])

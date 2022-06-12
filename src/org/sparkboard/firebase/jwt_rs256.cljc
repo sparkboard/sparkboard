@@ -1,9 +1,9 @@
 (ns org.sparkboard.firebase.jwt-rs256
-  (:require [org.sparkboard.util.js-convert :refer [->js ->clj]]
+  (:require [clojure.walk :as walk]
+            [org.sparkboard.util.js-convert :refer [->js ->clj]]
             #?@(:cljs [["jsonwebtoken" :as jwt]]
                 :clj  [[clj-jwt.core :as jwt]
-                       [clj-jwt.key :as jwt-key]])
-            [clojure.walk :as walk])
+                       [clj-jwt.key :as jwt-key]]))
   #?(:clj (:import [java.io StringReader])))
 
 (defn now-in-seconds []
@@ -19,13 +19,13 @@
 #?(:clj
    (def key->string
      (memoize
-       (fn [kind key-str]
-         (with-open [r (StringReader. key-str)]
-           (case kind
-             :private
-             (jwt-key/pem->private-key r nil)
-             :public
-             (jwt-key/pem->public-key r nil)))))))
+      (fn [kind key-str]
+        (with-open [r (StringReader. key-str)]
+          (case kind
+            :private
+            (jwt-key/pem->private-key r nil)
+            :public
+            (jwt-key/pem->public-key r nil)))))))
 
 (defn encode [claims key]
   #?(:clj  (-> (->js claims)

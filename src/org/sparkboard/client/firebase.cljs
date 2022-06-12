@@ -3,10 +3,10 @@
             ["firebase/auth"]
             ["react" :as react]
             [applied-science.js-interop :as j]
-            [org.sparkboard.promise :as p]
             [org.sparkboard.client.env :as env]
-            [triple.view.react.experimental.atom :as ratom]
-            [org.sparkboard.client.loaders :as loaders]))
+            [org.sparkboard.client.loaders :as loaders]
+            [org.sparkboard.util.promise :as p]
+            [triple.view.react.experimental.atom :as ratom]))
 
 (defonce app firebase)
 (defonce auth (delay (.auth firebase)))

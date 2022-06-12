@@ -1,13 +1,12 @@
 (ns org.sparkboard.slack.view
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.walk :as walk]
-            [org.sparkboard.util.js-convert :refer [kw->js clj->json]]
             [org.sparkboard.slack.api :as slack]
-            [taoensso.timbre :as log]
             [org.sparkboard.slack.hiccup :as hiccup]
             [org.sparkboard.util :as u]
-            [clojure.set :as set])
-  (:import (clojure.lang Atom)))
+            [org.sparkboard.util.js-convert :refer [clj->json]]
+            [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; formatting helpers

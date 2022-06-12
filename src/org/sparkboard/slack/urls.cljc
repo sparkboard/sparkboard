@@ -1,10 +1,9 @@
 (ns org.sparkboard.slack.urls
-  (:require [org.sparkboard.firebase.tokens :as tokens]
-            [org.sparkboard.slack.slack-db :as slack-db]
+  (:require [lambdaisland.uri :as uri]
+            [org.sparkboard.firebase.tokens :as tokens]
             [org.sparkboard.server.env :as env]
-            [taoensso.timbre :as log]
-            [lambdaisland.uri :as uri]
-            [org.sparkboard.util.js-convert :refer [clj->json]]))
+            [org.sparkboard.slack.slack-db :as slack-db]
+            [taoensso.timbre :as log]))
 
 (defn sparkboard-host
   ([domain]

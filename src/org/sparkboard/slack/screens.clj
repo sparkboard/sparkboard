@@ -1,16 +1,13 @@
 (ns org.sparkboard.slack.screens
-  (:require [clojure.pprint :as pp]
-            [org.sparkboard.firebase.jvm :as fire-jvm]
-            [org.sparkboard.util.js-convert :refer [clj->json json->clj]]
+  (:require [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.slack.api :as slack]
-            [org.sparkboard.slack.view-examples :as examples]
             [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
             [org.sparkboard.slack.view :as v]
+            [org.sparkboard.slack.view-examples :as examples]
             [org.sparkboard.util.future :refer [try-future]]
-            [taoensso.timbre :as log]
-            [org.sparkboard.transit :as transit]))
+            [org.sparkboard.util.transit :as transit]))
 
 (def team-messages
   {:welcome

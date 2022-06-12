@@ -2,8 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.string :as str]
             [jsonista.core :as json]
-            [malli.core :as m]
-            [malli.provider :as mp]     ))
+            [malli.core :as m]))
 
 
 (def database-url (:databaseURL (env/config :firebase/app-config)))

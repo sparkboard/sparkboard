@@ -2,16 +2,16 @@
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
             [lambdaisland.uri]
-            [org.sparkboard.util.js-convert :refer [json->clj]]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.slack.hiccup :as hiccup]
-            [taoensso.timbre :as log]
-            [org.sparkboard.util :as u])
-  (:import [java.net.http HttpClient HttpRequest
-                          HttpClient$Version
+            [org.sparkboard.util :as u]
+            [org.sparkboard.util.js-convert :refer [json->clj]]
+            [taoensso.timbre :as log])
+  (:import (java.net URI)
+           (java.net.http HttpClient HttpClient$Version
+                          HttpRequest
                           HttpRequest$BodyPublishers
-                          HttpResponse$BodyHandlers]
-           [java.net URI]))
+                          HttpResponse$BodyHandlers)))
 
 (def ^:dynamic *context* {})
 

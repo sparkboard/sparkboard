@@ -1,7 +1,7 @@
 (ns org.sparkboard.migration.pubsub
   (:require [jonotin.core :as jonotin]
-            [org.sparkboard.util.js-convert :refer [clj->json]]
-            [org.sparkboard.server.env :as env]))
+            [org.sparkboard.server.env :as env]
+            [org.sparkboard.util.js-convert :refer [clj->json]]))
 
 ;; to be run in prod - consumes stream of updates from mongodb + firebase
 

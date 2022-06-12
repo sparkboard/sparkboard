@@ -1,9 +1,9 @@
 (ns org.sparkboard.client.auth
   (:require ["react" :as react]
-            [triple.view :as v]
             [applied-science.js-interop :as j]
             [org.sparkboard.client.firebase :as firebase]
-            [org.sparkboard.promise :as p]))
+            [org.sparkboard.util.promise :as p]
+            [triple.view :as v]))
 
 (v/defview after-promise [{:keys [fallback promise]} element]
   (let [mounted-ref (react/useRef true)

@@ -1,14 +1,12 @@
 (ns org.sparkboard.client.slack
   (:require ["react" :as react]
             ["firebase/database"]
-            [org.sparkboard.client.firebase :as firebase]
-            [org.sparkboard.client.auth :as auth]
-            [org.sparkboard.client.env :as env]
-            [triple.view :as v]
             [applied-science.js-interop :as j]
-            [org.sparkboard.promise :as p]
             [clojure.string :as str]
-            [lambdaisland.uri :as uri]))
+            [lambdaisland.uri :as uri]
+            [org.sparkboard.client.env :as env]
+            [org.sparkboard.client.firebase :as firebase]
+            [triple.view :as v]))
 
 (defn use-effect
   ([f]

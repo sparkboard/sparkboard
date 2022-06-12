@@ -1,13 +1,13 @@
 (ns org.sparkboard.slack.oauth
-  (:require [org.sparkboard.slack.slack-db :as slack-db]
-            [org.sparkboard.slack.api :as slack :refer [web-api base-uri]]
-            [org.sparkboard.firebase.tokens :as tokens]
+  (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
-            [clojure.string :as str]
+            [org.sparkboard.firebase.tokens :as tokens]
+            [org.sparkboard.http :refer [get+]]
             [org.sparkboard.server.env :as env]
-            [ring.util.http-response :as http]
+            [org.sparkboard.slack.api :as slack :refer [base-uri]]
+            [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.http :refer [get+ post+]]
+            [ring.util.http-response :as http]
             [taoensso.timbre :as log]))
 
 (def slack-config (-> env/config :slack))

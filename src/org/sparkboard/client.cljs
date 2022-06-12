@@ -1,16 +1,15 @@
 (ns org.sparkboard.client
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
-            [org.sparkboard.client.auth :as auth]
+            [org.sparkboard.client.auth]
             [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.routes :refer [routes]]
-            [org.sparkboard.client.slack :as slack.client]
+            [org.sparkboard.client.slack]
             [reitit.core :as reitit]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
             [triple.view :as v]
-            [triple.view.react.experimental.atom :as ratom]
-            [triple.view.react.hooks :as hooks]))
+            [triple.view.react.experimental.atom :as ratom]))
 
 (defonce !current-match (ratom/create nil))
 
