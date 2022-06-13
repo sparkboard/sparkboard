@@ -1,6 +1,6 @@
-(ns org.sparkboard.client.loaders
+(ns tools.sparkboard.browser.loaders
   (:require [applied-science.js-interop :as j]
-            [org.sparkboard.util.promise :as p]))
+            [tools.sparkboard.promise :as p]))
 
 ;; memoized loaders for css and javascript assets.
 ;; (at least the js needs to be dynamic because it depends on the user's locale)

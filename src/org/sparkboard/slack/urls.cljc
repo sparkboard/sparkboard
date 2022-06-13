@@ -2,7 +2,7 @@
   (:require [lambdaisland.uri :as uri]
             [org.sparkboard.firebase.tokens :as tokens]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.slack.db :as slack.db]
             [taoensso.timbre :as log]))
 
 (defn sparkboard-host
@@ -41,7 +41,7 @@
                       :keys [env]} redirect]
   {:pre [env board-id user-id team-id redirect]}
   (log/trace ::on-sparkboard redirect context)
-  (let [domain (slack-db/board-domain board-id)
+  (let [domain (slack.db/board-domain board-id)
         payload (-> context
                     (select-keys [:slack/team-id
                                   :slack/user-id])

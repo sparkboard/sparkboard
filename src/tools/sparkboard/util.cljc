@@ -1,4 +1,5 @@
-(ns org.sparkboard.util)
+(ns tools.sparkboard.util
+  (:require [clojure.string :as str]))
 
 (defn guard [x f]
   (when (f x) x))
@@ -15,3 +16,7 @@
                    m
                    (assoc m k (f v))))) m updaters))
 
+(defn ensure-prefix [s prefix]
+  (if (str/starts-with? s prefix)
+    s
+    (str prefix s)))

@@ -1,11 +1,11 @@
-(ns org.sparkboard.http
+(ns tools.sparkboard.http
   "HTTP verbs for browser, node.js and jvm"
   (:require [applied-science.js-interop :as j]
             [clojure.string :as str]
             [lambdaisland.uri :as uri]
-            [org.sparkboard.util.js-convert :refer [clj->json json->clj ->js]]
-            [org.sparkboard.util.promise :as p]
-            [org.sparkboard.util.transit :as transit]
+            [tools.sparkboard.js-convert :refer [clj->json json->clj ->js]]
+            [tools.sparkboard.promise :as p]
+            [tools.sparkboard.transit :as transit]
             #?(:cljs ["isomorphic-unfetch" :as fetch]
                :clj  [clj-http.client :as client])))
 

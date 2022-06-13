@@ -1,6 +1,6 @@
-(ns org.sparkboard.firebase.jwt-rs256
+(ns tools.sparkboard.jwt-rs256
   (:require [clojure.walk :as walk]
-            [org.sparkboard.util.js-convert :refer [->js ->clj]]
+            [tools.sparkboard.js-convert :refer [->js ->clj]]
             #?@(:cljs [["jsonwebtoken" :as jwt]]
                 :clj  [[clj-jwt.core :as jwt]
                        [clj-jwt.key :as jwt-key]]))

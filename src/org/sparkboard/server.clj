@@ -10,15 +10,13 @@
             [nrepl.server :as nrepl]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
+            [org.sparkboard.log]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.api :as slack]
+            [org.sparkboard.slack.db :as slack.db]
             [org.sparkboard.slack.oauth :as slack-oauth]
+            [org.sparkboard.slack.requests :as slack]
             [org.sparkboard.slack.screens :as screens]
-            [org.sparkboard.slack.slack-db :as slack-db]
             [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.slack.view :as v]
-            [org.sparkboard.util.js-convert :refer [json->clj]]
-            [org.sparkboard.util.transit :as transit]
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.defaults]
             [ring.middleware.format]
@@ -27,42 +25,18 @@
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]
-            [timbre-ns-pattern-level :as timbre-patterns])
+            [tools.sparkboard.js-convert :refer [json->clj]]
+            [tools.sparkboard.slack.api :as slack.api]
+            [tools.sparkboard.slack.view :as v]
+            [tools.sparkboard.transit :as transit])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
 
-(def log-levels
-  (or (env/config :dev.logging/levels)
-      (case (env/config :env)
-        "staging" '{:all :info
-                    org.sparkboard.slack.oauth :trace
-                    org.sparkboard.server :trace}
-        "prod" {:all :warn}
-        '{:all :info})))
-
-(-> {:middleware [(timbre-patterns/middleware
-                    (reduce-kv
-                      (fn [m k v] (assoc m (cond-> k (symbol? k) (str)) v))
-                      {} log-levels))]
-     :level :trace}
-    ;; add :dev.logging/tap? to .local.config.edn to use tap>
-    (cond-> (env/config :dev.logging/tap?)
-            (assoc :appenders
-                   {:tap> {:min-level nil
-                           :enabled? true
-                           :output-fn (fn [{:keys [?ns-str ?line vargs]}]
-                                        (into [(-> ?ns-str
-                                                   (str/replace "org.sparkboard." "")
-                                                   (str ":" ?line)
-                                                   (symbol))] vargs))
-                           :fn (comp tap> force :output_)}}))
-    (log/merge-config!))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Utility fns
 
-(defn req-token [req]
+(defn req-auth-token [req]
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
       (-> req :params :token)))
 
@@ -84,10 +58,10 @@
 (defn link-account! [{:keys [slack/team-id
                              slack/user-id
                              sparkboard/account-id]}]
-  (let [context (slack-db/slack-context team-id user-id)]
+  (let [context (slack.db/slack-context team-id user-id)]
     ;; TODO
     ;; visible confirmation step to link the two accounts?
-    (slack-db/link-user-to-account!                         ;; link the accounts
+    (slack.db/link-user-to-account!                         ;; link the accounts
       {:slack/team-id team-id
        :slack/user-id user-id
        :sparkboard/account-id account-id})
@@ -101,7 +75,7 @@
            (uri/map->query-string {:slack (urls/app-redirect {:app (:slack/app-id context)
                                                               :team team-id
                                                               :domain (:slack/team-domain context)})
-                                   :sparkboard (-> (slack-db/board-domain (:sparkboard/board-id context))
+                                   :sparkboard (-> (slack.db/board-domain (:sparkboard/board-id context))
                                                    (urls/sparkboard-host))})))))
 
 (defn link-account-for-new-user [context]
@@ -129,7 +103,7 @@
                                       redirect]} :auth/token-claims
                               :as req}]
   (when-not account-id
-    (link-account! (merge (slack-db/slack-context team-id user-id)
+    (link-account! (merge (slack.db/slack-context team-id user-id)
                           token-claims
                           {:sparkboard/account-id "MOCK_SPARKBOARD_ACCOUNT"})))
   (if (str/starts-with? redirect "http")
@@ -144,7 +118,7 @@
   "must be a Sparkboard server request"
   [f & claims-checks]
   (fn [req]
-    (let [token (req-token req)
+    (let [token (req-auth-token req)
           claims (some-> token (fire-tokens/decode))
           check-claims (or (some->> claims-checks seq (apply every-pred)) (constantly true))]
       (if (check-claims claims)
@@ -176,9 +150,9 @@
     (let [{:as token-claims
            :sparkboard/keys [account-id board-id]} (:auth/token-claims req)
           {:as slack-team
-           :slack/keys [team-id invite-link]} (slack-db/board->team board-id)
+           :slack/keys [team-id invite-link]} (slack.db/board->team board-id)
           {:as slack-user
-           :keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
+           :keys [slack/user-id]} (slack.db/account->team-user {:slack/team-id team-id
                                                                 :sparkboard/account-id account-id})]
       (if user-id
         (f req)
@@ -186,11 +160,11 @@
           (invite-user req (merge slack-team
                                   slack-user
                                   token-claims
-                                  (slack-db/team-context team-id)
+                                  (slack.db/team-context team-id)
                                   {:redirect (str (:uri req) "?" (:query-string req))}))
           {:status 200
            :headers {"Content-Type" "text/html"}
-           :body (let [domain (:slack/team-domain (slack-db/team-context team-id))]
+           :body (let [domain (:slack/team-domain (slack.db/team-context team-id))]
                    (str "You need an invite link to join <a href='https://" domain ".slack.com'>" domain ".slack.com</a>. "
                         "Please contact an organizer."))})))))
 
@@ -198,9 +172,9 @@
                                                  account-id
                                                  project-id
                                                  project-title]}]
-  (or (slack-db/project->linked-channel project-id)
-      (let [{:keys [slack/team-id slack/team-name]} (slack-db/board->team board-id)
-            {:keys [slack/user-id]} (slack-db/account->team-user {:slack/team-id team-id
+  (or (slack.db/project->linked-channel project-id)
+      (let [{:keys [slack/team-id slack/team-name]} (slack.db/board->team board-id)
+            {:keys [slack/user-id]} (slack.db/account->team-user {:slack/team-id team-id
                                                                   :sparkboard/account-id account-id})
             project-title (v/format-channel-name (str "project-" project-title))]
         (assert (not (str/blank? project-title)) "Project title is required")
@@ -216,25 +190,25 @@
           (let [{:as context
                  :slack/keys [bot-token
                               bot-user-id
-                              user-id]} (slack-db/slack-context team-id user-id)
-                domain (slack-db/board-domain board-id)
+                              user-id]} (slack.db/slack-context team-id user-id)
+                domain (slack.db/board-domain board-id)
                 project-url (str (urls/sparkboard-host domain) "/project/" project-id)
-                channel-id (-> (spy-args (slack/web-api "conversations.create"
-                                                        {:auth/token bot-token}
-                                                        {:user_ids [bot-user-id] ;; adding user-id here does not work
+                channel-id (-> (spy-args (slack.api/request! "conversations.create"
+                                                             {:auth/token bot-token}
+                                                             {:user_ids [bot-user-id] ;; adding user-id here does not work
                                                          :is_private false
                                                          :name project-title}))
                                :channel
                                :id)]
-            (spy-args (slack/web-api "conversations.invite"
-                                     {:auth/token bot-token}
-                                     {:channel channel-id
+            (spy-args (slack.api/request! "conversations.invite"
+                                          {:auth/token bot-token}
+                                          {:channel channel-id
                                       :users [user-id]}))
-            (spy-args (slack/web-api "conversations.setTopic"
-                                     {:auth/token bot-token}
-                                     {:channel channel-id
-                                      :topic (v/link "View on Sparkboard" project-url)}))
-            (spy-args (slack-db/link-channel-to-project! {:slack/team-id team-id
+            (spy-args (slack.api/request! "conversations.setTopic"
+                                          {:auth/token bot-token}
+                                          {:channel channel-id
+                                          :topic (v/link "View on Sparkboard" project-url)}))
+            (spy-args (slack.db/link-channel-to-project! {:slack/team-id team-id
                                                           :slack/channel-id channel-id
                                                           :sparkboard/project-id project-id}))
             (assoc context :slack/channel-id channel-id))))))
@@ -242,7 +216,7 @@
 (defn project-channel-deep-link [{:keys [slack/team-id
                                          slack/channel-id]}]
   (urls/app-redirect {:app (-> env/config :slack :app-id)
-                      :domain (:slack/team-domain (slack-db/team-context team-id))
+                      :domain (:slack/team-domain (slack.db/team-context team-id))
                       :team team-id
                       :channel channel-id}))
 
@@ -362,9 +336,9 @@
     (log/trace "[slack-context]" handler-id context)
     (if challenge
       (ring.http/ok challenge)
-      (let [context (merge context (slack-db/slack-context team-id user-id))
+      (let [context (merge context (slack.db/slack-context team-id user-id))
             handler (@v/registry handler-id missing-handler)
-            exec #(binding [slack/*context* context] (handler context))]
+            exec #(binding [slack.api/*context* context] (handler context))]
         (if (:response-action? (meta handler))              ;; add ^:response-action? metadata to handlers that may return a response
           (or (exec) (ring.http/ok))
           (do (.execute ^java.util.concurrent.ExecutorService pool ^Callable exec)
@@ -383,10 +357,10 @@
                          "app-redirect" (fn [{{:as query :keys [team]} :params}]
                                           (assert team "Slack team not provided")
                                           (ring.http/found
-                                            (urls/app-redirect
-                                              (assoc query
-                                                :app (-> env/config :slack :app-id)
-                                                :domain (:slack/team-domain (slack-db/team-context team))))))
+                                           (urls/app-redirect
+                                            (assoc query
+                                              :app (-> env/config :slack :app-id)
+                                              :domain (:slack/team-domain (slack.db/team-context team))))))
                          "reinstall" {"" (fn [req]
                                            (ring.http/found (urls/install-slack-app {:reinstall? true})))
                                       ["/" :team-id] (fn [{{:keys [team-id]} :params}]

@@ -2,15 +2,16 @@
   (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
             [org.sparkboard.firebase.tokens :as tokens]
-            [org.sparkboard.http :refer [get+]]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.api :as slack :refer [base-uri]]
-            [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.slack.db :as slack.db]
+            [org.sparkboard.slack.requests :as slack]
             [org.sparkboard.slack.urls :as urls]
             [ring.util.http-response :as http]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [tools.sparkboard.http :refer [get+]]
+            [tools.sparkboard.slack.api :refer [base-uri]]))
 
-(def slack-config (-> env/config :slack))
+(def slack-config (:slack env/config))
 
 (def required-scopes ["channels:join"
                       "channels:manage"
@@ -42,7 +43,7 @@
                 sparkboard/board-id]} (tokens/decode state)
         _ (log/trace :token-claims token)
         error (when board-id
-                (when-let [entry (slack-db/board->team board-id)]
+                (when-let [entry (slack.db/board->team board-id)]
                   (when (not= board-id (:sparkboard/board-id entry))
                     (str "This board is already linked to the Slack team " (:slack/team-name entry)))))]
     (if error
@@ -102,10 +103,10 @@
           (assert (= token-team team-id) "Reinstall must be to the same team"))
 
         (when board-id
-          (log/spy (slack-db/link-team-to-board!
+          (log/spy (slack.db/link-team-to-board!
                      {:slack/team-id team-id
                       :sparkboard/board-id board-id})))
-        (log/spy (slack-db/install-app!
+        (log/spy (slack.db/install-app!
                    #:slack{:team-id team-id
                            :team-name team-name
                            :team-domain team-domain
@@ -113,7 +114,7 @@
                            :bot-token access_token
                            :bot-user-id bot_user_id}))
         (when account-id
-          (log/spy (slack-db/link-user-to-account!
+          (log/spy (slack.db/link-user-to-account!
                      {:slack/team-id team-id
                       :slack/user-id user-id
                       :sparkboard/account-id account-id})))

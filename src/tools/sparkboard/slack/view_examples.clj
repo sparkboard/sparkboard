@@ -1,6 +1,6 @@
-(ns org.sparkboard.slack.view-examples
+(ns tools.sparkboard.slack.view-examples
   (:require [clojure.string :as str]
-            [org.sparkboard.slack.view :as v]))
+            [tools.sparkboard.slack.view :as v]))
 
 (v/defview counter
   "simple usage of the `state` atom"

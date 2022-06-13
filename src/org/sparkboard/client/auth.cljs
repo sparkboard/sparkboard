@@ -2,7 +2,7 @@
   (:require ["react" :as react]
             [applied-science.js-interop :as j]
             [org.sparkboard.client.firebase :as firebase]
-            [org.sparkboard.util.promise :as p]
+            [tools.sparkboard.promise :as p]
             [triple.view :as v]))
 
 (v/defview after-promise [{:keys [fallback promise]} element]

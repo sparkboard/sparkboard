@@ -1,12 +1,10 @@
-(ns org.sparkboard.slack.api
+(ns tools.sparkboard.slack.api
   (:require [clj-http.client :as client]
             [jsonista.core :as json]
-            [lambdaisland.uri]
-            [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.hiccup :as hiccup]
-            [org.sparkboard.util :as u]
-            [org.sparkboard.util.js-convert :refer [json->clj]]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [tools.sparkboard.js-convert :refer [json->clj]]
+            [tools.sparkboard.slack.hiccup :as hiccup]
+            [tools.sparkboard.util :as u])
   (:import (java.net URI)
            (java.net.http HttpClient HttpClient$Version
                           HttpRequest
@@ -19,10 +17,10 @@
 
 (defonce ^{:doc "Slack Web API RPC specification"
            :lookup-ts (java.time.LocalDateTime/now (java.time.ZoneId/of "UTC"))}
-         web-api-spec
-         (delay
-           (json/read-value (slurp ; canonical URL per https://api.slack.com/web#basics#spec
-                              "https://api.slack.com/specs/openapi/v2/slack_web.json"))))
+  web-api-spec
+  (delay
+   (json/read-value (slurp ; canonical URL per https://api.slack.com/web#basics#spec
+                     "https://api.slack.com/specs/openapi/v2/slack_web.json"))))
 
 ;; TODO consider https://github.com/gnarroway/hato
 ;; TODO consider wrapping Java11+ API further
@@ -70,65 +68,39 @@
 
 (defn http-verb [family-method]
   (case (ffirst (get-in @web-api-spec
-                        ["paths" (if-not (#{\/} (first family-method))
-                                   (str "/" family-method)
-                                   family-method)]))
+                        ["paths" (u/ensure-prefix family-method "/")]))
     "get" web-api-get
     "post" web-api-post))
 
-(defn web-api
+(defn request!
   ;; We use java HTTP client because `clj-http` fails to properly pass
   ;; JSON bodies - it does some unwanted magic internally.
   ([family-method params]
-   (web-api family-method {:auth/token (:slack/bot-token *context*)} params))
+   (request! family-method {:auth/token (:slack/bot-token *context*)} params))
   ([family-method config params]
    ((http-verb family-method) family-method config (u/update-some params {:blocks hiccup/blocks-json
                                                                           :view hiccup/blocks-json}))))
 
-(def channel-info
-  (memoize
-    (fn channel-info
-      ([channel-id] (channel-info (:slack/bot-token *context*) channel-id))
-      ([token channel-id]
-       (-> (web-api "conversations.info" {:auth/token token} {:channel channel-id})
-           :channel)))))
-
-(def team-info
-  (memoize
-    (fn team-info
-      ([team-id] (team-info (:slack/bot-token *context*) team-id))
-      ([token team-id]
-       (-> (web-api "team.info" {:auth/token token} {:team team-id})
-           :team)))))
-
-(defn user-info [token user-id]
-  (:user (web-api "users.info" {:auth/token token} {:user user-id})))
-
-(defn message-user! [context blocks]
-  (web-api "chat.postMessage"
-           {:auth/token (:slack/bot-token context)}
-           {:channel (:slack/user-id context)
-            :blocks blocks}))
-
 (comment
-  (http-verb "users.list")
+ (http-verb "users.list")
 
-  (http-verb "conversations.info")                          ; #function[org.sparkboard.server.slack.core/web-api-get]
+ (http-verb "conversations.info")                          ; #function[org.sparkboard.server.slack.core/web-api-get]
 
-  (http-verb "channels.list")
+ (http-verb "channels.list")
 
-  (http-verb "views.publish")                               ;; XXX this seems to be a mistake on Slack's part: it's GET in the spec but POST in the docs
+ (http-verb "views.publish")                               ;; XXX this seems to be a mistake on Slack's part: it's GET in the spec but POST in the docs
 
-  ;; bot token only for local dev experiments
-  (web-api-get "conversations.info" {:auth/token (-> env/config :slack :bot-user-oauth-token)} {:a "b"})
+ ;; bot token only for local dev experiments
+ (def bot-token (-> org.sparkboard.server.env/config :slack :bot-user-oauth-token))
 
-  (time (-> (client/get (str base-uri "conversations.info")
-                        {:query-params {:token (-> env/config :slack :bot-user-oauth-token)
-                                        :channel "C014Y501S2G"}})
-            :body
-            json/read-value))
+ (web-api-get "conversations.info" {:auth/token bot-token} {:a "b"})
 
-  (time (channel-info (-> env/config :slack :bot-user-oauth-token) "C0121SEV6Q2"))
+ (time (-> (client/get (str base-uri "conversations.info")
+                       {:query-params {:token bot-token
+                                       :channel "C014Y501S2G"}})
+           :body
+           json/read-value))
 
-  )
+ (time (channel-info bot-token "C0121SEV6Q2"))
 
+ )

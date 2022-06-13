@@ -1,4 +1,4 @@
-(ns org.sparkboard.util.transit
+(ns tools.sparkboard.transit
   (:refer-clojure :exclude [read])
   (:require [cognitect.transit :as transit]
             #?(:clj [clojure.java.io :as io]))

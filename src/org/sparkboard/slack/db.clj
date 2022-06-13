@@ -1,12 +1,12 @@
-(ns org.sparkboard.slack.slack-db
+(ns org.sparkboard.slack.db
   (:require [clojure.pprint :as pp]
             [clojure.set :as set]
             [clojure.string :as str]
             [org.sparkboard.firebase.admin-db-api :as fire]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.api :as slack]
-            [org.sparkboard.util.promise :as p]
-            [taoensso.timbre :as log]))
+            [org.sparkboard.slack.requests :as slack]
+            [taoensso.timbre :as log]
+            [tools.sparkboard.promise :as p]))
 
 (defn join [segments]
   (->> segments (map name) (str/join "/")))

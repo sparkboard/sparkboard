@@ -1,8 +1,8 @@
-(ns org.sparkboard.util.resources
+(ns tools.sparkboard.resources
   (:require #?@(:clj  [[clojure.java.io :as io]
                        [net.cgrand.macrovich :as m]]
                 :cljs [shadow.resource]))
-  #?(:cljs (:require-macros org.sparkboard.util.resources
+  #?(:cljs (:require-macros tools.sparkboard.resources
                             [net.cgrand.macrovich :as m])))
 
 #?(:clj

@@ -1,4 +1,4 @@
-(ns org.sparkboard.util.base64
+(ns tools.sparkboard.base64
   #?(:clj (:import (java.util Base64))))
 
 (defn decode-base64 [s]

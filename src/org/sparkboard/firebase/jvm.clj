@@ -3,7 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.walk :as walk]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.util.js-convert :refer [clj->json]]
+            [tools.sparkboard.js-convert :refer [clj->json]]
             [taoensso.timbre :as log])
   (:import (com.google.auth.oauth2 ServiceAccountCredentials)
            (com.google.firebase FirebaseApp FirebaseOptions$Builder)

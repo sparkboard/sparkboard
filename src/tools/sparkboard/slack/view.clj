@@ -1,12 +1,12 @@
-(ns org.sparkboard.slack.view
+(ns tools.sparkboard.slack.view
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.walk :as walk]
-            [org.sparkboard.slack.api :as slack]
-            [org.sparkboard.slack.hiccup :as hiccup]
-            [org.sparkboard.util :as u]
-            [org.sparkboard.util.js-convert :refer [clj->json]]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [tools.sparkboard.js-convert :refer [clj->json]]
+            [tools.sparkboard.slack.api :as slack.api]
+            [tools.sparkboard.slack.hiccup :as hiccup]
+            [tools.sparkboard.util :as u]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; formatting helpers
@@ -43,17 +43,17 @@
 (defn action-value [action]
   (case (:type action)
     ("checkboxes"
-      "multi_external_select"
-      "multi_static_select") (->> (:selected_options action)
-                                  (map :value)
-                                  (into #{}))
+     "multi_external_select"
+     "multi_static_select") (->> (:selected_options action)
+                                 (map :value)
+                                 (into #{}))
     "multi_users_select" (set (:selected_users action))
     "multi_conversations_select" (set (:selected_conversations action))
     "multi_channels_select" (set (:selected_channels action))
     ("static_select"
-      "external_select"
-      "radio_buttons"
-      "overflow") (-> action :selected_option :value)
+     "external_select"
+     "radio_buttons"
+     "overflow") (-> action :selected_option :value)
     "plain_text_input" (:value action)
     "users_select" (:selected_user action)
     "datepicker" (:selected_date action)
@@ -82,9 +82,9 @@
 ;; API for making views with local state
 
 (defonce registry
-         ;; views generated with `defview` register callback functions here. these are necessarily global -
-         ;; they must be triggered by HTTP requests sent from Slack.
-         (atom {}))
+  ;; views generated with `defview` register callback functions here. these are necessarily global -
+  ;; they must be triggered by HTTP requests sent from Slack.
+  (atom {}))
 
 (defn trigger [context]
   {:post [(some? %)]}
@@ -97,46 +97,46 @@
 (defn open!
   "Opens a modal"
   [view context]
-  (slack/web-api "views.open"
-                 {:auth/token (:slack/bot-token context)}
-                 {:view (view (assoc context :state (atom (initial-state view context))))
-                  :trigger_id (trigger context)}))
+  (slack.api/request! "views.open"
+                      {:auth/token (:slack/bot-token context)}
+                      {:view (view (assoc context :state (atom (initial-state view context))))
+     :trigger_id (trigger context)}))
 
 (defn push!
   "Pushes new modal to the stack"
   [view context]
-  (slack/web-api "views.push"
-                 {:auth/token (:slack/bot-token context)}
-                 {:trigger_id (trigger context)
-                  :view (view (assoc context :state (atom (initial-state view context))))}))
+  (slack.api/request! "views.push"
+                      {:auth/token (:slack/bot-token context)}
+                      {:trigger_id (trigger context)
+     :view (view (assoc context :state (atom (initial-state view context))))}))
 
 (defn replace!
   "Replaces modal at top of stack"
   [view context]
   (let [{:keys [hash id]} (-> context :slack/payload :view)]
-    (slack/web-api "views.update"
-                   {:auth/token (:slack/bot-token context)}
-                   {:view (view (assoc context :state (atom (initial-state view context))))
-                    :hash hash
-                    :view_id id
-                    :trigger_id (trigger context)})))
+    (slack.api/request! "views.update"
+                        {:auth/token (:slack/bot-token context)}
+                        {:view (view (assoc context :state (atom (initial-state view context))))
+       :hash hash
+       :view_id id
+       :trigger_id (trigger context)})))
 
 (defn home!
   "Set home tab for user-id"
   [view context user-id]
   {:pre [user-id]}
-  (slack/web-api "views.publish"
-                 {:auth/token (:slack/bot-token context)}
-                 {:view (view (assoc context :state (atom (initial-state view context))))
-                  :user_id user-id}))
+  (slack.api/request! "views.publish"
+                      {:auth/token (:slack/bot-token context)}
+                      {:view (view (assoc context :state (atom (initial-state view context))))
+     :user_id user-id}))
 
 (defn handle-home-opened!
   [view context]
-  (slack/web-api "views.publish"
-                 {:auth/token (:slack/bot-token context)}
-                 {:view (view (assoc context :state (atom (or (-> context :slack/payload :view :private_metadata)
-                                                              (initial-state view context)))))
-                  :user_id (:slack/user-id context)}))
+  (slack.api/request! "views.publish"
+                      {:auth/token (:slack/bot-token context)}
+                      {:view (view (assoc context :state (atom (or (-> context :slack/payload :view :private_metadata)
+                                                 (initial-state view context)))))
+     :user_id (:slack/user-id context)}))
 
 (def ^:dynamic *namespace*
   "Current view namespace, a string, used to resolve local IDs and create global IDs"
@@ -159,11 +159,11 @@
                          :view view)))]
     (log/trace action-id value {:prev-state prev-state :next-state @state-atom})
     (when (and @state-atom (not= prev-state @state-atom))
-      (slack/web-api "views.update"
-                     {:view (view (assoc context :state state-atom))
-                      :hash hash
-                      :view_id id
-                      :trigger_id (trigger context)}))))
+      (slack.api/request! "views.update"
+                          {:view (view (assoc context :state state-atom))
+         :hash hash
+         :view_id id
+         :trigger_id (trigger context)}))))
 
 (defn return-json [status body]
   {:status status
@@ -205,14 +205,14 @@
 
 (defn view-fn [{:as view-opts :keys [view-name render-fn]}]
   (with-meta
-    (fn [ctx]
-      (let [hiccup (binding [*namespace* view-name] (render-fn ctx))
-            tag (first hiccup)]
-        (cond-> hiccup
-                (#{:modal} tag) (update-in [1 :callback-id] #(or % view-name))
-                (#{:modal :home} tag) (with-meta ctx)
-                (#{:modal :home} tag) (assoc-in [1 :private_metadata] (some-> (:state ctx) (deref))))))
-    view-opts))
+   (fn [ctx]
+     (let [hiccup (binding [*namespace* view-name] (render-fn ctx))
+           tag (first hiccup)]
+       (cond-> hiccup
+               (#{:modal} tag) (update-in [1 :callback-id] #(or % view-name))
+               (#{:modal :home} tag) (with-meta ctx)
+               (#{:modal :home} tag) (assoc-in [1 :private_metadata] (some-> (:state ctx) (deref))))))
+   view-opts))
 
 (defn make-view* [{:as view-opts
                    :keys [view-name
@@ -253,23 +253,23 @@
         view-name (str name-sym)
         options (atom (set/rename-keys options {:actions ::actions}))
         body (walk/postwalk
-               (fn [x]
-                 (if-not (map? x)
-                   x
-                   (cond (:action-id x)
-                         (cond (map? (:action-id x))
-                               (let [[action-k action-form] (first (:action-id x))
-                                     action-id (id view-name action-k)]
-                                 (swap! options assoc-in [:action-fns action-id] action-form)
-                                 (swap! options assoc-in [:actions action-k] action-id)
-                                 (assoc x :action-id action-id))
-                               (keyword? (:action-id x)) (update x :action-id (partial id view-name))
-                               :else x)
-                         (:on-submit x) (do (swap! options assoc :on-submit (:on-submit x))
-                                            (dissoc x :on-submit))
-                         (:on-close x) (do (swap! options assoc :on-close (:on-close x))
-                                           (dissoc x :on-close))
-                         :else x))) (last body))]
+              (fn [x]
+                (if-not (map? x)
+                  x
+                  (cond (:action-id x)
+                        (cond (map? (:action-id x))
+                              (let [[action-k action-form] (first (:action-id x))
+                                    action-id (id view-name action-k)]
+                                (swap! options assoc-in [:action-fns action-id] action-form)
+                                (swap! options assoc-in [:actions action-k] action-id)
+                                (assoc x :action-id action-id))
+                              (keyword? (:action-id x)) (update x :action-id (partial id view-name))
+                              :else x)
+                        (:on-submit x) (do (swap! options assoc :on-submit (:on-submit x))
+                                           (dissoc x :on-submit))
+                        (:on-close x) (do (swap! options assoc :on-close (:on-close x))
+                                          (dissoc x :on-close))
+                        :else x))) (last body))]
     (log/info :actions (::actions @options))
     `(do (def ~name-sym
            (make-view* (merge {:view-name ~view-name

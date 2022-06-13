@@ -1,10 +1,10 @@
-(ns org.sparkboard.util.promise
+(ns tools.sparkboard.promise
   (:refer-clojure :exclude [let -> ->> do resolve try catch promise])
   (:require [kitchen-async.promise]
             #?(:clj [net.cgrand.macrovich :as m]))
   #?(:cljs
      (:require-macros [net.cgrand.macrovich :as m]
-                      org.sparkboard.util.promise)))
+                      tools.sparkboard.promise)))
 
 (m/deftime
  (defmacro alt [{:keys [cljs clj]} & body]

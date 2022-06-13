@@ -3,10 +3,10 @@
   (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.util.js-convert :refer [clj->json ->clj]]
+            [tools.sparkboard.js-convert :refer [clj->json ->clj]]
             #?(:clj  [org.sparkboard.firebase.jvm :as fire-jvm]
-               :cljs [org.sparkboard.http :as http])
-            [org.sparkboard.util :as u])
+               :cljs [tools.sparkboard.http :as http])
+            [tools.sparkboard.util :as u])
   #?(:clj (:import (com.google.firebase.database DatabaseReference))))
 
 #?(:cljs

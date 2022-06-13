@@ -1,4 +1,4 @@
-(ns org.sparkboard.util.future)
+(ns tools.sparkboard.future)
 
 (defmacro try-future [& body]
   `(future

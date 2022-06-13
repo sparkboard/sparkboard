@@ -1,13 +1,14 @@
 (ns org.sparkboard.slack.screens
   (:require [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.server.env :as env]
-            [org.sparkboard.slack.api :as slack]
-            [org.sparkboard.slack.slack-db :as slack-db]
+            [org.sparkboard.slack.requests :as slack]
+            [org.sparkboard.slack.db :as slack.db]
             [org.sparkboard.slack.urls :as urls]
-            [org.sparkboard.slack.view :as v]
-            [org.sparkboard.slack.view-examples :as examples]
-            [org.sparkboard.util.future :refer [try-future]]
-            [org.sparkboard.util.transit :as transit]))
+            [tools.sparkboard.slack.view :as v]
+            [tools.sparkboard.slack.view-examples :as examples]
+            [tools.sparkboard.future :refer [try-future]]
+            [tools.sparkboard.slack.api :as slack.api]
+            [tools.sparkboard.transit :as transit]))
 
 (def team-messages
   {:welcome
@@ -41,7 +42,7 @@
                                             (:invite-link input-values))
                         (v/home! home
                                  ;; update team-context to propagate invite-link change
-                                 (merge context (slack-db/team-context (:slack/team-id context)))
+                                 (merge context (slack.db/team-context (:slack/team-id context)))
                                  (:slack/user-id context)))}
    [:input {:label "Link"
             :optional true}
@@ -73,8 +74,8 @@
                           :action-id k}]])])
 
 (defn project-url [board-id channel-id]
-  (let [domain (some-> board-id slack-db/board-domain)
-        project-id (some-> (slack-db/linked-channel channel-id) :project-id)]
+  (let [domain (some-> board-id slack.db/board-domain)
+        project-id (some-> (slack.db/linked-channel channel-id) :project-id)]
     (when (and domain project-id)
       (str (urls/sparkboard-host domain) "/project/" project-id))))
 
@@ -93,8 +94,8 @@
                           reply-ts]} @state
         {:keys [user-reply]} input-values
         {{response-thread :ts} :message :as res}
-        (slack/web-api "chat.postMessage"
-          {:blocks [[:divider]
+        (slack.api/request! "chat.postMessage"
+                            {:blocks [[:divider]
                     [:section
                      {:accessory (when-let [url (project-url board-id reply-channel)]
                                    [:button {:url url} "Project Page"])}
@@ -103,7 +104,7 @@
            :text user-reply
            :channel response-channel
            :thread_ts response-thread})
-        {:keys [permalink]} (slack/web-api "chat.getPermalink" {:channel response-channel
+        {:keys [permalink]} (slack.api/request! "chat.getPermalink" {:channel response-channel
                                                                 :message_ts response-thread})]
     (try-future
       ;; write reply to DB
@@ -113,8 +114,8 @@
           (fire-jvm/set-value {:message user-reply
                                :channel-id reply-channel
                                :user-id user-id})))
-    (slack/web-api "chat.update"
-      {:channel reply-channel
+    (slack.api/request! "chat.update"
+                        {:channel reply-channel
        :ts reply-ts
        :blocks (team-broadcast
                  (merge context
@@ -191,8 +192,8 @@
                           " sent a message to all teams:\n"
                           (v/blockquote message))
         {thread :ts} (when response-channel
-                       (slack/web-api "chat.postMessage"
-                         {:channel response-channel
+                       (slack.api/request! "chat.postMessage"
+                                           {:channel response-channel
                           :text message-text
                           :blocks [[:section [:md message-text]]]}))
         content (if response-channel
@@ -209,24 +210,24 @@
                          :response-channel response-channel
                          :response-thread (when collect-in-thread thread)})
     (mapv #(try-future
-            (slack/web-api "chat.postMessage"
-                           {:auth/token (:slack/bot-token context)}
-                           (merge
-                            content
-                            {:channel (:channel-id %)
-                             :unfurl_media true
-                             :unfurl_links true})))
-          (slack-db/team->all-linked-channels (:slack/team-id context)))))
+            (slack.api/request! "chat.postMessage"
+                                {:auth/token (:slack/bot-token context)}
+                                (merge
+                                content
+                                {:channel (:channel-id %)
+                                 :unfurl_media true
+                                 :unfurl_links true})))
+          (slack.db/team->all-linked-channels (:slack/team-id context)))))
 
 (v/defview team-broadcast-compose
   [context]
   (let [project-channels (into #{}
                                (map :channel-id)
-                               (slack-db/team->all-linked-channels (:slack/team-id context)))
+                               (slack.db/team->all-linked-channels (:slack/team-id context)))
         destination-channel-options
-        (->> (slack/web-api "conversations.list"
-               {:exclude_archived true
-                :types "public_channel,private_channel"})
+        (->> (slack.api/request! "conversations.list"
+                                 {:exclude_archived true
+                                 :types "public_channel,private_channel"})
              :channels
              (into [] (comp (filter :is_member)
                             (remove (comp project-channels :id))

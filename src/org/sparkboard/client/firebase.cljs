@@ -4,8 +4,8 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [org.sparkboard.client.env :as env]
-            [org.sparkboard.client.loaders :as loaders]
-            [org.sparkboard.util.promise :as p]
+            [tools.sparkboard.browser.loaders :as loaders]
+            [tools.sparkboard.promise :as p]
             [triple.view.react.experimental.atom :as ratom]))
 
 (defonce app firebase)
