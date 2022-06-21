@@ -450,8 +450,11 @@
   [port]
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false}))
-  (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev
-    (reset! nrepl-server (nrepl/start-server :bind "::1" :port 7888))))
+  (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev'
+    (let [nrepl-port 7888
+          nrepl-host "::1"]
+      (log/info "Starting nrepl server" {:port nrepl-port :host nrepl-host})
+      (reset! nrepl-server (nrepl/start-server :bind nrepl-host :port nrepl-port)))))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
