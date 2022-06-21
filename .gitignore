@@ -20,3 +20,5 @@ classes
 *.crt
 *.key
 *.jar
+*.conf
+report.html

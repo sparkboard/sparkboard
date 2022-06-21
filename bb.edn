@@ -12,6 +12,7 @@
                  (shell "clojure -A:uberdeps -X:uberjar"))
          build (do (run 'cljs)
                    (run 'clj))
+         build-report (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
          run (shell "java -jar target/sparkboard.jar")
          deploy (shell (str "flyctl deploy -a " staging))
          deploy:ci (shell (str "flyctl deploy -a " staging " --remote-only"))
