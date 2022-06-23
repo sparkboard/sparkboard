@@ -5,36 +5,42 @@
 
 ;; For exploratory or one-off migration steps.
 ;;
-;; The `mongoexport` command is required. To install mongodb-community on MacOS:
-;;
-;;  brew tap mongodb/brew && brew install mongodb-community
+;; The `mongoexport` command is required.
+;; MacOS: brew tap mongodb/brew && brew install mongodb-community
+;; Alpine: apk add --update-cache mongodb-tools
 ;;
 
-(def LOCAL-DIR "./.migration-data")
+(def LOCAL-DIR (do (sh "mkdir" "-p" "./.migration-data")
+                   "./.migration-data"))
+
+(def MONGODB_URI (-> env/config :prod :mongodb/readonly-uri))
+
+(def collections {"discussion" "discussionschemas"
+                  "notification" "notificationschemas"
+                  "user" "users"
+                  "thread" "threadschemas"
+                  "project" "projectschemas"})
 
 (defn fetch-mongodb []
-  (->> {"discussionschemas" "discussion"
-        "notificationschemas" "notification"
-        "users" "user"
-        "threadschemas" "thread"
-        "projectschemas" "project"}
-       (reduce (fn [m [mongo-coll dest-name]]
-                 (let [{:keys [out err exit]}
-                       (sh "mongoexport"
-                           "--uri" (:mongodb-uri (env/get :one-time/staging))
-                           "--jsonArray"
-                           "--collection" mongo-coll)]
-                   (println err)
-                   (if-not (zero? exit)
-                     (throw (Exception. err))
-                     (assoc m dest-name (json/read-value out))))) {})
-       (spit (str LOCAL-DIR "/mongodb.edn"))))
+  (doseq [[coll-name mongo-coll] collections
+          :let [{:keys [out err exit]} (sh "mongoexport"
+                                           "--uri" MONGODB_URI
+                                           "--jsonArray"
+                                           "--collection" mongo-coll)]]
+    (when-not (zero? exit)
+      (throw (Exception. err)))
+    (spit (str LOCAL-DIR "/" coll-name ".edn")
+          (json/read-value out))))
 
 (defn read-mongodb []
-  (->> (slurp (str LOCAL-DIR "/mongodb.edn")) (read-string)))
+  (->> (keys collections)
+       (reduce (fn [m k]
+                 (let [v (read-string (slurp (str LOCAL-DIR "/" k ".edn")))]
+                   (assoc m k v))) {})))
 
 (defn fetch-firebase []
-  (let [{:firebase/keys [db token]} (env/get :one-time/staging)]
+  (let [{token :firebase/database-secret
+         {db :databaseURL} :firebase/app-config} (:prod env/config)]
     (-> (str db "/.json?auth=" token)
         (slurp)
         (json/read-value)
@@ -45,30 +51,31 @@
 
 (comment
 
-  ;; download mongodb copy
-  (time (fetch-mongodb))
-  ;; Elapsed time: 30082.72146 msecs
+ ;; download mongodb copy
+ (time (fetch-mongodb))
+ ;; Elapsed time: 30082.72146 msecs
+ (:out (sh "ls" LOCAL-DIR))
 
-  (->> (read-mongodb) (reduce-kv (fn [m k v] (assoc m k (count v))) {}))
-  ;; {"discussion" 17645,
-  ;;  "notification" 25521,
-  ;;  "user" 33463,
-  ;;  "thread" 5415,
-  ;;  "project" 7776}
+ (->> (read-mongodb) (reduce-kv (fn [m k v] (assoc m k (count v))) {}))
+ ;; {"discussion" 17645,
+ ;;  "notification" 25521,
+ ;;  "user" 33463,
+ ;;  "thread" 5415,
+ ;;  "project" 7776}
 
-  ;; download firebase copy
-  (time (fetch-firebase))
-  ;; Elapsed time: 1604.601176 msecs
+ ;; download firebase copy
+ (time (fetch-firebase))
+ ;; Elapsed time: 1604.601176 msecs
 
-  (->> (read-firebase) (reduce-kv (fn [m k v] (assoc m k (count v))) {}))
-  ;; {"org" 5,
-  ;;  "_parent" 5,
-  ;;  "settings" 365,
-  ;;  "collection" 1,
-  ;;  "feedback" 37,
-  ;;  "invalidations" 4,
-  ;;  "domain" 374,
-  ;;  "privateSettings" 39,
-  ;;  "roles" 2}
-  )
+ (->> (read-firebase) (reduce-kv (fn [m k v] (assoc m k (count v))) {}))
+ ;; {"org" 5,
+ ;;  "_parent" 5,
+ ;;  "settings" 365,
+ ;;  "collection" 1,
+ ;;  "feedback" 37,
+ ;;  "invalidations" 4,
+ ;;  "domain" 374,
+ ;;  "privateSettings" 39,
+ ;;  "roles" 2}
+ )
 

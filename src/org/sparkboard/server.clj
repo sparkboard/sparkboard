@@ -452,7 +452,7 @@
   (reset! server (run-jetty #'app {:port port :join? false}))
   (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev'
     (let [nrepl-port 7888
-          nrepl-host "::1"]
+          nrepl-host "::"]
       (log/info "Starting nrepl server" {:port nrepl-port :host nrepl-host})
       (reset! nrepl-server (nrepl/start-server :bind nrepl-host :port nrepl-port)))))
 

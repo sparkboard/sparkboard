@@ -4,6 +4,8 @@ FROM --platform=linux/amd64 openjdk:17-alpine
 
 WORKDIR /app
 
+RUN apk add --update-cache mongodb-tools
+
 COPY target/sparkboard.jar target/sparkboard.jar
-EXPOSE 7888
+
 CMD java -jar target/sparkboard.jar

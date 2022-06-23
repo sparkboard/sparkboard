@@ -1,5 +1,6 @@
 {:tasks {:requires ([cheshire.core :as json]
-                    [clojure.java.shell :refer [sh]])
+                    [clojure.java.shell :refer [sh]]
+                    [babashka.process :refer [process]])
          :init (do (def staging "sparkboard-jvm-staging")
                    (def prod "sparkboard-jvm"))
          dev (do (shell "rm -rf ./classes")
@@ -12,10 +13,16 @@
                  (shell "clojure -A:uberdeps -X:uberjar"))
          build (do (run 'cljs)
                    (run 'clj))
+         staging:secrets (shell {:in (slurp "src/.staging.config.edn")}
+                           (str "fly -a " staging " secrets set SPARKBOARD_CONFIG=-"))
+         staging:stop (shell (str "fly -a " staging " scale count 0"))
+         staging:start (shell (str "fly -a " staging " scale count 1"))
+         staging:release-clj (do (run 'clj) (run 'deploy))
+         staging:release (shell (str "flyctl deploy -a " staging))
+         staging:release-ci (shell (str "flyctl deploy -a " staging " --remote-only"))
+
          build-report (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
          run (shell "java -jar target/sparkboard.jar")
-         deploy (shell (str "flyctl deploy -a " staging))
-         deploy:ci (shell (str "flyctl deploy -a " staging " --remote-only"))
 
          ;; this step is run manually after verifying a staging build.
          promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}

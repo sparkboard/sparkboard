@@ -31,7 +31,7 @@
         ;; schema
         metosin/malli {:mvn/version "0.8.4"}
 
-        nrepl/nrepl {:mvn/version "0.7.0"}
+        nrepl/nrepl {:mvn/version "0.9.0"}
 
         ;; client
         mhuebert/kitchen-async {:mvn/version "0.1.0"}
