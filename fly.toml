@@ -4,10 +4,15 @@ processes = []
 
 [env]
   PORT = "8080"
+  DATALEVIN_DIR = "/datalevin"
 
 [experimental]
   allowed_public_ports = []
   auto_rollback = true
+
+[mounts]
+  source="datalevin"
+  destination="/datalevin"
 
 [[services]]
   http_checks = []

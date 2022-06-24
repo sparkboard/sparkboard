@@ -6,20 +6,23 @@
          dev (do (shell "rm -rf ./classes")
                  (shell "yarn shadow-cljs start")
                  (shell "yarn shadow-cljs watch web"))
+         stop (shell "yarn shadow-cljs stop")
          cljs (do (shell "yarn install")
                   (shell "yarn shadow-cljs release web"))
          clj (do (shell "mkdir -p classes")
-                 (shell "clojure -A:uberdeps -X:aot")
-                 (shell "clojure -A:uberdeps -X:uberjar"))
+                 (shell "clojure -A:uberdeps:datalevin -X:aot")
+                 (shell "clojure -A:uberdeps:datalevin -X:uberjar"))
          build (do (run 'cljs)
                    (run 'clj))
          staging:secrets (shell {:in (slurp "src/.staging.config.edn")}
                            (str "fly -a " staging " secrets set SPARKBOARD_CONFIG=-"))
          staging:stop (shell (str "fly -a " staging " scale count 0"))
          staging:start (shell (str "fly -a " staging " scale count 1"))
-         staging:release-clj (do (run 'clj) (run 'deploy))
-         staging:release (shell (str "flyctl deploy -a " staging))
-         staging:release-ci (shell (str "flyctl deploy -a " staging " --remote-only"))
+
+         staging:clj (do (run 'clj) (run 'staging:deploy))
+
+         staging:deploy (shell (str "flyctl deploy -a " staging))
+         staging:deploy-ci (shell (str "flyctl deploy -a " staging " --remote-only"))
 
          build-report (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
          run (shell "java -jar target/sparkboard.jar")

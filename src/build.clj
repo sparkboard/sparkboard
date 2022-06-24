@@ -6,4 +6,6 @@
 
 (defn uberjar [_]
   (let [deps (clojure.edn/read-string (slurp "deps.edn"))]
-    (uberdeps/package deps "target/sparkboard.jar" {:main-class 'org.sparkboard.server})))
+    (uberdeps/package deps "target/sparkboard.jar"
+                      {:main-class "org.sparkboard.server"
+                       :aliases [:datalevin]})))

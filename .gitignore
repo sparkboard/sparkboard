@@ -22,3 +22,5 @@ classes
 *.jar
 *.conf
 report.html
+.datalevin
+TODO.md

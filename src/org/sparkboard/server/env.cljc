@@ -7,9 +7,13 @@
             [clojure.walk :as walk])
   #?(:clj (:import java.util.Base64)))
 
-(defn env-var [k]
-  #?(:cljs (j/get-in js/process [:env (name k)])
-     :clj  (System/getenv (name k))))
+(defn env-var
+  ([k]
+   #?(:cljs (j/get-in js/process [:env (name k)])
+      :clj  (System/getenv (name k))))
+  ([k not-found] (if-some [x (env-var k)]
+                   x
+                   not-found)))
 
 (defn parse-config [c]
   (some->> c
