@@ -1,5 +1,6 @@
 (ns org.sparkboard.server.env
   (:require [applied-science.js-interop :as j]
+            #?(:clj [clojure.java.shell :refer [sh]])
             #?(:cljs [cljs.reader :refer [read-string]])
             [tools.sparkboard.js-convert :refer [json->clj]]
             [tools.sparkboard.resources :as rc]
@@ -14,6 +15,14 @@
   ([k not-found] (if-some [x (env-var k)]
                    x
                    not-found)))
+#?(:clj
+   (defn db-path
+     ([]
+      (let [parent (env-var :DB_DIR "./.db")]
+        (sh "mkdir" "-p" parent)
+        parent))
+     ([subdir]
+      (str (db-path) (u/ensure-prefix subdir "/")))))
 
 (defn parse-config [c]
   (some->> c

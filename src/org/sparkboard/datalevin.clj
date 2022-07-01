@@ -1,13 +1,12 @@
 (ns org.sparkboard.datalevin
-  (:require re-db.integrations.datalevin
-            [datalevin.core :as d]
-            [re-db.read ]
+  (:require [datalevin.core :as d]
             [org.sparkboard.server.env :as env]
             [re-db.api :as db]
+            [re-db.integrations.datalevin]
+            [re-db.read]
             [re-db.schema :as schema]))
 
-(def db-path (str (env/env-var :DATALEVIN_DIR "./.datalevin")
-                  "/2022_06_23"))
+(def db-path (env/db-path "datalevin"))
 
 (def conn (d/get-conn db-path {}))
 

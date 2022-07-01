@@ -3,7 +3,7 @@
 
         ;; v2
         datalevin/datalevin {:mvn/version "0.6.14"}
-        io.github.mhuebert/re-db {:git/sha "df65ba60204dacf115e9626c5c219fd71c6fa82a"}
+        io.github.mhuebert/re-db {:git/sha "d43ee4975889f27b04a6ff293fbd7415797a5f6d"}
 
         ;; Google Cloud
         jonotin/jonotin {:local/root "vendor/jonotin"}
@@ -17,6 +17,7 @@
         lambdaisland/uri {:mvn/version "1.13.95"}
         commons-codec/commons-codec {:mvn/version "1.14"}
         applied-science/js-interop {:mvn/version "0.3.3"}
+        clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}

@@ -4,15 +4,15 @@ processes = []
 
 [env]
   PORT = "8080"
-  DATALEVIN_DIR = "/datalevin"
+  DB_DIR = "/db"
 
 [experimental]
   allowed_public_ports = []
   auto_rollback = true
 
 [mounts]
-  source="datalevin"
-  destination="/datalevin"
+  source="sparkboard_db"
+  destination="/db"
 
 [[services]]
   http_checks = []

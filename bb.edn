@@ -1,8 +1,13 @@
-{:tasks {:requires ([cheshire.core :as json]
+{:deps {org.babashka/cli {:mvn/version "0.3.30"}}
+ :tasks {:requires ([cheshire.core :as json]
                     [clojure.java.shell :refer [sh]]
+                    [babashka.cli :as cli]
                     [babashka.process :refer [process]])
-         :init (do (def staging "sparkboard-jvm-staging")
-                   (def prod "sparkboard-jvm"))
+         :init (do (def apps {:staging "sparkboard-jvm-staging"
+                              :prod "sparkboard-jvm"})
+                   (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
+                   (def env (:env options :staging))
+                   (def app (:app options (apps env))))
          dev (do (shell "rm -rf ./classes")
                  (shell "yarn shadow-cljs start")
                  (shell "yarn shadow-cljs watch web"))
@@ -14,23 +19,24 @@
                  (shell "clojure -A:uberdeps:datalevin -X:uberjar"))
          build (do (run 'cljs)
                    (run 'clj))
-         staging:secrets (shell {:in (slurp "src/.staging.config.edn")}
-                           (str "fly -a " staging " secrets set SPARKBOARD_CONFIG=-"))
-         staging:stop (shell (str "fly -a " staging " scale count 0"))
-         staging:start (shell (str "fly -a " staging " scale count 1"))
 
-         staging:clj (do (run 'clj) (run 'staging:deploy))
-
-         staging:deploy (shell (str "flyctl deploy -a " staging))
-         staging:deploy-ci (shell (str "flyctl deploy -a " staging " --remote-only"))
+         fly:set-secrets (let [path (str "src/." (name env) ".config.edn")]
+                       (if-let [secrets (slurp path)]
+                         (shell {:in secrets} (str "fly -a " app " secrets set SPARKBOARD_CONFIG=-"))
+                         (prn (str "No secrets found: " path))))
+         fly:down (shell (str "fly -a " app " scale count 0"))
+         fly:up (shell (str "fly -a " app " scale count 1"))
+         fly:clj (do (run 'clj) (run 'fly:deploy))
+         fly:deploy (shell (str "flyctl deploy -a " app))
+         fly:deploy-ci (shell (str "flyctl deploy -a " app " --remote-only"))
 
          build-report (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
          run (shell "java -jar target/sparkboard.jar")
 
          ;; this step is run manually after verifying a staging build.
-         promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}
-                                                               (str "flyctl image show -a " staging " --json"))
-                                                           :out
-                                                           json/parse-string)
-                       image (str Registry "/" Repository ":" Tag)]
-                   (shell (str "flyctl deploy -a " prod " --image " image)))}}
+         staging:promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}
+                                                                       (str "flyctl image show -a " (:staging apps) " --json"))
+                                                                   :out
+                                                                   json/parse-string)
+                               image (str Registry "/" Repository ":" Tag)]
+                           (shell (str "flyctl deploy -a " (:prod apps) " --image " image)))}}
