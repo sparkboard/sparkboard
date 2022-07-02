@@ -4,7 +4,13 @@ FROM --platform=linux/amd64 openjdk:17-alpine
 
 WORKDIR /app
 
-RUN apk add --update-cache mongodb-tools
+ENV BB_VERSION=0.8.157
+
+RUN apk add --update-cache mongodb-tools bash curl
+
+RUN curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install \
+    && chmod +x install \
+    && ./install --version $BB_VERSION --static
 
 COPY target/sparkboard.jar target/sparkboard.jar
 

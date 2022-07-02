@@ -7,7 +7,7 @@
             [hiccup.util :refer [raw-string]]
             [lambdaisland.uri :as uri]
             [mhuebert.cljs-static.html :as html]
-            [nrepl.server :as nrepl]
+            [org.sparkboard.server.nrepl :as nrepl]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.log]
@@ -438,11 +438,10 @@
       wrap-static-first))
 
 (defonce server (atom nil))
-(defonce nrepl-server (atom nil))
 
 (defn stop-server! []
   (some-> @server (.stop))
-  (some-> @nrepl-server (nrepl/stop-server)))
+  (nrepl/stop!))
 
 (defn restart-server!
   "Setup fn.
@@ -451,10 +450,10 @@
   (stop-server!)
   (reset! server (run-jetty #'app {:port port :join? false}))
   (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev'
-    (let [nrepl-port 7888
-          nrepl-host "::"]
-      (log/info "Starting nrepl server" {:port nrepl-port :host nrepl-host})
-      (reset! nrepl-server (nrepl/start-server :bind nrepl-host :port nrepl-port)))))
+    (nrepl/start!)))
+
+
+
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
