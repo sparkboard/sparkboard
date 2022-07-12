@@ -20,3 +20,5 @@
   (if (str/starts-with? s prefix)
     s
     (str prefix s)))
+
+(defn some-str [s] (guard s (complement str/blank?)))

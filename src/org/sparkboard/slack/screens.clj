@@ -26,12 +26,12 @@
 (v/defview link-account [context]
   (when-let [linking-url (urls/link-sparkboard-account context)]
     (list
-      [:section [:md "Please link your Sparkboard account:"]]
-      [:actions
-       [:button {:style "primary"
-                 :url linking-url
-                 :action-id :no-op/link-sparkboard}
-        (str "Link Account")]])))
+     [:section [:md "Please link your Sparkboard account:"]]
+     [:actions
+      [:button {:style "primary"
+                :url linking-url
+                :action-id :no-op/link-sparkboard}
+       (str "Link Account")]])))
 
 (declare home)
 (v/defview invite-link-modal [context]
@@ -96,33 +96,33 @@
         {{response-thread :ts} :message :as res}
         (slack.api/request! "chat.postMessage"
                             {:blocks [[:divider]
-                    [:section
-                     {:accessory (when-let [url (project-url board-id reply-channel)]
-                                   [:button {:url url} "Project Page"])}
-                     [:md (str "from " (v/mention user-id) " in " (v/channel-link reply-channel) ":\n"
-                               (v/blockquote user-reply))]]]
-           :text user-reply
-           :channel response-channel
-           :thread_ts response-thread})
+                                      [:section
+                                       {:accessory (when-let [url (project-url board-id reply-channel)]
+                                                     [:button {:url url} "Project Page"])}
+                                       [:md (str "from " (v/mention user-id) " in " (v/channel-link reply-channel) ":\n"
+                                                 (v/blockquote user-reply))]]]
+                             :text user-reply
+                             :channel response-channel
+                             :thread_ts response-thread})
         {:keys [permalink]} (slack.api/request! "chat.getPermalink" {:channel response-channel
-                                                                :message_ts response-thread})]
+                                                                     :message_ts response-thread})]
     (try-future
-      ;; write reply to DB
-      (-> (str "/slack-broadcast/" firebase-key "/replies")
-          fire-jvm/->ref
-          (.push)
-          (fire-jvm/set-value {:message user-reply
-                               :channel-id reply-channel
-                               :user-id user-id})))
+     ;; write reply to DB
+     (-> (str "/slack-broadcast/" firebase-key "/replies")
+         fire-jvm/->ref
+         (.push)
+         (fire-jvm/set-value {:message user-reply
+                              :channel-id reply-channel
+                              :user-id user-id})))
     (slack.api/request! "chat.update"
                         {:channel reply-channel
-       :ts reply-ts
-       :blocks (team-broadcast
-                 (merge context
-                        #:broadcast{:message message
-                                    :response-channel response-channel
-                                    :id firebase-key
-                                    :reply/permalink permalink}))})))
+                         :ts reply-ts
+                         :blocks (team-broadcast
+                                  (merge context
+                                         #:broadcast{:message message
+                                                     :response-channel response-channel
+                                                     :id firebase-key
+                                                     :reply/permalink permalink}))})))
 
 (v/defview team-broadcast-reply-modal
   "User response to broadcast - text field for project status update"
@@ -141,7 +141,7 @@
                           :action-id :user-reply}]]
      [:context [:md "Your reply will be posted to #"
                 (:name_normalized
-                  (slack/channel-info response-channel))]]]))
+                 (slack/channel-info response-channel))]]]))
 
 (defn open-broadcast-reply-modal! [{:as context :keys [block-id]}]
   (let [{:broadcast/keys [firebase-key]} (transit/read block-id)
@@ -166,21 +166,21 @@
                      id]
     :reply/keys [permalink]}]
   (list
-    [:section [:md (v/blockquote message)]]
-    (when response-channel
-      (list
-        [:actions
-         ;; when passing data through a block-id, encode as transit-map to allow for extension
-         ;; and make expectation clear
-         {:block-id (transit/write {:broadcast/firebase-key id})} ;; block-id is passed to action, below
-         [:button {:style "primary"
-                   :action-id {"user:team-broadcast-response" open-broadcast-reply-modal!}}
-          "Reply"]]
-        (if permalink
-          [[:section [:md "✅ Thanks for your response! "
-                      (v/link "See what you wrote." permalink)]]]
-          [:context
-           [:md "Replies will be sent to #" (:name_normalized (slack/channel-info response-channel))]])))))
+   [:section [:md (v/blockquote message)]]
+   (when response-channel
+     (list
+      [:actions
+       ;; when passing data through a block-id, encode as transit-map to allow for extension
+       ;; and make expectation clear
+       {:block-id (transit/write {:broadcast/firebase-key id})} ;; block-id is passed to action, below
+       [:button {:style "primary"
+                 :action-id {"user:team-broadcast-response" open-broadcast-reply-modal!}}
+        "Reply"]]
+      (if permalink
+        [[:section [:md "✅ Thanks for your response! "
+                    (v/link "See what you wrote." permalink)]]]
+        [:context
+         [:md "Replies will be sent to #" (:name_normalized (slack/channel-info response-channel))]])))))
 
 (defn send-broadcast! [context {:as opts
                                 :keys [message
@@ -194,8 +194,8 @@
         {thread :ts} (when response-channel
                        (slack.api/request! "chat.postMessage"
                                            {:channel response-channel
-                          :text message-text
-                          :blocks [[:section [:md message-text]]]}))
+                                            :text message-text
+                                            :blocks [[:section [:md message-text]]]}))
         content (if response-channel
                   {:text (:message opts)
                    :blocks (team-broadcast (merge context
@@ -213,10 +213,10 @@
             (slack.api/request! "chat.postMessage"
                                 {:auth/token (:slack/bot-token context)}
                                 (merge
-                                content
-                                {:channel (:channel-id %)
-                                 :unfurl_media true
-                                 :unfurl_links true})))
+                                 content
+                                 {:channel (:channel-id %)
+                                  :unfurl_media true
+                                  :unfurl_links true})))
           (slack.db/team->all-linked-channels (:slack/team-id context)))))
 
 (v/defview team-broadcast-compose
@@ -227,7 +227,7 @@
         destination-channel-options
         (->> (slack.api/request! "conversations.list"
                                  {:exclude_archived true
-                                 :types "public_channel,private_channel"})
+                                  :types "public_channel,private_channel"})
              :channels
              (into [] (comp (filter :is_member)
                             (remove (comp project-channels :id))
@@ -241,10 +241,10 @@
              :submit [:plain-text "Send"]
              :on-submit (fn [{:as context {:keys [message response-channel options]} :input-values}]
                           (try-future
-                            (send-broadcast! context
-                                             {:message message
-                                              :response-channel response-channel
-                                              :collect-in-thread (contains? options "collect-in-thread")}))
+                           (send-broadcast! context
+                                            {:message message
+                                             :response-channel response-channel
+                                             :collect-in-thread (contains? options "collect-in-thread")}))
                           [:update
                            [:modal {:title "Thanks!"}
                             [:section [:md "Broadcast received."]]]])}
@@ -258,69 +258,69 @@
         :placeholder (str "Write something to send to all " (count project-channels) " project teams.")}]]
      (if (seq destination-channel-options)
        (list
-         [:input
-          {:label "Collect responses:"
-           :optional true}
-          [:static-select
-           {:placeholder [:plain-text "Destination channel"],
-            :options destination-channel-options
-            :action-id :response-channel}]]
-         [:input
-          {:label "Options"
-           :optional true}
-          [:checkboxes
-           {:action-id :options
-            :options [{:value "collect-in-thread"
-                       :text [:md "Put responses in a thread"]}]}]])
+        [:input
+         {:label "Collect responses:"
+          :optional true}
+         [:static-select
+          {:placeholder [:plain-text "Destination channel"],
+           :options destination-channel-options
+           :action-id :response-channel}]]
+        [:input
+         {:label "Options"
+          :optional true}
+         [:checkboxes
+          {:action-id :options
+           :options [{:value "collect-in-thread"
+                      :text [:md "Put responses in a thread"]}]}]])
        [:section [:md "💡 Add this app to a channel to enable collection of responses."]])]))
 
 (v/defview admin-menu [context]
   (list
-    [:section [:md "*Manage*"]]
-    [:actions
-     [:button {:style "primary"
-               :action-id {:compose (fn [context]
-                                      (case (-> context :slack/payload :view :type)
-                                        "home" (v/open! team-broadcast-compose context)
-                                        "modal" (v/replace! team-broadcast-compose context)))}} "Team Broadcast"]
-     [:button {:action-id {:customize-messages (partial v/open! customize-messages-modal)}} "Customize Messages"]
-     [:button {:action-id {:invite-link-modal (partial v/open! invite-link-modal)}}
-      (str (if (:slack/invite-link context) "Change" "⚠️ Add") " invite link")]
+   [:section [:md "*Manage*"]]
+   [:actions
+    [:button {:style "primary"
+              :action-id {:compose (fn [context]
+                                     (case (-> context :slack/payload :view :type)
+                                       "home" (v/open! team-broadcast-compose context)
+                                       "modal" (v/replace! team-broadcast-compose context)))}} "Team Broadcast"]
+    [:button {:action-id {:customize-messages (partial v/open! customize-messages-modal)}} "Customize Messages"]
+    [:button {:action-id {:invite-link-modal (partial v/open! invite-link-modal)}}
+     (str (if (:slack/invite-link context) "Change" "⚠️ Add") " invite link")]
 
-     [:overflow {:action-id :no-op/re-link
-                 :options [{:value "re-link"
-                            :url (urls/link-sparkboard-account context)
-                            :text [:plain-text "Re-Link Account"]}
-                           {:value "re-install"
-                            :url (str (:sparkboard/jvm-root context)
-                                      "/slack/reinstall/"
-                                      (:slack/team-id context))
-                            :text [:plain-text "Re-install App"]}]}]]))
+    [:overflow {:action-id :no-op/re-link
+                :options [{:value "re-link"
+                           :url (urls/link-sparkboard-account context)
+                           :text [:plain-text "Re-Link Account"]}
+                          {:value "re-install"
+                           :url (str (:sparkboard/jvm-root context)
+                                     "/slack/reinstall/"
+                                     (:slack/team-id context))
+                           :text [:plain-text "Re-install App"]}]}]]))
 
 (defn main-menu [{:as context :sparkboard/keys [board-id account-id] :slack/keys [bot-token user-id]}]
   (list
 
-    (when (and board-id (not account-id))
-      (link-account context))
+   (when (and board-id (not account-id))
+     (link-account context))
 
-    (if-let [{:keys [title domain]} (some->> board-id (str "settings/") fire-jvm/read)]
-      [:section
-       {:accessory [:button {:url (urls/sparkboard-host domain)} "View Board"]}
-       [:md "Connected to *" title "* on Sparkboard."]]
-      [:section
-       [:md "No Sparkboard is linked to this Slack workspace."]])
+   (if-let [{:keys [title domain]} (some->> board-id (str "settings/") fire-jvm/read)]
+     [:section
+      {:accessory [:button {:url (urls/sparkboard-host domain)} "View Board"]}
+      [:md "Connected to *" title "* on Sparkboard."]]
+     [:section
+      [:md "No Sparkboard is linked to this Slack workspace."]])
 
-    (when (and board-id account-id (:is_admin (slack/user-info bot-token user-id)))
-      (admin-menu context))
-    [:section
-     {:accessory (when-not (= "prod" (env/config :env))
-                   (examples/dev-overflow context))
-      :fields [[:md
-                (str "_Updated: "
-                     (->> (java.util.Date.)
-                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
-                     "_")]
-               [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}]))
+   (when (and board-id account-id (:is_admin (slack/user-info bot-token user-id)))
+     (admin-menu context))
+   [:section
+    {:accessory (when-not (= "prod" (env/config :env))
+                  (examples/dev-overflow context))
+     :fields [[:md
+               (str "_Updated: "
+                    (->> (java.util.Date.)
+                         (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
+                    "_")]
+              [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}]))
 
 (v/defview home [context]
   [:home {} (main-menu context)])

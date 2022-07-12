@@ -2,7 +2,8 @@
  :tasks {:requires ([cheshire.core :as json]
                     [clojure.java.shell :refer [sh]]
                     [babashka.cli :as cli]
-                    [babashka.process :refer [process]])
+                    [babashka.process :refer [process]]
+                    [clojure.string :as str])
          :init (do (def apps {:staging "sparkboard-jvm-staging"
                               :prod "sparkboard-jvm"})
                    (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
@@ -29,6 +30,7 @@
          fly:clj (do (run 'clj) (run 'fly:deploy))
          fly:deploy (shell (str "flyctl deploy -a " app))
          fly:deploy-ci (shell (str "flyctl deploy -a " app " --remote-only"))
+         fly (shell (str "fly -a " app " " (str/join " " *command-line-args*)))
 
          build-report (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
          run (shell "java -jar target/sparkboard.jar")
