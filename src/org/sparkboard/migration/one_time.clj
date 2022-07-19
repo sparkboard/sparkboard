@@ -1,21 +1,19 @@
 (ns org.sparkboard.migration.one-time
-  (:require [clojure.java.shell :refer [sh]]
-            [clojure.string :as str]
-            [jsonista.core :as json]
-            [malli.provider :as mp]
-            [org.sparkboard.server.env :as env]
-            [clojure.instant :as inst]
-            [clojure.walk :as walk]
+  (:require [clojure.instant :as inst]
+            [clojure.java.shell :refer [sh]]
             [clojure.set :as set]
-            [re-db.schema :as schema]
-            [tools.sparkboard.util :as u]
-            [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
+            [clojure.walk :as walk]
             [java-time :as t]
+            [jsonista.core :as json]
+            [malli.core :as m]
+            [malli.provider :as mp]
             [org.sparkboard.schema :as sschema :refer [gen]]
-            [malli.registry :as mr]
-            [malli.transform :as mt])
+            [org.sparkboard.server.env :as env]
+            [re-db.schema :as schema]
+            [tools.sparkboard.util :as u])
   (:import java.lang.Integer
-           [java.util Date]))
+           (java.util Date)))
 
 ;; For exploratory or one-off migration steps.
 ;;
@@ -29,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
 
-(defn date-time [inst] (t/local-date-time inst "UTC"))
+(defn date-time [inst] (t/local-date-time (:$date inst inst) "UTC"))
 
 (defn bson-id-timestamp [id]
   (new Date (* 1000 (java.lang.Integer/parseInt (subs id 0 8) 16))))
@@ -108,9 +106,8 @@
   (fn [m pa v]
     (-> m
         (dissoc pa)
-        (assoc-some-value a v)
-        (cond-> (= "id" (name a))
-                (assoc :spark/id-key a)))))
+        (cond-> (some-value v)
+                (assoc a v)))))
 
 (defn lookup-ref [k]
   (xf (fn lf [v]
@@ -128,33 +125,36 @@
 
 (defn fire-flat
   ([id-key m]
-   (mapv (fn [[id m]] (assoc m id-key id :spark/id-key id-key)) m))
+   (mapv (fn [[id m]] (assoc m id-key id)) m))
   ([m] (fire-flat :firebase/id m)))
 
 (defn change-keys
   ([changes] (keep (partial change-keys changes)))
   ([changes doc]
    (let [changes (->> changes flatten (keep identity) (partition 2))
-         update-map (->> changes
-                         (filter #(= ::update-map (first %)))
-                         (map second)
-                         (apply comp))
-         changes (remove #(= ::update-map (first %)) changes)
-         walk (comp #(walk/prewalk (fn [x]
-                                     (if (map? x)
-                                       (reduce (fn [m [a f]]
-                                                 (if (= a ::always)
-                                                   (f m)
-                                                   (if-some [v (some-value (m a))]
-                                                     (f m a v)
-                                                     (dissoc m a))))
-                                               x
-                                               changes)
-                                       x)) %)
-                    update-map)]
-     (if (sequential? doc)
-       (keep walk doc)
-       (walk doc)))))
+         prepare (->> changes
+                      (keep (fn [[k v]] (when (= ::prepare k) v)))
+                      (apply comp))
+         defaults (->> changes
+                       (keep (fn [[k v]] (when (= ::defaults k) v)))
+                       (apply merge))
+         changes (remove (comp #{::prepare
+                                 ::defaults} first) changes)
+         doc (prepare doc)
+         apply-changes (fn [doc]
+                         (some->> (reduce (fn [m [a f]]
+                                            (if (= a ::always)
+                                              (f m)
+                                              (if-some [v (some-value (m a))]
+                                                (f m a v)
+                                                (dissoc m a))))
+                                          doc
+                                          changes)
+                                  (merge defaults)))]
+     (when doc
+       (if (sequential? doc)
+         (into [] (keep apply-changes) doc)
+         (apply-changes doc))))))
 
 (defn unmunge-domain [s] (str/replace s "_" "."))
 
@@ -171,7 +171,9 @@
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 
-(defn parse-$date [d] (t/instant (inst/read-instant-timestamp d)))
+(defn parse-$date [d] (some-> (:$date d d)
+                              inst/read-instant-timestamp
+                              t/instant))
 
 (def read-firebase
   (memoize
@@ -183,24 +185,17 @@
      (cond (mongo-colls k)
            (read-string (slurp (env/db-path (str (name k) ".edn"))))
            (firebase-colls k) (cond->> ((read-firebase) (firebase-colls k))
-                                      #_#_(= k :board)
-                                      (merge-with merge ((read-firebase) "privateSettings")))
+                                       #_#_(= k :board)
+                                               (merge-with merge ((read-firebase) "privateSettings")))
            :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
 
 (def handle-image-urls (xf (fn [urls]
-                             (set/rename-keys urls {"logo" :image-url/logo
-                                                    "logoLarge" :image-url/logo-large
-                                                    "footer" :image-url/footer
-                                                    "background" :image-url/background
-                                                    "subHeader" :image-url/sub-header}))))
-
-(defn id-key
-  ([k] (fn [m] (id-key m k)))
-  ([m k] (when m
-           (if (map? m)
-             (assoc m :spark/id-key k)
-             (map #(assoc % :spark/id-key k) m)))))
+                             (set/rename-keys urls {"logo" :image/logo-url
+                                                    "logoLarge" :image/logo-large-url
+                                                    "footer" :image/footer-url
+                                                    "background" :image/background-url
+                                                    "subHeader" :image/sub-header-url}))))
 
 (defn parse-field-type [t]
   (case t "image" :field.type/image
@@ -230,25 +225,38 @@
               "department" nil
               })))
 
-(defn parse-fields [target-k]
+(def domain->board (->> (read-coll :board)
+                        (fire-flat :board/id)
+                        (group-by #(% "domain"))
+                        (#(update-vals % (comp :board/id first)))))
+
+(defn html-content [s]
+  {:content/format :html
+   :content/text s})
+
+(defn md-content [s]
+  {:content/format :markdown
+   :content/text s})
+
+(defn parse-fields [target-k managed-by-k]
   (fn [m]
     (if-some [field-ks (->> (keys m)
                             (filter #(str/starts-with? (name %) "field_"))
                             seq)]
       (reduce (fn [m k]
-                (let [field-spec-id (subs (name k) 6)
+                (let [[managed-by-type managed-by-id] (managed-by-k m)
+                      field-spec-id (str managed-by-id ":" (subs (name k) 6))
                       target-id (m target-k)
                       v (m k)
                       field-type (all-field-types field-spec-id)
                       ;; NOTE - we ignore fields that do not have a spec
                       field-value (when field-type
                                     (case field-type
-                                      :field.type/image {:field.image/image-url v}
-                                      :field.type/link-list (mapv #(set/rename-keys % {:label :field.link-list/label
+                                      :field.type/image {:field.image/url v}
+                                      :field.type/link-list (mapv #(set/rename-keys % {:label :field.link-list/text
                                                                                        :url :field.link-list/url}) v)
                                       :field.type/select {:field.select/value v}
-                                      :field.type/content {:field.content/format :html
-                                                           :field.content/html v}
+                                      :field.type/content (html-content v)
                                       :field.type/video (when-not (str/blank? v)
                                                           (cond (re-find #"vimeo" v) {:field.video/format :video.format/vimeo-url
                                                                                       :field.video/url v}
@@ -258,7 +266,7 @@
                                                                        :field.video/youtube-id v}))
                                       (throw (Exception. (str "Field type not found "
                                                               {:field/type field-type
-                                                               :field-spec/id field-spec-id
+                                                               :field.spec/id field-spec-id
                                                                })))))]
                   (-> (dissoc m k)
                       (cond-> field-value
@@ -269,28 +277,71 @@
                                (fnil conj [])
                                (merge
                                 field-value
-                                {:field/type field-type
+                                {:field.spec/type field-type
                                  :field/id (str target-id ":" field-spec-id)
                                  :field/parent [target-k target-id]
-                                 :field/spec [:field-spec/id field-spec-id]}
+                                 :field/field.spec [:field.spec/id field-spec-id]}
                                 ))))))
               m
               field-ks)
       m)))
 
+(defonce !orders (atom 0))
 
 
 (def changes {:board
-              [::update-map (partial fire-flat :board/id)
+              [::prepare (partial fire-flat :board/id)
+               ::defaults {:board.registration/open? true
+                           :board.member/private-messaging? true
+                           :spark/public? true
+                           :spark.locales/default "en"}
+               (let [field-xf (fn [m a v]
+                                (let [managed-by [:board/id (:board/id m)]]
+                                  (assoc m a
+                                           (try (->> v
+                                                     (fire-flat :field.spec/id)
+                                                     (sort-by #(% "order"))
+                                                     (mapv (fn [m]
+                                                             (-> m
+                                                                 ;; field.spec ids prepend their manager,
+                                                                 ;; because field.specs have been duplicated everywhere
+                                                                 ;; and have the same IDs but represent different instances.
+                                                                 ;; unsure: how to re-use fields when searching across boards, etc.
+                                                                 (update :field.spec/id (partial str (:board/id m) ":"))
+                                                                 (dissoc "id")
+                                                                 (set/rename-keys {"type" :field.spec/type
+                                                                                   "showOnCard" :field.spec/show-on-card?
+                                                                                   "showAtCreate" :field.spec/show-at-create?
+                                                                                   "showAsFilter" :field.spec/show-as-filter?
+                                                                                   "required" :field.spec/required?
+                                                                                   "hint" :field.spec/hint
+                                                                                   "label" :field.spec/label
+                                                                                   "options" :field.spec/options
+                                                                                   "order" :field.spec/order
+                                                                                   "name" :field.spec/name})
+                                                                 (u/update-some {:field.spec/type parse-field-type
+                                                                                 :field.spec/options (partial mapv #(update-keys % (fn [k]
+                                                                                                                                     (case k "label" :field.spec.option/label
+                                                                                                                                             "value" :field.spec.option/value
+                                                                                                                                             "color" :field.spec.option/color
+                                                                                                                                             "default" :field.spec.option/default?))))})
+                                                                 (update :field.spec/order #(or % (swap! !orders inc)))
+                                                                 (dissoc :field.spec/name)
+                                                                 (assoc :field.spec/managed-by managed-by)))))
+                                                (catch Exception e (prn a v) (throw e))))))]
+                 ["groupFields" (& field-xf (rename :board.project/fields))
+                  "userFields" (& field-xf (rename :board.member/fields))])
+
                "groupNumbers" (rename :board.project/show-numbers?)
                "projectNumbers" (rename :board.project/show-numbers?)
                "userMaxGroups" (rename :board.member/max-projects)
-               "stickyColor" (rename :design/sticky-color)
+               "stickyColor" (rename :board.project/sticky-border-color)
                "tags" (& (fn [m a v]
                            (assoc m a (->> v
                                            (fire-flat :tag/id)
                                            (sort-by :tag/id)
                                            (mapv #(-> %
+                                                      (update :tag/id (partial str (:board/id m) ":"))
                                                       (assoc :tag/owner [:board/id (:board/id m)])
                                                       (dissoc "order")
                                                       (set/rename-keys {"color" :tag/background-color
@@ -298,45 +349,21 @@
                                                                         "label" :tag/label
                                                                         "restrict" :tag/locked})
                                                       (u/update-some {:tag/locked (constantly true)}))))))
-                         (rename :board.member/tags))
-               "social" (& (xf (fn [m] (into #{} (map keyword) (keys m)))) (rename :board/project-sharing-buttons))
+                         (rename :tag/_managed-by))
+               "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:sharing-button/facebook true]]
+                                                         "twitter" [[:sharing-button/twitter true]]
+                                                         "qrCode" [[:sharing-button/qr-code true]]
+                                                         "all" [[:sharing-button/facebook true]
+                                                                [:sharing-button/twitter true]
+                                                                [:sharing-button/qr-code true]]})
+                                             (keys m)))) (rename :board.project/sharing-buttons))
                "userMessages" (rename :board.member/private-messaging?)
                "groupSettings" rm
-               "registrationLink" (rename :board.registration/link-override)
+               "registrationLink" (rename :board.registration/register-at-url)
                "slack" (& (xf #(% "team-id")) (lookup-ref :slack/team-id) (rename :board/slack.team))
-               "registrationOpen" (rename :board.registration/open?) ;; what does this mean exactly
+               "registrationOpen" (rename :board.registration/open?)
                "images" (& handle-image-urls
                            (rename :board/image-urls))
-
-               (let [field-xf (fn [m a v]
-                                (assoc m a
-                                         (try (->> v
-                                                   (fire-flat :field-spec/id)
-                                                   (sort-by #(% "order"))
-                                                   (mapv (fn [m]
-                                                           (-> m
-                                                               (set/rename-keys {"type" :field-spec/type
-                                                                                 "showOnCard" :field-spec/show-on-card?
-                                                                                 "showAtCreate" :field-spec/show-at-create?
-                                                                                 "showAsFilter" :field-spec/show-as-filter?
-                                                                                 "required" :field-spec/required?
-                                                                                 "hint" :field-spec/hint
-                                                                                 "id" :field-spec/id
-                                                                                 "label" :field-spec/label
-                                                                                 "options" :field-spec/options
-                                                                                 "order" :field-spec/order
-                                                                                 "name" :field-spec/name})
-                                                               (u/update-some {:field-spec/field-type parse-field-type
-                                                                               :field-spec/options (partial mapv #(update-keys % (fn [k]
-                                                                                                                                   (case k "label" :field-spec.option/label
-                                                                                                                                           "value" :field-spec.option/value
-                                                                                                                                           "color" :field-spec.option/color
-                                                                                                                                           "default" :field-spec.option/default?))))})
-                                                               (dissoc :field-spec/name)
-                                                               (assoc :field-spec/owner [:board/id (:board/id m)])))))
-                                              (catch Exception e (prn a v) (throw e)))))]
-                 ["groupFields" (& field-xf (rename :board.project/fields))
-                  "userFields" (& field-xf (rename :board.member/fields))])
                "userLabel" (& (fn [m a [singular plural]]
                                 (update m :board/labels merge {:label/member.one singular
                                                                :label/member.many plural})) rm)
@@ -348,42 +375,52 @@
 
                "descriptionLong" rm ;;  last used in 2015
 
-               "description" (rename :board.landing-page/description) ;; if = "Description..." then it's never used
-               "publicWelcome" (rename :board.landing-page/instructions)
+               "description" (& (xf html-content)
+                                (rename :board.landing-page/description)) ;; if = "Description..." then it's never used
+               "publicWelcome" (& (xf html-content)
+                                  (rename :board.landing-page/instructions))
 
                "css" (rename :html/css)
-               "projectsRequireApproval" (& (xf #(when % :any-admin))
-                                            (rename :board.project/requires-approval?))
                "parent" (& (xf parse-sparkboard-id)
                            (rename :board/org))
                "authMethods" rm
-               "allowPublicViewing" (rename :board/public?)
+               "allowPublicViewing" (rename :spark/public?)
                "communityVoteSingle" (fn [m a v]
                                        (-> m
                                            (dissoc a)
-                                           (assoc :community-vote/_board #{{:community-vote/board [:board/id (:board/id m)]
-                                                                            :community-vote/open? v}})))
-
-               "newsletterSubscribe" (rename :board.member/newsletter-checkbox?)
-               "groupMaxMembers" (rename :board.project/max-members)
+                                           (assoc :community-vote/_board [{:community-vote/board [:board/id (:board/id m)]
+                                                                           :community-vote/open? v}])))
+               "newsletterSubscribe" (rename :board.registration/newsletter-subscription-field?)
+               "groupMaxMembers" (& (xf #(Integer. %)) (rename :board.project/max-members))
                "headerJs" (rename :html/js)
                "projectTags" rm
-               "registrationEmailBody" (rename :board.registration/invitation-email-body)
+               "registrationEmailBody" (& (xf md-content) (rename :board.registration/invitation-email-body))
                "learnMoreLink" (rename :board.landing-page/learn-more-url)
                "metaDesc" (rename :html.meta/description)
                "isTemplate" (rename :board/is-template?)
-               "registrationMessage" (rename :board.registration/welcome-message-body)
+               "registrationMessage" (& (xf html-content)
+                                        (rename :board.registration/pre-registration-message))
                "defaultFilter" rm
                "defaultTag" rm
                "locales" (rename :spark.locales/dictionary)
                "filterByFieldView" rm ;; deprecated - see :field/show-as-filter?
-               "permissions" (& (xf (constantly
-                                     {:action/project.add {:action/requires-role #{:admin}}}))
-                                (rename :board/policies))
-               "languages" (& (xf (partial mapv #(get % "code"))) (rename :spark.locales/suggested))
-               ]
-              :org [::update-map (partial fire-flat :org/id)
-                    "allowPublicViewing" (rename :org/public?)
+               "permissions" (fn [m a v]
+                               (-> m
+                                   (dissoc a)
+                                   (update :board/policies assoc
+                                           :action/project.create {:policy/requires-role #{:role/admin}})))
+
+               ;; TODO - add this to :board/policies, clarify difference between project.add vs project.approve
+               ;; and how to specify :action/project.approval {:policy/requires-role #{:role/admin}}
+               "projectsRequireApproval" (fn [m a v]
+                                           (-> m
+                                               (dissoc a)
+                                               (update :board/policies assoc
+                                                       :action/project.approve {:policy/requires-role #{:role/admin}})))
+               "languages" (& (xf (partial mapv #(get % "code"))) (rename :spark.locales/suggested))]
+              :org [::prepare (partial fire-flat :org/id)
+                    ::defaults {:spark/public? true}
+                    "allowPublicViewing" (rename :spark/public?)
                     "images" (& handle-image-urls
                                 (rename :org/image-urls))
                     "showOrgTab" (rename :org.board/show-org-tab?)
@@ -391,12 +428,12 @@
                                  (rename :spark/created-by))
                     "boardTemplate" (& (lookup-ref :board/id)
                                        (rename :org.board/template-default))]
-              :slack.user [::update-map (partial fire-flat :slack.user/id)
+              :slack.user [::prepare (partial fire-flat :slack.user/id)
                            "account-id" (& (lookup-ref :firebase-account/id)
                                            (rename :slack.user/firebase-account)) ;; should account-id become spark/member-id?
                            "team-id" (& (lookup-ref :slack.team/id)
                                         (rename :slack.user/slack.team))]
-              :slack.team [::update-map (partial fire-flat :slack.team/id)
+              :slack.team [::prepare (partial fire-flat :slack.team/id)
                            "board-id" (& (lookup-ref :board/id)
                                          (rename :slack.team/board))
                            "account-id" (& (lookup-ref :firebase-account/id)
@@ -413,7 +450,7 @@
                                                              "bot-token" (rename :slack.app/bot-token)])
                                                first)))
                                     (rename :slack.team/slack.app))]
-              :slack.broadcast [::update-map (partial fire-flat :slack.broadcast/id)
+              :slack.broadcast [::prepare (partial fire-flat :slack.broadcast/id)
                                 "replies" (& (xf (comp (partial change-keys ["message" (rename :slack.broadcast.reply/text)
                                                                              "user-id" (& (lookup-ref :slack.user/id)
                                                                                           (rename :slack.broadcast.reply/slack.user))
@@ -429,22 +466,23 @@
                                 "response-channel" (& (lookup-ref :slack.channel/id) (rename :slack.broadcast/response-channel))
                                 "response-thread" (& (lookup-ref :slack.thread/id) (rename :slack.broadcast/response-thread))
                                 ]
-              :slack.channel [::update-map (partial fire-flat :slack.channel/id)
+              :slack.channel [::prepare (partial fire-flat :slack.channel/id)
                               "project-id" (& (lookup-ref :project/id)
                                               (rename :slack.channel/project))
                               "team-id" (& (lookup-ref :slack.team/id)
                                            (rename :slack.channel/slack.team))]
-              :domain [::update-map (partial mapv (fn [[name target]]
-                                                    {:spark/id-key :domain/name
-                                                     :domain/name (unmunge-domain name)
-                                                     :domain/target (parse-sparkboard-id target)}))]
-              :collection [::update-map (partial fire-flat :collection/id)
+              :domain [::prepare (partial mapv (fn [[name target]]
+                                                 {:domain/name (unmunge-domain name)
+                                                  :domain/entity (parse-sparkboard-id target)}))]
+              :collection [::prepare (partial fire-flat :collection/id)
                            "images" (& handle-image-urls
                                        (rename :collection/image-urls))
-                           "boards" (& (xf (fn [m] (into [] (comp (filter val) (map key)) m))) (rename :collection/boards)) ;; ordered list!
+                           "boards" (& (xf (fn [m] (into [] (comp (filter val) (map key)) m)))
+                                       (lookup-ref :board/id)
+                                       (rename :collection/boards)) ;; ordered list!
 
                            ]
-              :board/private [::update-map (partial fire-flat :board/id)
+              :board/private [::prepare (partial fire-flat :board/id)
                               "registrationCode" (& (xf (fn [code] (when-not (str/blank? code)
                                                                      {code {:registration-code/active? true}} #{code})))
                                                     (rename :board/registration-codes))
@@ -452,7 +490,7 @@
                               "updateMember" (& (xf (partial hash-map :webhook/url)) (rename :event.board/update-member))
                               "newMember" (& (xf (partial hash-map :webhook/url)) (rename :event.board/new-member))
                               ]
-              :grants [::update-map
+              :grants [::prepare
                        (fn [{:strs [e-u-r]}]
                          (into [] (mapcat
                                    (fn [[ent user-map]]
@@ -460,13 +498,13 @@
                                            :let [[_ entity-id :as entity-ref] (parse-sparkboard-id ent)
                                                  [_ member-id :as member-ref] (parse-sparkboard-id user)
                                                  _ (assert (and (string? entity-id) (string? member-id)))]]
-                                       {:spark/id-key :grant/id
-                                        :grant/id (str entity-id ":" member-id)
+                                       {:grant/id (str entity-id ":" member-id)
                                         :grant/entity entity-ref
                                         :grant/member member-ref
                                         :grant/roles (into #{} (comp (filter val)
                                                                      (map key)
-                                                                     (map keyword)) role-map)})))
+                                                                     (map (fn [r]
+                                                                            (case r "admin" :role/admin)))) role-map)})))
                                e-u-r))]
               ::firebase ["localeSupport" (rename :spark.locales/suggested)
                           "languageDefault" (rename :spark.locales/default)
@@ -477,25 +515,30 @@
                           "domain" (& (lookup-ref :domain/name) (rename :spark/domain))
                           "title" (rename :spark/title)]
 
-              :member [:salt rm
+              :member [::defaults {:member/new? false
+                                   :member/not-joining-a-project false
+                                   :member.admin/inactive? false
+                                   :spark/deleted? false}
+
+                       :salt rm
                        :hash rm
                        :passwordResetToken rm
                        :email rm ;; in account
                        :account rm
                        :_id (& (timestamp-from-id)
                                (rename :member/id))
-                       ::always (parse-fields :member/id)
-                       :account rm
-
                        :boardId (& (lookup-ref :board/id)
                                    (rename :member/board))
+
+                       ::always (parse-fields :member/id :member/board)
+                       :account rm
 
                        :firebaseAccount (& (lookup-ref :firebase-account/id)
                                            (rename :member/firebase-account))
 
                        :emailFrequency (& (xf #(keyword (or % "periodic")))
                                           (rename :member/email-frequency))
-                       :acceptedTerms (rename :member/accepted-terms?)
+                       :acceptedTerms rm
                        :contact_me rm
 
                        :first_time (rename :member/new?)
@@ -506,11 +549,15 @@
                        :name (rename :member/name)
                        :roles (& (fn [m a roles]
                                    (assoc m a (when (seq roles)
-                                                [{:grant/member (:member/id m)
+                                                [{:grant/member [:member/id (:member/id m)]
                                                   :grant/entity (:member/board m)
-                                                  :grant/roles (into #{} (map keyword) roles)}])))
+                                                  :grant/roles (into #{} (map (partial keyword "role")) roles)}])))
                                  (rename :grant/_member))
-                       :tags (& (xf (partial hash-map :tag/id)) (rename :member/tags))
+                       :tags (& (fn [m a v]
+                                  (let [board-id (second (:member/board m))]
+                                    (assoc m a (mapv (partial str board-id ":") v))))
+                                (lookup-ref :tag/id)
+                                (rename :member/tags))
 
                        :newsletterSubscribe (rename :member/newsletter-subscription?)
                        :active (& (xf not) (rename :member.admin/inactive?)) ;; same as deleted?
@@ -518,25 +565,25 @@
                        :votesByDomain (& (fn [m a votes]
                                            (assoc m a
                                                     (mapv (fn [[domain id]]
-                                                            {:community-vote/member (:member/id m)
-                                                             :community-vote/domain [:domain/name (unmunge-domain (name domain))]
-                                                             :community-vote/project [:project/id id]}) votes)))
-                                         (rename :community-vote/_member))
+                                                            (let [board-id (domain->board (unmunge-domain (name domain)))]
+                                                              {:community-vote.entry/member (:member/id m)
+                                                               :community-vote.entry/board [:board/id board-id]
+                                                               :community-vote.entry/project [:project/id id]})) votes)))
+                                         (rename :community-vote.entry/_member))
                        :suspectedFake (rename :member.admin/suspected-fake?)
 
                        :feedbackRating rm
 
                        ]
-              :discussion [::update-map (fn [m]
-                                          (when-not (empty? (:posts m))
-                                            m))
+              :discussion [::prepare (fn [m]
+                                       (when-not (empty? (:posts m))
+                                         m))
                            :_id (& (timestamp-from-id)
                                    (rename :discussion/id))
                            :type rm
                            :user (& (lookup-ref :member/id)
                                     (rename :spark/created-by))
-                           :text (& (xf (fn [s] {:content/format :html
-                                                 :content/html s})) (rename :post/content))
+                           :text (& (xf html-content) (rename :post/content))
                            :followers (& (lookup-ref :member/id)
                                          (rename :discussion/followers))
                            :doNotFollow (& (lookup-ref :member/id)
@@ -551,22 +598,23 @@
                                                                        :parent rm]))
                            :comments (& (xf (partial change-keys
                                                      [:post/id (& (timestamp-from-id)
-                                                                  (rename :comment/id))
+                                                                  (rename :post.comment/id))
                                                       :user (rename :spark/created-by)
-                                                      :text (rename :comment/body)
+                                                      :text (rename :post.comment/text)
                                                       :parent rm]))
                                         (rename :post/comments))
                            :boardId (& (lookup-ref :board/id)
                                        (rename :discussion/board))]
-              :project [:_id (& (timestamp-from-id)
+              :project [::defaults {:project.admin/inactive? false}
+                        :_id (& (timestamp-from-id)
                                 (rename :project/id))
-                        :field_description (& (xf (fn [s] {:content/format :html :content/html s}))
+                        :field_description (& (xf html-content)
                                               (rename :project.admin/description))
-                        ::always (parse-fields :project/id)
+                        ::always (parse-fields :project/id :project/board)
                         :boardId (& (lookup-ref :board/id)
                                     (rename :project/board))
-                        :user_id (& (lookup-ref :member/id)
-                                    (rename :membership/member))
+                        :lastModifiedBy (& (lookup-ref :member/id)
+                                           (rename :spark/last-modified-by))
                         :tags rm ;; no longer used - fields instead
                         :number (rename :project.admin/board.number)
                         :badges (& (xf (partial mapv (partial hash-map :badge/label)))
@@ -574,19 +622,35 @@
                         :active (& (xf not) (rename :project.admin/inactive?))
                         :approved (rename :project.admin/approved?)
                         :ready (rename :project/viable-team?)
-                        :members (rename :project/members)
+                        :members (& (xf (partial mapv
+                                                 (fn [m]
+                                                   (let [role (case (:role m)
+                                                                "admin" :role/admin
+                                                                "editor" :role/collaborator
+                                                                (if (= (:spark/created-by m)
+                                                                       (:user_id m))
+                                                                  :role/admin
+                                                                  :role/member))]
+                                                     (-> m
+                                                         (dissoc :role :user_id)
+                                                         (assoc :grant/roles #{role}
+                                                                :grant/entity [:project/id (:project/id m)]
+                                                                :grant/member [:member/id (:user_id m)]))))))
+                                    (rename :grant/_entity))
                         :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                         (rename :project/open-requests))
                         :sticky (rename :project.admin/sticky?)
                         :demoVideo (rename :project/video-url)
                         :discussion rm ;; unused
                         ]
-              :notification [::update-map (fn [m]
-                                            (let [day-threshold 180] ;; remove notifications older than this
-                                              (when (<= (-> m :createdAt :$date parse-$date date-time days-between)
-                                                        day-threshold)
-                                                ;; when older than 60 days, remove
-                                                m)))
+              :notification [::always (fn notification-filter [m]
+                                        (let [day-threshold 180
+                                              created-at (bson-id-timestamp (:$oid (:_id m)))] ;; remove notifications older than this
+                                          (if (<= (-> created-at date-time days-between)
+                                                  day-threshold)
+                                            ;; when older than 60 days, remove
+                                            m
+                                            (reduced nil))))
                              :_id (& (timestamp-from-id)
                                      (rename :notification/id))
                              :createdAt rm
@@ -606,11 +670,11 @@
                                       (lookup-ref :member/id)
                                       (rename :notification/member))
                              :message (& (xf :body)
-                                         (rename :notification/message)
+                                         (rename :notification/thread.message.text)
                                          )
                              :comment (& (xf :id)
-                                         (lookup-ref :comment/id)
-                                         (rename :notification/comment))
+                                         (lookup-ref :post.comment/id)
+                                         (rename :notification/post.comment))
                              :post (& (xf :id)
                                       (lookup-ref :post/id)
                                       (rename :notification/post))
@@ -623,7 +687,7 @@
                                               (dissoc :type :targetId :targetPath)
                                               (merge (case type
                                                        "newMember" {:notification/type :notification.type/new-project-member}
-                                                       "newMessage" {:notification/type :notification.type/new-private-message
+                                                       "newMessage" {:notification/type :notification.type/new-thread-message
                                                                      :notification/thread [:thread/id targetId]}
                                                        "newPost" {:notification/type :notification.type/new-discussion-post}
                                                        "newComment" {:notification/type :notification.type/new-post-comment})))))
@@ -632,31 +696,32 @@
                              ]
               :thread [:_id (& (timestamp-from-id)
                                (rename :thread/id))
-                       :participantIds (& (xf set)
-                                          (lookup-ref :member/id)
+                       :participantIds (& (lookup-ref :member/id)
                                           (rename :thread/members))
-                       :createdAt (rename :spark/created-at)
-                       :readBy (& (xf #(into #{} (map (fn [k] [:member/id (name k)])) (keys %))) (rename :thread/read-by)) ;; change to a set of has-unread?
-                       :modifiedAt (rename :spark/updated-at)
+                       :createdAt (& (xf parse-$date)
+                                     (rename :spark/created-at))
+                       :readBy (& (xf keys)
+                                  (xf (partial mapv (fn [k] [:member/id (name k)])))
+                                  (rename :thread/read-by)) ;; change to a set of has-unread?
+                       :modifiedAt (& (xf parse-$date) (rename :spark/updated-at))
 
                        ;; TODO - :messages
-                       :messages (& (xf (partial change-keys [:_id (rename :message/id)
-                                                              :body (rename :message/text)]))
+                       :messages (& (xf (partial change-keys [:_id (& (timestamp-from-id)
+                                                                      (rename :thread.message/id))
+                                                              :body (rename :thread.message/text)
+                                                              :senderId (& (lookup-ref :member/id)
+                                                                           (rename :spark/created-by))
+                                                              :senderData rm]))
                                     (rename :thread/messages))
-                       :senderId (& (lookup-ref :member/id)
-                                    (rename :spark/created-by))
-                       :senderData rm
                        :boardId rm #_(& (lookup-ref :board/id)
                                         (rename :thread/board))]
               ::mongo [:$oid (fn [m a v] (reduced v))
                        :$date (fn [m a v] (reduced (parse-$date v)))
                        :deleted (rename :spark/deleted?)
-                       :updatedAt (rename :spark/updated-at)
+                       :updatedAt (& (xf parse-$date) (rename :spark/updated-at))
                        :title (rename :spark/title)
                        :intro (rename :project/summary)
-                       :owner (rename :spark/created-by)
-                       :lastModifiedBy (& (lookup-ref :member/id)
-                                          (rename :spark/last-modified-by))
+                       :owner (& (xf :$oid) (lookup-ref :member/id) (rename :spark/created-by))
 
                        :htmlClasses (fn [m k v]
                                       (let [classes (str/split v #"\s+")]
@@ -741,17 +806,17 @@
   (->> (concat (keys mongo-colls) (keys firebase-colls))
        (into [] (map (juxt #(keyword "entity" (name %))
                            (comp (mp/provider {::mp/map-of-threshold 10})
-                                 #(take 200 %)
-                                 shuffle
+                                 #_#(take 200 %)
+                                 #_shuffle
                                  parse-coll))))
        collect-schemas
-       (mapcat (fn [[k v]] (when-not (= \_ (first (name k))) [k (sschema/S v)])))
+       (mapcat (fn [[k v]] (when-not (= \_ (first (name k))) [k {sschema/s- v}])))
        (apply sorted-map)))
 
 (defonce inferred-schemas (delay (infer-schemas)))
 
 (defn register-schemas! [s]
-  (sschema/register! (reduce-kv (fn [m a {:keys [spark/schema]}] (assoc m a schema)) {} @inferred-schemas))
+  (sschema/register! (update-vals s :spark/schema))
   s)
 
 (defn singularize [n]
@@ -772,22 +837,28 @@
 
 (defn compute-schemas []
   (let [types (get-types)
-        namespaces (into #{} (map (comp keyword namespace)) (keys @inferred-schemas))
         plural-types (into #{} (map pluralize) types)]
     (->> @inferred-schemas
+         (merge-with merge (zipmap (keys sschema/extra-schema) (repeat nil)))
+         (add-merge {:spark/schema [:map-of
+                                    [:qualified-keyword {:namespace :image}]
+                                    :http/url]}
+                    (comp #{"image-urls"} name))
          (add-merge (fn [k]
                       (sschema/ref :one #{(keyword (name k) "id")})) (every-pred (comp types name)
                                                                                  (comp (complement #{"entity"}) namespace)))
          (add-merge (fn [k]
                       (sschema/ref :many #{(keyword (singularize (name k)) "id")})) (comp plural-types name))
          (add-merge sschema/unique-string-id (comp #{"id"} name))
-         (add-merge {:spark/schema [:set :spark/role]} (comp #{"requires-role"} name))
+         (add-merge {:spark/schema 'string?} (comp #(str/ends-with? % "text") name))
+         (add-merge {:spark/schema [:set :grant/role]} (comp #{"requires-role"} name))
          (add-merge sschema/bool (comp #{\?} last name))
          (add-merge sschema/http-url (fn [k]
                                        (or (re-find #".*\burl$" (name k))
                                            (some->> (namespace k) (re-find #".*\burl$")))))
          (add-merge sschema/html-color (comp #{"color"} name))
-         (add-merge #(sschema/extra-schema %) sschema/extra-schema)
+         (#(merge-with merge % sschema/extra-schema))
+
          ;; merge extra-schema from sschema
          (into {})
          (register-schemas!)
@@ -799,76 +870,38 @@
  (-> (fetch-mongodb) (clojure.core/time))
  (-> (fetch-firebase) (clojure.core/time))
 
- (defn g [s] (fn [m] (m s)))
-
+ (reset! sschema/!registry (m/default-schemas))
  (def inferred-schemas (atom (infer-schemas)))
- (->> (compute-schemas)
-      ;;
-      (remove (comp #{"label"} namespace key))
-      (remove (comp (into #{"image-urls"}
-                          (map pluralize (get-types))) name key))
-      (remove (comp (set (concat (keys sschema/extra-schema)
-                                 (map (fn [t] (keyword t "id")) (get-types)))) key))
-      (remove (comp #{:db/lookup-ref} :spark/schema val))
-      (into (sorted-map))
-      )
- (->> (parse-coll :member)
-      (into #{} (map :member/email-frequency)))
- (->> (read-coll :project)
-      (keep :role)
-      count)
+ (def computed-schemas (compute-schemas))
+ (do
+   (def computed-schemas (compute-schemas))
+   ;; register computed-schemas
+
+   (let [schemas {:board :entity/board
+                  :collection :entity/collection
+                  :discussion :entity/discussion
+                  :domain :entity/domain
+                  :grants :entity/grant
+                  :member :entity/member
+                  :notification :entity/notification
+                  :org :entity/org
+                  :project :entity/project
+                  :slack.broadcast :entity/slack.broadcast
+                  :slack.channel :entity/slack.channel
+                  :slack.team :entity/slack.team
+                  :slack.user :entity/slack.user
+                  :thread :entity/thread}
+         k :thread
+         get-schema #(-> computed-schemas (get (schemas %)) :spark/schema)]
+     (->> (keys schemas)
+          (mapcat (fn [k]
+                    (:errors (m/explain [:sequential (get-schema k)] (take 1 (parse-coll k))))))
+          first)
+     ))
+ (@sschema/!registry :entity/grant)
+ (take 1 (parse-coll :grants))
 
 
- (def missing-specs (->> (concat (read-coll :project)
-                                 (read-coll :member))
-                         (mapcat keys)
-                         distinct
-                         (map name)
-                         (keep #(when (str/starts-with? % "field_")
-                                  (subs % 6)))
-                         (remove #(contains? all-field-types %))
-                         (map (comp keyword (partial str "field_")))
-                         (into #{})))
-
- (all-field-types "-LCYCO2FqUvkyy_Ui2OA")
- (do ;def entities-containing-missing-field
-   (let [board-titles (-> (read-coll :board)
-                          (update-vals #(get % "title")))]
-     (->> (concat (read-coll :project)
-                  (read-coll :member))
-          (reduce (fn [out x]
-                    (if-let [ks (seq (filter (partial contains? missing-specs) (keys x)))]
-                      (update out (board-titles (x :boardId)) (fnil into #{}) ks)
-                      out)) {})
-
-
-          )))
-
- (def board-by-title (->> (read-coll :board)
-                          fire-flat
-                          (group-by #(% "title"))
-                          (#(update-vals % first))))
-
- (defn board-by [k v]
-   (->> (read-coll :board)
-        fire-flat
-        (filter #(= v (get % k)))))
-
-
- (def board-by-title (->> (read-coll :board)
-                         fire-flat
-                         (group-by #(% "title"))
-                          (#(update-vals % first))))
-
- (for [t [:notification.type/new-project-member
-          :notification.type/new-private-message
-          :notification.type/new-discussion-post
-          :notification.type/new-post-comment
-          ]]
-   (->> (parse-coll :notification)
-        (filter (comp #{t} :notification/type))
-        first))
- (gen :entity/notification)
 
  (:out (sh "ls" "-lh" (env/db-path)))
 
