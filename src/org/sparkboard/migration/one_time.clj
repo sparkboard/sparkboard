@@ -288,6 +288,11 @@
 
 (defonce !orders (atom 0))
 
+(defn grant-id [member-id entity-id]
+  (str (cond-> member-id (vector? member-id) second)
+       ":"
+       (cond-> entity-id (vector? entity-id) second)))
+
 
 (def changes {:board
               [::prepare (partial fire-flat :board/id)
@@ -342,13 +347,13 @@
                                            (sort-by :tag/id)
                                            (mapv #(-> %
                                                       (update :tag/id (partial str (:board/id m) ":"))
-                                                      (assoc :tag/owner [:board/id (:board/id m)])
+                                                      (assoc :tag/managed-by [:board/id (:board/id m)])
                                                       (dissoc "order")
                                                       (set/rename-keys {"color" :tag/background-color
                                                                         "name" :tag/label
                                                                         "label" :tag/label
-                                                                        "restrict" :tag/locked})
-                                                      (u/update-some {:tag/locked (constantly true)}))))))
+                                                                        "restrict" :tag/restricted?})
+                                                      (u/update-some {:tag/restricted? (constantly true)}))))))
                          (rename :tag/_managed-by))
                "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:sharing-button/facebook true]]
                                                          "twitter" [[:sharing-button/twitter true]]
@@ -376,9 +381,9 @@
                "descriptionLong" rm ;;  last used in 2015
 
                "description" (& (xf html-content)
-                                (rename :board.landing-page/description)) ;; if = "Description..." then it's never used
+                                (rename :board.landing-page/description-content)) ;; if = "Description..." then it's never used
                "publicWelcome" (& (xf html-content)
-                                  (rename :board.landing-page/instructions))
+                                  (rename :board.landing-page/instruction-content))
 
                "css" (rename :html/css)
                "parent" (& (xf parse-sparkboard-id)
@@ -394,12 +399,12 @@
                "groupMaxMembers" (& (xf #(Integer. %)) (rename :board.project/max-members))
                "headerJs" (rename :html/js)
                "projectTags" rm
-               "registrationEmailBody" (& (xf md-content) (rename :board.registration/invitation-email-body))
+               "registrationEmailBody" (& (xf md-content) (rename :board.registration.invitation-email/body-text))
                "learnMoreLink" (rename :board.landing-page/learn-more-url)
                "metaDesc" (rename :html.meta/description)
                "isTemplate" (rename :board/is-template?)
                "registrationMessage" (& (xf html-content)
-                                        (rename :board.registration/pre-registration-message))
+                                        (rename :board.registration/pre-registration-content))
                "defaultFilter" rm
                "defaultTag" rm
                "locales" (rename :spark.locales/dictionary)
@@ -495,16 +500,15 @@
                          (into [] (mapcat
                                    (fn [[ent user-map]]
                                      (for [[user role-map] user-map
-                                           :let [[_ entity-id :as entity-ref] (parse-sparkboard-id ent)
-                                                 [_ member-id :as member-ref] (parse-sparkboard-id user)
-                                                 _ (assert (and (string? entity-id) (string? member-id)))]]
-                                       {:grant/id (str entity-id ":" member-id)
+                                           :let [entity-ref (parse-sparkboard-id ent)
+                                                 member-ref (parse-sparkboard-id user)]]
+                                       {:grant/id (grant-id member-ref entity-ref)
                                         :grant/entity entity-ref
                                         :grant/member member-ref
-                                        :grant/roles (into #{} (comp (filter val)
-                                                                     (map key)
-                                                                     (map (fn [r]
-                                                                            (case r "admin" :role/admin)))) role-map)})))
+                                        :grant/roles (into [] (comp (filter val)
+                                                                    (map key)
+                                                                    (map (fn [r]
+                                                                           (case r "admin" :role/admin)))) role-map)})))
                                e-u-r))]
               ::firebase ["localeSupport" (rename :spark.locales/suggested)
                           "languageDefault" (rename :spark.locales/default)
@@ -516,7 +520,7 @@
                           "title" (rename :spark/title)]
 
               :member [::defaults {:member/new? false
-                                   :member/not-joining-a-project false
+                                   :member/project-participant? true
                                    :member.admin/inactive? false
                                    :spark/deleted? false}
 
@@ -542,16 +546,19 @@
                        :contact_me rm
 
                        :first_time (rename :member/new?)
-                       :ready (rename :member/not-joining-a-project)
+                       :ready (& (xf not) (rename :member/project-participant?))
                        ;; new feature - not-joining-a-project
 
 
                        :name (rename :member/name)
                        :roles (& (fn [m a roles]
                                    (assoc m a (when (seq roles)
-                                                [{:grant/member [:member/id (:member/id m)]
-                                                  :grant/entity (:member/board m)
-                                                  :grant/roles (into #{} (map (partial keyword "role")) roles)}])))
+                                                (let [member-ref [:member/id (:member/id m)]
+                                                      entity-ref (:member/board m)]
+                                                  [{:grant/id (grant-id member-ref entity-ref)
+                                                    :grant/member [:member/id (:member/id m)]
+                                                    :grant/entity entity-ref
+                                                    :grant/roles (into [] (comp (map (partial keyword "role")) (distinct)) roles)}]))))
                                  (rename :grant/_member))
                        :tags (& (fn [m a v]
                                   (let [board-id (second (:member/board m))]
@@ -609,7 +616,7 @@
                         :_id (& (timestamp-from-id)
                                 (rename :project/id))
                         :field_description (& (xf html-content)
-                                              (rename :project.admin/description))
+                                              (rename :project.admin/description-content))
                         ::always (parse-fields :project/id :project/board)
                         :boardId (& (lookup-ref :board/id)
                                     (rename :project/board))
@@ -633,7 +640,8 @@
                                                                   :role/member))]
                                                      (-> m
                                                          (dissoc :role :user_id)
-                                                         (assoc :grant/roles #{role}
+                                                         (assoc :grant/id (grant-id (:user_id m) (:project/id m))
+                                                                :grant/roles [role]
                                                                 :grant/entity [:project/id (:project/id m)]
                                                                 :grant/member [:member/id (:user_id m)]))))))
                                     (rename :grant/_entity))
@@ -644,13 +652,18 @@
                         :discussion rm ;; unused
                         ]
               :notification [::always (fn notification-filter [m]
-                                        (let [day-threshold 180
+                                        (let [m (-> m
+                                                    (dissoc :targetViewed :notificationViewed)
+                                                    (assoc :notification/viewed? (boolean (or (:targetViewed m)
+                                                                                              (:notificationViewed m)))))
+                                              day-threshold 180
                                               created-at (bson-id-timestamp (:$oid (:_id m)))] ;; remove notifications older than this
-                                          (if (<= (-> created-at date-time days-between)
-                                                  day-threshold)
-                                            ;; when older than 60 days, remove
-                                            m
-                                            (reduced nil))))
+                                          (if (or (:notification/viewed? m)
+                                                  (> (-> created-at date-time days-between)
+                                                     day-threshold))
+                                            (reduced nil)
+                                            m)))
+                             ::defaults {:notification/emailed? false}
                              :_id (& (timestamp-from-id)
                                      (rename :notification/id))
                              :createdAt rm
@@ -658,9 +671,6 @@
                                          (rename :notification/board))
                              :recipientId (& (lookup-ref :member/id)
                                              (rename :notification/recipient))
-
-                             :targetViewed (rename :notification/subject-viewed?)
-                             :notificationViewed (rename :notification/viewed?)
                              :notificationEmailed (rename :notification/emailed?)
                              :data (fn [m a v] (-> m (dissoc a) (merge v)))
                              :project (& (xf :id)
@@ -708,6 +718,7 @@
                        ;; TODO - :messages
                        :messages (& (xf (partial change-keys [:_id (& (timestamp-from-id)
                                                                       (rename :thread.message/id))
+                                                              :createdAt rm
                                                               :body (rename :thread.message/text)
                                                               :senderId (& (lookup-ref :member/id)
                                                                            (rename :spark/created-by))
@@ -720,7 +731,7 @@
                        :deleted (rename :spark/deleted?)
                        :updatedAt (& (xf parse-$date) (rename :spark/updated-at))
                        :title (rename :spark/title)
-                       :intro (rename :project/summary)
+                       :intro (rename :project/summary-text)
                        :owner (& (xf :$oid) (lookup-ref :member/id) (rename :spark/created-by))
 
                        :htmlClasses (fn [m k v]
@@ -729,7 +740,8 @@
                                             (dissoc k)
                                             (u/assoc-some :html/card-classes (some-> (remove #{"sticky"} classes)
                                                                                      seq
-                                                                                     (str/join " ")))
+                                                                                     distinct
+                                                                                     vec))
                                             (cond->
                                              (some #{"sticky"} classes)
                                              (assoc :project.admin/sticky? true)))))
@@ -897,6 +909,7 @@
           (mapcat (fn [k]
                     (:errors (m/explain [:sequential (get-schema k)] (take 1 (parse-coll k))))))
           first)
+
      ))
  (@sschema/!registry :entity/grant)
  (take 1 (parse-coll :grants))
