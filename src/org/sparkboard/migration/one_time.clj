@@ -164,9 +164,15 @@
 (defn parse-domain-target [s]
   (if (str/starts-with? s "redirect:")
     {:domain/target-type :domain/url
-     :domain/url (subs s 9)}
-    {:domain/target-type :domain/entity
-     :domain/entity (parse-sparkboard-id s)}))
+     :domain/url (-> (subs s 9)
+                     (str/replace "%3A" ":")
+                     (str/replace "%2F" "/"))}
+    (let [ref (parse-sparkboard-id s)]
+      (if (= ref [:site/id "account"])
+        {:domain/target-type :domain/url
+         :domain/url "https://account.sparkboard.com"}
+        {:domain/target-type :domain/entity
+         :domain/entity (parse-sparkboard-id s)}))))
 
 (defn lift-sparkboard-id [m a v]
   (let [[k id] (parse-sparkboard-id v)]
@@ -418,7 +424,8 @@
                                                                         "name" :tag/label
                                                                         "label" :tag/label
                                                                         "restrict" :tag/restricted?})
-                                                      (u/update-some {:tag/restricted? (constantly true)}))))))
+                                                      (u/update-some {:tag/restricted? (constantly true)})
+                                                      (update :tag/label (fn [x] (or x ""))))))))
                          (rename :tag/_managed-by))
                "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:social.sharing-button/facebook true]]
                                                          "twitter" [[:social.sharing-button/twitter true]]
@@ -465,11 +472,7 @@
                            (rename :board/org))
                "authMethods" rm
                "allowPublicViewing" (rename :visibility/public?)
-               "communityVoteSingle" (fn [m a v]
-                                       (-> m
-                                           (dissoc a)
-                                           (assoc :community-vote/_board [{:community-vote/board [:board/id (:board/id m)]
-                                                                           :community-vote/open? v}])))
+               "communityVoteSingle" (rename :board.member-vote/open?)
                "newsletterSubscribe" (rename :board.registration/newsletter-subscription-field?)
                "groupMaxMembers" (& (xf #(Integer. %)) (rename :board.project/max-members))
                "headerJs" (rename :html/js)
@@ -648,10 +651,11 @@
                                                   (assoc m a
                                                            (mapv (fn [[domain id]]
                                                                    (let [board-id (second (:member/board m))]
-                                                                     {:community-vote.entry/member [:member/id (:member/id m)]
-                                                                      :community-vote.entry/board [:board/id board-id]
-                                                                      :community-vote.entry/project [:project/id id]})) votes)))
-                                                (rename :community-vote.entry/_member))
+                                                                     {:member-vote.entry/id (str board-id ":" (:member/id m))
+                                                                      :member-vote.entry/member [:member/id (:member/id m)]
+                                                                      :member-vote.entry/board [:board/id board-id]
+                                                                      :member-vote.entry/project [:project/id id]})) votes)))
+                                                (rename :member-vote.entry/_member))
                               :suspectedFake (rename :member.admin/suspected-fake?)
 
                               :feedbackRating rm
@@ -935,7 +939,6 @@
             explained)))
 
  (map parse-domain-target (vals (read-coll :entity/domain)))
- ((read-coll :entity/domain) "hhbesancon_sparkboard_com")
 
  (keep :board.registration/register-at-url (parse-coll :entity/board))
 

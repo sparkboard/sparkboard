@@ -28,10 +28,6 @@
 
 (defn gen [s] (take 3 (repeatedly #(mg/generate s))))
 
-(gen [:map [:image-url/logo {:optional true}]])
-
-(gen :db/lookup-ref)
-
 ;; TODO
 ;; malli for every field,
 ;; import into datalevin
@@ -118,6 +114,8 @@
          :board/registration-codes {s- [:map-of :string [:map {:closed true} [:registration-code/active? :boolean]]]}
          :board/slack.team (ref :one #{:slack.team/id})
          :board/webhooks {s- [:map-of :spark/event [:map {:closed true} [:webhook/url :http/url]]]}
+         :board.member-vote/open? {:doc "Opens a community vote (shown as a tab on the board)"
+                                   s- :boolean}
          :board.landing-page/description-content {:doc "Primary description of a board, displayed in header"
                                                   s- :text-content/block}
          :board.landing-page/instruction-content {:doc "Secondary instructions for a board, displayed above projects"
@@ -150,15 +148,13 @@
                                               s- :http/url},
          :collection/id unique-string-id
          :collection/boards (ref :many #{:board/id})
-         :community-vote.entry/_member {s- [:sequential :entity/community-vote.entry]}
-         :community-vote.entry/board (ref :one #{:board/id})
-         :community-vote.entry/member (ref :one #{:member/id})
-         :community-vote.entry/project (ref :one #{:project/id})
-
-         :community-vote/_board {s- [:sequential :entity/community-vote]}
-         :community-vote/board (ref :one #{:board/id})
-         :community-vote/open? {:doc "Opens a community vote (shown as a tab on the board)"
-                                s- :boolean},
+         :member-vote.entry/_member {s- [:sequential :entity/member-vote.entry]}
+         :member-vote.entry/board (ref :one #{:board/id})
+         :member-vote.entry/id {:doc "ID composed of board-id:member-id"
+                                :todo "Replace with tuple attribute of board+member?"
+                                s- :string}
+         :member-vote.entry/member (ref :one #{:member/id})
+         :member-vote.entry/project (ref :one #{:project/id}),
 
          :text-content/format {s- [:enum
                                    :text.format/html
@@ -186,6 +182,7 @@
                             (? :board/registration-codes)
                             (? :board/slack.team)
                             (? :board/webhooks)
+                            (? :board.member-vote/open?)
                             (? :board.landing-page/description-content)
                             (? :board.landing-page/instruction-content)
                             (? :board.landing-page/learn-more-url)
@@ -201,7 +198,6 @@
                             (? :board.registration/pre-registration-content)
                             (? :board.registration/newsletter-subscription-field?)
                             (? :board.registration/register-at-url)
-                            (? :community-vote/_board)
                             (? :html/css)
                             (? :html/js)
                             (? :html.meta/description)
@@ -226,13 +222,14 @@
                                  :collection/id
                                  :http/domain
                                  :content/title]}
-         :entity/community-vote.entry {s- [:map {:closed true}
-                                           :community-vote.entry/board
-                                           :community-vote.entry/member
-                                           :community-vote.entry/project]}
-         :entity/community-vote {s- [:map {:closed true}
-                                     :community-vote/board
-                                     :community-vote/open?]},
+         :entity/member-vote.entry {s- [:map {:closed true}
+                                        :member-vote.entry/id
+                                        :member-vote.entry/board
+                                        :member-vote.entry/member
+                                        :member-vote.entry/project]}
+         :entity/member-vote {s- [:map {:closed true}
+                                  :member-vote/board
+                                  :member-vote/open?]},
          :entity/discussion {s- [:map {:closed true}
                                  :discussion/board
                                  :discussion/followers
@@ -279,7 +276,7 @@
                             :grant/entity
                             :grant/member]}
          :entity/member {s- [:map {:closed true}
-                             (? :community-vote.entry/_member)
+                             (? :member-vote.entry/_member)
                              (? :field/_entity)
                              (? :grant/_member)
                              (? :member.admin/suspected-fake?)
@@ -692,7 +689,8 @@
          :tag/id :entity/tag
          :member/id :entity/member
          :project/id :entity/project
-         :domain/name :entity/domain} (keys m)))
+         :domain/name :entity/domain
+         :member-vote.entry/id :entity/member-vote.entry} (keys m)))
 
 ;; previously used - relates to :notification/subject-viewed?
 (def notification-subjects {:notification.type/new-project-member :project/id
