@@ -9,6 +9,11 @@
     (assoc m k v)
     m))
 
+(defn assoc-seq [m k v]
+  (if (seq v)
+    (assoc m k v)
+    m))
+
 (defn update-some [m updaters]
   (reduce-kv (fn [m k f]
                (let [v (get m k ::not-found)]

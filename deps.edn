@@ -3,7 +3,7 @@
 
         ;; v2
         datalevin/datalevin {:mvn/version "0.6.14"}
-        io.github.mhuebert/re-db {:git/sha "d43ee4975889f27b04a6ff293fbd7415797a5f6d"}
+        io.github.mhuebert/re-db {:git/sha "b53e2a5e0ed4ddf02dc780235fa183890c709d27"}
 
         ;; Google Cloud
         jonotin/jonotin {:local/root "vendor/jonotin"}
