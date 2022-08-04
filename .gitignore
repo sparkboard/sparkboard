@@ -24,3 +24,4 @@ classes
 report.html
 .db
 TODO.md
+*.log
