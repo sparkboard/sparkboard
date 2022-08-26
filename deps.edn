@@ -6,8 +6,6 @@
         io.github.mhuebert/re-db {:git/sha "b53e2a5e0ed4ddf02dc780235fa183890c709d27"}
 
         ;; Google Cloud
-        jonotin/jonotin {:local/root "vendor/jonotin"}
-        ;com.google.guava/guava {:mvn/version "23.0"} ;; resolves version conflict
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
 
         ;; util
