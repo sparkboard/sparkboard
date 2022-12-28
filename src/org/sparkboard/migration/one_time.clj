@@ -27,19 +27,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
 
-(defn date-time [inst] (time/local-date-time (:$date inst inst) "UTC"))
-
 (defn bson-id-timestamp [id]
   (new Date (* 1000 (Integer/parseInt (subs id 0 8) 16))))
 
-(defn $oid [x] (:$oid x x))
+(defn get-oid [x] (:$oid x x))
 
 (defn timestamp-from-id
   ([] (timestamp-from-id :ts/created-at))
   ([to-k]
    (fn [m a v]
-     (assoc m to-k (bson-id-timestamp ($oid v))
-              a ($oid v)))))
+     (assoc m to-k (bson-id-timestamp (get-oid v))
+              a (get-oid v)))))
 
 (defn days-between
   [date-time-1 date-time-2]
@@ -131,27 +129,28 @@
 
 (defn unmunge-domain [s] (str/replace s "_" "."))
 
-(declare parse-coll)
+(declare coll-entities)
+
 (def !id-index
   (delay
    (merge {:domain/name (delay
-                         (into #{} (map :domain/name) (parse-coll :sb/domain)))
+                         (into #{} (map :domain/name) (coll-entities :sb/domain)))
            :post/id (delay
                      (into #{} (comp (mapcat :discussion/posts)
                                      (map :post/id))
-                           (parse-coll :sb/discussion)))
+                           (coll-entities :sb/discussion)))
            :post.comment/id (delay
                              (into #{}
                                    (comp (mapcat :discussion/posts)
                                          (mapcat :post/comments)
                                          (map :post.comment/id))
-                                   (parse-coll :sb/discussion)))}
+                                   (coll-entities :sb/discussion)))}
           (into {} (for [k colls]
                      (let [entity-k k
                            id-k (keyword (name k) "id")]
                        [id-k
                         (delay
-                         (into #{} (map id-k) (parse-coll entity-k)))]))))))
+                         (into #{} (map id-k) (coll-entities entity-k)))]))))))
 
 (defn ref-exists?
   ([[k id]] (ref-exists? k id))
@@ -172,7 +171,7 @@
    (xf (fn lf [v]
          (if (or (set? v) (sequential? v))
            (vec (keep lf v))
-           (when-some [v ($oid v)]
+           (when-some [v (get-oid v)]
              (lookup-ref k v)))))))
 
 (def missing-ref? #{[:MISSING_REF]})
@@ -233,27 +232,24 @@
         {:domain/target-type :domain/entity
          :domain/entity (parse-sparkboard-id s)}))))
 
-(defn lift-sparkboard-id [m a v]
-  (let [[k id] (parse-sparkboard-id v)]
-    (-> m (dissoc a) (assoc k id))))
-
 (comment
  (map parse-sparkboard-id ["sparkboard.org:x" "sparkboard_board:-abc"]))
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 
-(defn parse-$date [d] (some-> (:$date d d)
-                              inst/read-instant-timestamp
-                              time/instant
-                              Date/from))
+(defn parse-mongo-date [d]
+  (some-> (:$date d d)
+          inst/read-instant-timestamp
+          time/instant
+          Date/from))
 
-
-(def handle-image-urls (xf (fn [urls]
-                             (set/rename-keys urls {"logo" :image/logo-url
-                                                    "logoLarge" :image/logo-large-url
-                                                    "footer" :image/footer-url
-                                                    "background" :image/background-url
-                                                    "subHeader" :image/sub-header-url}))))
+(def parse-image-urls
+  (xf (fn [urls]
+        (set/rename-keys urls {"logo" :image/logo-url
+                               "logoLarge" :image/logo-large-url
+                               "footer" :image/footer-url
+                               "background" :image/background-url
+                               "subHeader" :image/sub-header-url}))))
 
 (defn parse-field-type [t]
   (case t "image" :field.type/image
@@ -508,7 +504,7 @@
                                                        "newMember" (& (xf (partial hash-map :webhook/url))
                                                                       (rename :event.board/new-member))]))
                              (rename :webhook/subscriptions))
-               "images" (& handle-image-urls
+               "images" (& parse-image-urls
                            (rename :map/image-urls))
                "userLabel" (& (fn [m a [singular plural]]
                                 (update m :board/labels merge {:label/member.one singular
@@ -562,7 +558,7 @@
                        ::defaults {:visibility/public? true}
                        "title" (rename :org/title)
                        "allowPublicViewing" (rename :visibility/public?)
-                       "images" (& handle-image-urls
+                       "images" (& parse-image-urls
                                    (rename :map/image-urls))
                        "showOrgTab" (rename :board.settings/show-org-tab?)
                        "creator" (& (lookup-ref :firebase-account/id)
@@ -617,7 +613,7 @@
                                                            (parse-domain-target target))))]
               :sb/collection [::prepare (partial fire-flat :collection/id)
                               "title" (rename :collection/title)
-                              "images" (& handle-image-urls
+                              "images" (& parse-image-urls
                                           (rename :map/image-urls))
                               "boards" (& (xf (fn [m] (into [] (comp (filter val) (map key)) m)))
                                           (lookup-ref :board/id)
@@ -655,7 +651,7 @@
                                                     (dissoc nil)
                                                     (update-vals (fn [memberships]
                                                                    (->> memberships
-                                                                        (sort-by (comp bson-id-timestamp $oid :_id))
+                                                                        (sort-by (comp bson-id-timestamp get-oid :_id))
                                                                         (map #(select-keys % [:email :firebaseAccount]))
                                                                         (apply merge))))
                                                     vals))
@@ -664,7 +660,7 @@
               :sb/member-vote.entry [::prepare (fn [users]
                                                  (->> users
                                                       (mapcat (fn [{:keys [_id boardId votesByDomain]}]
-                                                                (let [member-id ($oid _id)]
+                                                                (let [member-id (get-oid _id)]
                                                                   (for [[domain project-id] votesByDomain]
                                                                     {:member-vote.entry/id (str boardId ":" member-id)
                                                                      :member-vote.entry/member (lookup-ref :member/id member-id)
@@ -892,7 +888,7 @@
                                                  (merge (case type
                                                           "newMember" {:notification/type :notification.type/new-project-member}
                                                           "newMessage" {:notification/type :notification.type/new-thread-message
-                                                                        :notification/thread [:thread/id ($oid targetId)]}
+                                                                        :notification/thread [:thread/id (get-oid targetId)]}
                                                           "newPost" {:notification/type :notification.type/new-discussion-post}
                                                           "newComment" {:notification/type :notification.type/new-post-comment})))))
                                 :notification/board rm
@@ -903,12 +899,12 @@
                           :participantIds (& (lookup-ref :member/id)
                                              (rename :thread/members))
                           ::always (remove-when #(some missing-ref? (:thread/members %)))
-                          :createdAt (& (xf parse-$date)
+                          :createdAt (& (xf parse-mongo-date)
                                         (rename :ts/created-at))
                           :readBy (& (xf keys)
                                      (xf (partial mapv (fn [k] [:member/id (name k)])))
                                      (rename :thread/read-by)) ;; change to a set of has-unread?
-                          :modifiedAt (& (xf parse-$date) (rename :ts/updated-at))
+                          :modifiedAt (& (xf parse-mongo-date) (rename :ts/updated-at))
 
                           ;; TODO - :messages
                           :messages (& (xf (partial change-keys [:_id (& (timestamp-from-id)
@@ -927,7 +923,7 @@
               ::mongo [:deleted (& (xf (fn [x] (when x deletion-time)))
                                    (rename :ts/deleted-at))
                        ::always (remove-when :ts/deleted-at)
-                       :updatedAt (& (xf parse-$date) (rename :ts/updated-at))
+                       :updatedAt (& (xf parse-mongo-date) (rename :ts/updated-at))
                        :intro (rename :project/summary-text)
                        :owner (& (lookup-ref :member/id)
                                  (rename :ts/created-by))
@@ -986,55 +982,55 @@
                        :else (throw (ex-info (str "Unknown coll: " k) {:coll k}))))
         (changes k)))
 
-(def parse-coll
+(def coll-entities
+  "Converts doc according to `changes`"
   (memoize
-   (fn parse-coll [k]
+   (fn [k]
      (->> (read-coll k)
           (change-keys (changes-for k))))))
 
-(defn explain-all! []
+(defn register-schema! []
   (reset! sschema/!registry (merge (m/default-schemas)
-                                   (update-vals sschema/sb-schema :malli/schema)))
+                                   (update-vals sschema/sb-schema :malli/schema))))
+
+(defn explain-errors! []
+  (register-schema!)
   (->> colls
        (mapcat (fn [k]
-                 (:errors (m/explain [:sequential (@sschema/!registry k)] (take 1 (parse-coll k))))))
+                 (let [entities (coll-entities k)]
+                   (:errors (m/explain [:sequential (@sschema/!registry k)] entities)))))
        first))
-
-(defn parse-all []
-  (into []
-        (mapcat parse-coll)
-        colls))
 
 (defn read-all []
   (into []
         (mapcat read-coll)
         colls))
 
-(defn register-schema! []
-  (reset! sschema/!registry (merge (m/default-schemas)
-                                   (update-vals sschema/sb-schema :malli/schema))))
+(defn root-entities
+  "Entities representing docs from the original coll. May contain nested (inline) entities."
+  []
+  (into []
+        (mapcat coll-entities)
+        colls))
 
 (def reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys sschema/sb-schema)))
 
-(defn flatten-docs [docs]
+(defn flatten-entities
+  "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
+  [docs]
   (into []
         (mapcat (fn [doc]
                   (cons (apply dissoc doc reverse-ks)
                         (mapcat doc reverse-ks))))
         docs))
 
-(def all-docs (comp flatten-docs parse-all))
+(def all-entities
+  "Flat list of all entities (no inline nesting)"
+  (comp flatten-entities root-entities))
 
-(defn check-docs [docs]
-  (register-schema!)
-  (first (for [doc docs
-               :let [schema (sschema/entity-schema doc)
-                     _ (when-not schema (prn :no-schema doc))
-                     explained (m/explain schema doc)]
-               :when explained]
-           explained)))
-
-(defn contains-somewhere? [v coll]
+(defn contains-somewhere?
+  "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
+  [v coll]
   (let [!found (atom false)]
     (walk/postwalk #(do (when (= v %) (reset! !found true)) %) coll)
     @!found))
@@ -1042,33 +1038,31 @@
 (comment
 
 
- (fetch-mongodb)
- (fetch-firebase)
+ (fetch-mongodb) ;; fetches from prod
+ (fetch-firebase) ;; fetches from prod
 
- (check-docs (all-docs))
-
-
+ (explain-errors!) ;; checks against schema
 
  (dl/clear conn) ;; DELETE
  (d/merge-schema! sschema/sb-schema) ;; SCHEMA
- (d/transact! (mapcat sschema/unique-keys (all-docs))) ;; LOOKUP-REFS
- (d/transact! (all-docs))
- (doseq [doc (all-docs)]
+ (d/transact! (mapcat sschema/unique-keys (all-entities))) ;; LOOKUP-REFS
+ (d/transact! (all-entities))
+ (doseq [doc (all-entities)]
    (try (d/transact! [doc])
         (catch Exception e
           (prn :fail doc)
           (throw e))))
 
- (def all-ids (->> (mapcat sschema/unique-keys (all-docs))
+ (def all-ids (->> (mapcat sschema/unique-keys (all-entities))
                    (mapcat vals)
                    (into #{})))
  (all-ids "527a76956fe44c0200000005")
 
- (->> (parse-coll :sb/project)
+ (->> (coll-entities :sb/project)
       (filter (partial contains-somewhere? "527a76956fe44c0200000005"))
       distinct)
 
- (explain-all!)
+ (explain-errors!)
  (:out (sh "ls" "-lh" (env/db-path)))
 
 
@@ -1079,7 +1073,7 @@
 
  (mapv (juxt identity mg/generate) (vals sschema/entity-schemas))
 
- (clojure.core/time (count (parse-all)))
+ (clojure.core/time (count (root-entities)))
 
  )
 

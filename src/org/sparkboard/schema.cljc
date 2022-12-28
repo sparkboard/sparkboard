@@ -3,14 +3,11 @@
   (:require [malli.core :as m]
             [malli.generator :as mg]
             [malli.registry :as mr]
-            [malli.transform :as mt]
             [re-db.schema :as s]
-            [tools.sparkboard.util :as u]
-            [clojure.set :as set]))
+            [tools.sparkboard.util :as u]))
 
 (def !registry (atom (m/default-schemas)))
 (mr/set-default-registry! (mr/mutable-registry !registry))
-(defn register! [m] (swap! !registry merge m))
 
 (defn gen [s] (take 3 (repeatedly #(mg/generate s))))
 
@@ -20,6 +17,7 @@
   [:tuple (into [:enum] ks) :string])
 
 (defn ref
+  "returns a schema entry for a ref (one or many)"
   ([cardinality] (case cardinality :one (merge s/ref
                                                s/one
                                                {s- [:tuple :qualified-keyword :string]})
@@ -764,7 +762,9 @@
              sb-visibility
              sb-webhooks)
       (update-vals infer-db-type)
-      (doto (-> (update-vals :malli/schema) register!))))
+      (doto (as-> schema
+                  (update-vals schema :malli/schema)
+                  (swap! !registry merge schema)))))
 
 (comment
  (->> sb-schema (remove (comp :malli/schema val))))

@@ -2,18 +2,18 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
 
         ;; v2
-        datalevin/datalevin {:mvn/version "0.6.14"}
-        io.github.mhuebert/re-db {:git/sha "b53e2a5e0ed4ddf02dc780235fa183890c709d27"}
+        datalevin/datalevin {:mvn/version "0.7.7"}
+        io.github.mhuebert/re-db {:local/root "../re-db"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
 
         ;; util
-        metosin/jsonista {:mvn/version "0.3.6"}
+        metosin/jsonista {:mvn/version "0.3.7"}
         yogsototh/clj-jwt {:mvn/version "0.3.0"}
-        clj-http/clj-http {:mvn/version "3.10.1"}
+        clj-http/clj-http {:mvn/version "3.12.3"}
         lambdaisland/uri {:mvn/version "1.13.95"}
-        commons-codec/commons-codec {:mvn/version "1.14"}
+        commons-codec/commons-codec {:mvn/version "1.15"}
         applied-science/js-interop {:mvn/version "0.3.3"}
         clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
 
