@@ -36,7 +36,8 @@
         metosin/malli {:mvn/version "0.8.4"}
         com.gfredericks/test.chuck {:mvn/version "0.2.10"}
 
-        nrepl/nrepl {:mvn/version "0.9.0"}
+        nrepl/nrepl {:mvn/version "1.0.0"}
+        cider/cider-nrepl {:mvn/version "0.29.0"}
 
         ;; client
         mhuebert/kitchen-async {:mvn/version "0.1.0"}

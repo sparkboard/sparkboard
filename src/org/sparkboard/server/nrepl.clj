@@ -1,5 +1,6 @@
 (ns org.sparkboard.server.nrepl
-  (:require [clojure.java.shell :refer [sh]]
+  (:require [cider.nrepl :refer [cider-nrepl-handler]]
+            [clojure.java.shell :refer [sh]]
             [nrepl.server :as nrepl]
             [org.sparkboard.server.env :as env]
             [taoensso.timbre :as log])
@@ -38,7 +39,9 @@
   (let [nrepl-port 7888
         nrepl-host "::"]
     (log/info "Starting nrepl server" {:port nrepl-port :host nrepl-host})
-    (reset! !nrepl-server (nrepl/start-server :bind nrepl-host :port nrepl-port))
+    (reset! !nrepl-server (nrepl/start-server :bind nrepl-host
+                                              :port nrepl-port
+                                              :handler cider-nrepl-handler))
     (start-shutdown-check!)))
 
 (comment
