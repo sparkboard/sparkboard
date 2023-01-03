@@ -3,7 +3,8 @@
 
         ;; v2
         datalevin/datalevin {:mvn/version "0.7.7"}
-        io.github.mhuebert/re-db {:local/root "../re-db"}
+        io.github.mhuebert/re-db {#_#_:local/root "../re-db"
+                                  :git/sha "9070039e5fc3357e2f7f85dd4adf8f467e64bd78"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
@@ -43,11 +44,15 @@
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         reagent/reagent {:mvn/version "1.1.1"}
-        thheller/shadow-cljs {:mvn/version "2.19.3"}}
+        thheller/shadow-cljs {:mvn/version "2.20.16"}}
  :aliases
  {:uberdeps {:extra-deps {uberdeps/uberdeps {:mvn/version "1.1.4"}}}
   :uberjar {:exec-fn build/uberjar}
   :aot {:exec-fn build/aot}
+  :clerk {:extra-deps {io.github.mhuebert/clerk-cljs
+                       {#_#_:local/root "../clerk-cljs"
+                        :git/sha "ededa9e9d0508b31edce5cd33c336f204593a35b"}}
+          :extra-paths ["dev"]}
   :datalevin {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
                          "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}
  }

@@ -1,6 +1,12 @@
-{:deps {:aliases [:datalevin]}
+{:deps {:aliases [:datalevin :clerk]}
  :builds
- {:web
+ {:clerk
+  {:target :esm
+   :modules {:clerk {:entries [org.sparkboard.notebooks]}}
+   :output-dir "resources/clerk"
+   :devtools {:http-port 3001
+              :http-root "resources/clerk"}}
+  :web
   {:target :browser
    :modules {:app {:init-fn org.sparkboard.client/init}}
    :output-dir "resources/public/js/compiled"

@@ -3,6 +3,7 @@
   <component name="DepsProjectSettings">
     <option name="enabledAliases">
       <set>
+        <option value="clerk" />
         <option value="test" />
         <option value="uberdeps" />
       </set>
