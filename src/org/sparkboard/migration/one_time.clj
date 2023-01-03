@@ -1037,40 +1037,51 @@
 
 (comment
 
+ ;; Steps to copy data from prod without processing
+ (fetch-mongodb) ;; copies to ~/.db
+ (fetch-firebase)  ;; copies to ~/.db
 
- (fetch-mongodb) ;; fetches from prod
- (fetch-firebase) ;; fetches from prod
 
- (explain-errors!) ;; checks against schema
+ ;; Steps to set up a Datalevin db
+ (dl/clear conn) ;; delete all (if exists)
+ (d/merge-schema! sschema/sb-schema) ;; transact schema
+ (do
+   ;; transact lookup refs first,
+   (d/transact! (mapcat sschema/unique-keys (all-entities)))
+   ;; then transact everything else
+   (d/transact! (all-entities)))
 
- (dl/clear conn) ;; DELETE
- (d/merge-schema! sschema/sb-schema) ;; SCHEMA
- (d/transact! (mapcat sschema/unique-keys (all-entities))) ;; LOOKUP-REFS
- (d/transact! (all-entities))
+
+ ;; only for debugging when something fails to transact
  (doseq [doc (all-entities)]
    (try (d/transact! [doc])
         (catch Exception e
           (prn :fail doc)
           (throw e))))
 
+ (explain-errors!) ;; checks against schema
+
+ ;; for investigations: look up any entity by id
  (def all-ids (->> (mapcat sschema/unique-keys (all-entities))
                    (mapcat vals)
                    (into #{})))
- (all-ids "527a76956fe44c0200000005")
 
+ ;; example of looking for any project that contains a particular id
  (->> (coll-entities :sb/project)
       (filter (partial contains-somewhere? "527a76956fe44c0200000005"))
       distinct)
 
+
+ ;; misc
  (explain-errors!)
  (:out (sh "ls" "-lh" (env/db-path)))
-
-
  (map parse-domain-target (vals (read-coll :sb/domain)))
 
+ ;; try validating generated docs
  (check-docs
   (mapv mg/generate (vals sschema/entity-schemas)))
 
+ ;; generate examples for every schema entry
  (mapv (juxt identity mg/generate) (vals sschema/entity-schemas))
 
  (clojure.core/time (count (root-entities)))
