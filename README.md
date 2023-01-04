@@ -11,6 +11,8 @@ Contents:
 
 ## Develop locally
 
+TODO describe `bb dev` process
+
 1. yarn install
 1. Start a JVM process with `yarn shadow-cljs`
 1. Open a REPL with your favorite editor, reading the port from `.nrepl-port`
