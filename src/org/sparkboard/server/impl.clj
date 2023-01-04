@@ -1,4 +1,7 @@
-(ns org.sparkboard.server.impl)
+(ns org.sparkboard.server.impl
+  (:require [clojure.string :as str]
+            [org.sparkboard.firebase.tokens :as fire-tokens]
+            [taoensso.timbre :as log]))
 
 (defn req-auth-token [req]
   (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
