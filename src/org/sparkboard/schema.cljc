@@ -59,7 +59,7 @@
                                              :keyword s/keyword
                                              :http/url s/string
                                              :html/color s/string
-                                             :int s/bigint
+                                             :int s/long #_s/bigint
                                              'inst? s/instant}
                               known-bases (set (keys base-mappings))
                               malli-type (s- m)
