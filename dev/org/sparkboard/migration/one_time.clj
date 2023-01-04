@@ -1042,12 +1042,15 @@
 (comment
 
  ;; Steps to copy data from prod without processing
- (fetch-mongodb) ;; copies to ~/.db
- (fetch-firebase)  ;; copies to ~/.db
+ (fetch-mongodb) ;; copies to ./.db
+ (fetch-firebase)  ;; copies to ./.db
 
 
  ;; Steps to set up a Datalevin db
  (dl/clear conn) ;; delete all (if exists)
+
+ ;; (on my machine, the next line fails if I don't re-eval `org.sparkboard.datalevin` here)
+ 
  (d/merge-schema! sschema/sb-schema) ;; transact schema
  (do
    ;; transact lookup refs first,
