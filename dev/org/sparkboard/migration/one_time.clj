@@ -1,7 +1,7 @@
 (ns org.sparkboard.migration.one-time
   (:require [clojure.instant :as inst]
             [clojure.java.shell :refer [sh]]
-            [clojure.set :as set]
+            [clojure.set :refer [rename-keys]]
             [clojure.string :as str]
             [clojure.walk :as walk]
             [datalevin.core :as dl]
@@ -112,7 +112,7 @@
                 (assoc a v)))))
 
 (def read-firebase
-  (memoize
+  (memoize ;; you'll need to eval & run `fetch-firebase` below for this to work
    (fn [] (->> (slurp (env/db-path "firebase.edn")) (read-string)))))
 
 (def read-coll
@@ -245,7 +245,7 @@
 
 (def parse-image-urls
   (xf (fn [urls]
-        (set/rename-keys urls {"logo" :image/logo-url
+        (rename-keys urls {"logo" :image/logo-url
                                "logoLarge" :image/logo-large-url
                                "footer" :image/footer-url
                                "background" :image/background-url
@@ -315,7 +315,7 @@
                       field-value (when field-type
                                     (case field-type
                                       :field.type/image {:field.image/url v}
-                                      :field.type/link-list {:field.link-list/items (mapv #(set/rename-keys % {:label :field.link-list/text
+                                      :field.type/link-list {:field.link-list/items (mapv #(rename-keys % {:label :field.link-list/text
                                                                                                                :url :field.link-list/url}) v)}
                                       :field.type/select {:field.select/value v}
                                       :field.type/text-content (html-content v)
@@ -438,16 +438,16 @@
                                                                  ;; unsure: how to re-use fields when searching across boards, etc.
                                                                  (update :field.spec/id (partial str (:board/id m) ":"))
                                                                  (dissoc "id")
-                                                                 (set/rename-keys {"type" :field/type
-                                                                                   "showOnCard" :field.spec/show-on-card?
-                                                                                   "showAtCreate" :field.spec/show-at-create?
-                                                                                   "showAsFilter" :field.spec/show-as-filter?
-                                                                                   "required" :field.spec/required?
-                                                                                   "hint" :field.spec/hint
-                                                                                   "label" :field.spec/label
-                                                                                   "options" :field.spec/options
-                                                                                   "order" :field.spec/order
-                                                                                   "name" :field.spec/name})
+                                                                 (rename-keys {"type" :field/type
+                                                                               "showOnCard" :field.spec/show-on-card?
+                                                                               "showAtCreate" :field.spec/show-at-create?
+                                                                               "showAsFilter" :field.spec/show-as-filter?
+                                                                               "required" :field.spec/required?
+                                                                               "hint" :field.spec/hint
+                                                                               "label" :field.spec/label
+                                                                               "options" :field.spec/options
+                                                                               "order" :field.spec/order
+                                                                               "name" :field.spec/name})
                                                                  (u/update-some {:field.spec/options (partial mapv #(update-keys % (fn [k]
                                                                                                                                      (case k "label" :field.spec.option/label
                                                                                                                                              "value" :field.spec.option/value
@@ -473,7 +473,7 @@
                                                      (update :tag/id (partial str (:board/id m) ":"))
                                                      (assoc :tag/managed-by [:board/id (:board/id m)])
                                                      (dissoc "order")
-                                                     (set/rename-keys {"color" :tag/background-color
+                                                     (rename-keys {"color" :tag/background-color
                                                                        "name" :tag/label
                                                                        "label" :tag/label
                                                                        "restrict" :tag/restricted?})
@@ -577,7 +577,7 @@
                               "invite-link" (rename :slack.team/invite-link)
                               "bot-user-id" (rename :slack.app/bot-user-id)
                               "bot-token" (rename :slack.app/bot-token)
-                              "custom-messages" (& (xf (fn [m] (set/rename-keys m {"welcome" :slack.team.custom-message/welcome}))) (rename :slack.team/custom-messages))
+                              "custom-messages" (& (xf (fn [m] (rename-keys m {"welcome" :slack.team.custom-message/welcome}))) (rename :slack.team/custom-messages))
                               "app" (& (xf (fn [app]
                                              (->> app (fire-flat :slack.app/id)
                                                   (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
@@ -956,7 +956,7 @@
 (defn fetch-mongodb []
   (doseq [[coll-k mongo-coll] mongo-colls
           :let [_ (prn :starting coll-k)
-                {:keys [out err exit]} (sh "mongoexport"
+                {:keys [out err exit]} (sh "mongoexport" ;; <-- you'll need this installed; see https://www.mongodb.com/docs/database-tools/installation/installation/
                                            "--uri" MONGODB_URI
                                            "--jsonArray"
                                            "--collection" mongo-coll)
@@ -975,6 +975,10 @@
          (slurp)
          (json/read-value)
          (spit (env/db-path "firebase.edn")))))
+
+(comment
+  (fetch-firebase)
+  )
 
 (defn changes-for [k]
   (into (changes (cond (mongo-colls k) ::mongo
