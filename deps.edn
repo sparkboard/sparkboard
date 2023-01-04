@@ -18,6 +18,7 @@
         applied-science/js-interop {:mvn/version "0.3.3"}
         clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
         dev.weavejester/medley {:mvn/version "1.5.0"}
+        clj-gatling/clj-gatling {:mvn/version "0.17.6"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}
