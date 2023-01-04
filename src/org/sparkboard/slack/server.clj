@@ -1,7 +1,10 @@
 (ns org.sparkboard.slack.server
   (:require
    [clojure.string :as str]
+   [clojure.java.io :as io]
+   [cognitect.transit :as transit]
    [lambdaisland.uri :as uri]
+   [org.sparkboard.firebase.jvm :as fire-jvm]
    [org.sparkboard.server.env :as env]
    [org.sparkboard.server.impl :refer [wrap-sparkboard-verify]]
    [org.sparkboard.slack.db :as slack.db]
@@ -12,6 +15,7 @@
    [ring.util.http-response :as ring.http]
    [taoensso.timbre :as log]
    [tools.sparkboard.js-convert :refer [json->clj]]
+   [tools.sparkboard.slack.api :as slack.api]
    [tools.sparkboard.slack.view :as v])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
