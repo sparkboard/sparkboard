@@ -111,6 +111,10 @@
 (comment
   (-main)
 
+  @server
+  
+  (restart-server! 3000)
+  
   (.shutdown pool)
   (.shutdownNow pool)
   )
