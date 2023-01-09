@@ -111,7 +111,7 @@
 
 (def app
   (-> (bidi.ring/make-handler ["/" (merge slack.server/routes
-                                          {"ws" (partial default-ws-options handle-ws-request)})])
+                                          {"ws" (partial handle-ws-request default-ws-options)})])
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
       slack.server/wrap-slack-verify
