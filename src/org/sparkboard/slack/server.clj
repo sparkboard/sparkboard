@@ -1,4 +1,5 @@
 (ns org.sparkboard.slack.server
+  "HTTP routes for Slack integration"
   (:require
    [clojure.string :as str]
    [clojure.java.io :as io]

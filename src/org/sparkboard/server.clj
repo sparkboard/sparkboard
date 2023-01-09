@@ -1,5 +1,7 @@
 (ns org.sparkboard.server
-  "HTTP server handling Slack requests"
+  "HTTP server handling all requests
+   * slack integration
+   * TODO synced queries over websocket"
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
             [hiccup.util :refer [raw-string]]
@@ -28,16 +30,16 @@
 
 (def spa-page
   (memoize
-    (fn [config]
-      (-> {:body
-           (str (html/html-page {:title "Sparkboard"
-                                 :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
-                                 :scripts/body [{:src (str "/js/compiled/app.js?v=" (.getTime (java.util.Date.)))}]
-                                 :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
-                                         (raw-string (transit/write config))]
-                                        [:div#web]]}))}
-          (ring.response/content-type "text/html")
-          (ring.response/status 200)))))
+   (fn [config]
+     (-> {:body
+          (str (html/html-page {:title "Sparkboard"
+                                :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
+                                :scripts/body [{:src (str "/js/compiled/app.js?v=" (.getTime (java.util.Date.)))}]
+                                :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
+                                        (raw-string (transit/write config))]
+                                       [:div#web]]}))}
+         (ring.response/content-type "text/html")
+         (ring.response/status 200)))))
 
 (defn wrap-handle-errors [f]
   (fn [req]
@@ -91,11 +93,11 @@
 (defn handle-ws-request [{:as server-opts
                           :keys [path pack unpack handlers]}
                          {:as request :keys [uri request-method]}]
-     (if (= [request-method uri]
-            [:get path])
-       (let [channel (atom {})
-             context {:channel channel}]
-         (httpkit/as-channel request
+  (if (= [request-method uri]
+         [:get           path])
+    (let [channel (atom {})
+          context {:channel channel}]
+      (httpkit/as-channel request
                           {:init (fn [ch]
                                    (swap! channel assoc
                                           :send (fn [message]
@@ -107,7 +109,7 @@
                                          (sync/handle-message handlers context (unpack message)))
                            :on-close (fn [ch status]
                                        (sync/on-close channel))}))
-       (throw (ex-info (str "Unknown request " request-method uri) request))))
+    (throw (ex-info (str "Unknown request " request-method uri) request))))
 
 (def app
   (-> (bidi.ring/make-handler ["/" (merge slack.server/routes
