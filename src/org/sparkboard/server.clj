@@ -4,6 +4,7 @@
   (:require [bidi.ring :as bidi.ring]
             [hiccup.util :refer [raw-string]]
             [mhuebert.cljs-static.html :as html]
+            [org.httpkit.server :as httpkit]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.log]
@@ -11,9 +12,11 @@
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
             [org.sparkboard.slack.server :as slack.server]
-            [ring.adapter.jetty :refer [run-jetty]]
+            [re-db.sync :as sync]
+            [re-db.transit :as t]
             [ring.middleware.defaults]
             [ring.middleware.format]
+            [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime-type]
             [ring.util.request]
             [ring.util.response :as ring.response]
@@ -76,8 +79,39 @@
       (or (f req)
           (spa-page env/client-config)))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Websockets
+
+(def default-ws-options
+  {:pack t/pack
+   :unpack t/unpack
+   :path "/ws"})
+
+(defn handle-ws-request [{:as server-opts
+                          :keys [path pack unpack handlers]}
+                         {:as request :keys [uri request-method]}]
+     (if (= [request-method uri]
+            [:get path])
+       (let [channel (atom {})
+             context {:channel channel}]
+         (httpkit/as-channel request
+                          {:init (fn [ch]
+                                   (swap! channel assoc
+                                          :send (fn [message]
+                                                  (if (httpkit/open? ch)
+                                                    (httpkit/send! ch (pack message))
+                                                    (println :sending-message-before-open message)))))
+                           :on-open sync/on-open
+                           :on-receive (fn [ch message]
+                                         (sync/handle-message handlers context (unpack message)))
+                           :on-close (fn [ch status]
+                                       (sync/on-close channel))}))
+       (throw (ex-info (str "Unknown request " request-method uri) request))))
+
 (def app
-  (-> (bidi.ring/make-handler ["/" slack.server/routes])
+  (-> (bidi.ring/make-handler ["/" (merge slack.server/routes
+                                          {"ws" (partial default-ws-options handle-ws-request)})])
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
       slack.server/wrap-slack-verify
@@ -85,10 +119,10 @@
       wrap-handle-errors
       wrap-static-first))
 
-(defonce server (atom nil))
+(defonce the-server (atom nil))
 
 (defn stop-server! []
-  (some-> @server (.stop))
+  (some-> @the-server (httpkit/server-stop!))
   (nrepl/stop!))
 
 (defn restart-server!
@@ -96,25 +130,34 @@
   Starts HTTP server, stopping existing HTTP server first if necessary."
   [port]
   (stop-server!)
-  (reset! server (run-jetty #'app {:port port :join? false}))
-  (when (not= (env/config :env) "dev")                      ;; using shadow-cljs server in dev'
+  (reset! the-server (httpkit/run-server #'app {:port port
+                                                :legacy-return-value? false}))
+  (when (not= "dev" (env/config :env)) ;; using shadow-cljs server in dev
     (nrepl/start!)))
-
-
-
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
-  (fire-jvm/sync-all)                                       ;; cache firebase db locally
-  (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt)) 3000)))
+  (fire-jvm/sync-all) ;; cache firebase db locally
+  (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
+                       3000)))
 
 (comment
   (-main)
 
-  @server
-  
   (restart-server! 3000)
+  
+  @the-server
+  
+  #_ (reset! the-server nil)
+
+  (let [srvr @the-server]
+    {:port   (httpkit/server-port @the-server)
+     :status (httpkit/server-status @the-server)})
+  
+  (httpkit/server-stop! @the-server)
+
   
   (.shutdown pool)
   (.shutdownNow pool)
+
   )
