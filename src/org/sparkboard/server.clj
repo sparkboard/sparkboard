@@ -23,7 +23,8 @@
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]
-            [tools.sparkboard.transit :as transit]))
+            [tools.sparkboard.transit :as transit])
+  (:import [java.time Instant]))
 
 (comment
   (fire-tokens/decode token))
@@ -34,7 +35,7 @@
      (-> {:body
           (str (html/html-page {:title "Sparkboard"
                                 :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
-                                :scripts/body [{:src (str "/js/compiled/app.js?v=" (.getTime (java.util.Date.)))}]
+                                :scripts/body [{:src (str "/js/compiled/app.js?v=" (.toEpochMilli (Instant/now)))}]
                                 :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
                                         (raw-string (transit/write config))]
                                        [:div#web]]}))}
