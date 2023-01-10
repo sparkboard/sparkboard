@@ -1,7 +1,7 @@
 (ns org.sparkboard.server
   "HTTP server handling all requests
    * slack integration
-   * TODO synced queries over websocket"
+   * synced queries over websocket"
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
             [hiccup.util :refer [raw-string]]
@@ -34,13 +34,12 @@
 (def spa-page
   (memoize
    (fn [config]
-     (-> {:body
-          (str (html/html-page {:title "Sparkboard"
-                                :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
-                                :scripts/body [{:src (str "/js/compiled/app.js?v=" (.toEpochMilli (Instant/now)))}]
-                                :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
-                                        (raw-string (transit/write config))]
-                                       [:div#web]]}))}
+     (-> {:body (str (html/html-page {:title "Sparkboard"
+                                      :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
+                                      :scripts/body [{:src (str "/js/compiled/app.js?v=" (.toEpochMilli (Instant/now)))}]
+                                      :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
+                                              (raw-string (transit/write config))]
+                                             [:div#web]]}))}
          (ring.response/content-type "text/html")
          (ring.response/status 200)))))
 
@@ -170,7 +169,20 @@
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
                        3000)))
 
-(comment
+(comment ;;; Intensive request debugging
+  (def !requests (atom []))
+
+  (defn wrap-debug-request [f]
+    (fn [req]
+      (log/info :request req)
+      (swap! !requests conj req)
+      (f req)))
+
+  @!requests
+
+  )
+
+(comment ;;; Webserver control panel
   (-main)
 
   (restart-server! 3000)
@@ -187,22 +199,5 @@
      :status (httpkit/server-status @the-server)})
   
   (httpkit/server-stop! @the-server)
-
-  
-  (.shutdown pool)
-  (.shutdownNow pool)
-
-  )
-
-(comment ;;;: Intensive request debugging
-  (def !requests (atom []))
-
-  (defn wrap-debug-request [f]
-    (fn [req]
-      (log/info :request req)
-      (swap! !requests conj req)
-      (f req)))
-
-  @!requests
 
   )

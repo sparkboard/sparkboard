@@ -23,7 +23,6 @@
       (reitit/match-by-name k params)
       (reitit/match->path)))
 
-
 ;;; XXX based on sync_values
 (def default-options
   {:pack re-db.transit/pack
