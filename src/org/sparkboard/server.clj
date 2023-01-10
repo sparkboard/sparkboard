@@ -145,7 +145,8 @@
       slack.server/wrap-slack-verify
       wrap-static-fallback
       wrap-handle-errors
-      wrap-static-first))
+      wrap-static-first
+      #_wrap-debug-request))
 
 (defonce the-server (atom nil))
 
@@ -180,7 +181,6 @@
 
   ;; DEBUG
   @!list
-
   
   (let [srvr @the-server]
     {:port   (httpkit/server-port @the-server)
@@ -191,5 +191,18 @@
   
   (.shutdown pool)
   (.shutdownNow pool)
+
+  )
+
+(comment ;;;: Intensive request debugging
+  (def !requests (atom []))
+
+  (defn wrap-debug-request [f]
+    (fn [req]
+      (log/info :request req)
+      (swap! !requests conj req)
+      (f req)))
+
+  @!requests
 
   )
