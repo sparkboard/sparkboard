@@ -18,6 +18,7 @@
         applied-science/js-interop {:mvn/version "0.3.3"}
         clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
         dev.weavejester/medley {:mvn/version "1.5.0"}
+        clj-gatling/clj-gatling {:mvn/version "0.17.6"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}
@@ -25,7 +26,7 @@
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.19"}
 
         ;; http server
-        ring/ring-jetty-adapter {:mvn/version "1.8.1"}
+        http-kit/http-kit {:mvn/version "2.6.0"}
         ring/ring-defaults {:mvn/version "0.3.2"}
         bidi/bidi {:mvn/version "2.1.6"}
         ring-middleware-format/ring-middleware-format {:mvn/version "0.7.4"}

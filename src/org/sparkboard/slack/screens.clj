@@ -317,7 +317,7 @@
                   (examples/dev-overflow context))
      :fields [[:md
                (str "_Updated: "
-                    (->> (java.util.Date.)
+                    (->> (java.util.Date.) ;; TODO java.time
                          (.format (new java.text.SimpleDateFormat "h:mm:ss a, MMMM d")))
                     "_")]
               [:md (str (:slack/app-id context) "." (:slack/team-id context))]]}]))
