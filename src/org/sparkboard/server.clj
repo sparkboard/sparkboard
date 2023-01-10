@@ -44,6 +44,15 @@
          (ring.response/content-type "text/html")
          (ring.response/status 200)))))
 
+(defn wrap-iff
+  "Applies the given middleware `mw` only on the condition that the
+  request satisfies predicate `pred`."
+  [f pred mw]
+  (fn [req]
+    (if (pred req)
+      (mw (f req))
+      (f req))))
+
 (defn wrap-handle-errors [f]
   (fn [req]
     (log/info :URI (:uri req))
@@ -129,7 +138,10 @@
   (-> (bidi.ring/make-handler ["/" (merge slack.server/routes
                                           {"ws" (partial handle-ws-request default-ws-options)})])
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
-      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
+      (wrap-iff (complement :websocket?) ;; only apply RESTful middleware on
+                                         ;; non-websocket requests
+                (ring.middleware.format/wrap-restful-format {:formats [:json-kw
+                                                                       :transit-json]}))
       slack.server/wrap-slack-verify
       wrap-static-fallback
       wrap-handle-errors
