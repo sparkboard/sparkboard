@@ -14,8 +14,10 @@
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
             [org.sparkboard.slack.server :as slack.server]
+            [re-db.memo :as memo]
             [re-db.sync :as sync]
             [re-db.transit :as t]
+            [re-db.xform :as xf]
             [ring.middleware.defaults]
             [ring.middleware.format]
             [ring.util.http-response :as ring.http]
@@ -91,11 +93,22 @@
    :unpack t/unpack
    :path "/ws"})
 
+;; DEBUG
+(defonce !list (atom ()))
+
+(memo/defn-memo $values [ref]
+  (xf/transform ref
+    (map (fn [v] {:value v}))))
+
+
 (defn handle-ws-request [{:as server-opts
-                          :keys [path pack unpack handlers]}
+                          :keys [path pack unpack handlers]
+                          :or {handlers (merge
+                                         (sync/watch-handlers :resolve-refs {:list ($values !list)})
+                                         {:conj! (fn [_] (swap! !list conj (rand-int 100)))})}}
                          {:as request :keys [uri request-method]}]
-  (if (= [request-method uri]
-         [:get           path])
+  (if (and (= :get request-method)
+           (= path uri))
     (let [channel (atom {})
           context {:channel channel}]
       (httpkit/as-channel request
@@ -153,6 +166,10 @@
   
   #_ (reset! the-server nil)
 
+  ;; DEBUG
+  @!list
+
+  
   (let [srvr @the-server]
     {:port   (httpkit/server-port @the-server)
      :status (httpkit/server-status @the-server)})
