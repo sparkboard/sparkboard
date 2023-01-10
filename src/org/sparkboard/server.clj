@@ -16,7 +16,7 @@
             [org.sparkboard.slack.server :as slack.server]
             [re-db.memo :as memo]
             [re-db.sync :as sync]
-            [re-db.transit :as t]
+            [re-db.transit]
             [re-db.xform :as xf]
             [ring.middleware.defaults]
             [ring.middleware.format]
@@ -96,11 +96,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Websockets
 
-(def default-ws-options
-  {:pack t/pack
-   :unpack t/unpack
-   :path "/ws"})
-
 ;; DEBUG
 (defonce !list (atom ()))
 
@@ -108,12 +103,17 @@
   (xf/transform ref
     (map (fn [v] {:value v}))))
 
+(def default-ws-options
+  "Websocket config fallbacks"
+  {:pack     re-db.transit/pack
+   :unpack   re-db.transit/unpack
+   :path     "/ws"
+   :handlers (merge
+              (sync/watch-handlers :resolve-refs {:list ($values !list)})
+              {:conj! (fn [_] (swap! !list conj (rand-int 100)))})})
 
 (defn handle-ws-request [{:as server-opts
-                          :keys [path pack unpack handlers]
-                          :or {handlers (merge
-                                         (sync/watch-handlers :resolve-refs {:list ($values !list)})
-                                         {:conj! (fn [_] (swap! !list conj (rand-int 100)))})}}
+                          :keys [path pack unpack handlers]}
                          {:as request :keys [uri request-method]}]
   (if (and (= :get request-method)
            (= path uri))
