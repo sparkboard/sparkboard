@@ -6,8 +6,13 @@
             [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.routes :refer [routes]]
             [org.sparkboard.client.slack :as slack.client]
+            [re-db.integrations.reagent] ;; extends `ratom` reactivity
+            [re-db.reactive :as r]
             [re-db.sync :as sync]
             [re-db.transit]
+            [re-db.xform :as xf]
+            [reagent.core :as reagent]
+            [reagent.dom]
             [reitit.core :as reitit]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
@@ -22,6 +27,8 @@
   (-> router
       (reitit/match-by-name k params)
       (reitit/match->path)))
+
+(v/defview home [] "Nothing to see here, folks.")
 
 ;;; XXX based on sync_values
 (def default-options
@@ -64,17 +71,31 @@
   (delay (connect {:port 3000
                    :handlers (sync/watch-handlers)})))
 
+(def click-count (reagent/atom 0))
 
-(js/console.log "foo")
+(v/defview playground []
+  [:div
+   [:p (str "Current value: " (deref (sync/$watch @channel :list)))]
+   [:button.p-2.rounded.bg-blue-100
+    {:on-click #(sync/send @channel [:conj!])}
+    "List, grow!"]
+
+   ;;; reagent
+   [:h2 "reagent"]
+   [:div
+    "The atom " [:code "click-count"] " has value: "
+    @click-count ". "
+    [:input {:type "button" :value "Click me!"
+             :on-click #(swap! click-count inc)}]]])
+
+(reagent.dom/render [playground]
+                    (.-body js/document) #_:div#web)
 
 
-(v/defview home []
-  [:button.p-2.rounded.bg-blue-100
-   {:on-click #(sync/send @channel [:conj!])}
-   "List, grow!"]
-  #_"Nothing to see here, folks.")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def handlers {:home home
+               :playground playground
                :slack/invite-offer slack.client/invite-offer
                :slack/link-complete slack.client/link-complete
                :auth-test auth.client/auth-header})
