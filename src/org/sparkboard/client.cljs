@@ -2,6 +2,7 @@
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
             [applied-science.js-interop :as j]
+            [clojure.edn :as edn]
             [org.sparkboard.client.auth :as auth.client]
             [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.routes :refer [routes]]
@@ -69,17 +70,25 @@
 
 (def channel
   (delay (connect {:port 3000
-             :handlers (sync/watch-handlers)})))
+                   :handlers (sync/watch-handlers)})))
 
 (v/defview playground []
   [:div
-   [:p (str "Current value: " (deref (sync/$watch @channel :list)))]
+   [:a {:href "/skeleton"} "skeleton"]
+   [:p (str "Current value: " (deref (sync/$watch @channel :sb/orgs #_:entity-1)))]
    [:button.p-2.rounded.bg-blue-100
     {:on-click #(sync/send @channel [:conj!])}
     "List, grow!"]])
 
+(v/defview skeleton []
+  [:div
+   (into [:ul]
+         (map (fn [org-obj] (vector :li [:a {:href (str "/skeleton/org/" (:org/id org-obj))} (:org/title org-obj)])))
+         ;; FIXME double `value` nesting
+         (:value (:value (edn/read-string (str (deref (sync/$watch @channel :sb/orgs)))))))])
+
 ;; BUG this somehow causes reactivity to work on page load. leaving it here to continue work on other pieces but this is 100% a HACK to be fixed & removed
-(reagent.dom/render [playground]
+(reagent.dom/render [skeleton]
                     (.-body js/document))
 
 
@@ -88,6 +97,7 @@
 
 (def handlers {:home home
                :playground playground
+               :skeleton skeleton
                :slack/invite-offer slack.client/invite-offer
                :slack/link-complete slack.client/link-complete
                :auth-test auth.client/auth-header})

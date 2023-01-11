@@ -7,6 +7,7 @@
             [hiccup.util]
             [mhuebert.cljs-static.html :as html]
             [org.httpkit.server :as httpkit]
+            [org.sparkboard.datalevin :as datalevin]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.log]
@@ -14,7 +15,10 @@
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
             [org.sparkboard.slack.server :as slack.server]
+            [re-db.api]
             [re-db.memo :as memo]
+            [re-db.query]
+            [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.transit]
             [re-db.xform :as xf]
@@ -103,13 +107,43 @@
   (xf/transform ref
     (map (fn [v] {:value v}))))
 
+
+
+;; wrap a `transact!` function to call `read/handle-report!` afterwards, which will
+;; cause dependent queries to re-evaluate.
+(defn transact! [txs]
+  (->> (re-db.api/transact! datalevin/conn txs)
+       (read/handle-report! datalevin/conn)))
+
+;; an atom of refs to expose, a map of ids to functions which return reactions.
+;; refs are requested via vectors of the form [<id> & args].
+(def !refs
+  (atom {:sb/orgs (constantly (re-db.query/reaction datalevin/conn
+                                                    {:value (map (comp re-db.api/get :db/id)
+                                                                 (datalevin/qry-orgs))}))
+         :entity-1 (constantly (re-db.query/reaction datalevin/conn
+                                                     {:value (re-db.api/get
+                                                              ;; Q: why does `get` work but the result of `some` doesn't? it doesn't seem to be based on Entity type
+                                                              (:db/id (some #(when (-> % :org/id #{"opengeneva"})
+                                                                               %)
+                                                                            (datalevin/qry-orgs))))}))
+         :entity (fn [id] (re-db.query/reaction datalevin/conn
+                                               {:value (re-db.api/get id)}))}))
+
+
 (def default-ws-options
   "Websocket config fallbacks"
   {:pack     re-db.transit/pack
    :unpack   re-db.transit/unpack
    :path     "/ws"
    :handlers (merge
-              (sync/watch-handlers :resolve-refs {:list ($values !list)})
+              (sync/watch-handlers :resolve-refs
+                                   (memo/fn-memo [ref-id]
+                                                 (let [[id & args] (if (sequential? ref-id)
+                                                                     ref-id
+                                                                     [ref-id])]
+                                                   (apply (@!refs id) args)))
+                                   #_{:list ($values !list)})
               {:conj! (fn [_] (swap! !list conj (rand-int 100)))})})
 
 (defn handle-ws-request [{:as server-opts
@@ -185,19 +219,12 @@
 (comment ;;; Webserver control panel
   (-main)
 
-  (restart-server! 3000)
-  
-  @the-server
-  
-  #_ (reset! the-server nil)
-
-  ;; DEBUG
-  @!list
-  
   (let [srvr @the-server]
     {:port   (httpkit/server-port @the-server)
      :status (httpkit/server-status @the-server)})
   
-  (httpkit/server-stop! @the-server)
+  #_ (reset! the-server nil)
+
+  (restart-server! 3000)
 
   )

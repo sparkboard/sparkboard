@@ -5,6 +5,10 @@
             [re-db.integrations.datalevin]
             [re-db.read]))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Setup
+
 (def db-path (env/db-path "datalevin"))
 
 (def conn (dl/get-conn db-path {}))
@@ -18,17 +22,22 @@
 
  (->> (d/where [:org/id])
       (map (d/pull '[*
+                     :db/id
                      #_ {:board.settings/default-template [*]}
                      {:entity/domain [*]}
                      {:ts/created-by [*]}])))
 
- 
- (->> (d/where [:board/id])
-      (map (d/pull '[(:board/id :db/id true)
-                     :board/title
-                     {:project/_board [:project/title]}]))
-      (drop 3)
-      first)
-
-
  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Queries
+
+(defn qry-orgs []
+  (d/where [:org/id]))
+
+(defn qry-boards [org-id]
+  (d/where [:board/id
+            [:board/org [:org/id org-id]]]))
+
+
