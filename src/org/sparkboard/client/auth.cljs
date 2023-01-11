@@ -3,7 +3,12 @@
             [applied-science.js-interop :as j]
             [org.sparkboard.client.firebase :as firebase]
             [tools.sparkboard.promise :as p]
-            [triple.view :as v]))
+            [yawn.hooks :as hooks]
+            [yawn.view :as v]))
+
+;; TODO
+;; https://firebase.google.com/docs/auth/web/redirect-best-practices
+;; temporary fix was using "popup" but this has its own drawbacks
 
 (v/defview after-promise [{:keys [fallback promise]} element]
   (let [mounted-ref (react/useRef true)
@@ -25,7 +30,7 @@
   [:div#firebaseui])
 
 (v/defview auth-header* []
-  (let [{:keys [status id-token user]} @firebase/auth-state]
+  (let [{:keys [status id-token user]} (hooks/use-atom firebase/!auth-state)]
     (cond (nil? status) "Loading..."
           (or (= :signed-out status)
               (j/call @firebase/UI :isPendingRedirect)) [use-firebaseui-web]
@@ -35,7 +40,8 @@
             [:div.sans-serif.lh-copy
              [:div.flex.items-center.f4
               (when photoURL
-                [:img.br3.w3.mr3 {:src photoURL}])
+                [:img.br3.w3.mr3 {:src photoURL
+                                  :referrerpolicy "no-referrer"}])
               [:div.mr3 "Hello, " displayName ". "]
               [:div.flex-auto]
               [:a.blue.pointer.underline-hover {:on-click #(j/call @firebase/auth :signOut)} "Sign Out"]]

@@ -5,6 +5,8 @@
         datalevin/datalevin {:mvn/version "0.7.7"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "9070039e5fc3357e2f7f85dd4adf8f467e64bd78"}
+        io.github.mhuebert/yawn {#_#_:local/root "../yawn"
+                                 :git/sha "e00e54701d6acace494a61a992731350fd331979"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}

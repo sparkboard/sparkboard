@@ -1,29 +1,19 @@
 (ns org.sparkboard.client.slack
-  (:require ["react" :as react]
-            ["firebase/database"]
+  (:require ["firebase/database"]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [lambdaisland.uri :as uri]
             [org.sparkboard.client.env :as env]
             [org.sparkboard.client.firebase :as firebase]
-            [triple.view :as v]))
-
-(defn use-effect
-  ([f]
-   (use-effect f []))
-  ([f dep-arr]
-   (react/useEffect
-     (fn [] (or (f) js/undefined))
-     (to-array dep-arr))))
-
-(defn use-state [init-val] (react/useState init-val))
+            [yawn.hooks :as hooks]
+            [yawn.view :as v]))
 
 (def db (delay (.database firebase/app)))
 
-(defn use-value [segments]
+(defn use-firebase-value [segments]
   (let [path (some->> segments (map name) (str/join "/"))
-        [value set-value!] (use-state nil)]
-    (use-effect
+        [value set-value!] (hooks/use-state nil)]
+    (hooks/use-effect
       (fn []
         (when segments
           (let [ref (j/call @db :ref path)
@@ -41,12 +31,12 @@
                                   team-domain
                                   team-name
                                   redirect-encoded]} :query-params}]
-  (j/let [^:js {:keys [uid displayName photoURL email]} (:user @firebase/auth-state)
-          slack-user (use-value (when uid [:account uid :slack-team team-id :user-id]))
+  (j/let [^:js {:keys [uid displayName photoURL email]} (:user (hooks/use-atom firebase/!auth-state))
+          slack-user (use-firebase-value (when uid [:account uid :slack-team team-id :user-id]))
           team-link (str "https://" team-domain ".slack.com")
           app-id (-> env/config :slack/app-id)
           redirect (js/decodeURIComponent redirect-encoded)]
-    (use-effect
+    (hooks/use-effect
       #(when custom-token (j/call @firebase/auth :signInWithCustomToken custom-token) nil))
     [section
      (if (nil? uid)

@@ -11,7 +11,7 @@
    :modules {:app {:init-fn org.sparkboard.client/init}}
    :output-dir "resources/public/js/compiled"
    :asset-path "/js/compiled"
-   :devtools {:preloads [triple.view.react.preload]}}}}
+   :devtools {:preloads [yawn.view.refresh-preload]}}}}
 
 (comment
   (shadow/watch :web)

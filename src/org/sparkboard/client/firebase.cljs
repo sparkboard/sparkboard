@@ -5,8 +5,7 @@
             [applied-science.js-interop :as j]
             [org.sparkboard.client.env :as env]
             [tools.sparkboard.browser.loaders :as loaders]
-            [tools.sparkboard.promise :as p]
-            [triple.view.react.experimental.atom :as ratom]))
+            [tools.sparkboard.promise :as p]))
 
 (defonce app firebase)
 (defonce auth (delay (.auth firebase)))
@@ -15,16 +14,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auth state
 
-(defonce auth-state (ratom/create nil))
 
-(defn id-token []
-  (:id-token @auth-state))
+(defonce !auth-state (atom nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; firebaseui-web
 
 (def ui-config
-  (j/lit {:signInOptions [(j/get-in app [:auth :GoogleAuthProvider :PROVIDER_ID])]}))
+  (j/lit {:signInOptions [(j/get-in app [:auth :GoogleAuthProvider :PROVIDER_ID])]
+          :signInFlow "popup"}))
 
 (defn ui-deps [locale]
   (p/all [(loaders/css! "https://www.gstatic.com/firebasejs/ui/4.5.0/firebase-ui-auth.css")
@@ -46,9 +44,9 @@
   (j/call @auth :onAuthStateChanged
           (fn [user]
             (if (nil? user)
-              (reset! auth-state {:status :signed-out})
+              (reset! !auth-state {:status :signed-out})
               (p/let [token (j/call user :getIdToken)]
-                (reset! auth-state
+                (reset! !auth-state
                         {:status :signed-in
                          :uid (j/get user :uid)
                          :user user
