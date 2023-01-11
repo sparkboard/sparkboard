@@ -45,51 +45,43 @@
      "
   [& {:as options}]
   (let [{:keys [url port path pack unpack handlers]} (merge default-options options)
-        channel (atom {:!last-message (atom nil)})
+        chan (atom {:!last-message (atom nil)})
         send (fn [message]
-               (let [^js ws (:ws @channel)]
+               (let [^js ws (:ws @chan)]
                  (when (= 1 (.-readyState ws))
                    (.send ws (pack message)))))
-        _ (swap! channel assoc :send send)
-        context (assoc options :channel channel)
+        _ (swap! chan assoc :send send)
+        context (assoc options :channel chan)
         init-ws (fn init-ws []
                   (let [ws (js/WebSocket. (or url (str "ws://localhost:" port path)))]
-                    (swap! channel assoc :ws ws)
+                    (swap! chan assoc :ws ws)
                     (doto ws
                       (.addEventListener "open" (fn [_]
-                                                  (sync/on-open channel)))
+                                                  (sync/on-open chan)))
                       (.addEventListener "close" (fn [_]
-                                                   (sync/on-close channel)
+                                                   (sync/on-close chan)
                                                    #_(js/setTimeout init-ws 1000)))
                       (.addEventListener "message" #(let [message (unpack (j/get % :data))]
-                                                      (reset! (:!last-message @channel) message)
+                                                      (reset! (:!last-message @chan) message)
                                                       (sync/handle-message handlers context message))))))]
     (init-ws)
-    channel))
+    chan))
 
 (def channel
   (delay (connect {:port 3000
-                   :handlers (sync/watch-handlers)})))
-
-(def click-count (reagent/atom 0))
+             :handlers (sync/watch-handlers)})))
 
 (v/defview playground []
   [:div
    [:p (str "Current value: " (deref (sync/$watch @channel :list)))]
    [:button.p-2.rounded.bg-blue-100
     {:on-click #(sync/send @channel [:conj!])}
-    "List, grow!"]
+    "List, grow!"]])
 
-   ;;; reagent
-   [:h2 "reagent"]
-   [:div
-    "The atom " [:code "click-count"] " has value: "
-    @click-count ". "
-    [:input {:type "button" :value "Click me!"
-             :on-click #(swap! click-count inc)}]]])
-
+;; BUG this somehow causes reactivity to work on page load. leaving it here to continue work on other pieces but this is 100% a HACK to be fixed & removed
 (reagent.dom/render [playground]
-                    (.-body js/document) #_:div#web)
+                    (.-body js/document))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -117,8 +109,9 @@
     ;; set to false to enable HistoryAPI
     {:use-fragment false}))
 
-(defn init []
 
+
+(defn init []
   (firebase/init)
 
   (when (exists? js/ReactRefresh)

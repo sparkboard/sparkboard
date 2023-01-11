@@ -4,7 +4,7 @@
    * synced queries over websocket"
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
-            [hiccup.util :refer [raw-string]]
+            [hiccup.util]
             [mhuebert.cljs-static.html :as html]
             [org.httpkit.server :as httpkit]
             [org.sparkboard.firebase.jvm :as fire-jvm]
@@ -38,7 +38,7 @@
                                       :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
                                       :scripts/body [{:src (str "/js/compiled/app.js?v=" (.toEpochMilli (Instant/now)))}]
                                       :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
-                                              (raw-string (transit/write config))]
+                                              (hiccup.util/raw-string (transit/write config))]
                                              [:div#web]]}))}
          (ring.response/content-type "text/html")
          (ring.response/status 200)))))
