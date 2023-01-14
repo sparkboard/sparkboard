@@ -20,20 +20,19 @@
             [re-db.query]
             [re-db.read :as read]
             [re-db.sync :as sync]
-            [re-db.transit]
             [re-db.xform :as xf]
             [ring.middleware.defaults]
             [ring.middleware.format]
-            [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime-type]
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]
-            [tools.sparkboard.transit :as transit])
+            [tools.sparkboard.transit :as transit]
+            [org.sparkboard.websockets :as ws])
   (:import [java.time Instant]))
 
 (comment
-  (fire-tokens/decode token))
+ (fire-tokens/decode token))
 
 (def spa-page
   (memoize
@@ -97,7 +96,7 @@
           (spa-page env/client-config)))))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Websockets
 
 ;; DEBUG
@@ -119,60 +118,32 @@
 ;; refs are requested via vectors of the form [<id> & args].
 (def !refs
   (atom {:sb/orgs (constantly (re-db.query/reaction datalevin/conn
-                                                    {:value (map (comp re-db.api/get :db/id)
-                                                                 (datalevin/qry-orgs))}))
+                                                    (mapv (re-db.api/pull '[*])
+                                                          (datalevin/qry-orgs))))
          :entity-1 (constantly (re-db.query/reaction datalevin/conn
-                                                     {:value (re-db.api/get
-                                                              ;; Q: why does `get` work but the result of `some` doesn't? it doesn't seem to be based on Entity type
-                                                              (:db/id (some #(when (-> % :org/id #{"opengeneva"})
-                                                                               %)
-                                                                            (datalevin/qry-orgs))))}))
+                                                     (re-db.api/pull '[*] [:org/id "opengeneva"])
+                                                     ;; Q: why does `get` work but the result of `some` doesn't? it doesn't seem to be based on Entity type
+                                                     #_(:db/id (some #(when (-> % :org/id #{"opengeneva"})
+                                                                        %)
+                                                                     (datalevin/qry-orgs)))))
          :entity (fn [id] (re-db.query/reaction datalevin/conn
-                                               {:value (re-db.api/get id)}))}))
-
-
-(def default-ws-options
-  "Websocket config fallbacks"
-  {:pack     re-db.transit/pack
-   :unpack   re-db.transit/unpack
-   :path     "/ws"
-   :handlers (merge
-              (sync/watch-handlers :resolve-refs
-                                   (memo/fn-memo [ref-id]
-                                                 (let [[id & args] (if (sequential? ref-id)
-                                                                     ref-id
-                                                                     [ref-id])]
-                                                   (apply (@!refs id) args)))
-                                   #_{:list ($values !list)})
-              {:conj! (fn [_] (swap! !list conj (rand-int 100)))})})
-
-(defn handle-ws-request [{:as server-opts
-                          :keys [path pack unpack handlers]}
-                         {:as request :keys [uri request-method]}]
-  (if (and (= :get request-method)
-           (= path uri))
-    (let [channel (atom {})
-          context {:channel channel}]
-      (httpkit/as-channel request
-                          {:init (fn [ch]
-                                   (swap! channel assoc
-                                          :send (fn [message]
-                                                  (if (httpkit/open? ch)
-                                                    (httpkit/send! ch (pack message))
-                                                    (println :sending-message-before-open message)))))
-                           :on-open sync/on-open
-                           :on-receive (fn [ch message]
-                                         (sync/handle-message handlers context (unpack message)))
-                           :on-close (fn [ch status]
-                                       (sync/on-close channel))}))
-    (throw (ex-info (str "Unknown request " request-method uri) request))))
+                                                (re-db.api/get id)))}))
 
 (def app
   (-> (bidi.ring/make-handler ["/" (merge slack.server/routes
-                                          {"ws" (partial handle-ws-request default-ws-options)})])
+                                          {"ws" (partial ws/handle-ws-request
+                                                  {:handlers
+                                                   (merge
+                                                    {:conj! (fn [_] (swap! !list conj (rand-int 100)))}
+                                                    (sync/query-handlers
+                                                     (fn [query-vec]
+                                                       (let [[id & args] (if (sequential? query-vec)
+                                                                           query-vec
+                                                                           [query-vec])]
+                                                         (apply (@!refs id) args)))))})})])
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
       (wrap-iff (complement :websocket?) ;; only apply RESTful middleware on
-                                         ;; non-websocket requests
+                ;; non-websocket requests
                 (ring.middleware.format/wrap-restful-format {:formats [:json-kw
                                                                        :transit-json]}))
       slack.server/wrap-slack-verify
@@ -204,27 +175,27 @@
                        3000)))
 
 (comment ;;; Intensive request debugging
-  (def !requests (atom []))
+ (def !requests (atom []))
 
-  (defn wrap-debug-request [f]
-    (fn [req]
-      (log/info :request req)
-      (swap! !requests conj req)
-      (f req)))
+ (defn wrap-debug-request [f]
+   (fn [req]
+     (log/info :request req)
+     (swap! !requests conj req)
+     (f req)))
 
-  @!requests
+ @!requests
 
-  )
+ )
 
 (comment ;;; Webserver control panel
-  (-main)
+ (-main)
 
-  (let [srvr @the-server]
-    {:port   (httpkit/server-port @the-server)
-     :status (httpkit/server-status @the-server)})
-  
-  #_ (reset! the-server nil)
+ (let [srvr @the-server]
+   {:port (httpkit/server-port @the-server)
+    :status (httpkit/server-status @the-server)})
 
-  (restart-server! 3000)
+ #_(reset! the-server nil)
 
-  )
+ (restart-server! 3000)
+
+ )
