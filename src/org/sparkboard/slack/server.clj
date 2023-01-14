@@ -1,8 +1,9 @@
 (ns org.sparkboard.slack.server
   "HTTP routes for Slack integration"
   (:require
-   [clojure.string :as str]
+   [bidi.ring]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [cognitect.transit :as transit]
    [lambdaisland.uri :as uri]
    [org.sparkboard.firebase.jvm :as fire-jvm]
@@ -13,6 +14,8 @@
    [org.sparkboard.slack.requests :as slack]
    [org.sparkboard.slack.screens :as screens]
    [org.sparkboard.slack.urls :as urls]
+   [ring.middleware.defaults]
+   [ring.middleware.format]
    [ring.util.http-response :as ring.http]
    [taoensso.timbre :as log]
    [tools.sparkboard.js-convert :refer [json->clj]]
@@ -31,7 +34,7 @@
   (let [context (slack.db/slack-context team-id user-id)]
     ;; TODO
     ;; visible confirmation step to link the two accounts?
-    (slack.db/link-user-to-account!                         ;; link the accounts
+    (slack.db/link-user-to-account! ;; link the accounts
      {:slack/team-id team-id
       :slack/user-id user-id
       :sparkboard/account-id account-id})
@@ -258,7 +261,7 @@
         {:slack/challenge challenge}
         event
         #:slack{:event event
-                :user-id (if (map? (:user event))           ;; sometimes `user` is an id string, sometimes a map containing the id
+                :user-id (if (map? (:user event)) ;; sometimes `user` is an id string, sometimes a map containing the id
                            (:id (:user event))
                            (:user event))
                 :team-id (:team_id params)
@@ -320,35 +323,43 @@
       (let [context (merge context (slack.db/slack-context team-id user-id))
             handler (@v/registry handler-id missing-handler)
             exec #(binding [slack.api/*context* context] (handler context))]
-        (if (:response-action? (meta handler))              ;; add ^:response-action? metadata to handlers that may return a response
+        (if (:response-action? (meta handler)) ;; add ^:response-action? metadata to handlers that may return a response
           (or (exec) (ring.http/ok))
           (do (.execute ^java.util.concurrent.ExecutorService pool ^Callable exec)
               (ring.http/ok)))))))
 
 (def routes
-  (merge {"slack-api" handle-slack-req
-          "slack-api/oauth-redirect" slack-oauth/redirect
-          "slack/" {"link-account" (wrap-sparkboard-verify (comp link-account! :auth/token-claims)
-                                                           :sparkboard/server-request?)
-                    ["project-channel/" :project-id] (-> nav-project-channel
-                                                         (wrap-sparkboard-invite)
-                                                         (wrap-sparkboard-verify :sparkboard/account-id
-                                                                                 :sparkboard/board-id))
-                    "install" #'slack-oauth/install-redirect
-                    "app-redirect" (fn [{{:as query :keys [team]} :params}]
-                                     (assert team "Slack team not provided")
-                                     (ring.http/found
-                                      (urls/app-redirect
-                                       (assoc query
-                                         :app (-> env/config :slack :app-id)
-                                         :domain (:slack/team-domain (slack.db/team-context team))))))
-                    "reinstall" {"" (fn [req]
-                                      (ring.http/found (urls/install-slack-app {:reinstall? true})))
-                                 ["/" :team-id] (fn [{{:keys [team-id]} :params}]
-                                                  (ring.http/found (urls/install-slack-app {:slack/team-id team-id})))}}}
-         (when (env/config :dev/mock-sparkboard? true)
-           {["mock/" :domain] {"/slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)
-                               [[#".*" :catchall]]
-                               (fn [{:keys [params]}] {:body (str "Mock page for " (:domain params) "/" (:catchall params))
-                                                       :status 200
-                                                       :headers {"Content-Type" "text/plain"}})}})))
+  ["/" (merge {"slack-api" handle-slack-req
+               "slack-api/oauth-redirect" slack-oauth/redirect
+               "slack/" {"link-account" (wrap-sparkboard-verify (comp link-account! :auth/token-claims)
+                                                                :sparkboard/server-request?)
+                         ["project-channel/" :project-id] (-> nav-project-channel
+                                                              (wrap-sparkboard-invite)
+                                                              (wrap-sparkboard-verify :sparkboard/account-id
+                                                                                      :sparkboard/board-id))
+                         "install" #'slack-oauth/install-redirect
+                         "app-redirect" (fn [{{:as query :keys [team]} :params}]
+                                          (assert team "Slack team not provided")
+                                          (ring.http/found
+                                           (urls/app-redirect
+                                            (assoc query
+                                              :app (-> env/config :slack :app-id)
+                                              :domain (:slack/team-domain (slack.db/team-context team))))))
+                         "reinstall" {"" (fn [req]
+                                           (ring.http/found (urls/install-slack-app {:reinstall? true})))
+                                      ["/" :team-id] (fn [{{:keys [team-id]} :params}]
+                                                       (ring.http/found (urls/install-slack-app {:slack/team-id team-id})))}}}
+              (when (env/config :dev/mock-sparkboard? true)
+                {["mock/" :domain] {"/slack-link" (wrap-sparkboard-verify mock-slack-link-proxy)
+                                    [[#".*" :catchall]]
+                                    (fn [{:keys [params]}] {:body (str "Mock page for " (:domain params) "/" (:catchall params))
+                                                            :status 200
+                                                            :headers {"Content-Type" "text/plain"}})}}))])
+
+(def handler
+  (-> (bidi.ring/make-handler routes)
+      (ring.middleware.format/wrap-restful-format
+       {:formats [:json-kw
+                  :transit-json]})
+      wrap-slack-verify
+      (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)))

@@ -4,8 +4,10 @@
    * synced queries over websocket"
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
+            [clojure.string :as str]
             [hiccup.util]
             [mhuebert.cljs-static.html :as html]
+            [muuntaja.core :as m]
             [org.httpkit.server :as httpkit]
             [org.sparkboard.datalevin :as datalevin]
             [org.sparkboard.firebase.jvm :as fire-jvm]
@@ -18,6 +20,7 @@
             [re-db.api]
             [re-db.memo :as memo]
             [re-db.query]
+            [re-db.reactive :as r]
             [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.xform :as xf]
@@ -27,12 +30,22 @@
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]
+            [muuntaja.core :as muu]
+            [muuntaja.middleware :as muu.middleware]
             [tools.sparkboard.transit :as transit]
+            [re-db.sync.transit :as re-db.transit]
             [org.sparkboard.websockets :as ws])
   (:import [java.time Instant]))
 
 (comment
  (fire-tokens/decode token))
+
+(def muuntaja (muu/create
+               (-> m/default-options
+                   ;; set Transit readers & writers
+                   (update-in [:formats "application/transit+json"]
+                              merge {:decoder-opts {:handlers re-db.transit/read-handlers}
+                                     :encoder-opts {:handlers re-db.transit/write-handlers}}))))
 
 (def spa-page
   (memoize
@@ -45,15 +58,6 @@
                                              [:div#web]]}))}
          (ring.response/content-type "text/html")
          (ring.response/status 200)))))
-
-(defn wrap-iff
-  "Applies the given middleware `mw` only on the condition that the
-  request satisfies predicate `pred`."
-  [f pred mw]
-  (fn [req]
-    (if (pred req)
-      (mw (f req))
-      (f req))))
 
 (defn wrap-handle-errors [f]
   (fn [req]
@@ -88,7 +92,7 @@
     (or (public-resource (:uri req))
         (f req))))
 
-(def wrap-static-fallback
+(def wrap-index-fallback
   ;; fall back to index.html -- TODO: re-use the client router to serve 404s for unknown paths
   (fn [f]
     (fn [req]
@@ -114,9 +118,24 @@
   (->> (re-db.api/transact! datalevin/conn txs)
        (read/handle-report! datalevin/conn)))
 
+(def ref-routes
+  "Refs to expose at paths"
+  ["/" {["org/" :org/id] (fn [{:keys [org/id]}]
+                           (r/reaction (str "org: " id)))
+        "orgs" (constantly (re-db.query/reaction datalevin/conn
+                                                 (mapv (re-db.api/pull '[*])
+                                                       (datalevin/qry-orgs))))}])
+
+(defn resolve-ref
+  "Resolves a path-based ref"
+  [routes path]
+  (when-let [{:keys [handler route-params]} (bidi.bidi/match-route routes path)]
+    (handler route-params)))
+
 ;; an atom of refs to expose, a map of ids to functions which return reactions.
 ;; refs are requested via vectors of the form [<id> & args].
 (def !refs
+  ;; to deprecate
   (atom {:sb/orgs (constantly (re-db.query/reaction datalevin/conn
                                                     (mapv (re-db.api/pull '[*])
                                                           (datalevin/qry-orgs))))
@@ -129,25 +148,33 @@
          :entity (fn [id] (re-db.query/reaction datalevin/conn
                                                 (re-db.api/get id)))}))
 
+(defn ref-handler
+  "Serve refs at the given routes. If a match is found, return the ref.
+  If request is for text/html, serve single-page-response instead."
+  [{:keys [routes html-response]}]
+  (fn [{:keys [uri path-info] :as req}]
+    (when-let [ref (resolve-ref routes (or path-info uri))]
+      (or (when (str/includes? (get-in req [:headers "accept"]) "text/html")
+            html-response)
+          {:status 200 :body @ref}))))
+
 (def app
-  (-> (bidi.ring/make-handler ["/" (merge slack.server/routes
-                                          {"ws" (partial ws/handle-ws-request
-                                                  {:handlers
-                                                   (merge
-                                                    {:conj! (fn [_] (swap! !list conj (rand-int 100)))}
-                                                    (sync/query-handlers
-                                                     (fn [query-vec]
-                                                       (let [[id & args] (if (sequential? query-vec)
-                                                                           query-vec
-                                                                           [query-vec])]
-                                                         (apply (@!refs id) args)))))})})])
-      (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)
-      (wrap-iff (complement :websocket?) ;; only apply RESTful middleware on
-                ;; non-websocket requests
-                (ring.middleware.format/wrap-restful-format {:formats [:json-kw
-                                                                       :transit-json]}))
-      slack.server/wrap-slack-verify
-      wrap-static-fallback
+  (-> (impl/join-handlers
+       slack.server/handler
+       (ws/handler "/ws" {:handlers (merge
+                                     {:conj! (fn [_] (swap! !list conj (rand-int 100)))}
+                                     (sync/query-handlers
+                                      (fn [query]
+                                        (or (let [[id & args] (if (sequential? query)
+                                                                query
+                                                                [query])]
+                                              (when-let [ref-fn (@!refs id)]
+                                                (apply ref-fn args)))
+                                            (resolve-ref ref-routes query)))))})
+       (-> (ref-handler {:routes ref-routes
+                         :html-response (spa-page env/client-config)})
+           (muu.middleware/wrap-format muuntaja)))
+      wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
       #_wrap-debug-request))

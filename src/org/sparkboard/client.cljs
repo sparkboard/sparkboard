@@ -38,6 +38,7 @@
   [:div
    [:a {:href "/skeleton"} "skeleton"]
    [:p (str "entity-1: " (ws/use-query :entity-1))]
+   [:p (str "/orgs path: "  (ws/use-query "/orgs"))]
    [:p (str "sb/orgs: " (ws/use-query :sb/orgs))]
    [:button.p-2.rounded.bg-blue-100
     {:on-click #(ws/send [:conj!])}
@@ -49,7 +50,7 @@
          (map (fn [org-obj]
                 [:li
                  [:a {:href (str "/skeleton/org/" (:org/id org-obj))} (:org/title org-obj)]]))
-         (:value (ws/use-query :sb/orgs)))])
+         (ws/use-query "/orgs"))])
 
 (def handlers {:home home
                :playground playground

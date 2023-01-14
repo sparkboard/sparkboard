@@ -33,6 +33,10 @@
                                             (sync/on-close channel))}))
          (throw (ex-info (str "Unknown request " request-method uri) request))))))
 
+#?(:clj
+   (defn handler [path options]
+     (bidi.ring/make-handler [path (partial handle-ws-request options)])))
+
 #?(:cljs
    (defn connect
      "Connects to websocket server, returns a channel.
@@ -77,7 +81,8 @@
 
 #?(:cljs
    (defn use-query [query-vec]
-     (hooks/use-atom ($query query-vec))))
+     (let [res (hooks/use-atom ($query query-vec))]
+       (:value res res))))
 
 #?(:cljs
    (defn send [message]
