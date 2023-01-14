@@ -9,7 +9,7 @@
             [mhuebert.cljs-static.html :as html]
             [muuntaja.core :as m]
             [org.httpkit.server :as httpkit]
-            [org.sparkboard.datalevin :as datalevin]
+            [org.sparkboard.datalevin :as datalevin :refer [conn]]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.log]
@@ -17,9 +17,9 @@
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
             [org.sparkboard.slack.server :as slack.server]
-            [re-db.api]
+            [re-db.api :as db]
             [re-db.memo :as memo]
-            [re-db.query]
+            [re-db.query :as q]
             [re-db.reactive :as r]
             [re-db.read :as read]
             [re-db.sync :as sync]
@@ -106,12 +106,6 @@
 ;; DEBUG
 (defonce !list (atom ()))
 
-(memo/defn-memo $values [ref]
-  (xf/transform ref
-    (map (fn [v] {:value v}))))
-
-
-
 ;; wrap a `transact!` function to call `read/handle-report!` afterwards, which will
 ;; cause dependent queries to re-evaluate.
 (defn transact! [txs]
@@ -120,40 +114,31 @@
 
 (def ref-routes
   "Refs to expose at paths"
-  ["/" {["org/" :org/id] (fn [{:keys [org/id]}]
-                           (r/reaction (str "org: " id)))
-        "orgs" (constantly (re-db.query/reaction datalevin/conn
-                                                 (mapv (re-db.api/pull '[*])
-                                                       (datalevin/qry-orgs))))}])
+  ["/" {["org/" :org/id]
+        (fn [{:keys [org/id]}]
+          (q/reaction conn
+           (db/pull '[*] [:org/id id])))
 
-(defn resolve-ref
+        "orgs"
+        (constantly
+         (q/reaction conn
+          (->> (db/where [:org/id])
+               (mapv (re-db.api/pull '[*])))))
+
+        "list" (constantly (sync/$values !list))}])
+
+(memo/defn-memo $resolve-ref
   "Resolves a path-based ref"
   [routes path]
   (when-let [{:keys [handler route-params]} (bidi.bidi/match-route routes path)]
     (handler route-params)))
-
-;; an atom of refs to expose, a map of ids to functions which return reactions.
-;; refs are requested via vectors of the form [<id> & args].
-(def !refs
-  ;; to deprecate
-  (atom {:sb/orgs (constantly (re-db.query/reaction datalevin/conn
-                                                    (mapv (re-db.api/pull '[*])
-                                                          (datalevin/qry-orgs))))
-         :entity-1 (constantly (re-db.query/reaction datalevin/conn
-                                                     (re-db.api/pull '[*] [:org/id "opengeneva"])
-                                                     ;; Q: why does `get` work but the result of `some` doesn't? it doesn't seem to be based on Entity type
-                                                     #_(:db/id (some #(when (-> % :org/id #{"opengeneva"})
-                                                                        %)
-                                                                     (datalevin/qry-orgs)))))
-         :entity (fn [id] (re-db.query/reaction datalevin/conn
-                                                (re-db.api/get id)))}))
 
 (defn ref-handler
   "Serve refs at the given routes. If a match is found, return the ref.
   If request is for text/html, serve single-page-response instead."
   [{:keys [routes html-response]}]
   (fn [{:keys [uri path-info] :as req}]
-    (when-let [ref (resolve-ref routes (or path-info uri))]
+    (when-let [ref ($resolve-ref routes (or path-info uri))]
       (or (when (str/includes? (get-in req [:headers "accept"]) "text/html")
             html-response)
           {:status 200 :body @ref}))))
@@ -163,14 +148,7 @@
        slack.server/handler
        (ws/handler "/ws" {:handlers (merge
                                      {:conj! (fn [_] (swap! !list conj (rand-int 100)))}
-                                     (sync/query-handlers
-                                      (fn [query]
-                                        (or (let [[id & args] (if (sequential? query)
-                                                                query
-                                                                [query])]
-                                              (when-let [ref-fn (@!refs id)]
-                                                (apply ref-fn args)))
-                                            (resolve-ref ref-routes query)))))})
+                                     (sync/query-handlers (partial $resolve-ref ref-routes)))})
        (-> (ref-handler {:routes ref-routes
                          :html-response (spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))

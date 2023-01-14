@@ -15,7 +15,8 @@
             [reitit.frontend.easy :as rfe]
             [yawn.hooks :as hooks]
             [yawn.root :as root]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [clojure.pprint :refer [pprint]]))
 
 (defonce !current-match (atom nil))
 
@@ -35,14 +36,15 @@
    :path "/ws"})
 
 (v/defview playground []
-  [:div
+  [:div.ma3
    [:a {:href "/skeleton"} "skeleton"]
-   [:p (str "entity-1: " (ws/use-query :entity-1))]
-   [:p (str "/orgs path: "  (ws/use-query "/orgs"))]
-   [:p (str "sb/orgs: " (ws/use-query :sb/orgs))]
+   [:p (str "/list")]
+   [:pre.code (with-out-str (pprint  (ws/use-query "/list")))]
    [:button.p-2.rounded.bg-blue-100
     {:on-click #(ws/send [:conj!])}
-    "List, grow!"]])
+    "List, grow!"]
+   [:p (str "/orgs ")]
+   [:pre.code (with-out-str (pprint  (ws/use-query "/orgs")))]])
 
 (v/defview skeleton []
   [:div
