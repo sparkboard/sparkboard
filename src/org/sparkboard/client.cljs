@@ -1,76 +1,23 @@
 (ns org.sparkboard.client
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
-            [clojure.edn :as edn]
-            [org.sparkboard.client.auth :as auth.client]
             [org.sparkboard.client.firebase :as firebase]
-            [org.sparkboard.routes :refer [routes]]
-            [org.sparkboard.client.slack :as slack.client]
-            [org.sparkboard.websockets :as ws]
+            [org.sparkboard.client.auth]
             [org.sparkboard.client.views]
-            [re-db.integrations.reagent] ;; extends `ratom` reactivity
-            [re-db.sync.transit :as re-db.transit]
-            [reagent.dom]
-            [reitit.core :as reitit]
-            [reitit.frontend :as rf]
-            [reitit.frontend.easy :as rfe]
+            [org.sparkboard.routes :as routes]
+            [pushy.core :as pushy] ;; extends `ratom` reactivity
+            [re-db.integrations.reagent]
+            [shadow.lazy :as lazy]
             [yawn.hooks :as hooks]
             [yawn.root :as root]
-            [yawn.view :as v]
-            [clojure.pprint :refer [pprint]]
-            [org.sparkboard.routes :as routes]))
+            [yawn.view :as v]))
 
-(defn use-resource [query]
-  (ws/use-query (cond->> query (vector? query) (apply routes/path-for))))
-
-(defonce !current-match (atom nil))
-
-(def router (rf/router routes/routes {}))
-
-
-(defn path [k & [params]]
-  (-> router
-      (reitit/match-by-name k params)
-      (reitit/match->path)))
-
-(v/defview home [] "Nothing to see here, folks.")
-
-;;; XXX based on sync_values
-(def default-options
-  {:pack re-db.transit/pack
-   :unpack re-db.transit/unpack
-   :path "/ws"})
-
-(v/defview playground []
-  [:div.ma3
-   [:a {:href "/skeleton"} "skeleton"]
-   [:p (str :list)]
-   [:pre.code (with-out-str (pprint (use-resource [:list])))]
-   [:button.p-2.rounded.bg-blue-100
-    {:on-click #(ws/send [:conj!])}
-    "List, grow!"]
-   [:p (str [:org/index])]
-   [:pre.code (with-out-str (pprint (use-resource [:org/index])))]])
-
-(v/defview skeleton []
-  [:div
-   (into [:ul]
-         (map (fn [org-obj]
-                [:li
-                 [:a {:href (str "/skeleton/org/" (:org/id org-obj))} (:org/title org-obj)]]))
-         (use-resource [:org/index]))])
-
-(def handlers {:home home
-               :playground playground
-               :skeleton skeleton
-               :slack/invite-offer slack.client/invite-offer
-               :slack/link-complete slack.client/link-complete
-               :auth-test auth.client/auth-header})
+(defonce !current-location (atom nil))
 
 (v/defview root []
-  (let [{:keys [view] :as m} (hooks/use-atom !current-match)]
-    (if view
-      [view m]
+  (let [{:keys [handler route-params]} (hooks/use-atom !current-location)]
+    (if handler
+      [handler route-params]
       "not-found")))
 
 (defonce !react-root (atom nil))
@@ -78,13 +25,18 @@
 (defn render []
   (root/render @!react-root (root)))
 
+(defonce history (pushy/pushy
+                  (fn [{:as match handler :handler}]
+                    (if (instance? lazy/Loadable handler)
+                      (lazy/load handler
+                                 (fn [handler]
+                                   (reset! !current-location (assoc match :handler handler))))
+                      (reset! !current-location match)))
+                  (fn [path]
+                    (routes/match-route path))))
+
 (defn ^:dev/after-load start-router []
-  (rfe/start!
-   router
-   (fn [m]
-     (reset! !current-match (assoc m :view (handlers (:name (:data m))))))
-   ;; set to false to enable HistoryAPI
-   {:use-fragment false}))
+  (pushy/start! history) )
 
 (defn init []
   (firebase/init)

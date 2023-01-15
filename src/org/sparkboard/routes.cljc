@@ -1,65 +1,64 @@
 (ns org.sparkboard.routes
   (:require [bidi.bidi :as bidi]
-            [clojure.walk :as walk]
             [org.sparkboard.server.resources :as-alias res]
             [org.sparkboard.client.views :as-alias views]
-            #?(:cljs [shadow.lazy :as lazy]))
+            [org.sparkboard.client.slack :as-alias slack.client]
+            [org.sparkboard.client.auth :as-alias auth.client]
+            [org.sparkboard.macros :refer [lazy-views]]
+            #?(:cljs [shadow.lazy :as lazy])
+            #?(:clj [org.sparkboard.server.views :as server.views]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
 
-(defmacro lazy-browse
-  ;; wraps :browse keys with lazy/loadable (and resolves aliases, with :as-alias support)
-  [expr]
-  (let [aliases (ns-aliases *ns*)
-        resolve-sym (fn [sym]
-                      ;; resolve using ns-aliases including :as-alias
-                      (if-let [resolved (get aliases (symbol (namespace sym)))]
-                        (symbol (str resolved) (name sym))
-                        sym))]
-    (walk/postwalk
-     (fn [x]
-       (if (and (map? x) (contains? x :browse))
-         (if (:ns &env)
-           (let [sym (resolve-sym (second (:browse x)))]
-             (assoc x :browse `(lazy/loadable ~sym)))
-           (dissoc x :browse))
-         x))
-     expr)))
-
 (def routes
-  [["/" {:name :home}]
-   ["/playground" {:name :playground}]
-   ["/skeleton" {:name :skeleton}]
-   ["/slack/invite-offer" {:name :slack/invite-offer}]
-   ["/slack/link-complete" {:name :slack/link-complete}]
-   ["/auth-test" {:name :auth-test}]])
+  "Route definitions. Routes are identified by their keyword-id. Options:
 
-(def resources
-  ;; define resources by id.
-  ;; :ref-fn resolves data,
-  ;; :browse points to client views.
-  (org.sparkboard.routes/lazy-browse
-   {:org/index {:route ["/o"]
-                :ref-fn `res/org-index
-                :browse `views/org-index}
+  :view  - symbol pointing to a (client) view for the single-page app
+  :query - symbol pointing to a (server) function providing data for the route
+
+  Views and queries are resolved lazily using shadow.lazy (cljs) and requiring-resolve (clj)
+  This lets us require this namespace without causing circular dependencies."
+  (lazy-views
+   {:home {:route ["/"]
+           :view `views/home}
+    :dev/playground {:route ["/playground"]
+                     :view `views/playground}
+    :dev/skeleton {:route ["/skeleton"]
+                   :view `views/skeleton}
+    :slack/invite-offer {:route ["/slack/invite-offer"]
+                         :view `slack.client/invite-offer}
+    :slack/link-complete {:route ["/slack/link-complete"]
+                          :view `slack.client/link-complete}
+    :auth-test {:route ["/auth-test"]
+                :view `auth.client/auth-header}
+    :org/index {:route ["/o"]
+                :query `res/org-index
+                :view `views/org-index}
     :org/view {:route ["/o/" :org/id]
-               :ref-fn `res/org-view
-               :browse `views/org-view}
+               :query `res/org-view
+               :view `views/org-view}
     :list {:route ["/list"]
-           :ref-fn `res/list-view
-           :browse `views/list-view}}))
+           :query `res/list-view
+           :view `views/list-view}}))
 
-#?(:clj
-   (def server-routes
-     ["" (mapv (fn [[_ {:keys [route ref-fn]}]] [route (requiring-resolve ref-fn)]) resources)])
-   :cljs
-   (def client-routes
-     (into ["" (mapv (fn [[_ {:keys [route browse]}]] [route browse]) resources)]
-           routes)))
-
-(def path-routes ["" (mapv (fn [[id {:keys [route]}]] [route id]) resources)])
+(def bidi-routes
+  ;; reformat the canonical route map into a bidi-compatible vector.
+  ["" (->> routes
+           (mapv (fn [[id {:keys [route view query]}]]
+                   [route (bidi/tag
+                           #?(:clj  (if query
+                                      (requiring-resolve query)
+                                      @server.views/spa-page)
+                              :cljs view)
+                           id)])))])
 
 (def path-for
-  (partial bidi/path-for path-routes))
+  (partial bidi/path-for bidi-routes))
 
 (def match-route
-  (partial bidi/match-route #?(:cljs client-routes :clj server-routes)))
+  (partial bidi/match-route bidi-routes))
+
+#?(:cljs
+   (extend-protocol bidi/Matched
+     lazy/Loadable
+     (resolve-handler [this m] (bidi/succeed this m))
+     (unresolve-handler [this m] (when (= this (:handler m)) ""))))

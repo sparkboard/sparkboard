@@ -136,8 +136,8 @@
                                      {:conj! (fn [_] (swap! res/!list conj (rand-int 100)))}
                                      (sync/query-handlers
                                       (fn [query]
-                                        ($resolve-ref routes/server-routes query ))))})
-       (-> (ref-handler {:routes routes/server-routes
+                                        ($resolve-ref routes/bidi-routes query))))})
+       (-> (ref-handler {:routes routes/bidi-routes
                          :html-response (spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback

@@ -8,7 +8,10 @@
               :http-root "resources/clerk"}}
   :web
   {:target :browser
-   :modules {:app {:init-fn org.sparkboard.client/init}}
+   :module-loader true
+   :modules {:app {:init-fn org.sparkboard.client/init}
+             :slack {:entries [org.sparkboard.client.slack]
+                     :depends-on #{:app}}}
    :output-dir "resources/public/js/compiled"
    :asset-path "/js/compiled"
    :devtools {:preloads [yawn.view.refresh-preload]}}}}

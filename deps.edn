@@ -4,7 +4,7 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.7.7"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "d3c67458daaad689bfaf5eca795b7db7663012be"}
+                                  :git/sha "8b4d0fbcb363e8612f7811df5b73db0d43b088be"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "e00e54701d6acace494a61a992731350fd331979"}
 
@@ -48,7 +48,8 @@
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         reagent/reagent {:mvn/version "1.1.1"}
-        thheller/shadow-cljs {:mvn/version "2.20.16"}}
+        thheller/shadow-cljs {:mvn/version "2.20.16"}
+        kibu/pushy {:mvn/version "0.3.8"}}
  :aliases
  {:uberdeps {:extra-deps {uberdeps/uberdeps {:mvn/version "1.1.4"}}}
   :uberjar {:exec-fn build/uberjar}

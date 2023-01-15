@@ -2,6 +2,7 @@
   (:require #?(:clj [org.httpkit.server :as httpkit])
             #?(:cljs [yawn.hooks :as hooks])
             [applied-science.js-interop :as j]
+            [org.sparkboard.routes :as routes]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]))
 
@@ -81,8 +82,11 @@
 
 #?(:cljs
    (defn use-query [query-vec]
-     (let [res (hooks/use-atom ($query query-vec))]
-       (:value res res))))
+     (hooks/use-atom ($query query-vec))))
+
+#?(:cljs
+   (defn use-route [query]
+     (use-query (cond->> query (vector? query) (apply routes/path-for)))))
 
 #?(:cljs
    (defn send [message]
