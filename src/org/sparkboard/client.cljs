@@ -4,9 +4,10 @@
             [clojure.edn :as edn]
             [org.sparkboard.client.auth :as auth.client]
             [org.sparkboard.client.firebase :as firebase]
-            [org.sparkboard.client.routes :refer [routes]]
+            [org.sparkboard.routes :refer [routes]]
             [org.sparkboard.client.slack :as slack.client]
             [org.sparkboard.websockets :as ws]
+            [org.sparkboard.client.views]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
             [re-db.sync.transit :as re-db.transit]
             [reagent.dom]
@@ -16,11 +17,16 @@
             [yawn.hooks :as hooks]
             [yawn.root :as root]
             [yawn.view :as v]
-            [clojure.pprint :refer [pprint]]))
+            [clojure.pprint :refer [pprint]]
+            [org.sparkboard.routes :as routes]))
+
+(defn use-resource [query]
+  (ws/use-query (cond->> query (vector? query) (apply routes/path-for))))
 
 (defonce !current-match (atom nil))
 
-(def router (rf/router routes {}))
+(def router (rf/router routes/routes {}))
+
 
 (defn path [k & [params]]
   (-> router
@@ -38,13 +44,13 @@
 (v/defview playground []
   [:div.ma3
    [:a {:href "/skeleton"} "skeleton"]
-   [:p (str "/list")]
-   [:pre.code (with-out-str (pprint  (ws/use-query "/list")))]
+   [:p (str :list)]
+   [:pre.code (with-out-str (pprint (use-resource [:list])))]
    [:button.p-2.rounded.bg-blue-100
     {:on-click #(ws/send [:conj!])}
     "List, grow!"]
-   [:p (str "/orgs ")]
-   [:pre.code (with-out-str (pprint  (ws/use-query "/orgs")))]])
+   [:p (str [:org/index])]
+   [:pre.code (with-out-str (pprint (use-resource [:org/index])))]])
 
 (v/defview skeleton []
   [:div
@@ -52,7 +58,7 @@
          (map (fn [org-obj]
                 [:li
                  [:a {:href (str "/skeleton/org/" (:org/id org-obj))} (:org/title org-obj)]]))
-         (ws/use-query "/orgs"))])
+         (use-resource [:org/index]))])
 
 (def handlers {:home home
                :playground playground

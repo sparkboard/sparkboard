@@ -5,6 +5,7 @@
   (:gen-class)
   (:require [bidi.ring :as bidi.ring]
             [clojure.string :as str]
+            [bidi.bidi :as bidi]
             [hiccup.util]
             [mhuebert.cljs-static.html :as html]
             [muuntaja.core :as m]
@@ -34,7 +35,9 @@
             [muuntaja.middleware :as muu.middleware]
             [tools.sparkboard.transit :as transit]
             [re-db.sync.transit :as re-db.transit]
-            [org.sparkboard.websockets :as ws])
+            [org.sparkboard.websockets :as ws]
+            [org.sparkboard.server.resources :as res]
+            [org.sparkboard.routes :as routes])
   (:import [java.time Instant]))
 
 (comment
@@ -103,34 +106,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Websockets
 
-;; DEBUG
-(defonce !list (atom ()))
-
 ;; wrap a `transact!` function to call `read/handle-report!` afterwards, which will
 ;; cause dependent queries to re-evaluate.
 (defn transact! [txs]
   (->> (re-db.api/transact! datalevin/conn txs)
        (read/handle-report! datalevin/conn)))
 
-(def ref-routes
-  "Refs to expose at paths"
-  ["/" {["org/" :org/id]
-        (fn [{:keys [org/id]}]
-          (q/reaction conn
-           (db/pull '[*] [:org/id id])))
-
-        "orgs"
-        (constantly
-         (q/reaction conn
-          (->> (db/where [:org/id])
-               (mapv (re-db.api/pull '[*])))))
-
-        "list" (constantly (sync/$values !list))}])
-
 (memo/defn-memo $resolve-ref
   "Resolves a path-based ref"
   [routes path]
-  (when-let [{:keys [handler route-params]} (bidi.bidi/match-route routes path)]
+  (when-let [{:keys [handler route-params]}
+             (bidi/match-route routes path)]
     (handler route-params)))
 
 (defn ref-handler
@@ -147,9 +133,11 @@
   (-> (impl/join-handlers
        slack.server/handler
        (ws/handler "/ws" {:handlers (merge
-                                     {:conj! (fn [_] (swap! !list conj (rand-int 100)))}
-                                     (sync/query-handlers (partial $resolve-ref ref-routes)))})
-       (-> (ref-handler {:routes ref-routes
+                                     {:conj! (fn [_] (swap! res/!list conj (rand-int 100)))}
+                                     (sync/query-handlers
+                                      (fn [query]
+                                        ($resolve-ref routes/server-routes query ))))})
+       (-> (ref-handler {:routes routes/server-routes
                          :html-response (spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
