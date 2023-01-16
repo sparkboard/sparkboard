@@ -1,12 +1,12 @@
 (ns org.sparkboard.client
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
-            [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.auth]
+            [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.views]
             [org.sparkboard.routes :as routes]
-            [pushy.core :as pushy] ;; extends `ratom` reactivity
-            [re-db.integrations.reagent]
+            [pushy.core :as pushy]
+            [re-db.integrations.reagent] ;; extends `ratom` reactivity
             [shadow.lazy :as lazy]
             [yawn.hooks :as hooks]
             [yawn.root :as root]
@@ -15,9 +15,9 @@
 (defonce !current-location (atom nil))
 
 (v/defview root []
-  (let [{:keys [handler route-params]} (hooks/use-atom !current-location)]
+  (let [{:as current-location :keys [path handler route-params]} (hooks/use-atom !current-location)]
     (if handler
-      [handler route-params]
+      [handler (assoc route-params :path path)]
       "not-found")))
 
 (defonce !react-root (atom nil))

@@ -36,7 +36,7 @@
             [tools.sparkboard.transit :as transit]
             [re-db.sync.transit :as re-db.transit]
             [org.sparkboard.websockets :as ws]
-            [org.sparkboard.server.resources :as res]
+            [org.sparkboard.server.queries :as queries]
             [org.sparkboard.routes :as routes])
   (:import [java.time Instant]))
 
@@ -112,33 +112,38 @@
   (->> (re-db.api/transact! datalevin/conn txs)
        (read/handle-report! datalevin/conn)))
 
-(memo/defn-memo $resolve-ref
+(defn resolve-query
   "Resolves a path-based ref"
   [routes path]
   (when-let [{:keys [handler route-params]}
              (bidi/match-route routes path)]
     (handler route-params)))
 
-(defn ref-handler
-  "Serve refs at the given routes. If a match is found, return the ref.
-  If request is for text/html, serve single-page-response instead."
+#_(memo/clear-memo! $resolve-ref)
+
+(defn query-handler
+  "Serve queries at the given routes. Returns nil for html requests (handled as a spa-page)"
   [{:keys [routes html-response]}]
   (fn [{:keys [uri path-info] :as req}]
-    (when-let [ref ($resolve-ref routes (or path-info uri))]
-      (or (when (str/includes? (get-in req [:headers "accept"]) "text/html")
-            html-response)
-          {:status 200 :body @ref}))))
+    (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
+      (when-let [ref (resolve-query routes (or path-info uri))]
+        {:status 200 :body @ref}))))
 
 (def app
   (-> (impl/join-handlers
        slack.server/handler
        (ws/handler "/ws" {:handlers (merge
-                                     {:conj! (fn [_] (swap! res/!list conj (rand-int 100)))}
+                                     {:conj! (fn [_] (swap! queries/!list conj (rand-int 100)))}
                                      (sync/query-handlers
                                       (fn [query]
-                                        ($resolve-ref routes/bidi-routes query))))})
-       (-> (ref-handler {:routes routes/bidi-routes
-                         :html-response (spa-page env/client-config)})
+                                        (if (string? query)
+                                          (resolve-query routes/bidi-routes query)
+                                          (let [[id & args] query
+                                                query-fn (requiring-resolve (get-in routes/routes [id :query]))]
+                                            (apply query-fn (or (seq args) [{}]))
+                                            )))))})
+       (-> (query-handler {:routes routes/bidi-routes
+                           :html-response (spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors
