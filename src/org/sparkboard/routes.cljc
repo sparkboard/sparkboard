@@ -31,24 +31,27 @@
                         :view `auth.client/auth-header}
 
             :org/index {:route ["/o"]
-                        :query `queries/$org-index
-                        :view `views/org-index}
-            :org/view {:route ["/o/" :org/id]
-                       :query `queries/$org-view
-                       :view `views/org-view}
+                        :query `queries/$org:index
+                        :view `views/org:index}
+            :org/one {:route ["/o/" :org/id]
+                      :query `queries/$org:one
+                      :view `views/org:one}
             :board/index {:route ["/b"]
-                          :query `queries/$board-index
-                          :view `views/query-view}
+                          :query `queries/$board:index
+                          :view `views/show-query}
+            :board/one {:route ["/b/" :board/id]
+                        :query `queries/$board:one
+                        :view `views/board:one}
             :project/index {:route ["/p"]
-                            :query `queries/$project-index
-                            :view `views/query-view}
-            :project/view {:route ["/p/" :project/id]
-                           :query `queries/$project-view
-                           :view `views/query-view}
+                            :query `queries/$project:index
+                            :view `views/show-query}
+            :project/one {:route ["/p/" :project/id]
+                          :query `queries/$project:one
+                          :view `views/query:one}
             ;; member view
-            :member/view {:route ["/m/" :member/id]
-                          :query `queries/$member-view
-                          :view `views/query-view}
+            :member/one {:route ["/m/" :member/id]
+                         :query `queries/$member:one
+                         :view `views/query:one}
 
             :list {:route ["/list2"]
                    :query `queries/$list-view
@@ -74,6 +77,10 @@
                                        @server.views/spa-page)
                                :cljs view)
                             id)])))]))
+
+(comment
+ (path-for :board/one {:board/id 1})
+ )
 
 (defn path-for [handler & params]
   (apply bidi/path-for @!bidi-routes handler params))
