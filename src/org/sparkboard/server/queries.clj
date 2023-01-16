@@ -18,7 +18,7 @@
 
 (defn-memo $org-view [{:keys [org/id]}]
   (q/reaction conn
-    (db/pull '[*
+    (db/pull '[:org/title
                {:board/_org [:ts/created-at
                              :board/title]}]
              [:org/id id])))

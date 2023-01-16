@@ -85,9 +85,5 @@
      (hooks/use-atom ($query query-vec))))
 
 #?(:cljs
-   (defn use-route [query]
-     (use-query (cond->> query (vector? query) (apply routes/path-for)))))
-
-#?(:cljs
    (defn send [message]
      (sync/send @channel message)))
