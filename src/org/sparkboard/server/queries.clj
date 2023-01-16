@@ -38,6 +38,7 @@
                          :board/title
                          {:project/_board [*]}
                          {:board/org [:org/title :org/id]}
+                         {:member/_board [*]}
                          {:entity/domain [:domain/name]}]
                        [:board/id id])))
 

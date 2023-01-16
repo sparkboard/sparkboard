@@ -47,7 +47,7 @@
                             :view `views/show-query}
             :project/one {:route ["/p/" :project/id]
                           :query `queries/$project:one
-                          :view `views/query:one}
+                          :view `views/project:one}
             ;; member view
             :member/one {:route ["/m/" :member/id]
                          :query `queries/$member:one

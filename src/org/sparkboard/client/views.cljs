@@ -6,7 +6,6 @@
    [org.sparkboard.websockets :as ws]
    [yawn.view :as v]))
 
-
 (v/defview show-query
   "Debug view. Pretty-prints query for path."
   [{:keys [path]}]
@@ -16,7 +15,6 @@
      ;; [:p.f4 [:a {:href "/skeleton"} "up"]]
      [:p.f4  "Route: " [:span.code (str (:tag (routes/match-route path)))]]
      [:pre (with-out-str (pprint result))]]))
-
 
 (v/defview home [] "Nothing to see here, folks.")
 
@@ -35,12 +33,12 @@
   (let [orgs (:value (ws/use-query [:org/index]))]
     [:div
      [:h1 "Orgs"]
-     [:ul
-      (for [{:as o :org/keys [title id]} @orgs]
-        [:li [:a
-              {:href (path-for :org/one {:org/id id})} title]])]]))
+     (into [:ul]
+           (fn [{:as o :org/keys [title id]}]
+             [:li [:a {:href (path-for :org/one {:org/id id})} title]])
+           @orgs)]))
 
-(v/defview org:one [{:as x :org/keys [id]}]
+(v/defview org:one [{:as o :org/keys [id]}]
   (let [result (ws/use-query [:org/one {:org/id id}])]
     [:div
      [:h1 "Org: " (-> result :value :org/title)]
@@ -50,17 +48,34 @@
                         (:board/title board)]]))
            (:board/_org (:value result)))
      [:hr]
-     [:pre.code (with-out-str (pprint result))]]))
+     (show-query o)]))
 
 (v/defview board:one [{:as b :board/keys [id]}]
-  (let [result (ws/use-query [:board/one {:board/id id}])]
+  (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
     [:div
-     [:h1 "board:one"]
-     (into [:ul]
-           (map (fn [proj] [:li [:a {:href (routes/path-for :project/one proj)}
-                                (:project/title proj)]]))
-           (-> result :value :project/_board))
+     [:h1 (str "Board: " (:board/title value))]
+     [:blockquote (-> value
+                      :board.landing-page/description-content
+                      :text-content/string)]
+
+     [:section [:h3 "Members"]
+      (into [:ul]
+            (map (fn [mbr]
+                   [:li (:member/name mbr)]))
+            (:member/_board value))]
+     [:section [:h3 "Projects"]
+      (into [:ul]
+            (map (fn [proj] [:li [:a {:href (routes/path-for :project/one proj)}
+                                  (:project/title proj)]]))
+            (-> result :value :project/_board))]
+     [:hr]
      (show-query b)]))
+
+(v/defview project:one [{:as p :project/keys [id]}]
+  (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
+    [:div
+     [:h1 (str "Project " (:project/title value))]
+     (show-query p)]))
 
 (v/defview list-view [{:keys [path]}]
   (let [result (ws/use-query path)]
