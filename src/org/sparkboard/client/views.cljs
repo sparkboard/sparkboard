@@ -39,7 +39,7 @@
 (v/defview org-view [{:as x :org/keys [id]}]
   (let [result (ws/use-query [:org/view {:org/id id}])]
     [:div
-     [:h1 (:org/title x)]
+     [:h1 "Org: " (-> result :value :org/title)]
      [:pre.code (with-out-str (pprint result))]]))
 
 (v/defview list-view [_]
@@ -48,5 +48,7 @@
 (v/defview query-view [{:keys [path]}]
   (let [result (ws/use-query path)]
     [:div.code.pa3
-     [:p.f4 [:a {:href "/skeleton"} "up"] (str (:tag (routes/match-route path)))]
+     [:h1 "query view"]
+     [:p.f4 [:a {:href "/skeleton"} "up"]]
+     [:p.f4 (str (:tag (routes/match-route path)))]
      [:pre (with-out-str (pprint result))]]))

@@ -27,6 +27,14 @@
                      {:entity/domain [*]}
                      {:ts/created-by [*]}])))
 
+ (->> (d/where [[:org/id "postcovid"]])
+      (map (d/pull '[*
+                     :db/id
+                     :org/title
+                     #_ {:board.settings/default-template [*]}
+                     {:entity/domain [*]}
+                     {:ts/created-by [*]}])))
+ 
  )
 
 
