@@ -5,11 +5,12 @@
             [org.sparkboard.client.slack :as-alias slack.client]
             [org.sparkboard.client.auth :as-alias auth.client]
             [org.sparkboard.macros :refer [lazy-views]]
+            [re-db.reactive :as r]
             #?(:cljs [shadow.lazy :as lazy])
             #?(:clj [org.sparkboard.server.views :as server.views]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
 
-(def routes
+(r/redef !routes
   "Route definitions. Routes are identified by their keyword-id. Options:
 
   :view  - symbol pointing to a (client) view for the single-page app
@@ -17,43 +18,41 @@
 
   Views and queries are resolved lazily using shadow.lazy (cljs) and requiring-resolve (clj)
   This lets us require this namespace without causing circular dependencies."
-  (lazy-views
-   {:home {:route ["/"]
-           :view `views/home}
-    :dev/playground {:route ["/playground"]
-                     :view `views/playground}
-    :dev/skeleton {:route ["/skeleton"]
-                   :view `views/skeleton}
-    :slack/invite-offer {:route ["/slack/invite-offer"]
-                         :view `slack.client/invite-offer}
-    :slack/link-complete {:route ["/slack/link-complete"]
-                          :view `slack.client/link-complete}
-    :auth-test {:route ["/auth-test"]
-                :view `auth.client/auth-header}
+  (r/atom (lazy-views
+           {:home {:route ["/"]
+                   :view `views/home}
+            :dev/skeleton {:route ["/skeleton"]
+                           :view `views/skeleton}
+            :slack/invite-offer {:route ["/slack/invite-offer"]
+                                 :view `slack.client/invite-offer}
+            :slack/link-complete {:route ["/slack/link-complete"]
+                                  :view `slack.client/link-complete}
+            :auth-test {:route ["/auth-test"]
+                        :view `auth.client/auth-header}
 
-    :org/index {:route ["/o"]
-                :query `queries/$org-index
-                :view `views/org-index}
-    :org/view {:route ["/o/" :org/id]
-               :query `queries/$org-view
-               :view `views/org-view}
-    :board/index {:route ["/b"]
-                  :query `queries/$board-index
-                  :view `views/query-view}
-    :project/index {:route ["/p"]
-                    :query `queries/$project-index
-                    :view `views/query-view}
-    :project/view {:route ["/p/" :project/id]
-                   :query `queries/$project-view
-                   :view `views/query-view}
-    ;; member view
-    :member/view {:route ["/m/" :member/id]
-                  :query `queries/$member-view
-                  :view `views/query-view}
+            :org/index {:route ["/o"]
+                        :query `queries/$org-index
+                        :view `views/org-index}
+            :org/view {:route ["/o/" :org/id]
+                       :query `queries/$org-view
+                       :view `views/org-view}
+            :board/index {:route ["/b"]
+                          :query `queries/$board-index
+                          :view `views/query-view}
+            :project/index {:route ["/p"]
+                            :query `queries/$project-index
+                            :view `views/query-view}
+            :project/view {:route ["/p/" :project/id]
+                           :query `queries/$project-view
+                           :view `views/query-view}
+            ;; member view
+            :member/view {:route ["/m/" :member/id]
+                          :query `queries/$member-view
+                          :view `views/query-view}
 
-    :list {:route ["/list"]
-           :query `queries/$list-view
-           :view `views/list-view}}))
+            :list {:route ["/list2"]
+                   :query `queries/$list-view
+                   :view `views/list-view}})))
 
 ;; NOTE
 ;; path params may include a special `:body` key which should correspond to
@@ -64,22 +63,23 @@
 ;; later potentially upgrade pprint to a nested data structure which uses
 ;; the re-db schema to allow link-following and other cool stuff
 
-(def bidi-routes
-  ;; reformat the canonical route map into a bidi-compatible vector.
-  ["" (->> routes
-           (mapv (fn [[id {:keys [route view query]}]]
-                   [route (bidi/tag
-                           #?(:clj  (if query
-                                      (requiring-resolve query)
-                                      @server.views/spa-page)
-                              :cljs view)
-                           id)])))])
+(r/redef !bidi-routes
+  (r/reaction
+   ;; reformat the canonical route map into a bidi-compatible vector.
+   ["" (->> @!routes
+            (mapv (fn [[id {:keys [route view query]}]]
+                    [route (bidi/tag
+                            #?(:clj  (if query
+                                       (requiring-resolve query)
+                                       @server.views/spa-page)
+                               :cljs view)
+                            id)])))]))
 
-(def path-for
-  (partial bidi/path-for bidi-routes))
+(defn path-for [handler & params]
+  (apply bidi/path-for @!bidi-routes handler params))
 
 (defn match-route [path]
-  (some-> (bidi/match-route bidi-routes path)
+  (some-> (bidi/match-route @!bidi-routes path)
           (assoc :path path)))
 
 #?(:cljs

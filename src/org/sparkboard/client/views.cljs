@@ -8,24 +8,16 @@
 
 (v/defview home [] "Nothing to see here, folks.")
 
-(v/defview playground []
-  [:div.ma3
-   [:a {:href "/skeleton"} "skeleton"]
-   [:p (str :list)]
-   [:pre.code (with-out-str (pprint (ws/use-query [:list])))]
-   [:button.p-2.rounded.bg-blue-100
-    {:on-click #(ws/send [:conj!])}
-    "List, grow!"]
-   [:p (str [:org/index])]
-   [:pre.code (with-out-str (pprint (ws/use-query [:org/index])))]])
-
 (v/defview skeleton []
-  [:div
+  [:div.pa3
+   [:h2 "Organizations"]
    (into [:ul]
          (map (fn [org-obj]
                 [:li
                  [:a {:href (routes/path-for :org/view {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
-         (:value (ws/use-query [:org/index])))])
+         (:value (ws/use-query [:org/index])))
+   [:h2 "Playground"]
+   [:a {:href (routes/path-for :list)} "List"]])
 
 (v/defview org-index []
   (let [orgs (:value (ws/use-query [:org/index]))]
@@ -42,8 +34,14 @@
      [:h1 "Org: " (-> result :value :org/title)]
      [:pre.code (with-out-str (pprint result))]]))
 
-(v/defview list-view [_]
-  "list view...")
+(v/defview list-view [{:keys [path]}]
+  (let [result (ws/use-query path)]
+    [:div.code.pa3
+     [:p.f4 [:a {:href "/skeleton"} "up"] (str (:tag (routes/match-route path)))]
+     [:button.p-2.rounded.bg-blue-100
+      {:on-click #(ws/send [:conj!])}
+      "List, grow!"]
+     [:pre (with-out-str (pprint result))]]))
 
 (v/defview query-view [{:keys [path]}]
   (let [result (ws/use-query path)]

@@ -2,7 +2,6 @@
   (:require #?(:clj [org.httpkit.server :as httpkit])
             #?(:cljs [yawn.hooks :as hooks])
             [applied-science.js-interop :as j]
-            [org.sparkboard.routes :as routes]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]))
 

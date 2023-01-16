@@ -123,10 +123,10 @@
 
 (defn query-handler
   "Serve queries at the given routes. Returns nil for html requests (handled as a spa-page)"
-  [{:keys [routes html-response]}]
+  [{:keys [!routes html-response]}]
   (fn [{:keys [uri path-info] :as req}]
     (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
-      (when-let [ref (resolve-query routes (or path-info uri))]
+      (when-let [ref (resolve-query @!routes (or path-info uri))]
         {:status 200 :body @ref}))))
 
 (def app
@@ -137,12 +137,12 @@
                                      (sync/query-handlers
                                       (fn [query]
                                         (if (string? query)
-                                          (resolve-query routes/bidi-routes query)
+                                          (resolve-query @routes/!bidi-routes query)
                                           (let [[id & args] query
-                                                query-fn (requiring-resolve (get-in routes/routes [id :query]))]
+                                                query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
                                             (apply query-fn (or (seq args) [{}]))
                                             )))))})
-       (-> (query-handler {:routes routes/bidi-routes
+       (-> (query-handler {:!routes routes/!bidi-routes
                            :html-response (spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
