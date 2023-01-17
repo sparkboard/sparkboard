@@ -74,11 +74,35 @@
      [:hr]
      (show-query b)]))
 
+(defn youtube-embed [video-id]
+  [:iframe#ytplayer {:type "text/html" :width 640 :height 360
+                     :frameborder 0
+                     :src (str "https://www.youtube.com/embed/" video-id)}])
+
+(defn video-field [[kind v]]
+  (case kind
+    :field.video/youtube-id (youtube-embed v)
+    :field.video/youtube-url [:a {:href v} "youtube video"]
+    :field.video/vimeo-url [:a {:href v} "vimeo video"]
+    {kind v}))
+
+(comment
+  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
+  )
+
 (v/defview project:one [{:as p :project/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
     [:div
      [:h1 (str "Project " (:project/title value))]
      [:blockquote (:project/summary-text value)]
+     (when-let [badges (:project.admin/badges value)]
+       [:section [:h3 "Badges"]
+        (into [:ul]
+              (map (fn [bdg] [:li (:badge/label bdg)]))
+              badges)])
+     (when-let [vid (:project/video value)]
+       [:section [:h3 "Video"]
+        [video-field vid]])
      (show-query p)]))
 
 (v/defview member:one [{:as mbr :member/keys [id]}]
