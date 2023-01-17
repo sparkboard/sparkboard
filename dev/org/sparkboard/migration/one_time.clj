@@ -9,7 +9,7 @@
             [jsonista.core :as json]
             [malli.core :as m]
             [malli.generator :as mg]
-            [org.sparkboard.datalevin :refer [conn]]
+            [org.sparkboard.datalevin :as sb.dl :refer [conn]]
             [org.sparkboard.schema :as sschema]
             [org.sparkboard.server.env :as env]
             [re-db.api :as d]
@@ -1058,6 +1058,10 @@
    ;; then transact everything else
    (d/transact! (all-entities)))
 
+ (def lmdb (dl/open-kv sb.dl/db-path))
+ (def search-engine (dl/new-search-engine lmdb))
+ (dl/search search-engine "idée innovante")
+ 
 
  ;; only for debugging when something fails to transact
  (doseq [doc (all-entities)]
