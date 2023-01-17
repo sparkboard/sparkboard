@@ -39,9 +39,10 @@
            @orgs)]))
 
 (v/defview org:one [{:as o :org/keys [id]}]
-  (let [result (ws/use-query [:org/one {:org/id id}])]
+  (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])]
     [:div
-     [:h1 "Org: " (-> result :value :org/title)]
+     [:h1 "Org: " (:org/title value)]
+     [:p (-> value :entity/domain :domain/name)]
      [:section [:h3 "Boards"]
       (into [:ul]
             (map (fn [board]
@@ -55,6 +56,7 @@
   (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
     [:div
      [:h1 (str "Board: " (:board/title value))]
+     [:p (-> value :entity/domain :domain/name)]
      [:blockquote (-> value
                       :board.landing-page/description-content
                       :text-content/string)]
