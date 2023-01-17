@@ -1061,7 +1061,7 @@
  (def lmdb (dl/open-kv sb.dl/db-path))
  (def search-engine (dl/new-search-engine lmdb))
  (dl/search search-engine "idée innovante")
- 
+ (dl/search search-engine "selfcare issu de production textile innovante")
 
  ;; only for debugging when something fails to transact
  (doseq [doc (all-entities)]

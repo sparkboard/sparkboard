@@ -18,7 +18,8 @@
 
 (defn-memo $org:one [{:keys [org/id]}]
   (q/reaction conn
-    (db/pull '[:org/title
+    (db/pull '[:org/id
+               :org/title
                {:board/_org [:ts/created-at
                              :board/id
                              :board/title]}
