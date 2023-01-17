@@ -17,6 +17,7 @@
             [org.sparkboard.server.env :as env]
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
+            [org.sparkboard.server.views :as server.views]
             [org.sparkboard.slack.server :as slack.server]
             [re-db.api :as db]
             [re-db.memo :as memo]
@@ -49,18 +50,6 @@
                    (update-in [:formats "application/transit+json"]
                               merge {:decoder-opts {:handlers re-db.transit/read-handlers}
                                      :encoder-opts {:handlers re-db.transit/write-handlers}}))))
-
-(def spa-page
-  (memoize
-   (fn [config]
-     (-> {:body (str (html/html-page {:title "Sparkboard"
-                                      :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
-                                      :scripts/body [{:src (str "/js/compiled/app.js?v=" (.toEpochMilli (Instant/now)))}]
-                                      :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
-                                              (hiccup.util/raw-string (transit/write config))]
-                                             [:div#web]]}))}
-         (ring.response/content-type "text/html")
-         (ring.response/status 200)))))
 
 (defn wrap-handle-errors [f]
   (fn [req]
@@ -100,7 +89,7 @@
   (fn [f]
     (fn [req]
       (or (f req)
-          (spa-page env/client-config)))))
+          (server.views/spa-page env/client-config)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -125,8 +114,7 @@
   "Serve queries at the given routes. Returns nil for html requests (handled as a spa-page)"
   [{:keys [!routes html-response]}]
   (fn [{:keys [uri path-info] :as req}]
-    (when-not (str/includes? (get-in req [:headers "accept"])
-                             "text/html")
+    (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
       (when-let [ref (resolve-query @!routes (or path-info uri))]
         {:status 200 :body @ref}))))
 
@@ -141,9 +129,10 @@
                                           (resolve-query @routes/!bidi-routes query)
                                           (let [[id & args] query
                                                 query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
-                                            (apply query-fn (or (seq args) [{}])))))))})
+                                            (apply query-fn (or (seq args) [{}]))
+                                            )))))})
        (-> (query-handler {:!routes routes/!bidi-routes
-                           :html-response (spa-page env/client-config)})
+                           :html-response (server.views/spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors

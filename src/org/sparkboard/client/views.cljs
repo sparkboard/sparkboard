@@ -3,30 +3,20 @@
    [clojure.pprint :refer [pprint]]
    [org.sparkboard.routes :as routes :refer [path-for]]
    [org.sparkboard.websockets :as ws]
+   [org.sparkboard.views.rough :as rough]
    [yawn.view :as v]))
-
-(v/defview show-query
-  "Debug view. Pretty-prints query for path."
-  [{:keys [path]}]
-  (let [result (ws/use-query path)]
-    [:div.pa3
-     ;; [:h1 "query view"]
-     ;; [:p.f4 [:a {:href "/skeleton"} "up"]]
-     [:p.f4  "Route: " [:span.code (str (:tag (routes/match-route path)))]]
-     [:pre (with-out-str (pprint result))]]))
 
 (v/defview home [] "Nothing to see here, folks.")
 
 (v/defview skeleton []
   [:div.pa3
    [:h2 "Organizations"]
-   (into [:ul]
+   (into [rough/grid {:style {:gap "1rem"
+                              :grid-template-columns "repeat(auto-fit, minmax(200px, 1fr))"}}]
          (map (fn [org-obj]
-                [:li
+                [rough/card {:class "pa3"}
                  [:a {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
-         (:value (ws/use-query [:org/index])))
-   [:h2 "Playground"]
-   [:a {:href (routes/path-for :list)} "List"]])
+         (:value (ws/use-query [:org/index])))])
 
 (v/defview org:index []
   (let [orgs (:value (ws/use-query [:org/index]))]
@@ -47,9 +37,7 @@
             (map (fn [board]
                    [:li [:a {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
-            (:board/_org (:value result)))]
-     [:hr]
-     (show-query o)]))
+            (:board/_org (:value result)))]]))
 
 (v/defview board:one [{:as b :board/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
@@ -70,9 +58,7 @@
       (into [:ul]
             (map (fn [proj] [:li [:a {:href (routes/path-for :project/one proj)}
                                   (:project/title proj)]]))
-            (-> result :value :project/_board))]
-     [:hr]
-     (show-query b)]))
+            (-> result :value :project/_board))]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -102,8 +88,7 @@
               badges)])
      (when-let [vid (:project/video value)]
        [:section [:h3 "Video"]
-        [video-field vid]])
-     (show-query p)]))
+        [video-field vid]])]))
 
 (v/defview member:one [{:as mbr :member/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:member/one {:member/id id}])]
@@ -121,17 +106,24 @@
                              (:tag/label tag)]])))
               (concat (:member/tags value)
                       (:member/tags.custom value)))])
-     [:img {:src (:member/image-url value)}]
-     (show-query mbr)]))
+     [:img {:src (:member/image-url value)}]]))
 
 
 ;; for DEBUG only:
-(v/defview list-view [{:keys [path]}]
-  (let [result (ws/use-query path)]
-    [:div.code.pa3
-     [:p.f4 [:a {:href "/skeleton"} "up"] (str (:tag (routes/match-route path)))]
-     [:button.p-2.rounded.bg-blue-100
-      {:on-click #(ws/send [:conj!])}
-      "List, grow!"]
-     [:pre (with-out-str (pprint result))]]))
+(v/defview show-query [path]
+  (let [{:keys [value error loading?]} (ws/use-query path)]
+    (cond loading? [rough/spinner {:spinning true :duration 5000}]
+          error [:div "Error: " error]
+          value [:pre (with-out-str (pprint value))])))
+
+(v/defview dev-drawer [{:keys [path tag]}]
+  [:<>
+   [rough/divider]
+   [:div.ph3.code
+    [:p.f4
+     [:a.mr3 {:href (routes/path-for :dev/skeleton)}
+      [rough/button "▲"]]
+     (str tag)]
+    (when (get-in @routes/!routes [tag :query])
+      [show-query path])]])
 

@@ -3,7 +3,7 @@
             ["react-dom" :as react-dom]
             [org.sparkboard.client.auth]
             [org.sparkboard.client.firebase :as firebase]
-            [org.sparkboard.client.views]
+            [org.sparkboard.client.views :as views]
             [org.sparkboard.routes :as routes]
             [pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
@@ -15,10 +15,12 @@
 (defonce !current-location (atom nil))
 
 (v/defview root []
-  (let [{:as current-location :keys [path handler route-params]} (hooks/use-atom !current-location)]
-    (if handler
-      [handler (assoc route-params :path path)]
-      "not-found")))
+  (let [{:as current-location :keys [path handler route-params tag]} (hooks/use-atom !current-location)]
+    [:<>
+     (if handler
+       [handler (assoc route-params :path path)]
+       (str "No view found for " tag))
+     [views/dev-drawer current-location]]))
 
 (defonce !react-root (atom nil))
 

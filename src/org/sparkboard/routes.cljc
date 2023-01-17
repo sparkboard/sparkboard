@@ -7,7 +7,8 @@
             [org.sparkboard.macros :refer [lazy-views]]
             [re-db.reactive :as r]
             #?(:cljs [shadow.lazy :as lazy])
-            #?(:clj [org.sparkboard.server.views :as server.views]))
+            #?(:clj [org.sparkboard.server.views :as server.views])
+            #?(:clj [org.sparkboard.server.env :as env]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
 
 (r/redef !routes
@@ -37,25 +38,19 @@
                       :query `queries/$org:one
                       :view `views/org:one}
             :board/index {:route ["/b"]
-                          :query `queries/$board:index
-                          :view `views/show-query}
+                          :query `queries/$board:index}
             :board/one {:route ["/b/" :board/id]
                         :query `queries/$board:one
                         :view `views/board:one}
             :project/index {:route ["/p"]
-                            :query `queries/$project:index
-                            :view `views/show-query}
+                            :query `queries/$project:index}
             :project/one {:route ["/p/" :project/id]
                           :query `queries/$project:one
                           :view `views/project:one}
             ;; member view
             :member/one {:route ["/m/" :member/id]
                          :query `queries/$member:one
-                         :view `views/member:one}
-
-            :list {:route ["/list2"]
-                   :query `queries/$list-view
-                   :view `views/list-view}})))
+                         :view `views/member:one}})))
 
 ;; NOTE
 ;; path params may include a special `:body` key which should correspond to
@@ -74,13 +69,9 @@
                     [route (bidi/tag
                             #?(:clj  (if query
                                        (requiring-resolve query)
-                                       @server.views/spa-page)
+                                       (server.views/spa-page env/client-config))
                                :cljs view)
                             id)])))]))
-
-(comment
- (path-for :board/one {:board/id 1})
- )
 
 (defn path-for [handler & params]
   (apply bidi/path-for @!bidi-routes handler params))

@@ -7,10 +7,12 @@
   (:import (java.time Instant)))
 
 (def spa-page
-  (delay
+  (memoize
    (fn [config]
      (-> {:body (str (html/html-page {:title "Sparkboard"
-                                      :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}]
+                                      :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}
+                                               {:href "https://fonts.googleapis.com/css?family=Merriweather"}
+                                               ".skeleton {font-family: Merriweather, cursive;}"]
                                       :scripts/body [{:src (str "/js/compiled/app.js?v=" (.toEpochMilli (Instant/now)))}]
                                       :body [[:script#SPARKBOARD_CONFIG {:type "application/transit+json"}
                                               (hiccup.util/raw-string (transit/write config))]
