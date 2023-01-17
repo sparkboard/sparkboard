@@ -15,7 +15,7 @@
                               :grid-template-columns "repeat(auto-fit, minmax(200px, 1fr))"}}]
          (map (fn [org-obj]
                 [rough/card {:class "pa3"}
-                 [:a {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
+                 [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
          (:value (ws/use-query [:org/index])))])
 
 (v/defview org:index []
@@ -24,7 +24,7 @@
      [:h1 "Orgs"]
      (into [:ul]
            (fn [{:as o :org/keys [title id]}]
-             [:li [:a {:href (path-for :org/one {:org/id id})} title]])
+             [:li [rough/link {:href (path-for :org/one {:org/id id})} title]])
            @orgs)]))
 
 (v/defview org:one [{:as o :org/keys [id]}]
@@ -32,10 +32,12 @@
     [:div
      [:h1 "Org: " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
+     [:section [:h3 "Search"]
+      [rough/search-input]]
      [:section [:h3 "Boards"]
       (into [:ul]
             (map (fn [board]
-                   [:li [:a {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
+                   [:li [rough/link {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
             (:board/_org (:value result)))]]))
 
@@ -51,12 +53,12 @@
      [:section [:h3 "Members"]
       (into [:ul]
             (map (fn [mbr]
-                   [:li [:a {:href (routes/path-for :member/one mbr)}
+                   [:li [rough/link {:href (routes/path-for :member/one mbr)}
                          (:member/name mbr)]]))
             (:member/_board value))]
      [:section [:h3 "Projects"]
       (into [:ul]
-            (map (fn [proj] [:li [:a {:href (routes/path-for :project/one proj)}
+            (map (fn [proj] [:li [rough/link {:href (routes/path-for :project/one proj)}
                                   (:project/title proj)]]))
             (-> result :value :project/_board))]]))
 
@@ -68,8 +70,8 @@
 (defn video-field [[kind v]]
   (case kind
     :field.video/youtube-id (youtube-embed v)
-    :field.video/youtube-url [:a {:href v} "youtube video"]
-    :field.video/vimeo-url [:a {:href v} "vimeo video"]
+    :field.video/youtube-url [rough/link {:href v} "youtube video"]
+    :field.video/vimeo-url [rough/link {:href v} "vimeo video"]
     {kind v}))
 
 (comment
