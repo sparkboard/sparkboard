@@ -92,15 +92,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Utility fns
 
-(defn req-auth-token [req]
-  (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
-      (-> req :params :token)))
-
-(defn return-text [status message]
-  {:status status
-   :headers {"Content-Type" "text/plain"}
-   :body message})
-
 (defmacro spy-args [form]
   ;;
   `(do (log/trace :call/forms (quote ~(first form)) ~@(rest form))
