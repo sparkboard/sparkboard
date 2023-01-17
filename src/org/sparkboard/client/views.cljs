@@ -1,9 +1,10 @@
 (ns org.sparkboard.client.views
   (:require
    [clojure.pprint :refer [pprint]]
+   [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.routes :as routes :refer [path-for]]
-   [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
+   [org.sparkboard.websockets :as ws]
    [yawn.view :as v]))
 
 (v/defview home [] "Nothing to see here, folks.")
@@ -44,9 +45,10 @@
     [:div
      [:h1 (str "Board: " (:board/title value))]
      [:p (-> value :entity/domain :domain/name)]
-     [:blockquote (-> value
-                      :board.landing-page/description-content
-                      :text-content/string)]
+     [:blockquote
+      [safe-html (-> value
+                     :board.landing-page/description-content
+                     :text-content/string)]]
 
      [:section [:h3 "Members"]
       (into [:ul]
@@ -73,8 +75,8 @@
     {kind v}))
 
 (comment
-  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
-  )
+ (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
+ )
 
 (v/defview project:one [{:as p :project/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
