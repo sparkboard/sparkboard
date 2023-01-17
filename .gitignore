@@ -26,3 +26,4 @@ report.html
 TODO.md
 *.log
 resources/clerk
+.clerk

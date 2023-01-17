@@ -1,10 +1,12 @@
 (ns org.sparkboard.client.views
   (:require
+   [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.routes :as routes :refer [path-for]]
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
+   [yawn.hooks :as hooks]
    [yawn.view :as v]))
 
 (v/defview home [] "Nothing to see here, folks.")
@@ -12,8 +14,7 @@
 (v/defview skeleton []
   [:div.pa3
    [:h2 "Organizations"]
-   (into [rough/grid {:style {:gap "1rem"
-                              :grid-template-columns "repeat(auto-fit, minmax(200px, 1fr))"}}]
+   (into [rough/grid]
          (map (fn [org-obj]
                 [rough/card {:class "pa3"}
                  [:a {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
@@ -110,22 +111,47 @@
                       (:member/tags.custom value)))])
      [:img {:src (:member/image-url value)}]]))
 
-
 ;; for DEBUG only:
-(v/defview show-query [path]
-  (let [{:keys [value error loading?]} (ws/use-query path)]
-    (cond loading? [rough/spinner {:spinning true :duration 5000}]
-          error [:div "Error: " error]
-          value [:pre (with-out-str (pprint value))])))
 
-(v/defview dev-drawer [{:keys [path tag]}]
-  [:<>
-   [rough/divider]
-   [:div.ph3.code
-    [:p.f4
-     [:a.mr3 {:href (routes/path-for :dev/skeleton)}
-      [rough/button "▲"]]
-     (str tag)]
-    (when (get-in @routes/!routes [tag :query])
-      [show-query path])]])
+(v/defview show-query [path]
+  (let [{:keys [value error loading?]} (ws/use-query path)
+        value (hooks/use-memo
+               (fn [] (with-out-str (pprint value)))
+               (hooks/use-deps value))]
+    (cond loading? [rough/spinner {:duration 1000 :spinning true}]
+          error [:div "Error: " error]
+          value [:pre value])))
+
+(v/defview drawer [{:keys [initial-height]} child]
+  ;; the divider is draggable and sets the height of the drawer
+  (let [!height (hooks/use-state initial-height)]
+    [:<>
+     [:div {:style {:height @!height}}]
+     [:div.ph3.code.fixed.bottom-0.left-0.right-0.bg-white.overflow-y-scroll
+      {:style {:height @!height}}
+      [:div.bg-black
+       {:class "bg-black absolute top-0 left-0 right-0"
+        :style {:height 5
+                :cursor "ns-resize"}
+        :on-mouse-down (j/fn [^js {:as e starting-y :clientY}]
+                         (.preventDefault e)
+                         (let [on-mousemove (j/fn [^js {new-y :clientY}]
+                                              (let [diff (- new-y starting-y)]
+                                                (reset! !height (max 5 (- @!height diff)))))
+                               on-mouseup (fn []
+                                            (.removeEventListener js/window "mousemove" on-mousemove))]
+                           (doto js/window
+                             (.addEventListener "mouseup" on-mouseup #js{:once true})
+                             (.addEventListener "mousemove" on-mousemove))))}]
+      child]]))
+
+(v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
+
+  (cond->> [:<>
+            [:p.f5
+             [:a.mr3.rounded.bg-black.white.pa2.no-underline {:href (routes/path-for :dev/skeleton)} "▲"]
+             (str tag)]
+            (when (get-in @routes/!routes [tag :query])
+              [show-query path])]
+           fixed? (drawer {:initial-height 100})))
 

@@ -20,7 +20,7 @@
      (if handler
        [handler (assoc route-params :path path)]
        (str "No view found for " tag))
-     [views/dev-drawer current-location]]))
+     [views/dev-drawer {:fixed? handler} current-location]]))
 
 (defonce !react-root (atom nil))
 
