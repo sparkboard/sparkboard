@@ -57,7 +57,9 @@
 
 (defn-memo $member:one [{:keys [member/id]}]
   (q/reaction conn
-    (db/pull '[*] [:member/id id])))
+    (db/pull '[*
+               {:member/tags [*]}]
+             [:member/id id])))
 
 (defonce !list (atom ()))
 

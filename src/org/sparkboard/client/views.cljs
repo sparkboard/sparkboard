@@ -62,7 +62,8 @@
      [:section [:h3 "Members"]
       (into [:ul]
             (map (fn [mbr]
-                   [:li (:member/name mbr)]))
+                   [:li [:a {:href (routes/path-for :member/one mbr)}
+                         (:member/name mbr)]]))
             (:member/_board value))]
      [:section [:h3 "Projects"]
       (into [:ul]
@@ -79,6 +80,27 @@
      [:blockquote (:project/summary-text value)]
      (show-query p)]))
 
+(v/defview member:one [{:as mbr :member/keys [id]}]
+  (let [{:keys [value] :as result} (ws/use-query [:member/one {:member/id id}])]
+    [:div
+     [:h1 (str "Member " (:member/name value))]
+     (when-let [tags (seq (concat (:member/tags value)
+                                  (:member/tags.custom value)))]
+       [:section [:h3 "Tags"]
+        (into [:ul]
+              (map (fn [tag]
+                     (if (:tag.ad-hoc/label tag)
+                       [:li (:tag.ad-hoc/label tag)]
+                       [:li [:span (when-let [bg (:tag/background-color tag)]
+                                     {:style {:background-color bg}})
+                             (:tag/label tag)]])))
+              (concat (:member/tags value)
+                      (:member/tags.custom value)))])
+     [:img {:src (:member/image-url value)}]
+     (show-query mbr)]))
+
+
+;; for DEBUG only:
 (v/defview list-view [{:keys [path]}]
   (let [result (ws/use-query path)]
     [:div.code.pa3

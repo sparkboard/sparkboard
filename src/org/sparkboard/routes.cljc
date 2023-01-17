@@ -51,7 +51,7 @@
             ;; member view
             :member/one {:route ["/m/" :member/id]
                          :query `queries/$member:one
-                         :view `views/query:one}
+                         :view `views/member:one}
 
             :list {:route ["/list2"]
                    :query `queries/$list-view

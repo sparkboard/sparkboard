@@ -21,6 +21,13 @@ Other approacheS:
   * see *dev/README.md*
   * `yarn shadow-cljs server` + `yarn shadow-cljs watch web` provides a REPL to `cider-connect` to and also hot reloading
 
+### IDE setup
+Clojure-mode needs some help to indent properly. Somewhere in your emacs config:
+
+    (define-clojure-indent
+      (reaction 1))
+
+
 ## Receive Slack events with your local server
 
 Slack uses webhooks to tell us when events happen, so we need to expose our local server

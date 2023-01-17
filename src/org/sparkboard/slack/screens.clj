@@ -34,6 +34,7 @@
        (str "Link Account")]])))
 
 (declare home)
+
 (v/defview invite-link-modal [context]
   [:modal {:title "Set Invite Link"
            :submit "Save"
