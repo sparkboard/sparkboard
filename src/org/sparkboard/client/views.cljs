@@ -42,11 +42,12 @@
   (let [result (ws/use-query [:org/one {:org/id id}])]
     [:div
      [:h1 "Org: " (-> result :value :org/title)]
-     (into [:ul]
-           (map (fn [board]
-                  [:li [:a {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
-                        (:board/title board)]]))
-           (:board/_org (:value result)))
+     [:section [:h3 "Boards"]
+      (into [:ul]
+            (map (fn [board]
+                   [:li [:a {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
+                         (:board/title board)]]))
+            (:board/_org (:value result)))]
      [:hr]
      (show-query o)]))
 
@@ -75,6 +76,7 @@
   (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
     [:div
      [:h1 (str "Project " (:project/title value))]
+     [:blockquote (:project/summary-text value)]
      (show-query p)]))
 
 (v/defview list-view [{:keys [path]}]
