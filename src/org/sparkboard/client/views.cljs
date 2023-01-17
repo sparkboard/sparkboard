@@ -50,18 +50,22 @@
       [safe-html (-> value
                      :board.landing-page/description-content
                      :text-content/string)]]
-
-     [:section [:h3 "Members"]
-      (into [:ul]
-            (map (fn [mbr]
-                   [:li [:a {:href (routes/path-for :member/one mbr)}
-                         (:member/name mbr)]]))
-            (:member/_board value))]
-     [:section [:h3 "Projects"]
-      (into [:ul]
-            (map (fn [proj] [:li [:a {:href (routes/path-for :project/one proj)}
-                                  (:project/title proj)]]))
-            (-> result :value :project/_board))]]))
+     [rough/tabs {:class "w-100"}
+      [rough/tab {:name "Projects"
+                  :class "db"}
+       (into [:ul]
+             (map (fn [proj]
+                    [:li [:a {:href (routes/path-for :project/one proj)}
+                          (:project/title proj)]]))
+             (-> result :value :project/_board))]
+      [rough/tab {:name "Members"
+                  :class "db"}
+       (into [:ul]
+             (map (fn [mbr]
+                    [:li
+                     [:a {:href (routes/path-for :member/one mbr)}
+                      (:member/name mbr)]]))
+             (:member/_board value))]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -146,10 +150,10 @@
       child]]))
 
 (v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
-
   (cond->> [:<>
             [:p.f5
-             [:a.mr3.rounded.bg-black.white.pa2.no-underline {:href (routes/path-for :dev/skeleton)} "▲"]
+             [:a.mr3.rounded.bg-black.white.pa2.no-underline
+              {:href (routes/path-for :dev/skeleton)} "❮"]
              (str tag)]
             (when (get-in @routes/!routes [tag :query])
               [show-query path])]
