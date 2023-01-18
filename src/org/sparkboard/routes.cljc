@@ -29,6 +29,9 @@
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
 
+            :org/search {:route ["/search"]
+                         :query `queries/$search}
+
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/skeleton"]
                         :query `queries/$org:index

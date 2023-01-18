@@ -61,3 +61,10 @@
     (db/pull '[*
                {:member/tags [*]}]
              [:member/id id])))
+
+(defn-memo $search [params]
+  (println "$search:" (str params))
+  (println "$search body" (:body params))
+  (sync/$values (q/reaction conn
+                  (sb.datalevin/q-fulltext-in-org (:search/terms params)
+                                                  (:org/id params)))))

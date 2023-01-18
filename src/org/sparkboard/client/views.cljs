@@ -4,6 +4,8 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
+   [tools.sparkboard.http :as sb.http]
+   [yawn.hooks]
    [yawn.view :as v]))
 
 (v/defview home [] "Nothing to see here, folks.")
@@ -23,8 +25,22 @@
     [:div
      [:h1 "Org: " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
-     [:section [:h3 "Search"]
-      [rough/search-input]]
+     (let [[v set-v!] (yawn.hooks/use-state nil)] ;; TODO maybe switch to inside-out?
+       [:section [:h3 "Search"]
+        ;; no "rough" here because I don't (immediately) see how to pass props like `id` and `on-change`
+        [:input {:id "org-search", :placeholder "org-wide search"
+                 :type "search"
+                 :on-change (fn [event] (-> event .-target .-value set-v!))
+                 ;; TODO search on "enter" keypress
+                 :value v}]
+        [rough/button {:on-click #(when (<= 3 (count v))
+                                    (js/console.log v)
+                                    (sb.http/http-req "/search"
+                                                      {:body {:search/terms (str "foo bar " v)}
+                                                       :body/content-type :transit+json
+                                                       :query "foo bar"
+                                                       :method "POST"}))}
+         "search"]])
      [:section [:h3 "Boards"]
       (into [:ul]
             (map (fn [board]
