@@ -11,12 +11,12 @@
        (read/handle-report! conn)))
 
 (defn-memo $org:index [_]
-  (r/reaction
+  (sync/reaction
    (->> (db/where [:org/id])
         (mapv (re-db.api/pull '[*])))))
 
 (defn-memo $org:one [{:keys [org/id]}]
-  (r/reaction
+  (sync/reaction
    (db/pull '[:org/title
               {:board/_org [:ts/created-at
                             :board/id
@@ -25,12 +25,12 @@
             [:org/id id])))
 
 (defn-memo $board:index [_route-params]
-  (r/reaction
+  (sync/reaction
    (->> (db/where [:board/id])
         (mapv (re-db.api/pull '[:board/title])))))
 
 (defn-memo $board:one [{:keys [board/id] :as _route-params}]
-  (r/reaction
+  (sync/reaction
    (db/pull '[*
               :board/title
               :board.registration/open?
@@ -45,17 +45,17 @@
   ;; TODO
   ;; pagination
   ;; search queries
-  (r/reaction
+  (sync/reaction
    (->> (db/where [:project/id])
         (take 20)
         (mapv (re-db.api/pull '[:project/title])))))
 
 (defn-memo $project:one [{:keys [project/id]}]
-  (r/reaction
+  (sync/reaction
    (db/pull '[*] [:project/id id])))
 
 (defn-memo $member:one [{:keys [member/id]}]
-  (r/reaction
+  (sync/reaction
    (db/pull '[*
               {:member/tags [*]}]
             [:member/id id])))
