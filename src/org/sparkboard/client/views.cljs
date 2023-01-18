@@ -8,7 +8,7 @@
 
 (v/defview home [] "Nothing to see here, folks.")
 
-(v/defview skeleton []
+(v/defview org:index []
   [:div.pa3
    [:h2 "Organizations"]
    (into [rough/grid {:style {:gap "1rem"
@@ -17,15 +17,6 @@
                 [rough/card {:class "pa3"}
                  [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
          (:value (ws/use-query [:org/index])))])
-
-(v/defview org:index []
-  (let [orgs (:value (ws/use-query [:org/index]))]
-    [:div
-     [:h1 "Orgs"]
-     (into [:ul]
-           (fn [{:as o :org/keys [title id]}]
-             [:li [rough/link {:href (path-for :org/one {:org/id id})} title]])
-           @orgs)]))
 
 (v/defview org:one [{:as o :org/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])]

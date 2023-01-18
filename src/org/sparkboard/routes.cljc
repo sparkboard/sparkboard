@@ -22,8 +22,6 @@
   (r/atom (lazy-views
            {:home {:route ["/"]
                    :view `views/home}
-            :dev/skeleton {:route ["/skeleton"]
-                           :view `views/skeleton}
             :slack/invite-offer {:route ["/slack/invite-offer"]
                                  :view `slack.client/invite-offer}
             :slack/link-complete {:route ["/slack/link-complete"]
@@ -31,9 +29,11 @@
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
 
-            :org/index {:route ["/o"]
+            ;; Skeleton entry point is the full list of orgs
+            :org/index {:route ["/skeleton"]
                         :query `queries/$org:index
                         :view `views/org:index}
+
             :org/one {:route ["/o/" :org/id]
                       :query `queries/$org:one
                       :view `views/org:one}
