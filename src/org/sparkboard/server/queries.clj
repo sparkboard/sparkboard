@@ -4,7 +4,7 @@
             [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.memo :refer [def-memo defn-memo]]
-            [org.sparkboard.datalevin :refer [conn]]
+            [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
             [re-db.api :as db]))
 
 (defn transact! [txs]
@@ -61,10 +61,3 @@
     (db/pull '[*
                {:member/tags [*]}]
              [:member/id id])))
-
-(defonce !list (atom ()))
-
-(defn-memo $list-view [_]
-  (sync/$values !list))
-
-
