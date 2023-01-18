@@ -33,17 +33,13 @@
             :org/index {:route ["/skeleton"]
                         :query `queries/$org:index
                         :view `views/org:index}
-
+            ;; Rest of the skeleton:
             :org/one {:route ["/o/" :org/id]
                       :query `queries/$org:one
                       :view `views/org:one}
-            :board/index {:route ["/b"]
-                          :query `queries/$board:index}
             :board/one {:route ["/b/" :board/id]
                         :query `queries/$board:one
                         :view `views/board:one}
-            :project/index {:route ["/p"]
-                            :query `queries/$project:index}
             :project/one {:route ["/p/" :project/id]
                           :query `queries/$project:one
                           :view `views/project:one}
