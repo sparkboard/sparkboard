@@ -1,7 +1,7 @@
 (ns org.sparkboard.client.views
   (:require
    [clojure.pprint :refer [pprint]]
-   [org.sparkboard.routes :as routes :refer [path-for]]
+   [org.sparkboard.routes :as routes]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
    [yawn.view :as v]))
