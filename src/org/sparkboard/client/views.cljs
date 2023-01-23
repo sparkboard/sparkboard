@@ -16,7 +16,6 @@
    [:h2 "Organizations"]
    (into [rough/grid {}]
            (map (fn [org-obj]
-                  (js/console.log (:org/title org-obj))
                   [rough/card {:class "pa3"}
                    [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
                     (:org/title org-obj)]]))
