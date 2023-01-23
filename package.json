@@ -24,6 +24,8 @@
         "isomorphic-unfetch": "^3.0.0",
         "jsonwebtoken": "^9.0.0",
         "katex": "^0.12.0",
+        "linkify-element": "^4.1.0",
+        "linkifyjs": "^4.1.0",
         "markdown-it": "^12.2.0",
         "markdown-it-block-image": "^0.0.3",
         "markdown-it-sidenote": "gerwitz/markdown-it-sidenote#aa5de8ce3168b7d41cb33c3aed071a5f41ce0083",
@@ -34,11 +36,13 @@
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-refresh": "^0.14.0",
-        "roughjs": "4.4",
         "use-sync-external-store": "1.2.0",
         "vh-sticky-table-header": "1.2.1",
         "w3c-keyname": "^2.2.4",
         "wired-elements": "^3.0.0-rc.6"
+    },
+    "resolutions": {
+        "roughjs": "4.4"
     },
     "devDependencies": {
         "shadow-cljs": "^2.20.16"

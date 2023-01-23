@@ -1013,12 +1013,22 @@ katex@^0.12.0:
   dependencies:
     commander "^2.19.0"
 
+linkify-element@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/linkify-element/-/linkify-element-4.1.0.tgz#0cdd9260e71cc90c2df36d02c285d5bbe0ae4543"
+  integrity sha512-obEqS/iLufTO+WK1HREtnEnrfXoDASuW1kZSL+20KVyF4BJAzot7ypixAslvepqAY1whSPVKWZqmAbIzTdxCBw==
+
 linkify-it@^3.0.1:
   version "3.0.3"
   resolved "https://registry.yarnpkg.com/linkify-it/-/linkify-it-3.0.3.tgz#a98baf44ce45a550efb4d49c769d07524cc2fa2e"
   integrity sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==
   dependencies:
     uc.micro "^1.0.1"
+
+linkifyjs@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/linkifyjs/-/linkifyjs-4.1.0.tgz#0460bfcc37d3348fa80e078d92e7bbc82588db15"
+  integrity sha512-Ffv8VoY3+ixI1b3aZ3O+jM6x17cOsgwfB1Wq7pkytbo1WlyRp6ZO0YDMqiWT/gQPY/CmtiGuKfzDIVqxh1aCTA==
 
 lit-element@^3.2.0:
   version "3.2.2"
@@ -1394,19 +1404,10 @@ ripemd160@^2.0.0, ripemd160@^2.0.1:
     hash-base "^3.0.0"
     inherits "^2.0.1"
 
-roughjs@4.4:
+roughjs@4.4, roughjs@^4.3.1:
   version "4.4.5"
   resolved "https://registry.yarnpkg.com/roughjs/-/roughjs-4.4.5.tgz#0d75eb3ac6529c99bf051633ff9a9a6cf65cda51"
   integrity sha512-TVuHf/Vx6PzSRny+4v2nOxdpOtkeQ3iC1sh2AhhYRZ6h8BmeJm1UR8zsITkd+Bb10dGGk6Y25KvYlKAIy0xTlw==
-  dependencies:
-    path-data-parser "^0.1.0"
-    points-on-curve "^0.2.0"
-    points-on-path "^0.2.1"
-
-roughjs@^4.3.1:
-  version "4.5.2"
-  resolved "https://registry.yarnpkg.com/roughjs/-/roughjs-4.5.2.tgz#aab644dcb41e9a75826c8bd5a5b0a859095f2f10"
-  integrity sha512-2xSlLDKdsWyFxrveYWk9YQ/Y9UfK38EAMRNkYkMqYBJvPX8abCa9PN0x3w02H8Oa6/0bcZICJU+U95VumPqseg==
   dependencies:
     path-data-parser "^0.1.0"
     points-on-curve "^0.2.0"
