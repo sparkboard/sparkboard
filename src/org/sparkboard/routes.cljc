@@ -116,7 +116,6 @@
 
      (defonce history (pushy/pushy
                        (fn [{:as match handler :handler}]
-                         (js/console.log "history--pushy")
                          (if (instance? lazy/Loadable handler)
                            (lazy/load handler
                                       (fn [handler]

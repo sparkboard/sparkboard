@@ -6,7 +6,6 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
-   [org.sparkboard.websockets :as ws]
    [yawn.hooks]
    [yawn.view :as v]))
 
@@ -15,11 +14,13 @@
 (v/defview org:index []
   [:div.pa3
    [:h2 "Organizations"]
-   (into [rough/grid]
-         (map (fn [org-obj]
-                [rough/card {:class "pa3"}
-                 [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
-         (:value (ws/use-query [:org/index])))])
+   (into [rough/grid {}]
+           (map (fn [org-obj]
+                  (js/console.log (:org/title org-obj))
+                  [rough/card {:class "pa3"}
+                   [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
+                    (:org/title org-obj)]]))
+           (:value (ws/use-query [:org/index])))])
 
 (v/defview org:one [{:as o :keys [org/id query-params]}]
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
