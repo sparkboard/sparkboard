@@ -15,11 +15,11 @@
   [:div.pa3
    [:h2 "Organizations"]
    (into [rough/grid {}]
-           (map (fn [org-obj]
-                  [rough/card {:class "pa3"}
-                   [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
-                    (:org/title org-obj)]]))
-           (:value (ws/use-query [:org/index])))])
+         (map (fn [org-obj]
+                [rough/card {:class "pa3"}
+                 [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
+                  (:org/title org-obj)]]))
+         (:value (ws/use-query [:org/index])))])
 
 (v/defview org:one [{:as o :keys [org/id query-params]}]
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
