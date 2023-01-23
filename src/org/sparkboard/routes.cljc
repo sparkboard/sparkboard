@@ -1,10 +1,13 @@
 (ns org.sparkboard.routes
-  (:require [bidi.bidi :as bidi]
+  (:require [applied-science.js-interop :as j]
+            [bidi.bidi :as bidi]
+            [clojure.string :as str]
             [org.sparkboard.server.queries :as-alias queries]
             [org.sparkboard.client.views :as-alias views]
             [org.sparkboard.client.slack :as-alias slack.client]
             [org.sparkboard.client.auth :as-alias auth.client]
             [org.sparkboard.macros :refer [lazy-views]]
+            #?(:cljs [pushy.core :as pushy])
             [re-db.reactive :as r]
             #?(:cljs [shadow.lazy :as lazy])
             #?(:clj [org.sparkboard.server.views :as server.views])
@@ -29,8 +32,8 @@
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
 
-            :org/search {:route ["/search"]
-                         :query `queries/$search}
+            ;; :org/search {:route ["/search"]
+            ;;              :query `queries/$search}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/skeleton"]
@@ -40,9 +43,17 @@
             :org/one {:route ["/o/" :org/id]
                       :query `queries/$org:one
                       :view `views/org:one}
+            :org/search {:route ["/o/" :org/id "/search"]
+                         :query `queries/$search
+                         :view `views/search:results}
+            
+            :board/index {:route ["/b"] ;; XXX cruft?
+                          :query `queries/$board:index}
             :board/one {:route ["/b/" :board/id]
                         :query `queries/$board:one
                         :view `views/board:one}
+            :project/index {:route ["/p"] ;; XXX cruft?
+                            :query `queries/$project:index}
             :project/one {:route ["/p/" :project/id]
                           :query `queries/$project:one
                           :view `views/project:one}
@@ -84,3 +95,59 @@
      lazy/Loadable
      (resolve-handler [this m] (bidi/succeed this m))
      (unresolve-handler [this m] (when (= this (:handler m)) ""))))
+
+#?(:cljs
+   (do 
+     (defonce !current-location (atom nil))
+     
+     (defn as-url ^js [route]
+       (if (instance? js/URL route)
+         route
+         (new js/URL route "https://example.com")))
+
+     (defn parse-query
+       "Returns query parameters as map."
+       [path]
+       (->> (j/get (as-url path) :searchParams)
+            (reduce (fn [m [k v]]
+                      (cond-> m
+                        (not (str/blank? v))
+                        (assoc (keyword k) v))) {})))
+
+     (defonce history (pushy/pushy
+                       (fn [{:as match handler :handler}]
+                         (js/console.log "history--pushy")
+                         (if (instance? lazy/Loadable handler)
+                           (lazy/load handler
+                                      (fn [handler]
+                                        (reset! !current-location (assoc match
+                                                                                :query-params (parse-query (:path match))
+                                                                                :handler handler))))
+                           (reset! !current-location match)))
+                       (fn [path]
+                         (match-route path))))
+
+     (defn query-string
+       "Returns query string, including '?'. Removes empty values. Returns nil if empty."
+       [m]
+       (some->> m 
+                (reduce-kv (fn [out k v]
+                             (cond-> out
+                               (not (str/blank? v))
+                               (conj (str (js/encodeURIComponent (name k))
+                                          "="
+                                          (js/encodeURIComponent v))))) [])
+                (str/join "&")
+                (str "?")))
+     
+     (defn assoc-query! [k v]
+       (j/let [^js {:keys [href pathname hash]} js/location
+               new-query-map (-> href
+                                 parse-query
+                                 (assoc k v))]
+         (pushy/set-token! history
+                           (str pathname
+                                (query-string new-query-map)
+                                hash))
+         ;; HACK we expect above pushy to do the following but it doesn't
+         (swap! !current-location assoc :query-params new-query-map)))))

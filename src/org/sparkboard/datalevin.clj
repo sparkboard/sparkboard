@@ -81,7 +81,8 @@
         terms))
 
 (defn q-fulltext-in-org
-  "Org-wide query using fulltext search on given String of `terms`."
+  "Org-wide query using fulltext search on given String of `terms`.
+  Returns seq of re-db Entities."
   ;; TODO incorporate org clauses into query directly instead of filtering in app layer
   [terms org-id]
   (->> (q-fulltext terms)

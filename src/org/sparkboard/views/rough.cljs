@@ -22,7 +22,7 @@
   (let [[props2 children] (if (map? (first children))
                             [(first children) (rest children)]
                             [{} children])]
-    (into [(doto (convert-props (merge-props props props2)) js/console.log)] children)))
+    (into [(convert-props (merge-props props props2))] children)))
 
 (defn button [& args] (convert/x (into [:wired-button] (with-props {} args))))
 (defn card [& args] (convert/x (into [:wired-card] (with-props {} args))))

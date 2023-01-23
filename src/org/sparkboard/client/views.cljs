@@ -4,7 +4,6 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
-   [tools.sparkboard.http :as sb.http]
    [yawn.hooks]
    [yawn.view :as v]))
 
@@ -20,27 +19,27 @@
                  [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
          (:value (ws/use-query [:org/index])))])
 
-(v/defview org:one [{:as o :org/keys [id]}]
-  (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])]
+(v/defview org:one [{:as o :keys [org/id query-params]}]
+  (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
+        qry-result (ws/use-query [:org/search {:org/id id :query-params query-params}])]
     [:div
      [:h1 "Org: " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
      (let [[v set-v!] (yawn.hooks/use-state nil)] ;; TODO maybe switch to inside-out?
        [:section [:h3 "Search"]
-        ;; no "rough" here because I don't (immediately) see how to pass props like `id` and `on-change`
+        ;; no "rough" here because it doesn't accept props like `id` and `on-change`
         [:input {:id "org-search", :placeholder "org-wide search"
                  :type "search"
                  :on-change (fn [event] (-> event .-target .-value set-v!))
                  ;; TODO search on "enter" keypress
                  :value v}]
-        [rough/button {:on-click #(when (<= 3 (count v))
-                                    (js/console.log v)
-                                    (sb.http/http-req "/search"
-                                                      {:body {:search/terms (str "foo bar " v)}
-                                                       :body/content-type :transit+json
-                                                       :query "foo bar"
-                                                       :method "POST"}))}
-         "search"]])
+        [rough/button {:on-click #(when (<= 3 (count v)) ;; FIXME don't silently do nothing on short entries
+                                    (routes/assoc-query! :q v))}
+         "search"]
+        (into [:ul]
+              (map (comp (partial vector :li)
+                          str))
+              (:value qry-result))])
      [:section [:h3 "Boards"]
       (into [:ul]
             (map (fn [board]

@@ -62,9 +62,11 @@
                {:member/tags [*]}]
              [:member/id id])))
 
-(defn-memo $search [params]
-  (println "$search:" (str params))
-  (println "$search body" (:body params))
-  (sync/$values (q/reaction conn
-                  (sb.datalevin/q-fulltext-in-org (:search/terms params)
-                                                  (:org/id params)))))
+(defn-memo $search [{:keys [query-params org/id] :as route-params}]
+  (->> (sb.datalevin/q-fulltext-in-org (:q query-params)
+                                       id)
+       ;; Can't send Entities over the wire, so:
+       (map (db/pull '[:project/title
+                       :board/title]))
+       (q/reaction conn)))
+
