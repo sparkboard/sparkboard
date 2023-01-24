@@ -5,26 +5,31 @@
    [clojure.string :as str]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.routes :as routes]
-   [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
-   [re-db.reactive]
+   [org.sparkboard.websockets :as ws]
+   [re-db.reactive :as r]
+   [re-db.sync.transit :as transit]
    [taoensso.tempura :as tempura]
    [yawn.hooks]
    [yawn.view :as v]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Internationalization / i18n
 
 (defonce !preferred-language
-  (re-db.reactive/atom (.getItem (.-localStorage js/window)
-                                 "sb.preferred-language")))
+  (let [local-storage-key (str ::preferred-language)]
+    (doto (r/atom (or (-> (.-localStorage js/window)
+                          (.getItem local-storage-key)
+                          transit/unpack)
+                      :eng))
+      (add-watch ::update-local-storage
+                 (fn [_k _atom _old new]
+                   (.setItem (.-localStorage js/window)
+                             local-storage-key
+                             (transit/pack new)))))))
 
-;; (add-watch !preferred-language
-;;            :watcher.preferred-language/update-local-storage
-;;            (fn [_k _atom _old new]
-;;              (.getItem (.-localStorage js/window)
-;;                        "sb.preferred-language"
-;;                        new)))
+(defonce !locales
+  (r/reaction (into [] (distinct) [@!preferred-language :eng])))
 
 (def i18n-dict
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-3.
@@ -56,18 +61,25 @@
               :tag "Mot-clé", :tags "Mots clés"
               :badge "Insigne", :badges "Insignes"}}})
 
-(def tr
-  ;; TODO user-selected language with `:eng` fallback
-  (partial tempura/tr {:dict i18n-dict}))
+(defn use-tr
+  ;; hook: reactive, must follow rules of hooks
+  ([resource-ids] (tempura/tr {:dict i18n-dict} (yawn.hooks/use-atom !locales) resource-ids))
+  ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} (yawn.hooks/use-atom !locales) resource-ids resource-args)))
+
+(defn tr
+  ;; not reactive within yawn, doesn't need to follow rules of hooks
+  ;; (raises the NB question: how (far) to integrate re-db.reactive with yawn)
+  ([resource-ids] (tempura/tr {:dict i18n-dict} @!locales resource-ids))
+  ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} @!locales resource-ids resource-args)))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(v/defview home [] (tr [(keyword @!preferred-language)] [:skeleton/nix]))
+(v/defview home [] (use-tr [:skeleton/nix]))
 
 (v/defview org:index []
   [:div.pa3
-   [:h2 (tr [(keyword @!preferred-language)] [:tr/orgs])]
+   [:h2 (use-tr [:tr/orgs])]
    (into [rough/grid {}]
          (map (fn [org-obj]
                 [rough/card {:class "pa3"}
@@ -79,10 +91,10 @@
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
         qry-result (ws/use-query [:org/search {:org/id id :query-params query-params}])]
     [:div
-     [:h1 (tr [(keyword @!preferred-language)] [:tr/org]) " " (:org/title value)]
+     [:h1 (use-tr [:tr/org]) " " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
      (let [[v set-v!] (yawn.hooks/use-state nil)] ;; TODO maybe switch to inside-out?
-       [:section [:h3 (tr [(keyword @!preferred-language)] [:tr/search])]
+       [:section [:h3 (use-tr [:tr/search])]
         ;; no "rough" here because it doesn't accept props like `id` and `on-change`
         [:input {:id "org-search", :placeholder "org-wide search"
                  :type "search"
@@ -91,12 +103,12 @@
                  :value v}]
         [rough/button {:on-click #(when (<= 3 (count v)) ;; FIXME don't silently do nothing on short entries
                                     (routes/assoc-query! :q v))}
-         (tr [(keyword @!preferred-language)] [:tr/search])]
+         (use-tr [:tr/search])]
         (into [:ul]
               (map (comp (partial vector :li)
-                          str))
+                         str))
               (:value qry-result))])
-     [:section [:h3 (tr [(keyword @!preferred-language)] [:tr/boards])]
+     [:section [:h3 (use-tr [:tr/boards])]
       (into [:ul]
             (map (fn [board]
                    [:li [rough/link {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
@@ -106,28 +118,28 @@
 (v/defview board:one [{:as b :board/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
     [:div
-     [:h1 (str (tr [(keyword @!preferred-language)] [:tr/board]) (:board/title value))]
+     [:h1 (str (use-tr [:tr/board]) (:board/title value))]
      [:p (-> value :entity/domain :domain/name)]]
-     [:blockquote
-      [safe-html (-> value
-                     :board.landing-page/description-content
-                     :text-content/string)]]
-     [rough/tabs {:class "w-100"}
-      [rough/tab {:name (tr [(keyword @!preferred-language)] [:tr/projects])
-                  :class "db"}
-       (into [:ul]
-             (map (fn [proj]
-                    [:li [:a {:href (routes/path-for :project/one proj)}
-                          (:project/title proj)]]))
-             (-> result :value :project/_board))]
-      [rough/tab {:name (tr [(keyword @!preferred-language)] [:tr/members])
-                  :class "db"}
-       (into [:ul]
-             (map (fn [mbr]
-                    [:li
-                     [:a {:href (routes/path-for :member/one mbr)}
-                      (:member/name mbr)]]))
-             (:member/_board value))]]))
+    [:blockquote
+     [safe-html (-> value
+                    :board.landing-page/description-content
+                    :text-content/string)]]
+    [rough/tabs {:class "w-100"}
+     [rough/tab {:name (use-tr [:tr/projects])
+                 :class "db"}
+      (into [:ul]
+            (map (fn [proj]
+                   [:li [:a {:href (routes/path-for :project/one proj)}
+                         (:project/title proj)]]))
+            (-> result :value :project/_board))]
+     [rough/tab {:name (use-tr [:tr/members])
+                 :class "db"}
+      (into [:ul]
+            (map (fn [mbr]
+                   [:li
+                    [:a {:href (routes/path-for :member/one mbr)}
+                     (:member/name mbr)]]))
+            (:member/_board value))]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -148,24 +160,24 @@
 (v/defview project:one [{:as p :project/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
     [:div
-     [:h1 (str (tr [(keyword @!preferred-language)] [:tr/project]) " " (:project/title value))]
+     [:h1 (str (use-tr [:tr/project]) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
      (when-let [badges (:project.admin/badges value)]
-       [:section [:h3 (tr [(keyword @!preferred-language)] [:tr/badges])]
+       [:section [:h3 (tr [:tr/badges])]
         (into [:ul]
               (map (fn [bdg] [:li (:badge/label bdg)]))
               badges)])
      (when-let [vid (:project/video value)]
-       [:section [:h3 (tr [(keyword @!preferred-language)] [:tr/video])]
+       [:section [:h3 (tr [:tr/video])]
         [video-field vid]])]))
 
 (v/defview member:one [{:as mbr :member/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:member/one {:member/id id}])]
     [:div
-     [:h1 (str/join " " [(tr [(keyword @!preferred-language)] [:tr/member]) (:member/name value)])]
+     [:h1 (str/join " " [(use-tr [:tr/member]) (:member/name value)])]
      (when-let [tags (seq (concat (:member/tags value)
                                   (:member/tags.custom value)))]
-       [:section [:h3 (tr [(keyword @!preferred-language)] [:tr/tags])]
+       [:section [:h3 (tr [:tr/tags])]
         (into [:ul]
               (map (fn [tag]
                      (if (:tag.ad-hoc/label tag)
@@ -173,8 +185,7 @@
                        [:li [:span (when-let [bg (:tag/background-color tag)]
                                      {:style {:background-color bg}})
                              (:tag/label tag)]])))
-              (concat (:member/tags value)
-                      (:member/tags.custom value)))])
+              tags)])
      [:img {:src (:member/image-url value)}]]))
 
 ;; for DEBUG only:
@@ -214,18 +225,15 @@
 (v/defview global-header [{:keys [path tag]}]
   [:<>
    [:section
-    [:label {:for "language-selector"} (tr [(keyword @!preferred-language)] [:tr/lang])]
+    [:label {:for "language-selector"} (use-tr [:tr/lang])]
     ;; TODO draw the rest of the owl (make this change the translations currently in effect)
     (into [:select {:id "language-selector"
                     :default-value @!preferred-language
                     :on-change (fn [event]
-                                 (let [new-val (-> event .-target .-value)]
-                                   (reset! !preferred-language new-val)
-                                   (.setItem (.-localStorage js/window)
-                                             "sb.preferred-language"
-                                             new-val)))}]
+                                 (let [new-val (-> event .-target .-value keyword)]
+                                   (reset! !preferred-language new-val)))}]
           (map (fn [lang] [:option {:value (name lang)}
-                          (get-in i18n-dict [lang :meta/lect])]))
+                           (get-in i18n-dict [lang :meta/lect])]))
           (keys i18n-dict))]
    [rough/divider]])
 

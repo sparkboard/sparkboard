@@ -18,11 +18,11 @@
       (assoc :style (merge style1 style2)
              :class (str class1 " " class2))))
 
-(defn with-props [props children]
+(defn with-props [props children & {:keys [convert?] :or {convert? true}}]
   (let [[props2 children] (if (map? (first children))
                             [(first children) (rest children)]
                             [{} children])]
-    (into [(convert-props (merge-props props props2))]
+    (into [(cond-> (merge-props props props2) convert? convert-props)]
           children)))
 
 (defn button [& args] (convert/x (into [:wired-button] (with-props {} args))))
@@ -56,4 +56,5 @@
                    (with-props {:style (merge {:display "grid"
                                                :gap "1rem"
                                                :grid-template-columns "repeat(auto-fit, minmax(200px, 1fr))"}
-                                              style)} children))))
+                                              style)} children
+                               :convert? false))))
