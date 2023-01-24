@@ -2,18 +2,57 @@
   (:require
    [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
+   [clojure.string :as str]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.routes :as routes]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.views.rough :as rough]
+   [taoensso.tempura :as tempura]
    [yawn.hooks]
    [yawn.view :as v]))
 
-(v/defview home [] "Nothing to see here, folks.")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Internationalization / i18n
+
+(def i18n-dict
+  "Tempura-style dictionary of internationalizations, keyed by ISO-639-3.
+  See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
+  {:eng {:missing ":eng missing text"
+         :skeleton/nix "Nothing to see here, folks."
+         :tr {:lang "Language"
+              :search "Search"
+              :org "Organisation", :orgs "Organisations"
+              :boards "Boards"
+              :project "Project", :projects "Projects"
+              :member "Member", :members "Members"
+              :tag "Tag", :tags "Tags"
+              :badge "Badge", :badges "Badges"}}
+
+   :fra {:missing ":fra texte manquant"
+         :skeleton/nix "Rien à voir ici, les amis."
+         :tr {:lang "Langue"
+              :search "Rechercher"
+              :org "Organisation", :orgs "Organisations"
+              :boards "Tableaux"
+              :project "Projet", :projects "Projets"
+              :member "Membre", :members "Membres"
+              :tag "Mot-clé", :tags "Mots clés"
+              :badge "Insigne", :badges "Insignes"}}})
+
+(def tr
+  ;; TODO user-selected language with `:eng` fallback
+  (partial tempura/tr {:dict i18n-dict}))
+
+;; TODO replace all `[:fra]` with user-selected language
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(v/defview home [] (tr [:fra] [:skeleton/nix]))
 
 (v/defview org:index []
   [:div.pa3
-   [:h2 "Organizations"]
+   [:h2 (tr [:fra] [:tr/orgs])]
    (into [rough/grid {}]
          (map (fn [org-obj]
                 [rough/card {:class "pa3"}
@@ -25,10 +64,10 @@
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
         qry-result (ws/use-query [:org/search {:org/id id :query-params query-params}])]
     [:div
-     [:h1 "Org: " (:org/title value)]
+     [:h1 (tr [:fra] [:tr/org]) " " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
      (let [[v set-v!] (yawn.hooks/use-state nil)] ;; TODO maybe switch to inside-out?
-       [:section [:h3 "Search"]
+       [:section [:h3 (tr [:fra] [:tr/search])]
         ;; no "rough" here because it doesn't accept props like `id` and `on-change`
         [:input {:id "org-search", :placeholder "org-wide search"
                  :type "search"
@@ -37,12 +76,12 @@
                  :value v}]
         [rough/button {:on-click #(when (<= 3 (count v)) ;; FIXME don't silently do nothing on short entries
                                     (routes/assoc-query! :q v))}
-         "search"]
+         (tr [:fra] [:tr/search])]
         (into [:ul]
               (map (comp (partial vector :li)
                           str))
               (:value qry-result))])
-     [:section [:h3 "Boards"]
+     [:section [:h3 (tr [:fra] [:tr/boards])]
       (into [:ul]
             (map (fn [board]
                    [:li [rough/link {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
@@ -52,21 +91,21 @@
 (v/defview board:one [{:as b :board/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
     [:div
-     [:h1 (str "Board: " (:board/title value))]
+     [:h1 (str (tr [:fra] [:tr/board]) (:board/title value))]
      [:p (-> value :entity/domain :domain/name)]]
      [:blockquote
       [safe-html (-> value
                      :board.landing-page/description-content
                      :text-content/string)]]
      [rough/tabs {:class "w-100"}
-      [rough/tab {:name "Projects"
+      [rough/tab {:name (tr [:fra] [:tr/projects])
                   :class "db"}
        (into [:ul]
              (map (fn [proj]
                     [:li [:a {:href (routes/path-for :project/one proj)}
                           (:project/title proj)]]))
              (-> result :value :project/_board))]
-      [rough/tab {:name "Members"
+      [rough/tab {:name (tr [:fra] [:tr/members])
                   :class "db"}
        (into [:ul]
              (map (fn [mbr]
@@ -94,24 +133,24 @@
 (v/defview project:one [{:as p :project/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
     [:div
-     [:h1 (str "Project " (:project/title value))]
+     [:h1 (str (tr [:fra] [:tr/project]) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
      (when-let [badges (:project.admin/badges value)]
-       [:section [:h3 "Badges"]
+       [:section [:h3 (tr [:fra] [:tr/badges])]
         (into [:ul]
               (map (fn [bdg] [:li (:badge/label bdg)]))
               badges)])
      (when-let [vid (:project/video value)]
-       [:section [:h3 "Video"]
+       [:section [:h3 (tr [:fra] [:tr/video])]
         [video-field vid]])]))
 
 (v/defview member:one [{:as mbr :member/keys [id]}]
   (let [{:keys [value] :as result} (ws/use-query [:member/one {:member/id id}])]
     [:div
-     [:h1 (str "Member " (:member/name value))]
+     [:h1 (str/join " " [(tr [:fra] [:tr/member]) (:member/name value)])]
      (when-let [tags (seq (concat (:member/tags value)
                                   (:member/tags.custom value)))]
-       [:section [:h3 "Tags"]
+       [:section [:h3 (tr [:fra] [:tr/tags])]
         (into [:ul]
               (map (fn [tag]
                      (if (:tag.ad-hoc/label tag)
@@ -156,6 +195,14 @@
                              (.addEventListener "mouseup" on-mouseup #js{:once true})
                              (.addEventListener "mousemove" on-mousemove))))}]
       child]]))
+
+(v/defview global-header [{:keys [path tag]}]
+  [:<>
+   [:span (tr [:fra] [:tr/lang])]
+   [rough/combo {:selected "fra"} ;; TODO draw the rest of the owl
+    [rough/item {:value "eng"} "English"]
+    [rough/item {:value "fra"} "French"]]
+   [rough/divider]])
 
 (v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
   (cond->> [:<>

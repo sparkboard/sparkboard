@@ -14,6 +14,7 @@
 (v/defview root [] ;; top level view wrapper
   (let [{:as current-location :keys [path handler route-params query-params tag]} (hooks/use-atom routes/!current-location)]
     [:<>
+     [views/global-header current-location]
      (if handler
        [handler (assoc route-params :path path :query-params query-params)]
        (str "No view found for " tag))
