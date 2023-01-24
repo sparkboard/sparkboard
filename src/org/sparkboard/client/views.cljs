@@ -18,7 +18,11 @@
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-3.
   See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   {:eng {:missing ":eng missing text"
-         :skeleton/nix "Nothing to see here, folks."
+         ;; A `lect` is what a language or dialect variety is called; see
+         ;; https://en.m.wikipedia.org/wiki/Variety_(linguistics)
+         :meta/lect "English"
+         ;; Translations
+         :skeleton/nix "Nothing to see here, folks." ;; keyed separately from `tr` to mark it as dev-only
          :tr {:lang "Language"
               :search "Search"
               :org "Organisation", :orgs "Organisations"
@@ -29,6 +33,7 @@
               :badge "Badge", :badges "Badges"}}
 
    :fra {:missing ":fra texte manquant"
+         :meta/lect "Français"
          :skeleton/nix "Rien à voir ici, les amis."
          :tr {:lang "Langue"
               :search "Rechercher"
@@ -198,10 +203,12 @@
 
 (v/defview global-header [{:keys [path tag]}]
   [:<>
-   [:span (tr [:fra] [:tr/lang])]
-   [rough/combo {:selected "fra"} ;; TODO draw the rest of the owl
-    [rough/item {:value "eng"} "English"]
-    [rough/item {:value "fra"} "French"]]
+   [:section#language-selector
+    [:span (tr [:fra] [:tr/lang])]
+    (into [rough/combo {:selected "fra"}]  ;; TODO draw the rest of the owl
+          (map (fn [lang] [rough/item {:value (name lang)}
+                           (get-in i18n-dict [lang :meta/lect])]))
+          (keys i18n-dict))]
    [rough/divider]])
 
 (v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
