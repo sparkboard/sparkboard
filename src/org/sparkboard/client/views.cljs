@@ -53,19 +53,22 @@
   (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
     [:div
      [:h1 (str "Board: " (:board/title value))]
-     [:p (-> value :entity/domain :domain/name)]]
-     [:blockquote
-      [safe-html (-> value
-                     :board.landing-page/description-content
-                     :text-content/string)]]
+     [:p (-> value :entity/domain :domain/name)]
      [rough/tabs {:class "w-100"}
+      [rough/tab {:name "Summary" :class "db"}
+       [:blockquote
+        [safe-html (-> value
+                       :board.landing-page/description-content
+                       :text-content/string)]]]
       [rough/tab {:name "Projects"
                   :class "db"}
        (into [:ul]
              (map (fn [proj]
                     [:li [:a {:href (routes/path-for :project/one proj)}
                           (:project/title proj)]]))
-             (-> result :value :project/_board))]
+             (-> result :value :project/_board))
+       [rough/button {:on-click #(println "TODO add new project")}
+        "add new project"]]
       [rough/tab {:name "Members"
                   :class "db"}
        (into [:ul]
@@ -73,7 +76,7 @@
                     [:li
                      [:a {:href (routes/path-for :member/one mbr)}
                       (:member/name mbr)]]))
-             (:member/_board value))]]))
+             (:member/_board value))]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
