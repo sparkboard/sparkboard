@@ -210,12 +210,12 @@
                              "eng")]
       ;; TODO draw the rest of the owl (make this change the translations currently in effect)
       (into [:select {:id "language-selector"
+                      :default-value preferred-lang
                       :on-change (fn [event] (.setItem (.-localStorage js/window)
                                                        "sb.preferred-language"
                                                        (-> event .-target .-value)))}]
-            (map (fn [lang] [:option (cond-> {:value (name lang)}
-                                       (= preferred-lang (name lang)) (assoc :selected true))
-                             (get-in i18n-dict [lang :meta/lect])]))
+            (map (fn [lang] [:option {:value (name lang)}
+                            (get-in i18n-dict [lang :meta/lect])]))
             (keys i18n-dict)))]
    [rough/divider]])
 
