@@ -203,12 +203,20 @@
 
 (v/defview global-header [{:keys [path tag]}]
   [:<>
-   [:section#language-selector
-    [:span (tr [:fra] [:tr/lang])]
-    (into [rough/combo {:selected "fra"}]  ;; TODO draw the rest of the owl
-          (map (fn [lang] [rough/item {:value (name lang)}
-                           (get-in i18n-dict [lang :meta/lect])]))
-          (keys i18n-dict))]
+   [:section
+    [:label {:for "language-selector"} (tr [:fra] [:tr/lang])]
+    (let [preferred-lang (or (.getItem (.-localStorage js/window)
+                                       "sb.preferred-language")
+                             "eng")]
+      ;; TODO draw the rest of the owl (make this change the translations currently in effect)
+      (into [:select {:id "language-selector"
+                      :on-change (fn [event] (.setItem (.-localStorage js/window)
+                                                       "sb.preferred-language"
+                                                       (-> event .-target .-value)))}]
+            (map (fn [lang] [:option (cond-> {:value (name lang)}
+                                       (= preferred-lang (name lang)) (assoc :selected true))
+                             (get-in i18n-dict [lang :meta/lect])]))
+            (keys i18n-dict)))]
    [rough/divider]])
 
 (v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
