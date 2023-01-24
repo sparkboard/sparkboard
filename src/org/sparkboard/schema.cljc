@@ -101,11 +101,14 @@
                                :label/project.one
                                :label/project.many] :string]},
    :board/org (ref :one #{:org/id})
-   :board/title {s- :string}
+   :board/title {s- :string
+                 :db/fulltext true}
    :board.landing-page/description-content {:doc "Primary description of a board, displayed in header"
-                                            s- :text-content/block}
+                                            s- :text-content/block
+                                            :db/fulltext true}
    :board.landing-page/instruction-content {:doc "Secondary instructions for a board, displayed above projects"
-                                            s- :text-content/block},
+                                            s- :text-content/block
+                                            :db/fulltext true},
    :board.landing-page/learn-more-url {:doc ""
                                        s- :http/url}
    :member.settings/max-projects {:doc "Set a maximum number of projects a member may join"
@@ -252,6 +255,7 @@
                      [:field.type/text-content
                       [:map {:closed true}
                        :text-content/block
+                       [:db/fulltext [:= true]]
                        [:field/type [:= :field.type/text-content]]]]
                      [:field.type/video
                       [:map {:closed true}
@@ -471,7 +475,8 @@
    :post/id unique-string-id
    :post/comments (merge (ref :many #{:post.comment/id})
                          s/component)
-   :post/text-content {s- :text-content/block}
+   :post/text-content {s- :text-content/block
+                       :db/fulltext true}
    :post/do-not-follow (merge
                         {:doc "Members who should not auto-follow this post after replying to it"}
                         (ref :many #{:member/id}))
@@ -508,8 +513,9 @@
    :project/open-requests {:doc "Currently active requests for help"
                            s- [:sequential :request/map]},
    :project/summary-text {:doc "Short description of project suitable for card or <head> meta"
-                          s- :string}
-   :project/title {s- :string}
+                          s- :string
+                          :db/fulltext true}
+   :project/title {s- :string, :db/fulltext true}
    :project/viable-team? {:doc "Project has sufficient members to proceed"
                           s- :boolean}
    :project/video {:doc "Primary video for project (distinct from fields)"

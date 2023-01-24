@@ -3,41 +3,49 @@
    [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
    [org.sparkboard.client.sanitize :refer [safe-html]]
-   [org.sparkboard.routes :as routes :refer [path-for]]
-   [org.sparkboard.views.rough :as rough]
+   [org.sparkboard.routes :as routes]
    [org.sparkboard.websockets :as ws]
-   [yawn.hooks :as hooks]
+   [org.sparkboard.views.rough :as rough]
+   [yawn.hooks]
    [yawn.view :as v]))
 
 (v/defview home [] "Nothing to see here, folks.")
 
-(v/defview skeleton []
+(v/defview org:index []
   [:div.pa3
    [:h2 "Organizations"]
-   (into [rough/grid]
+   (into [rough/grid {}]
          (map (fn [org-obj]
                 [rough/card {:class "pa3"}
-                 [:a {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})} (:org/title org-obj)]]))
+                 [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
+                  (:org/title org-obj)]]))
          (:value (ws/use-query [:org/index])))])
 
-(v/defview org:index []
-  (let [orgs (:value (ws/use-query [:org/index]))]
-    [:div
-     [:h1 "Orgs"]
-     (into [:ul]
-           (fn [{:as o :org/keys [title id]}]
-             [:li [:a {:href (path-for :org/one {:org/id id})} title]])
-           @orgs)]))
-
-(v/defview org:one [{:as o :org/keys [id]}]
-  (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])]
+(v/defview org:one [{:as o :keys [org/id query-params]}]
+  (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
+        qry-result (ws/use-query [:org/search {:org/id id :query-params query-params}])]
     [:div
      [:h1 "Org: " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
+     (let [[v set-v!] (yawn.hooks/use-state nil)] ;; TODO maybe switch to inside-out?
+       [:section [:h3 "Search"]
+        ;; no "rough" here because it doesn't accept props like `id` and `on-change`
+        [:input {:id "org-search", :placeholder "org-wide search"
+                 :type "search"
+                 :on-change (fn [event] (-> event .-target .-value set-v!))
+                 ;; TODO search on "enter" keypress
+                 :value v}]
+        [rough/button {:on-click #(when (<= 3 (count v)) ;; FIXME don't silently do nothing on short entries
+                                    (routes/assoc-query! :q v))}
+         "search"]
+        (into [:ul]
+              (map (comp (partial vector :li)
+                          str))
+              (:value qry-result))])
      [:section [:h3 "Boards"]
       (into [:ul]
             (map (fn [board]
-                   [:li [:a {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
+                   [:li [rough/link {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
             (:board/_org (:value result)))]]))
 
@@ -45,7 +53,7 @@
   (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
     [:div
      [:h1 (str "Board: " (:board/title value))]
-     [:p (-> value :entity/domain :domain/name)]
+     [:p (-> value :entity/domain :domain/name)]]
      [:blockquote
       [safe-html (-> value
                      :board.landing-page/description-content
@@ -65,7 +73,7 @@
                     [:li
                      [:a {:href (routes/path-for :member/one mbr)}
                       (:member/name mbr)]]))
-             (:member/_board value))]]]))
+             (:member/_board value))]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -75,8 +83,8 @@
 (defn video-field [[kind v]]
   (case kind
     :field.video/youtube-id (youtube-embed v)
-    :field.video/youtube-url [:a {:href v} "youtube video"]
-    :field.video/vimeo-url [:a {:href v} "vimeo video"]
+    :field.video/youtube-url [rough/link {:href v} "youtube video"]
+    :field.video/vimeo-url [rough/link {:href v} "vimeo video"]
     {kind v}))
 
 (comment
@@ -119,16 +127,16 @@
 
 (v/defview show-query [path]
   (let [{:keys [value error loading?]} (ws/use-query path)
-        value (hooks/use-memo
+        value (yawn.hooks/use-memo
                (fn [] (with-out-str (pprint value)))
-               (hooks/use-deps value))]
+               (yawn.hooks/use-deps value))]
     (cond loading? [rough/spinner {:duration 1000 :spinning true}]
           error [:div "Error: " error]
           value [:pre value])))
 
 (v/defview drawer [{:keys [initial-height]} child]
   ;; the divider is draggable and sets the height of the drawer
-  (let [!height (hooks/use-state initial-height)]
+  (let [!height (yawn.hooks/use-state initial-height)]
     [:<>
      [:div {:style {:height @!height}}]
      [:div.ph3.code.fixed.bottom-0.left-0.right-0.bg-white.overflow-y-scroll

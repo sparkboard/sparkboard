@@ -121,16 +121,13 @@
 (def app
   (-> (impl/join-handlers
        slack.server/handler
-       (ws/handler "/ws" {:handlers (merge
-                                     {:conj! (fn [_] (swap! queries/!list conj (rand-int 100)))}
-                                     (sync/query-handlers
-                                      (fn [query]
-                                        (if (string? query)
-                                          (resolve-query @routes/!bidi-routes query)
-                                          (let [[id & args] query
-                                                query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
-                                            (apply query-fn (or (seq args) [{}]))
-                                            )))))})
+       (ws/handler "/ws" {:handlers (merge (sync/query-handlers
+                                            (fn [query]
+                                              (if (string? query)
+                                                (resolve-query @routes/!bidi-routes query)
+                                                (let [[id & args] query
+                                                      query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
+                                                  (apply query-fn (or (seq args) [{}])))))))})
        (-> (query-handler {:!routes routes/!bidi-routes
                            :html-response (server.views/spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))

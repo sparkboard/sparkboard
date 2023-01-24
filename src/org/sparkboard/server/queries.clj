@@ -4,7 +4,7 @@
             [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.memo :refer [def-memo defn-memo]]
-            [org.sparkboard.datalevin :refer [conn]]
+            [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
             [re-db.api :as db]))
 
 (defn transact! [txs]
@@ -18,7 +18,8 @@
 
 (defn-memo $org:one [{:keys [org/id]}]
   (q/reaction conn
-    (db/pull '[:org/title
+    (db/pull '[:org/id
+               :org/title
                {:board/_org [:ts/created-at
                              :board/id
                              :board/title]}
@@ -61,9 +62,11 @@
                {:member/tags [*]}]
              [:member/id id])))
 
-(defonce !list (atom ()))
-
-(defn-memo $list-view [_]
-  (sync/$values !list))
-
+(defn-memo $search [{:keys [query-params org/id] :as route-params}]
+  (->> (sb.datalevin/q-fulltext-in-org (:q query-params)
+                                       id)
+       ;; Can't send Entities over the wire, so:
+       (map (db/pull '[:project/title
+                       :board/title]))
+       (q/reaction conn)))
 

@@ -7,18 +7,15 @@
             [org.sparkboard.routes :as routes]
             [pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
-            [shadow.lazy :as lazy]
             [yawn.hooks :as hooks]
             [yawn.root :as root]
             [yawn.view :as v]))
 
-(defonce !current-location (atom nil))
-
-(v/defview root []
-  (let [{:as current-location :keys [path handler route-params tag]} (hooks/use-atom !current-location)]
+(v/defview root [] ;; top level view wrapper
+  (let [{:as current-location :keys [path handler route-params query-params tag]} (hooks/use-atom routes/!current-location)]
     [:<>
      (if handler
-       [handler (assoc route-params :path path)]
+       [handler (assoc route-params :path path :query-params query-params)]
        (str "No view found for " tag))
      [views/dev-drawer {:fixed? handler} current-location]]))
 
@@ -27,18 +24,8 @@
 (defn render []
   (root/render @!react-root (root)))
 
-(defonce history (pushy/pushy
-                  (fn [{:as match handler :handler}]
-                    (if (instance? lazy/Loadable handler)
-                      (lazy/load handler
-                                 (fn [handler]
-                                   (reset! !current-location (assoc match :handler handler))))
-                      (reset! !current-location match)))
-                  (fn [path]
-                    (routes/match-route path))))
-
 (defn ^:dev/after-load start-router []
-  (pushy/start! history) )
+  (pushy/start! routes/history) )
 
 (defn init []
   (firebase/init)
