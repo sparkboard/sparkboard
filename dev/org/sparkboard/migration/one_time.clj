@@ -1052,16 +1052,12 @@
  ;; (on my machine, the next line fails if I don't re-eval `org.sparkboard.datalevin` here)
 
  (d/merge-schema! sschema/sb-schema) ;; transact schema
- (do
-   ;; transact lookup refs first,
-   (d/transact! (mapcat sschema/unique-keys (all-entities)))
-   ;; then transact everything else
-   (d/transact! (all-entities)))
 
- (def lmdb (dl/open-kv sb.dl/db-path))
- (def search-engine (dl/new-search-engine lmdb))
- (dl/search search-engine "idée innovante")
- (dl/search search-engine "selfcare issu de production textile innovante")
+ ;; transact lookup refs first,
+ (d/transact! (mapcat sschema/unique-keys (all-entities)))
+ ;; then transact everything else
+ (d/transact! (all-entities))
+
 
  ;; only for debugging when something fails to transact
  (doseq [doc (all-entities)]

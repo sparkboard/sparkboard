@@ -6,8 +6,9 @@
             [re-db.api :as db]))
 
 (defn transact! [txs]
-  (->> (db/transact! conn txs)
-       (read/handle-report! conn)))
+  (db/with-conn conn
+    (->> (db/transact! txs)
+         (read/handle-report! conn))))
 
 (defn-memo $org:index [_]
   (db/bound-reaction conn

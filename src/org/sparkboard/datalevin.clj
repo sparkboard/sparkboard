@@ -5,13 +5,10 @@
             [re-db.integrations.datalevin]
             [re-db.read]))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
 
-(def db-path (env/db-path "datalevin"))
-
-(def conn (dl/get-conn db-path {}))
+(def conn (dl/get-conn (env/db-path "datalevin") {}))
 
 (alter-var-root #'re-db.read/*conn* (constantly conn))
 
@@ -53,13 +50,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Fulltext search
 
-(def lmdb
-  "Key-value store. Useful for search."
-  (dl/open-kv db-path))
-
-(def search-engine
-  (dl/new-search-engine lmdb))
-
 (defn entity-in-org?
   "Predicate fn, handy for search. Truthy iff given entity `ent` is within the organization identified by ID `oid`."
   ;; FIXME this may be a dead-end approach. consider implementing with datalog rules. however, also consider design ramifications of `search` instead of `q`.
@@ -91,10 +81,6 @@
 
 
 (comment
-  (dl/search search-engine "idée innovante")
-
-  (map first (dl/search search-engine "selfcare issu de production textile innovante"))
-
 
   (dl/q '[:find ?v
           :in $ ?board-title
