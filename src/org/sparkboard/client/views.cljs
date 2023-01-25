@@ -4,79 +4,12 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
    [org.sparkboard.client.sanitize :refer [safe-html]]
+   [org.sparkboard.i18n :as i18n :refer [tr use-tr]]
    [org.sparkboard.routes :as routes]
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
-   [re-db.reactive :as r]
-   [re-db.sync.transit :as transit]
-   [taoensso.tempura :as tempura]
    [yawn.hooks :refer [use-deref]]
-   [yawn.view :as v]
-   [re-db.memo :as memo]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Internationalization / i18n
-
-(memo/defn-memo $local-storage
-  "Returns a 2-way syncing local-storage atom identified by `k` with default value"
-  [k default]
-  (let [k (str k)]
-    (doto (r/atom (or (-> (.-localStorage js/window)
-                          (.getItem k)
-                          transit/unpack)
-                      default))
-      (add-watch ::update-local-storage
-                 (fn [_k _atom _old new]
-                   (.setItem (.-localStorage js/window)
-                             k
-                             (transit/pack new)))))))
-
-(defonce !preferred-language ($local-storage ::preferred-language :eng))
-
-(defonce !locales
-  (r/reaction (into [] (distinct) [@!preferred-language :eng])))
-
-(def i18n-dict
-  "Tempura-style dictionary of internationalizations, keyed by ISO-639-3.
-  See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
-  {:eng {:missing ":eng missing text"
-         ;; A `lect` is what a language or dialect variety is called; see
-         ;; https://en.m.wikipedia.org/wiki/Variety_(linguistics)
-         :meta/lect "English"
-         ;; Translations
-         :skeleton/nix "Nothing to see here, folks." ;; keyed separately from `tr` to mark it as dev-only
-         :tr {:lang "Language"
-              :search "Search"
-              :org "Organisation", :orgs "Organisations"
-              :boards "Boards"
-              :project "Project", :projects "Projects"
-              :member "Member", :members "Members"
-              :tag "Tag", :tags "Tags"
-              :badge "Badge", :badges "Badges"}}
-
-   :fra {:missing ":fra texte manquant"
-         :meta/lect "Français"
-         :skeleton/nix "Rien à voir ici, les amis."
-         :tr {:lang "Langue"
-              :search "Rechercher"
-              :org "Organisation", :orgs "Organisations"
-              :boards "Tableaux"
-              :project "Projet", :projects "Projets"
-              :member "Membre", :members "Membres"
-              :tag "Mot-clé", :tags "Mots clés"
-              :badge "Insigne", :badges "Insignes"}}})
-
-(defn use-tr
-  ;; hook: reactive, must follow rules of hooks
-  ([resource-ids] (tempura/tr {:dict i18n-dict} (use-deref !locales) resource-ids))
-  ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} (use-deref !locales) resource-ids resource-args)))
-
-(defn tr
-  ;; not reactive within yawn, doesn't need to follow rules of hooks
-  ;; (raises the NB question: how (far) to integrate re-db.reactive with yawn)
-  ([resource-ids] (tempura/tr {:dict i18n-dict} @!locales resource-ids))
-  ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} @!locales resource-ids resource-args)))
-
+   [yawn.view :as v]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -94,21 +27,22 @@
 
 (v/defview org:one [{:as o :keys [org/id query-params]}]
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
-        qry-result (ws/use-query [:org/search {:org/id id :query-params query-params}])]
+        qry-result (ws/use-query [:org/search {:org/id id
+                                               :query-params query-params}])]
     [:div
      [:h1 (use-tr [:tr/org]) " " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
-     (let [[v set-v!] (yawn.hooks/use-state "")] ;; TODO maybe switch to inside-out?
-       [:section [:h3 (use-tr [:tr/search])]
-        ;; no "rough" here because it doesn't accept props like `id` and `on-change`
-        [:input {:id "org-search", :placeholder "org-wide search"
-                 :type "search"
-                 :on-change (fn [event] (-> event .-target .-value set-v!))
-                 ;; TODO search on "enter" keypress
-                 :value v}]
-        [rough/button {:on-click #(when (<= 3 (count v)) ;; FIXME don't silently do nothing on short entries
-                                    (routes/assoc-query! :q v))}
-         (use-tr [:tr/search])]
+     (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
+       [:section
+        [:h3 (use-tr [:tr/search])]
+        [rough/search-input
+         {:id "org-search", :placeholder "org-wide search"
+          :type "search"
+          :on-input (fn [event] (-> event .-target .-value set-q!))
+          :on-key-down (j/fn [^js {:keys [key]}]
+                         (when (= key "Enter")
+                           (routes/merge-query! {:q (when (<= 3 (count q)) q)})))
+          :value q}]
         (into [:ul]
               (map (comp (partial vector :li)
                          str))
@@ -232,13 +166,13 @@
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
     (into [:select {:id "language-selector"
-                    :default-value (name @!preferred-language)
+                    :default-value (name @i18n/!preferred-language)
                     :on-change (fn [event]
-                                 (reset! !preferred-language
+                                 (reset! i18n/!preferred-language
                                          (-> event .-target .-value keyword)))}]
           (map (fn [lang] [:option {:value (name lang)}
-                           (get-in i18n-dict [lang :meta/lect])]))
-          (keys i18n-dict))]
+                           (get-in i18n/dict [lang :meta/lect])]))
+          (keys i18n/dict))]
    [rough/divider]])
 
 (v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]

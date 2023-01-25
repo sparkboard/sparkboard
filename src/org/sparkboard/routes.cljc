@@ -7,8 +7,9 @@
             [org.sparkboard.client.slack :as-alias slack.client]
             [org.sparkboard.client.auth :as-alias auth.client]
             [org.sparkboard.macros :refer [lazy-views]]
-            #?(:cljs [pushy.core :as pushy])
             [re-db.reactive :as r]
+            [tools.sparkboard.browser.query-params :as query-params]
+            #?(:cljs [pushy.core :as pushy])
             #?(:cljs [shadow.lazy :as lazy])
             #?(:clj [org.sparkboard.server.views :as server.views])
             #?(:clj [org.sparkboard.server.env :as env]))
@@ -44,9 +45,8 @@
                       :query `queries/$org:one
                       :view `views/org:one}
             :org/search {:route ["/o/" :org/id "/search"]
-                         :query `queries/$search
-                         :view `views/search:results}
-            
+                         :query `queries/$search}
+
             :board/index {:route ["/b"] ;; XXX cruft?
                           :query `queries/$board:index}
             :board/one {:route ["/b/" :board/id]
@@ -97,22 +97,13 @@
      (unresolve-handler [this m] (when (= this (:handler m)) ""))))
 
 #?(:cljs
-   (do 
+   (do
      (defonce !current-location (atom nil))
-     
+
      (defn as-url ^js [route]
        (if (instance? js/URL route)
          route
          (new js/URL route "https://example.com")))
-
-     (defn parse-query
-       "Returns query parameters as map."
-       [path]
-       (->> (j/get (as-url path) :searchParams)
-            (reduce (fn [m [k v]]
-                      (cond-> m
-                        (not (str/blank? v))
-                        (assoc (keyword k) v))) {})))
 
      (defonce history (pushy/pushy
                        (fn [{:as match handler :handler}]
@@ -120,33 +111,14 @@
                            (lazy/load handler
                                       (fn [handler]
                                         (reset! !current-location (assoc match
-                                                                                :query-params (parse-query (:path match))
-                                                                                :handler handler))))
+                                                                    :query-params (query-params/path->map
+                                                                                   (:path match))
+                                                                    :handler handler))))
                            (reset! !current-location match)))
                        (fn [path]
                          (match-route path))))
 
-     (defn query-string
-       "Returns query string, including '?'. Removes empty values. Returns nil if empty."
-       [m]
-       (some->> m 
-                (reduce-kv (fn [out k v]
-                             (cond-> out
-                               (not (str/blank? v))
-                               (conj (str (js/encodeURIComponent (name k))
-                                          "="
-                                          (js/encodeURIComponent v))))) [])
-                (str/join "&")
-                (str "?")))
-     
-     (defn assoc-query! [k v]
-       (j/let [^js {:keys [href pathname hash]} js/location
-               new-query-map (-> href
-                                 parse-query
-                                 (assoc k v))]
-         (pushy/set-token! history
-                           (str pathname
-                                (query-string new-query-map)
-                                hash))
-         ;; HACK we expect above pushy to do the following but it doesn't
-         (swap! !current-location assoc :query-params new-query-map)))))
+     (defn merge-query! [params]
+       (let [{:keys [path query-params]} (query-params/merge-query (:path @!current-location) params)]
+         (pushy/set-token! history path)
+         (swap! !current-location assoc :query-params query-params)))))
