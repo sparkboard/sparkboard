@@ -5,7 +5,7 @@
             [lambdaisland.uri :as uri]
             [org.sparkboard.client.env :as env]
             [org.sparkboard.client.firebase :as firebase]
-            [yawn.hooks :refer [use-deref]]
+            [yawn.hooks :as hooks :refer [use-deref]]
             [yawn.view :as v]))
 
 (def db (delay (.database firebase/app)))

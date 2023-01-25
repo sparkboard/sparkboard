@@ -11,22 +11,27 @@
    [re-db.sync.transit :as transit]
    [taoensso.tempura :as tempura]
    [yawn.hooks :refer [use-deref]]
-   [yawn.view :as v]))
+   [yawn.view :as v]
+   [re-db.memo :as memo]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Internationalization / i18n
 
-(defonce !preferred-language
-  (let [local-storage-key (str ::preferred-language)]
+(memo/defn-memo $local-storage
+  "Returns a 2-way syncing local-storage atom identified by `k` with default value"
+  [k default]
+  (let [k (str k)]
     (doto (r/atom (or (-> (.-localStorage js/window)
-                          (.getItem local-storage-key)
+                          (.getItem k)
                           transit/unpack)
-                      :eng))
+                      default))
       (add-watch ::update-local-storage
                  (fn [_k _atom _old new]
                    (.setItem (.-localStorage js/window)
-                             local-storage-key
+                             k
                              (transit/pack new)))))))
+
+(defonce !preferred-language ($local-storage ::preferred-language :eng))
 
 (defonce !locales
   (r/reaction (into [] (distinct) [@!preferred-language :eng])))
@@ -61,7 +66,7 @@
               :tag "Mot-clé", :tags "Mots clés"
               :badge "Insigne", :badges "Insignes"}}})
 
-(defn use-tr*
+(defn use-tr
   ;; hook: reactive, must follow rules of hooks
   ([resource-ids] (tempura/tr {:dict i18n-dict} (use-deref !locales) resource-ids))
   ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} (use-deref !locales) resource-ids resource-args)))
@@ -71,8 +76,6 @@
   ;; (raises the NB question: how (far) to integrate re-db.reactive with yawn)
   ([resource-ids] (tempura/tr {:dict i18n-dict} @!locales resource-ids))
   ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} @!locales resource-ids resource-args)))
-
-(def use-tr tr)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
