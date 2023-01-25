@@ -9,6 +9,7 @@
                    (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
                    (def env (:env options :staging))
                    (def app (:app options (apps env))))
+         server (shell "yarn shadow-cljs -A:clerk:datalevin server")
          dev (do (shell "rm -rf ./classes")
                  (shell "yarn shadow-cljs -A:clerk:datalevin clj-run org.sparkboard.dev/start"))
          cljs (do (shell "yarn install")

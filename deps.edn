@@ -2,7 +2,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
 
         ;; v2
-        datalevin/datalevin {:mvn/version "0.7.7"}
+        datalevin/datalevin {:mvn/version "0.8.4"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "2ee66cace798ada6580f8509bb44b75889f5906f"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"

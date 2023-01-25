@@ -98,7 +98,7 @@
     [:div
      [:h1 (use-tr [:tr/org]) " " (:org/title value)]
      [:p (-> value :entity/domain :domain/name)]
-     (let [[v set-v!] (yawn.hooks/use-state nil)] ;; TODO maybe switch to inside-out?
+     (let [[v set-v!] (yawn.hooks/use-state "")] ;; TODO maybe switch to inside-out?
        [:section [:h3 (use-tr [:tr/search])]
         ;; no "rough" here because it doesn't accept props like `id` and `on-change`
         [:input {:id "org-search", :placeholder "org-wide search"
