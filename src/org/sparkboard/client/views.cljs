@@ -231,12 +231,11 @@
   [:<>
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
-    ;; TODO draw the rest of the owl (make this change the translations currently in effect)
     (into [:select {:id "language-selector"
-                    :default-value @!preferred-language
+                    :default-value (name @!preferred-language)
                     :on-change (fn [event]
-                                 (let [new-val (-> event .-target .-value keyword)]
-                                   (reset! !preferred-language new-val)))}]
+                                 (reset! !preferred-language
+                                         (-> event .-target .-value keyword)))}]
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n-dict [lang :meta/lect])]))
           (keys i18n-dict))]
