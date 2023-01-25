@@ -10,7 +10,7 @@
    [re-db.reactive :as r]
    [re-db.sync.transit :as transit]
    [taoensso.tempura :as tempura]
-   [yawn.hooks]
+   [yawn.hooks :refer [use-deref]]
    [yawn.view :as v]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -61,16 +61,18 @@
               :tag "Mot-clé", :tags "Mots clés"
               :badge "Insigne", :badges "Insignes"}}})
 
-(defn use-tr
+(defn use-tr*
   ;; hook: reactive, must follow rules of hooks
-  ([resource-ids] (tempura/tr {:dict i18n-dict} (yawn.hooks/use-atom !locales) resource-ids))
-  ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} (yawn.hooks/use-atom !locales) resource-ids resource-args)))
+  ([resource-ids] (tempura/tr {:dict i18n-dict} (use-deref !locales) resource-ids))
+  ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} (use-deref !locales) resource-ids resource-args)))
 
 (defn tr
   ;; not reactive within yawn, doesn't need to follow rules of hooks
   ;; (raises the NB question: how (far) to integrate re-db.reactive with yawn)
   ([resource-ids] (tempura/tr {:dict i18n-dict} @!locales resource-ids))
   ([resource-ids resource-args] (tempura/tr {:dict i18n-dict} @!locales resource-ids resource-args)))
+
+(def use-tr tr)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

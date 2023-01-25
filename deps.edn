@@ -6,7 +6,7 @@
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "742acafd6d62e1d2f5c2fe5e36c168d8ccf9f6f0"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
-                                 :git/sha "55daa1023d1c4ce147bb459fe8b7906f72d3eab4"}
+                                 :git/sha "b8cc0e21d455632e5a6b1d7d0de56a221e73b0c5"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}

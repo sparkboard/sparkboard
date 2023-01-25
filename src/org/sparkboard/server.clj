@@ -21,7 +21,6 @@
             [org.sparkboard.slack.server :as slack.server]
             [re-db.api :as db]
             [re-db.memo :as memo]
-            [re-db.query :as q]
             [re-db.reactive :as r]
             [re-db.read :as read]
             [re-db.sync :as sync]

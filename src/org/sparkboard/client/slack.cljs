@@ -5,7 +5,7 @@
             [lambdaisland.uri :as uri]
             [org.sparkboard.client.env :as env]
             [org.sparkboard.client.firebase :as firebase]
-            [yawn.hooks :as hooks]
+            [yawn.hooks :refer [use-deref]]
             [yawn.view :as v]))
 
 (def db (delay (.database firebase/app)))
@@ -31,7 +31,7 @@
                                   team-domain
                                   team-name
                                   redirect-encoded]} :query-params}]
-  (j/let [^:js {:keys [uid displayName photoURL email]} (:user (hooks/use-atom firebase/!auth-state))
+  (j/let [^:js {:keys [uid displayName photoURL email]} (:user (use-deref firebase/!auth-state))
           slack-user (use-firebase-value (when uid [:account uid :slack-team team-id :user-id]))
           team-link (str "https://" team-domain ".slack.com")
           app-id (-> env/config :slack/app-id)

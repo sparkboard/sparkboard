@@ -1,6 +1,6 @@
 (ns org.sparkboard.websockets
   (:require #?(:clj [org.httpkit.server :as httpkit])
-            #?(:cljs [yawn.hooks :as hooks])
+            #?(:cljs [yawn.hooks :refer [use-deref]])
             [applied-science.js-interop :as j]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]))
@@ -81,7 +81,7 @@
 
 #?(:cljs
    (defn use-query [query-vec]
-     (hooks/use-atom ($query query-vec))))
+     (use-deref ($query query-vec))))
 
 #?(:cljs
    (defn send [message]

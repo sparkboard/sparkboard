@@ -3,7 +3,7 @@
             [applied-science.js-interop :as j]
             [org.sparkboard.client.firebase :as firebase]
             [tools.sparkboard.promise :as p]
-            [yawn.hooks :as hooks]
+            [yawn.hooks :refer [use-deref]]
             [yawn.view :as v]))
 
 ;; TODO
@@ -30,7 +30,7 @@
   [:div#firebaseui])
 
 (v/defview auth-header* []
-  (let [{:keys [status id-token user]} (hooks/use-atom firebase/!auth-state)]
+  (let [{:keys [status id-token user]} (use-deref firebase/!auth-state)]
     (cond (nil? status) "Loading..."
           (or (= :signed-out status)
               (j/call @firebase/UI :isPendingRedirect)) [use-firebaseui-web]

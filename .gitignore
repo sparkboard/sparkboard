@@ -27,3 +27,5 @@ TODO.md
 *.log
 resources/clerk
 .clerk
+.clj-kondo
+.lsp

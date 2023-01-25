@@ -7,12 +7,12 @@
             [org.sparkboard.routes :as routes]
             [pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
-            [yawn.hooks :as hooks]
+            [yawn.hooks :refer [use-deref]]
             [yawn.root :as root]
             [yawn.view :as v]))
 
 (v/defview root [] ;; top level view wrapper
-  (let [{:as current-location :keys [path handler route-params query-params tag]} (hooks/use-atom routes/!current-location)]
+  (let [{:as current-location :keys [path handler route-params query-params tag]} (use-deref routes/!current-location)]
     [:<>
      [views/global-header current-location]
      (if handler
