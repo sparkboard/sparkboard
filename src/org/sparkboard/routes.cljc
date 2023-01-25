@@ -8,7 +8,7 @@
             [org.sparkboard.client.auth :as-alias auth.client]
             [org.sparkboard.macros :refer [lazy-views]]
             [re-db.reactive :as r]
-            [tools.sparkboard.browser.query-params :as query-params]
+            #?(:cljs [tools.sparkboard.browser.query-params :as query-params])
             #?(:cljs [pushy.core :as pushy])
             #?(:cljs [shadow.lazy :as lazy])
             #?(:clj [org.sparkboard.server.views :as server.views])
