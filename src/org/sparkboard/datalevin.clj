@@ -5,7 +5,7 @@
             [re-db.integrations.datalevin]
             [re-db.read]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
 
 (def conn (dl/get-conn (env/db-path "datalevin") {}))
@@ -20,7 +20,7 @@
  (->> (d/where [:org/id])
       (map (d/pull '[*
                      :db/id
-                     #_ {:board.settings/default-template [*]}
+                     #_{:board.settings/default-template [*]}
                      {:entity/domain [*]}
                      {:ts/created-by [*]}])))
 
@@ -28,14 +28,14 @@
       (map (d/pull '[*
                      :db/id
                      :org/title
-                     #_ {:board.settings/default-template [*]}
+                     #_{:board.settings/default-template [*]}
                      {:entity/domain [*]}
                      {:ts/created-by [*]}])))
- 
+
  )
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Queries
 
 (defn qry-orgs []
@@ -47,7 +47,7 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Fulltext search
 
 (defn entity-in-org?
@@ -82,28 +82,28 @@
 
 (comment
 
-  (dl/q '[:find ?v
-          :in $ ?board-title
-          :where
-          [?e :board/title ?board-title]
-          [?e ?a ?v]]
-        (dl/db conn)
-        "Tout commence par une idée!")
-  
-  (->> (dl/q '[:find ?e ?a ?v
-               :in $ ?terms
-               :where [(fulltext $ ?terms)
-                       [[?e ?a ?v]]]]
-             (dl/db conn)
-             #_"masa"
-             "idée innovante"
-             #_"innovante")
-       (map (comp d/entity first))
-       (filter (partial entity-in-org? "robo-avatar" #_"opengeneva"))
-       (map #(into {} %)))
+ (dl/q '[:find ?v
+         :in $ ?board-title
+         :where
+         [?e :board/title ?board-title]
+         [?e ?a ?v]]
+       (dl/db conn)
+       "Tout commence par une idée!")
 
-  (q-fulltext-in-org "masa" "opengeneva")
-  
-  ;; TODO CIDER print handler for re-db entities
-  
-  )
+ (->> (dl/q '[:find ?e ?a ?v
+              :in $ ?terms
+              :where [(fulltext $ ?terms)
+                      [[?e ?a ?v]]]]
+            (dl/db conn)
+            #_"masa"
+            "idée innovante"
+            #_"innovante")
+      (map (comp d/entity first))
+      (filter (partial entity-in-org? "robo-avatar" #_"opengeneva"))
+      (map #(into {} %)))
+
+ (q-fulltext-in-org "masa" "opengeneva")
+
+ ;; TODO CIDER print handler for re-db entities
+
+ )

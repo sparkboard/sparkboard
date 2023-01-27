@@ -246,10 +246,10 @@
 (def parse-image-urls
   (xf (fn [urls]
         (rename-keys urls {"logo" :image/logo-url
-                               "logoLarge" :image/logo-large-url
-                               "footer" :image/footer-url
-                               "background" :image/background-url
-                               "subHeader" :image/sub-header-url}))))
+                           "logoLarge" :image/logo-large-url
+                           "footer" :image/footer-url
+                           "background" :image/background-url
+                           "subHeader" :image/sub-header-url}))))
 
 (defn parse-field-type [t]
   (case t "image" :field.type/image
@@ -316,7 +316,7 @@
                                     (case field-type
                                       :field.type/image {:field.image/url v}
                                       :field.type/link-list {:field.link-list/items (mapv #(rename-keys % {:label :field.link-list/text
-                                                                                                               :url :field.link-list/url}) v)}
+                                                                                                           :url :field.link-list/url}) v)}
                                       :field.type/select {:field.select/value v}
                                       :field.type/text-content (html-content v)
                                       :field.type/video {:field.video/value (video-value v)}
@@ -474,9 +474,9 @@
                                                      (assoc :tag/managed-by [:board/id (:board/id m)])
                                                      (dissoc "order")
                                                      (rename-keys {"color" :tag/background-color
-                                                                       "name" :tag/label
-                                                                       "label" :tag/label
-                                                                       "restrict" :tag/restricted?})
+                                                                   "name" :tag/label
+                                                                   "label" :tag/label
+                                                                   "restrict" :tag/restricted?})
                                                      (u/update-some {:tag/restricted? (constantly true)})))
                                            (filter :tag/label)
                                            vec)))
@@ -977,8 +977,8 @@
          (spit (env/db-path "firebase.edn")))))
 
 (comment
-  (fetch-firebase)
-  )
+ (fetch-firebase)
+ )
 
 (defn changes-for [k]
   (into (changes (cond (mongo-colls k) ::mongo
@@ -1043,7 +1043,7 @@
 
  ;; Steps to copy data from prod without processing
  (fetch-mongodb) ;; copies to ./.db
- (fetch-firebase)  ;; copies to ./.db
+ (fetch-firebase) ;; copies to ./.db
 
 
  ;; Steps to set up a Datalevin db
@@ -1053,8 +1053,14 @@
 
  (d/merge-schema! sschema/sb-schema) ;; transact schema
 
+ ;; transact all
+ (let [i (volatile! 0)]
+   (doseq [m (all-entities)] ;; lookup refs first, then the map
+     (vswap! i inc)
+     (when (zero? (rem @i 5000)) (prn @i))
+     (d/transact! (conj (vec (sschema/unique-keys m)) m))))
  ;; transact lookup refs first,
- (d/transact! (mapcat sschema/unique-keys (all-entities)))
+
  ;; then transact everything else
  (d/transact! (all-entities))
 
