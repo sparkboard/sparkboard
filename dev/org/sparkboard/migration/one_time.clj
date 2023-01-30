@@ -1049,6 +1049,8 @@
  ;; Steps to set up a Datalevin db
  (dl/clear conn) ;; delete all (if exists)
 
+ ;; XXX delete `./.db/datalevin` dir
+ 
  ;; (on my machine, the next line fails if I don't re-eval `org.sparkboard.datalevin` here)
 
 
@@ -1062,8 +1064,8 @@
 
  ;; transact lookup refs first,
 
- ;; then transact everything else
- (d/transact! (all-entities))
+ ;; ;; then transact everything else
+ ;; (d/transact! (all-entities))
 
 
  ;; only for debugging when something fails to transact
