@@ -17,9 +17,7 @@
         (sync/try-value ~@body)))))
 
 (defn transact! [txs]
-  (db/with-conn conn
-    (->> (db/transact! txs)
-         (read/handle-report! conn))))
+  (read/transact! conn txs))
 
 (defquery $org:index [_]
   (->> (db/where [:org/id])

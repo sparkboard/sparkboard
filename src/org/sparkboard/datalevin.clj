@@ -10,7 +10,7 @@
 
 (def conn (dl/get-conn (env/db-path "datalevin") {}))
 
-(alter-var-root #'re-db.read/*conn* (constantly conn))
+(alter-var-root #'re-db.api/*conn* (constantly conn))
 
 (comment
  (dl/close conn)

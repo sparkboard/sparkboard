@@ -135,7 +135,7 @@
                (fn [] (with-out-str (pprint value)))
                (yawn.hooks/use-deps value))]
     (cond loading? [rough/spinner {:duration 1000 :spinning true}]
-          error [:div "Error: " error]
+          error [:div "Error: " (ex-message error)]
           value [:pre value])))
 
 (v/defview drawer [{:keys [initial-height]} child]

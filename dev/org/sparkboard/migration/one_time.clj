@@ -13,7 +13,7 @@
             [org.sparkboard.schema :as sschema]
             [org.sparkboard.server.env :as env]
             [re-db.api :as d]
-            [re-db.protocols :as rp]
+            [re-db.triplestore :as ts]
             [tools.sparkboard.util :as u])
   (:import (java.lang Integer)
            (java.util Date)))

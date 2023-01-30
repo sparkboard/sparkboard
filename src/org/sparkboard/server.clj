@@ -97,8 +97,7 @@
 ;; wrap a `transact!` function to call `read/handle-report!` afterwards, which will
 ;; cause dependent queries to re-evaluate.
 (defn transact! [txs]
-  (->> (re-db.api/transact! datalevin/conn txs)
-       (read/handle-report! datalevin/conn)))
+  (read/transact! datalevin/conn txs))
 
 (defn resolve-query
   "Resolves a path-based ref"
