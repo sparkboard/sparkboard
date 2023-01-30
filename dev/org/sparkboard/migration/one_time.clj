@@ -1054,11 +1054,13 @@
  (d/merge-schema! sschema/sb-schema) ;; transact schema
 
  ;; transact all
- (let [i (volatile! 0)]
-   (doseq [m (all-entities)] ;; lookup refs first, then the map
-     (vswap! i inc)
-     (when (zero? (rem @i 5000)) (prn @i))
-     (d/transact! (conj (vec (sschema/unique-keys m)) m))))
+ (doseq [m (all-entities)
+         :let [txs (sschema/unique-keys m)]] ;; lookup refs first
+   (d/transact! txs))
+
+ (doseq [m (all-entities)] ;; lookup refs first, then the map
+   (d/transact! [m]))
+
  ;; transact lookup refs first,
 
  ;; then transact everything else
