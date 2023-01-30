@@ -1051,15 +1051,14 @@
 
  ;; (on my machine, the next line fails if I don't re-eval `org.sparkboard.datalevin` here)
 
- (d/merge-schema! sschema/sb-schema) ;; transact schema
+ (do
+   (d/merge-schema! sschema/sb-schema) ;; transact schema
 
- ;; transact all
- (doseq [m (all-entities)
-         :let [txs (sschema/unique-keys m)]] ;; lookup refs first
-   (d/transact! txs))
+   ;; "upsert" lookup refs
+   (d/transact! (mapcat sschema/unique-keys txs))
 
- (doseq [m (all-entities)] ;; lookup refs first, then the map
-   (d/transact! [m]))
+   ;; transact the rest
+   (d/transact! (all-entities)))
 
  ;; transact lookup refs first,
 
