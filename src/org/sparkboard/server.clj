@@ -37,7 +37,8 @@
             [re-db.sync.transit :as re-db.transit]
             [org.sparkboard.websockets :as ws]
             [org.sparkboard.server.queries :as queries]
-            [org.sparkboard.routes :as routes])
+            [org.sparkboard.routes :as routes]
+            [re-db.sync.entity-diff-1 :as sync.entity])
   (:import [java.time Instant]))
 
 (comment
@@ -101,10 +102,9 @@
 
 (defn resolve-query
   "Resolves a path-based ref"
-  [routes path]
-  (when-let [{:keys [handler route-params]}
-             (bidi/match-route routes path)]
-    (handler route-params)))
+  [path]
+  (when-let [{:keys [query route-params]} (routes/match-route path)]
+    (query route-params)))
 
 #_(memo/clear-memo! $resolve-ref)
 
@@ -113,19 +113,32 @@
   [{:keys [!routes html-response]}]
   (fn [{:keys [uri path-info] :as req}]
     (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
-      (when-let [ref (resolve-query @!routes (or path-info uri))]
+      (when-let [ref (resolve-query (or path-info uri))]
         {:status 200 :body @ref}))))
+
+(defn route-vec [path]
+  (let [{:as match :keys [tag route-params query] :or {route-params {}}} (routes/match-route path)]
+    (when query
+      [tag route-params])))
+
+(memo/defn-memo $resolve-query [routes [id & args :as route-vec]]
+  (assert (keyword? id))
+  (some-> (get-in routes [id :query])
+          requiring-resolve
+          (apply (or (seq args) [{}]))
+          sync.entity/txs
+          (r/catch (fn [e]
+                     (println "Error in $resolve-query")
+                     (println e)
+                     {:error (ex-message e)}))))
 
 (def app
   (-> (impl/join-handlers
        slack.server/handler
        (ws/handler "/ws" {:handlers (merge (sync/query-handlers
                                             (fn [query]
-                                              (if (string? query)
-                                                (resolve-query @routes/!bidi-routes query)
-                                                (let [[id & args] query
-                                                      query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
-                                                  (apply query-fn (or (seq args) [{}])))))))})
+                                              (let [route-vec (cond->> query (string? query) route-vec)]
+                                                ($resolve-query @routes/!routes route-vec)))))})
        (-> (query-handler {:!routes routes/!bidi-routes
                            :html-response (server.views/spa-page env/client-config)})
            (muu.middleware/wrap-format muuntaja)))

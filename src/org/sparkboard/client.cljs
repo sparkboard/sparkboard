@@ -12,13 +12,13 @@
             [yawn.view :as v]))
 
 (v/defview root [] ;; top level view wrapper
-  (let [{:as current-location :keys [path handler route-params query-params tag]} (use-deref routes/!current-location)]
+  (let [{:as current-location :keys [path view route-params query-params tag]} (use-deref routes/!current-location)]
     [:<>
      [views/global-header current-location]
-     (if handler
-       [handler (assoc route-params :path path :query-params query-params)]
+     (if view
+       [view (assoc route-params :path path :query-params query-params)]
        (str "No view found for " tag))
-     [views/dev-drawer {:fixed? handler} current-location]]))
+     [views/dev-drawer {:fixed? view} current-location]]))
 
 (defonce !react-root (atom nil))
 

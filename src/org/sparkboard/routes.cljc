@@ -75,26 +75,34 @@
   (r/reaction
    ;; reformat the canonical route map into a bidi-compatible vector.
    ["" (->> @!routes
-            (mapv (fn [[id {:keys [route view query]}]]
+            (mapv (fn [[id {:as result :keys [route view query]}]]
                     [route (bidi/tag
-                            #?(:clj  (if query
-                                       (requiring-resolve query)
-                                       (server.views/spa-page env/client-config))
-                               :cljs view)
+                            (delay
+                             #?(:clj  (update result :query requiring-resolve)
+                                :cljs result))
                             id)])))]))
 
 (defn path-for [handler & params]
   (apply bidi/path-for @!bidi-routes handler params))
 
 (defn match-route [path]
-  (some-> (bidi/match-route @!bidi-routes path)
-          (assoc :path path)))
+  (when-let [m (bidi/match-route @!bidi-routes path)]
+    (-> m
+        (dissoc :handler)
+        (merge
+         @(:handler m)
+         {:path path}))))
 
 #?(:cljs
    (extend-protocol bidi/Matched
      lazy/Loadable
      (resolve-handler [this m] (bidi/succeed this m))
      (unresolve-handler [this m] (when (= this (:handler m)) ""))))
+
+(extend-protocol bidi/Matched
+  #?(:cljs Delay :clj clojure.lang.Delay)
+  (resolve-handler [this m] (bidi/succeed this m))
+  (unresolve-handler [this m] (when (= this (:handler m)) "")))
 
 #?(:cljs
    (do
@@ -106,14 +114,14 @@
          (new js/URL route "https://example.com")))
 
      (defonce history (pushy/pushy
-                       (fn [{:as match handler :handler}]
-                         (if (instance? lazy/Loadable handler)
-                           (lazy/load handler
-                                      (fn [handler]
+                       (fn [{:as match :keys [view]}]
+                         (if (instance? lazy/Loadable view)
+                           (lazy/load view
+                                      (fn [view]
                                         (reset! !current-location (assoc match
                                                                     :query-params (query-params/path->map
                                                                                    (:path match))
-                                                                    :handler handler))))
+                                                                    :view view))))
                            (reset! !current-location match)))
                        (fn [path]
                          (match-route path))))
