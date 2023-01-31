@@ -349,6 +349,6 @@
 
 (def handler
   (-> (bidi.ring/make-handler routes)
-      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
+      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]}) ;; BUG this middleware is _somehow_ stomping on muuntaja's `body-params` elsewhere in the middleware stack!
       wrap-slack-verify
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)))
