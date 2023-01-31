@@ -78,7 +78,13 @@
                    [:li
                     [:a {:href (routes/path-for :member/one mbr)}
                      (:member/name mbr)]]))
-            (:member/_board value))]]))
+            (:member/_board value))]
+     [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
+                 :class "db"}
+      [:ul ;; i18n stuff
+        [:li "suggested locales:" (str (:i18n/suggested-locales value))]
+        [:li "default locale:" (str (:i18n/default-locale value))]
+        [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
