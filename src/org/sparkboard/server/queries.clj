@@ -16,9 +16,6 @@
        (r/reaction
         (sync/try-value ~@body)))))
 
-(defn transact! [txs]
-  (read/transact! conn txs))
-
 (defquery $org:index [_]
   (->> (db/where [:org/id])
        (mapv (re-db.api/pull '[*]))))
