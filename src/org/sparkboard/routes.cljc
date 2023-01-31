@@ -15,6 +15,12 @@
             #?(:clj [org.sparkboard.server.env :as env]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
 
+
+#?(:clj
+   (defn mutate-query-fn [req]
+     (println "mutate-query-fn body:" (:body req))
+     {:qux "qux"}))
+
 (r/redef !routes
   "Route definitions. Routes are identified by their keyword-id. Options:
 
@@ -33,8 +39,9 @@
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
 
-            ;; :org/search {:route ["/search"]
-            ;;              :query `queries/$search}
+            ;; FIXME
+            :mutate {:route ["/mutate"]
+                     :query `mutate-query-fn}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/skeleton"]

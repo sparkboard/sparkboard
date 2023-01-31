@@ -349,8 +349,6 @@
 
 (def handler
   (-> (bidi.ring/make-handler routes)
-      (ring.middleware.format/wrap-restful-format
-       {:formats [:json-kw
-                  :transit-json]})
+      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
       wrap-slack-verify
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)))

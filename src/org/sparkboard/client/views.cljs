@@ -8,6 +8,7 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
+   [tools.sparkboard.http :as sb.tools]
    [yawn.hooks :refer [use-deref]]
    [yawn.view :as v]))
 
@@ -18,12 +19,19 @@
 (v/defview org:index []
   [:div.pa3
    [:h2 (use-tr [:tr/orgs])]
-   (into [rough/grid {}]
-         (map (fn [org-obj]
-                [rough/card {:class "pa3"}
-                 [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
-                  (:org/title org-obj)]]))
-         (:value (ws/use-query [:org/index])))])
+   [:section#orgs-grid
+    (into [rough/grid {}]
+          (map (fn [org-obj]
+                 [rough/card {:class "pa3"}
+                  [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
+                   (:org/title org-obj)]]))
+          (:value (ws/use-query [:org/index])))]
+   [:section#add-org
+    [rough/button {:on-click #(sb.tools/http-req "/mutate"
+                                                 {:body {:foo "foo"}
+                                                  :body/content-type :transit+json
+                                                  :method "POST"})}
+     "create org"]]])
 
 (v/defview org:one [{:as o :keys [org/id query-params]}]
   (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])

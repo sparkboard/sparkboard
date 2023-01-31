@@ -43,12 +43,14 @@
 (comment
  (fire-tokens/decode token))
 
-(def muuntaja (muu/create
-               (-> m/default-options
-                   ;; set Transit readers & writers
-                   (update-in [:formats "application/transit+json"]
-                              merge {:decoder-opts {:handlers re-db.transit/read-handlers}
-                                     :encoder-opts {:handlers re-db.transit/write-handlers}}))))
+(def muuntaja
+  ;; Note: the `:body` BytesInputStream will be present but decode/`slurp` to an
+  ;; empty String if no read format is declared for the request's content-type.
+  (muu/create (-> m/default-options
+                  ;; set Transit readers & writers
+                  (update-in [:formats "application/transit+json"]
+                             merge {:decoder-opts {:handlers re-db.transit/read-handlers}
+                                    :encoder-opts {:handlers re-db.transit/write-handlers}}))))
 
 (defn wrap-handle-errors [f]
   (fn [req]
@@ -110,25 +112,41 @@
 
 (defn query-handler
   "Serve queries at the given routes. Returns nil for html requests (handled as a spa-page)"
-  [{:keys [!routes html-response]}]
+  [!routes #_{:keys [!routes html-response]}]
   (fn [{:keys [uri path-info] :as req}]
     (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
       (when-let [ref (resolve-query @!routes (or path-info uri))]
         {:status 200 :body @ref}))))
 
+(defn handle-mutation
+  "Handler for POST usw."
+  [routes {:keys [uri path-info] :as req}]
+  (when-let [{:keys [handler]} (bidi/match-route routes (or path-info uri))]
+    (handler req)))
+
+(defn mutation-handler
+  "Serve mutations (POST usw.) at the given routes. Returns nil for html requests (handled as a spa-page)"
+  [!routes]
+  (fn [{:keys [uri path-info] :as req}]
+    (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
+      (when (-> req :request-method #{:post})
+        (when-let [rsp (handle-mutation @!routes req)]
+          {:status 200 :body rsp})))))
+
 (def app
-  (-> (impl/join-handlers
-       slack.server/handler
-       (ws/handler "/ws" {:handlers (merge (sync/query-handlers
-                                            (fn [query]
-                                              (if (string? query)
-                                                (resolve-query @routes/!bidi-routes query)
-                                                (let [[id & args] query
-                                                      query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
-                                                  (apply query-fn (or (seq args) [{}])))))))})
-       (-> (query-handler {:!routes routes/!bidi-routes
-                           :html-response (server.views/spa-page env/client-config)})
-           (muu.middleware/wrap-format muuntaja)))
+  (-> (impl/join-handlers slack.server/handler
+                          (ws/handler "/ws" {:handlers (merge (sync/query-handlers
+                                                               (fn [query]
+                                                                 (if (string? query)
+                                                                   (resolve-query @routes/!bidi-routes query)
+                                                                   (let [[id & args] query
+                                                                         query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
+                                                                     (apply query-fn (or (seq args) [{}])))))))})
+                          (muu.middleware/wrap-format (mutation-handler routes/!bidi-routes)
+                                                      muuntaja)
+                          (muu.middleware/wrap-format (query-handler routes/!bidi-routes #_{:!routes routes/!bidi-routes
+                                                                      :html-response (server.views/spa-page env/client-config)})
+                                                      muuntaja))
       wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
