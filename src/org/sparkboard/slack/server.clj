@@ -1,6 +1,7 @@
 (ns org.sparkboard.slack.server
   "HTTP routes for Slack integration"
   (:require
+   [bidi.bidi]
    [bidi.ring]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -347,8 +348,23 @@
                                                             :status 200
                                                             :headers {"Content-Type" "text/plain"}})}}))])
 
-(def handler
+(def handlers*
   (-> (bidi.ring/make-handler routes)
-      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]}) ;; BUG this middleware is _somehow_ stomping on muuntaja's `body-params` elsewhere in the middleware stack!
+      #_(org.sparkboard.server/wrap-debug-request :slack/last)
+      ;; Note: if the following `wrap-restful-format` middleware runs, it will
+      ;; stomp on muuntaja's `body-params` elsewhere in the non-slack middleware
+      ;; stack. This is why we have `handler` protecting `handler*` from
+      ;; executing unless needed.
+      (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
+      #_(org.sparkboard.server/wrap-debug-request :slack/one)
       wrap-slack-verify
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)))
+
+(defn handlers
+  "Handler wrapping all Slack handlers.
+  Prevents Slack-specific middleware from affecting non-Slack requests
+  by returning `nil` as soon as we know the request does not match a
+  Slack route. See comment for `wrap-restful-format` above."
+  [req]
+  (when (bidi.bidi/match-route routes (:uri req))
+    (handlers* req)))

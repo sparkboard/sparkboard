@@ -17,9 +17,10 @@
 
 
 #?(:clj
-   (defn mutate-query-fn [req]
-     (println "mutate-query-fn body:" (:body req))
-     {:qux "qux"}))
+   (defn mutate-query-fn [body]
+     (merge body
+            {:qux "qux"}
+            {:merged? "merged"})))
 
 (r/redef !routes
   "Route definitions. Routes are identified by their keyword-id. Options:

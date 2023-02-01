@@ -129,12 +129,12 @@
   [!routes]
   (fn [{:keys [uri path-info] :as req}]
     (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
-      (when (-> req :request-method #{:post})
+      (when (-> req :request-method #{:post}) ;; HACK
         (when-let [rsp (handle-mutation @!routes req)]
           {:status 200 :body rsp})))))
 
 (def app
-  (-> (impl/join-handlers slack.server/handler
+  (-> (impl/join-handlers slack.server/handlers
                           (ws/handler "/ws" {:handlers (merge (sync/query-handlers
                                                                (fn [query]
                                                                  (if (string? query)
@@ -142,17 +142,15 @@
                                                                    (let [[id & args] query
                                                                          query-fn (requiring-resolve (get-in @routes/!routes [id :query]))]
                                                                      (apply query-fn (or (seq args) [{}])))))))})
-                          (muu.middleware/wrap-format (mutation-handler routes/!bidi-routes)
-                                                      muuntaja)
-                          (muu.middleware/wrap-format (query-handler routes/!bidi-routes #_{:!routes routes/!bidi-routes
-                                                                      :html-response (server.views/spa-page env/client-config)})
-                                                      muuntaja))
+                          (-> (mutation-handler routes/!bidi-routes) (muu.middleware/wrap-format muuntaja))
+                          (-> (query-handler    routes/!bidi-routes) (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
-      #_wrap-debug-request))
+      #_(wrap-debug-request :first)))
 
-(defonce the-server (atom nil))
+(defonce the-server
+  (atom nil))
 
 (defn stop-server! []
   (some-> @the-server (httpkit/server-stop!))
@@ -177,13 +175,16 @@
 (comment ;;; Intensive request debugging
  (def !requests (atom []))
 
- (defn wrap-debug-request [f]
+ (defn wrap-debug-request [f id]
    (fn [req]
      (log/info :request req)
-     (swap! !requests conj req)
+     (swap! !requests conj (assoc req :debug/id id))
      (f req)))
 
- @!requests
+ (->> @!requests
+      (remove :websocket?)
+      (map #(select-keys % [:debug/id :body-params :body :content-type]))
+      (into []))
 
  )
 
