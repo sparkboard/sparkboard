@@ -12,19 +12,19 @@
 (defn- on-click [funk]
   (events/listen js/document "click" funk))
 
-(defn- update-history! [h]
+(defn- update-history! [^Html5History h]
   (doto h
     (.setUseFragment false)
     (.setPathPrefix "")
     (.setEnabled true)))
 
-(defn- set-retrieve-token! [t]
+(defn- set-retrieve-token! [^TokenTransformer t]
   (set! (.. t -retrieveToken)
-        (fn [path-prefix location]
+        (fn [path-prefix ^js/Location location]
           (str (.-pathname location) (.-search location))))
   t)
 
-(defn- set-create-url! [t]
+(defn- set-create-url! [^TokenTransformer t]
   (set! (.. t -createUrl)
         (fn [token path-prefix location]
           (str path-prefix token)))
@@ -43,13 +43,13 @@
   (start! [this])
   (stop! [this]))
 
-(defn- processable-url? [uri]
+(defn- processable-url? [^Uri uri]
   (and (not (clojure.string/blank? uri))                    ;; Blank URLs are not processable.
        (or (and (not (.hasScheme uri)) (not (.hasDomain uri))) ;; By default only process relative URLs + URLs matching window's origin
            (some? (re-matches (re-pattern (str "^" (.-origin js/location) ".*$"))
                               (str uri))))))
 
-(defn- get-token-from-uri [uri]
+(defn- get-token-from-uri [^Uri uri]
   (let [path (.getPath uri)
         query (.getQuery uri)]
     ;; Include query string in token
@@ -66,7 +66,7 @@
            identity-fn                    identity
            prevent-default-when-no-match? (constantly false)}}]
 
-  (let [history (new-history)
+  (let [^Html5History history (new-history)
         event-keys (atom nil)]
     (reify
       IHistory
@@ -98,9 +98,9 @@
 
         (swap! event-keys conj
                (on-click
-                (fn [e]
+                (fn [^js e]
                   (when-let [el (some-> e .-target (.closest "[href]"))]
-                    (let [uri (.parse Uri (.-href el))]
+                    (let [^Uri uri (.parse Uri (.-href el))]
                       ;; Proceed if `identity-fn` returns a value and
                       ;; the user did not trigger the event via one of the
                       ;; keys we should bypass
