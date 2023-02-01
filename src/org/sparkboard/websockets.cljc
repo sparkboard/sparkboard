@@ -35,7 +35,9 @@
 
 #?(:clj
    (defn handler [path options]
-     (bidi.ring/make-handler [path (partial handle-ws-request options)])))
+     (fn [req]
+       (when (= path (:uri req))
+         (handle-ws-request options req)))))
 
 #?(:cljs
    (defn connect

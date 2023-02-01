@@ -12,8 +12,16 @@
             #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs [shadow.lazy :as lazy])
             #?(:clj [org.sparkboard.server.views :as server.views])
-            #?(:clj [org.sparkboard.server.env :as env]))
+            #?(:clj [org.sparkboard.server.env :as env])
+            [tools.sparkboard.util :as u])
   #?(:cljs (:require-macros org.sparkboard.routes)))
+
+
+#?(:clj
+   (defn mutate-query-fn [body]
+     (merge body
+            {:qux "qux"}
+            {:merged? "merged"})))
 
 (r/redef !routes
   "Route definitions. Routes are identified by their keyword-id. Options:
@@ -33,8 +41,9 @@
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
 
-            ;; :org/search {:route ["/search"]
-            ;;              :query `queries/$search}
+            ;; FIXME
+            :mutate {:route ["/mutate"]
+                     :mutation `mutate-query-fn}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/skeleton"]
@@ -47,13 +56,9 @@
             :org/search {:route ["/o/" :org/id "/search"]
                          :query `queries/$search}
 
-            :board/index {:route ["/b"] ;; XXX cruft?
-                          :query `queries/$board:index}
             :board/one {:route ["/b/" :board/id]
                         :query `queries/$board:one
                         :view `views/board:one}
-            :project/index {:route ["/p"] ;; XXX cruft?
-                            :query `queries/$project:index}
             :project/one {:route ["/p/" :project/id]
                           :query `queries/$project:one
                           :view `views/project:one}
@@ -78,7 +83,9 @@
             (mapv (fn [[id {:as result :keys [route view query]}]]
                     [route (bidi/tag
                             (delay
-                             #?(:clj  (update result :query requiring-resolve)
+                             #?(:clj  (-> result
+                                          (u/update-some {:query requiring-resolve
+                                                          :mutation requiring-resolve}))
                                 :cljs result))
                             id)])))]))
 

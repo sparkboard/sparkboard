@@ -86,10 +86,12 @@
                           s- [:set :grant/role]},
    :policy/map {s- [:map-of [:qualified-keyword {:namespace :action}] :action/policy]}
    :board/policies {s- :policy/map}})
+
 (def sb-badges
   {:content/badge {s- [:map {:closed true} :badge/label]}
    :badge/label {s- :string
                  :spark/user-text true}})
+
 (def sb-board
   {:board/id unique-string-id
    :board/is-template? {:doc "Board is only used as a template for creating other boards",
@@ -156,6 +158,7 @@
                   :board.registration/open?
                   :ts/created-at
                   :visibility/public?]}})
+
 (def sb-collections
   {:collection/id unique-string-id
    :collection/boards (ref :many #{:board/id})
@@ -166,6 +169,7 @@
                        :collection/id
                        :collection/title
                        :entity/domain]}})
+
 (def sb-discussion
   {:discussion/id unique-string-id
    :discussion/followers (ref :many #{:member/id}),
@@ -178,6 +182,7 @@
                        :discussion/id
                        :discussion/project
                        :ts/created-at]}})
+
 (def sb-domains
   {:domain/url {s- :http/url}
    :domain/target-type {s- [:enum
@@ -200,6 +205,7 @@
                             [:domain/target-type [:= :domain/entity]]
                             :domain/entity
                             :domain/name]]]})})
+
 (def sb-fields
   {:board.member/fields {s- [:sequential :sb/field.spec]}
    :field/id (merge unique-string-id
@@ -292,12 +298,14 @@
                        :field.spec/managed-by
                        :field.spec/order
                        :field/type]}})
+
 (def sb-firebase-account
   {:firebase-account/id unique-string-id
    :firebase-account/email {s- :string}
    :sb/firebase-account {s- [:map {:closed true}
                              :firebase-account/id
                              :firebase-account/email]}})
+
 (def sb-grants
   {:grant/_entity {s- [:sequential :sb/grant]}
    :grant/_member {s- [:sequential :sb/grant]}
@@ -328,6 +336,7 @@
                    '(fn [{:grant/keys [member firebase-account]}]
                       (and (or member firebase-account)
                            (not (and member firebase-account))))]]}})
+
 (def sb-html
   {:html/card-classes {:doc "Classes for displaying this entity in card mode"
                        :todo "Deprecate in favour of controlled customizations"
@@ -338,8 +347,10 @@
               s- :string},
    :html/js {s- :string, :todo "Deprecate or otherwise restrict in hosted mode"},
    :html/meta-description {s- :string}})
+
 (def sb-http
   {:http/url {s- [:re #"https?://.+\..+"]},})
+
 (def sb-i18n
   {:i18n/default-locale {s- :string},
    :i18n/dictionary {s- [:map-of :string :string]}
@@ -349,10 +360,12 @@
                s- [:re #"[a-z]{2}"]}
    :i18n/suggested-locales {:doc "Suggested locales (set by admin, based on expected users)",
                             s- [:vector :i18n/name]}})
+
 (def sb-images
   {:map/image-urls {s- [:map-of
                         [:qualified-keyword {:namespace :image}]
                         :http/url]}})
+
 (def sb-member
   {:member/fields (merge (ref :many #{:field/id})
                          s/component)
@@ -394,6 +407,7 @@
                    :member/project-participant?
                    :ts/created-at
                    :ts/updated-at]}})
+
 (def sb-member-vote
   {:member-vote.entry/board (ref :one #{:board/id})
    :member-vote.entry/id (merge {:doc "ID composed of board-id:member-id"
@@ -412,6 +426,7 @@
    :sb/member-vote {s- [:map {:closed true}
                         :member-vote/board
                         :member-vote/open?]}})
+
 (def sb-notification
   {:notification/comment (ref :one #{:post.comment/id}),
    :notification/discussion (ref :one #{:discussion/id})
@@ -451,6 +466,7 @@
                          :notification/type
                          :notification/viewed?
                          :ts/created-at]}})
+
 (def sb-org
   {:board.settings/show-org-tab? {:doc "When true, boards should visually link to the parent organization (in main nav)"
                                   s- :boolean}
@@ -470,6 +486,7 @@
                 :entity/domain
                 :visibility/public?
                 :ts/created-by]}})
+
 (def sb-posts
   {:post/_discussion {s- [:sequential :sb/post]}
    :post/id unique-string-id
@@ -497,6 +514,7 @@
                          :ts/created-by
                          :post.comment/id
                          :post.comment/text]}})
+
 (def sb-projects
   {:project.settings/field-specs (merge (ref :many #{:field.spec/id})
                                         {s- [:sequential :sb/field.spec]})
@@ -555,6 +573,7 @@
                     :project/title
                     :ts/created-at
                     :ts/updated-at]}})
+
 (def sb-registration
   {:board.registration.invitation-email/body-text {:doc "Body of email sent when inviting a user to a board."
                                                    s- :string},
@@ -567,10 +586,12 @@
    :board.registration/register-at-url {:doc "URL to redirect user for registration (replaces the Sparkboard registration page, admins are expected to invite users)",
                                         s- :http/url},
    :board.registration/codes {s- [:map-of :string [:map {:closed true} [:registration-code/active? :boolean]]]}})
+
 (def sb-requests
   {:request/text {:doc "Free text description of the request"
                   s- :string}
    :request/map {s- [:map {:closed true} :request/text]}})
+
 (def sb-slack
   {:slack.app/bot-token {s- :string},
    :slack.app/bot-user-id {s- :string},
@@ -649,6 +670,7 @@
                        :slack.user/id
                        :slack.user/firebase-account-id
                        :slack.user/slack.team]},})
+
 (def sb-social-feed
   {:social-feed.twitter/hashtags (merge s/many
                                         {s- [:set :string]})
@@ -661,11 +683,13 @@
                      (? :social-feed.twitter/hashtags)
                      (? :social-feed.twitter/profiles)
                      (? :social-feed.twitter/mentions)]}})
+
 (def sb-social-sharing
   {:social/sharing-button {s- [:enum
                                :social.sharing-button/facebook
                                :social.sharing-button/twitter
                                :social.sharing-button/qr-code]}})
+
 (def sb-tags
   {:member.settings/tags (ref :many #{:tag/id})
    :tag/ad-hoc {s- [:map :tag.ad-hoc/label]}
@@ -684,6 +708,7 @@
                 :tag/label
                 :tag/id
                 :tag/managed-by]}})
+
 (def sb-text-content
   {:text-content/format {s- [:enum
                              :text.format/html
@@ -692,6 +717,7 @@
    :text-content/block {s- [:map {:closed true}
                             :text-content/format
                             :text-content/string]}})
+
 (def sb-thread
   {:thread/id unique-string-id
    :thread/members (merge (ref :many #{:member/id})
@@ -717,6 +743,7 @@
                            :thread.message/text
                            :ts/created-by
                            :ts/created-at]}})
+
 (def sb-ts
   {:ts/created-at {s- 'inst?, :doc "Auto-generated creation-date of entity"},
    :ts/created-by (merge (ref :one #{:member/id :firebase-account/id}) {:doc "Member who created this entity"}),
@@ -725,9 +752,11 @@
                    s- 'inst?}
    :ts/modified-by (ref :one #{:member/id})
    :ts/updated-at {s- 'inst?}})
+
 (def sb-visibility
   {:visibility/public? {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
                         s- :boolean}})
+
 (def sb-webhooks
   {:webhook/event {s- [:enum
                        :event.board/update-member

@@ -20,6 +20,7 @@
             [org.sparkboard.server.views :as server.views]
             [org.sparkboard.slack.server :as slack.server]
             [re-db.api :as db]
+            [re-db.hooks :as hooks]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [re-db.read :as read]
@@ -30,6 +31,7 @@
             [ring.util.mime-type :as ring.mime-type]
             [ring.util.request]
             [ring.util.response :as ring.response]
+            [ring.util.http-response :as ring.http]
             [taoensso.timbre :as log]
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
@@ -44,12 +46,14 @@
 (comment
  (fire-tokens/decode token))
 
-(def muuntaja (muu/create
-               (-> m/default-options
-                   ;; set Transit readers & writers
-                   (update-in [:formats "application/transit+json"]
-                              merge {:decoder-opts {:handlers re-db.transit/read-handlers}
-                                     :encoder-opts {:handlers re-db.transit/write-handlers}}))))
+(def muuntaja
+  ;; Note: the `:body` BytesInputStream will be present but decode/`slurp` to an
+  ;; empty String if no read format is declared for the request's content-type.
+  (muu/create (-> m/default-options
+                  ;; set Transit readers & writers
+                  (update-in [:formats "application/transit+json"]
+                             merge {:decoder-opts {:handlers re-db.transit/read-handlers}
+                                    :encoder-opts {:handlers re-db.transit/write-handlers}}))))
 
 (defn wrap-handle-errors [f]
   (fn [req]
@@ -100,30 +104,34 @@
 (defn transact! [txs]
   (read/transact! datalevin/conn txs))
 
-(defn resolve-query
-  "Resolves a path-based ref"
-  [path]
-  (when-let [{:keys [query route-params]} (routes/match-route path)]
-    (query route-params)))
-
 #_(memo/clear-memo! $resolve-ref)
 
-(defn query-handler
-  "Serve queries at the given routes. Returns nil for html requests (handled as a spa-page)"
-  [{:keys [!routes html-response]}]
-  (fn [{:keys [uri path-info] :as req}]
-    (when-not (str/includes? (get-in req [:headers "accept"]) "text/html")
-      (when-let [ref (resolve-query (or path-info uri))]
-        {:status 200 :body @ref}))))
+(defn http-handler [{:as req :keys [path-info uri]}]
+  (let [path (or path-info uri)
+        {:as match :keys [query mutation route-params]} (routes/match-route path)
+        html? (str/includes? (get-in req [:headers "accept"]) "text/html")
+        method (:request-method req)]
+    (when (and match (not html?))
+      (cond (and (= method :post) mutation)
+            (some-> (mutation req)
+                    ring.http/ok)
+
+            (and (= method :get) query)
+            (some-> (query route-params)
+                    deref
+                    ring.http/ok)))))
 
 (defn route-vec [path]
-  (let [{:as match :keys [tag route-params query] :or {route-params {}}} (routes/match-route path)]
-    (when query
-      [tag route-params])))
+  (-> (if (vector? path)
+        path
+        (let [{:as match :keys [tag route-params query]} (routes/match-route path)]
+          (when query
+            [tag route-params])))
+      (update 1 #(or % {}))))
 
-(memo/defn-memo $resolve-query [routes [id & args :as route-vec]]
+(memo/defn-memo $resolve-query [[id & args :as route-vec]]
   (assert (keyword? id))
-  (some-> (get-in routes [id :query])
+  (some-> (get-in @routes/!routes [id :query])
           requiring-resolve
           (apply (or (seq args) [{}]))
           sync.entity/txs
@@ -132,22 +140,19 @@
                      (println e)
                      {:error (ex-message e)}))))
 
+
 (def app
-  (-> (impl/join-handlers
-       slack.server/handler
-       (ws/handler "/ws" {:handlers (merge (sync/query-handlers
-                                            (fn [query]
-                                              (let [route-vec (cond->> query (string? query) route-vec)]
-                                                ($resolve-query @routes/!routes route-vec)))))})
-       (-> (query-handler {:!routes routes/!bidi-routes
-                           :html-response (server.views/spa-page env/client-config)})
-           (muu.middleware/wrap-format muuntaja)))
+  (-> (impl/join-handlers slack.server/handlers
+                          (ws/handler "/ws" {:handlers (merge (sync/query-handlers
+                                                               (comp $resolve-query route-vec)))})
+                          (-> http-handler (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
-      #_wrap-debug-request))
+      #_(wrap-debug-request :first)))
 
-(defonce the-server (atom nil))
+(defonce the-server
+  (atom nil))
 
 (defn stop-server! []
   (some-> @the-server (httpkit/server-stop!))
@@ -172,13 +177,16 @@
 (comment ;;; Intensive request debugging
  (def !requests (atom []))
 
- (defn wrap-debug-request [f]
+ (defn wrap-debug-request [f id]
    (fn [req]
      (log/info :request req)
-     (swap! !requests conj req)
+     (swap! !requests conj (assoc req :debug/id id))
      (f req)))
 
- @!requests
+ (->> @!requests
+      (remove :websocket?)
+      (map #(select-keys % [:debug/id :body-params :body :content-type]))
+      (into []))
 
  )
 
