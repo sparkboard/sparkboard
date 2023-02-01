@@ -176,12 +176,14 @@
    [rough/divider]])
 
 (v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
-  (cond->> [:<>
-            [:p.f5
-             [:a.mr3.rounded.bg-black.white.pa2.no-underline
-              {:href (routes/path-for :dev/skeleton)} "❮"]
-             (str tag)]
-            (when (get-in @routes/!routes [tag :query])
-              [show-query path])]
-           fixed? (drawer {:initial-height 100})))
+  (let [child (v/x [:<>
+                    [:p.f5
+                     [:a.mr3.rounded.bg-black.white.pa2.no-underline
+                      {:href (routes/path-for :org/index)} "❮"]
+                     (str tag)]
+                    (when (get-in @routes/!routes [tag :query])
+                      [show-query path])])]
+    (if fixed?
+      [drawer {:initial-height 100} child]
+      child)))
 

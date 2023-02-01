@@ -5,7 +5,7 @@
             [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.views :as views]
             [org.sparkboard.routes :as routes]
-            [pushy.core :as pushy]
+            [vendor.pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
             [yawn.hooks :refer [use-deref]]
             [yawn.root :as root]
@@ -20,7 +20,7 @@
        (str "No view found for " tag))
      [views/dev-drawer {:fixed? view} current-location]]))
 
-(defonce !react-root (atom nil))
+(defonce !react-root (delay (root/create :web (root))))
 
 (defn render []
   (root/render @!react-root (root)))
@@ -30,8 +30,5 @@
 
 (defn init []
   (firebase/init)
-
-  (reset! !react-root (root/create :web (root)))
-
   (start-router)
   (render))

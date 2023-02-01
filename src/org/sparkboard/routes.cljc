@@ -9,7 +9,7 @@
             [org.sparkboard.macros :refer [lazy-views]]
             [re-db.reactive :as r]
             #?(:cljs [tools.sparkboard.browser.query-params :as query-params])
-            #?(:cljs [pushy.core :as pushy])
+            #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs [shadow.lazy :as lazy])
             #?(:clj [org.sparkboard.server.views :as server.views])
             #?(:clj [org.sparkboard.server.env :as env]))
