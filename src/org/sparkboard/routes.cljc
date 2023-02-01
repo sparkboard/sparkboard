@@ -55,13 +55,9 @@
             :org/search {:route ["/o/" :org/id "/search"]
                          :query `queries/$search}
 
-#_#_            :board/index {:route ["/b"] ;; XXX cruft?
-                          :query `queries/$board:index}
             :board/one {:route ["/b/" :board/id]
                         :query `queries/$board:one
                         :view `views/board:one}
-#_#_            :project/index {:route ["/p"] ;; XXX cruft?
-                            :query `queries/$project:index}
             :project/one {:route ["/p/" :project/id]
                           :query `queries/$project:one
                           :view `views/project:one}

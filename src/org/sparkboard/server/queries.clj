@@ -29,10 +29,6 @@
              {:entity/domain [:domain/name]}]
            [:org/id id]))
 
-(defquery $board:index [_route-params]
-  (->> (db/where [:board/id])
-       (mapv (re-db.api/pull '[:board/title]))))
-
 (defquery $board:one [{:keys [board/id] :as _route-params}]
   (db/pull '[*
              :board/title
@@ -43,14 +39,6 @@
              {:member/_board [*]}
              {:entity/domain [:domain/name]}]
            [:board/id id]))
-
-(defquery $project:index [_route-params]
-  ;; TODO
-  ;; pagination
-  ;; search queries
-  (->> (db/where [:project/id])
-       (take 20)
-       (mapv (re-db.api/pull '[:project/title]))))
 
 (defquery $project:one [{:keys [project/id]}]
   (db/pull '[*] [:project/id id]))
