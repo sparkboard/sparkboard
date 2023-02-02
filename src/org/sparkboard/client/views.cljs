@@ -1,5 +1,6 @@
 (ns org.sparkboard.client.views
   (:require
+   ["react" :as react]
    [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
@@ -9,14 +10,14 @@
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
    [tools.sparkboard.http :as sb.tools]
-   [yawn.hooks :refer [use-deref]]
+   [yawn.hooks :refer [use-deref use-state]]
    [yawn.view :as v]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (v/defview home [] (use-tr [:skeleton/nix]))
 
-(v/defview org:index []
+(v/defview org:index [params]
   [:div.pa3
    [:h2 (use-tr [:tr/orgs])]
    [:section#orgs-grid
@@ -25,7 +26,7 @@
                  [rough/card {:class "pa3"}
                   [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
                    (:org/title org-obj)]]))
-          (:value (ws/use-query [:org/index])))]
+          (ws/use-query! [:org/index]))]
    [:section#add-org
     [rough/button {:on-click #(sb.tools/http-req "/mutate"
                                                  {:body {:foo "foo"}
@@ -33,12 +34,15 @@
                                                   :method "POST"})}
      "create org"]]])
 
-(v/defview org:one [{:as o :keys [org/id query-params]}]
-  (let [{:keys [value] :as result} (ws/use-query [:org/one {:org/id id}])
-        qry-result (ws/use-query [:org/search {:org/id id
-                                               :query-params query-params}])]
+(v/defview org:one [{:as params :keys [org/id query-params]}]
+  (let [value (ws/use-query! [:org/one {:org/id id}])
+        [query-params set-query-params!] (use-state query-params)
+        search-result (ws/use-query! [:org/search {:org/id id
+                                                   :query-params query-params}])
+        [pending? start-transition] (react/useTransition)]
     [:div
      [:h1 (use-tr [:tr/org]) " " (:org/title value)]
+     [:a {:href (routes/path-for :board/create params)} "New Board"]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
@@ -49,21 +53,25 @@
           :on-input (fn [event] (-> event .-target .-value set-q!))
           :on-key-down (j/fn [^js {:keys [key]}]
                          (when (= key "Enter")
-                           (routes/merge-query! {:q (when (<= 3 (count q)) q)})))
+                           (start-transition
+                            #(-> {:q (when (<= 3 (count q)) q)}
+                                 routes/merge-query!
+                                 set-query-params!))))
           :value q}]
+        (when pending? [:div [rough/spinner]])
         (into [:ul]
               (map (comp (partial vector :li)
                          str))
-              (:value qry-result))])
+              search-result)])
      [:section [:h3 (use-tr [:tr/boards])]
       (into [:ul]
             (map (fn [board]
                    [:li [rough/link {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
-            (:board/_org (:value result)))]]))
+            (:board/_org value))]]))
 
 (v/defview board:one [{:as b :board/keys [id]}]
-  (let [{:keys [value] :as result} (ws/use-query [:board/one {:board/id id}])]
+  (let [value (ws/use-query! [:board/one {:board/id id}])]
     [:div
      [:h1 (str (use-tr [:tr/board]) (:board/title value))]
      [:p (-> value :entity/domain :domain/name)]]
@@ -78,7 +86,7 @@
             (map (fn [proj]
                    [:li [:a {:href (routes/path-for :project/one proj)}
                          (:project/title proj)]]))
-            (-> result :value :project/_board))]
+            (:project/_board value))]
      [rough/tab {:name (use-tr [:tr/members])
                  :class "db"}
       (into [:ul]
@@ -90,9 +98,9 @@
      [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
                  :class "db"}
       [:ul ;; i18n stuff
-        [:li "suggested locales:" (str (:i18n/suggested-locales value))]
-        [:li "default locale:" (str (:i18n/default-locale value))]
-        [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]))
+       [:li "suggested locales:" (str (:i18n/suggested-locales value))]
+       [:li "default locale:" (str (:i18n/default-locale value))]
+       [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -111,7 +119,7 @@
  )
 
 (v/defview project:one [{:as p :project/keys [id]}]
-  (let [{:keys [value] :as result} (ws/use-query [:project/one {:project/id id}])]
+  (let [value (ws/use-query! [:project/one {:project/id id}])]
     [:div
      [:h1 (str (use-tr [:tr/project]) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
@@ -125,7 +133,7 @@
         [video-field vid]])]))
 
 (v/defview member:one [{:as mbr :member/keys [id]}]
-  (let [{:keys [value] :as result} (ws/use-query [:member/one {:member/id id}])]
+  (let [value (ws/use-query! [:member/one {:member/id id}])]
     [:div
      [:h1 (str/join " " [(use-tr [:tr/member]) (:member/name value)])]
      (when-let [tags (seq (concat (:member/tags value)
@@ -143,19 +151,17 @@
 
 ;; for DEBUG only:
 
-(v/defview show-query [path]
-  (let [{:keys [value error loading?]} (ws/use-query path)
-        value (yawn.hooks/use-memo
-               (fn [] (with-out-str (pprint value)))
-               (yawn.hooks/use-deps value))]
-    (cond loading? [rough/spinner {:duration 1000 :spinning true}]
-          error [:div "Error: " (ex-message error)]
-          value [:pre value])))
+(v/defview show-query [route]
+  (let [value (ws/use-query! route)
+        value-str (yawn.hooks/use-memo
+                   (fn [] (with-out-str (pprint value)))
+                   (yawn.hooks/use-deps value))]
+    [:pre value-str]))
 
 (v/defview drawer [{:keys [initial-height]} child]
   ;; the divider is draggable and sets the height of the drawer
   (let [!height (yawn.hooks/use-state initial-height)]
-    [:<>
+    [:Suspense {:fallback (v/x [rough/spinner {:duration 1000 :spinning true}])}
      [:div {:style {:height @!height}}]
      [:div.ph3.code.fixed.bottom-0.left-0.right-0.bg-white.overflow-y-scroll
       {:style {:height @!height}}
@@ -175,7 +181,7 @@
                              (.addEventListener "mousemove" on-mousemove))))}]
       child]]))
 
-(v/defview global-header [{:keys [path tag]}]
+(v/defview global-header [_]
   [:<>
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
@@ -189,15 +195,17 @@
           (keys i18n/dict))]
    [rough/divider]])
 
-(v/defview dev-drawer [{:keys [fixed?]} {:keys [path tag]}]
-  (let [child (v/x [:<>
-                    [:p.f5
-                     [:a.mr3.rounded.bg-black.white.pa2.no-underline
-                      {:href (routes/path-for :org/index)} "❮"]
-                     (str tag)]
-                    (when (get-in @routes/!routes [tag :query])
-                      [show-query path])])]
-    (if fixed?
-      [drawer {:initial-height 100} child]
-      child)))
+(v/defview dev-drawer [{:as match :keys [route]}]
+  [drawer {:initial-height 100}
+   [:Suspense {:fallback (v/x "Hi")}
+    [:p.f5
+     [:a.mr3.rounded.bg-black.white.pa2.no-underline
+      {:href (routes/path-for :org/index)} "❮"]
+     (str route)]
+    [show-query route]]])
 
+
+(v/defview board:create [{:as params :keys [org/id route]}]
+  (prn :ARAMS params)
+  [:div {:on-click #(ws/send [:sb/mutation route {:board/title "My board"}])}
+   "Create a Board!"])

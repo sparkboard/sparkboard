@@ -5,6 +5,7 @@
             [org.sparkboard.client.firebase :as firebase]
             [org.sparkboard.client.views :as views]
             [org.sparkboard.routes :as routes]
+            [org.sparkboard.views.rough :as rough]
             [vendor.pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
             [yawn.hooks :refer [use-deref]]
@@ -12,13 +13,14 @@
             [yawn.view :as v]))
 
 (v/defview root [] ;; top level view wrapper
-  (let [{:as current-location :keys [path view route-params query-params tag]} (use-deref routes/!current-location)]
+  (let [{:as current-location :keys [path view params tag route]} (use-deref routes/!current-route)]
     [:<>
      [views/global-header current-location]
-     (if view
-       [view (assoc route-params :path path :query-params query-params)]
-       (str "No view found for " tag))
-     [views/dev-drawer {:fixed? view} current-location]]))
+     [:Suspense {:fallback (v/x [rough/spinner])}
+      (if view
+        [view (assoc params :path path :route route)]
+        (str "No view found for " tag))]
+     [views/dev-drawer current-location]]))
 
 (defonce !react-root (delay (root/create :web (root))))
 
@@ -26,7 +28,7 @@
   (root/render @!react-root (root)))
 
 (defn ^:dev/after-load start-router []
-  (pushy/start! routes/history) )
+  (pushy/start! routes/history))
 
 (defn init []
   (firebase/init)

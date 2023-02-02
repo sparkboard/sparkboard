@@ -3,45 +3,36 @@
    * slack integration
    * synced queries over websocket"
   (:gen-class)
-  (:require [bidi.ring :as bidi.ring]
-            [clojure.string :as str]
-            [bidi.bidi :as bidi]
+  (:require [clojure.string :as str]
             [hiccup.util]
-            [mhuebert.cljs-static.html :as html]
             [muuntaja.core :as m]
+            [muuntaja.core :as muu]
+            [muuntaja.middleware :as muu.middleware]
             [org.httpkit.server :as httpkit]
-            [org.sparkboard.datalevin :as datalevin :refer [conn]]
+            [org.sparkboard.datalevin :as datalevin]
             [org.sparkboard.firebase.jvm :as fire-jvm]
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.log]
+            [org.sparkboard.routes :as routes]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
             [org.sparkboard.server.views :as server.views]
             [org.sparkboard.slack.server :as slack.server]
-            [re-db.api :as db]
-            [re-db.hooks :as hooks]
+            [org.sparkboard.websockets :as ws]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [re-db.read :as read]
             [re-db.sync :as sync]
-            [re-db.xform :as xf]
+            [re-db.sync.entity-diff-1 :as sync.entity]
+            [re-db.sync.transit :as re-db.transit]
             [ring.middleware.defaults]
             [ring.middleware.format]
+            [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime-type]
             [ring.util.request]
             [ring.util.response :as ring.response]
-            [ring.util.http-response :as ring.http]
-            [taoensso.timbre :as log]
-            [muuntaja.core :as muu]
-            [muuntaja.middleware :as muu.middleware]
-            [tools.sparkboard.transit :as transit]
-            [re-db.sync.transit :as re-db.transit]
-            [org.sparkboard.websockets :as ws]
-            [org.sparkboard.server.queries :as queries]
-            [org.sparkboard.routes :as routes]
-            [re-db.sync.entity-diff-1 :as sync.entity])
-  (:import [java.time Instant]))
+            [taoensso.timbre :as log]))
 
 (comment
  (fire-tokens/decode token))
@@ -108,26 +99,18 @@
 
 (defn http-handler [{:as req :keys [path-info uri]}]
   (let [path (or path-info uri)
-        {:as match :keys [query mutation route-params]} (routes/match-route path)
+        {:as match :keys [query mutation params]} (routes/match-route path)
         html? (str/includes? (get-in req [:headers "accept"]) "text/html")
         method (:request-method req)]
     (when (and match (not html?))
       (cond (and (= method :post) mutation)
-            (some-> (mutation req)
+            (some-> (mutation (assoc params :body (:body req)))
                     ring.http/ok)
 
             (and (= method :get) query)
-            (some-> (query route-params)
+            (some-> (query params)
                     deref
                     ring.http/ok)))))
-
-(defn route-vec [path]
-  (-> (if (vector? path)
-        path
-        (let [{:as match :keys [tag route-params query]} (routes/match-route path)]
-          (when query
-            [tag route-params])))
-      (update 1 #(or % {}))))
 
 (memo/defn-memo $resolve-query [[id & args :as route-vec]]
   (assert (keyword? id))
@@ -143,8 +126,15 @@
 
 (def app
   (-> (impl/join-handlers slack.server/handlers
-                          (ws/handler "/ws" {:handlers (merge (sync/query-handlers
-                                                               (comp $resolve-query route-vec)))})
+                          (ws/handler "/ws" {:handlers (merge
+                                                        (sync/query-handlers
+                                                         (comp $resolve-query routes/path->route))
+                                                        {:sb/mutation
+                                                         (fn [context [id params] & args]
+                                                           (if-let [mutation (some-> (get-in @routes/!routes [id :mutation])
+                                                                                     requiring-resolve)]
+                                                             (apply mutation context params args)
+                                                             (prn :mutation-not-found {:id id})))})})
                           (-> http-handler (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors

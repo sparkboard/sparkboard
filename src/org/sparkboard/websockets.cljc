@@ -3,7 +3,8 @@
             #?(:cljs [yawn.hooks :refer [use-deref]])
             [applied-science.js-interop :as j]
             [re-db.sync :as sync]
-            [re-db.sync.transit :as transit]))
+            [re-db.sync.transit :as transit]
+            [org.sparkboard.routes :as routes]))
 
 (def default-options
   "Websocket config fallbacks"
@@ -82,8 +83,14 @@
      (sync/$query @channel query-vec)))
 
 #?(:cljs
-   (defn use-query [query-vec]
-     (use-deref ($query query-vec))))
+   (defn use-query! [query-vec]
+     (let [{:as x :keys [value error loading?]} (use-deref ($query (routes/path->route query-vec)))]
+       (cond error (throw (ex-info error {:query query-vec}))
+             loading? (throw loading?)
+             :else value))))
+
+#?(:cljs
+   (def use-result (comp use-deref $query)))
 
 #?(:cljs
    (defn send [message]

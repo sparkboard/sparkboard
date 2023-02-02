@@ -1,19 +1,15 @@
 (ns org.sparkboard.routes
-  (:require [applied-science.js-interop :as j]
-            [bidi.bidi :as bidi]
-            [clojure.string :as str]
+  (:require [bidi.bidi :as bidi]
             [org.sparkboard.server.queries :as-alias queries]
             [org.sparkboard.client.views :as-alias views]
             [org.sparkboard.client.slack :as-alias slack.client]
             [org.sparkboard.client.auth :as-alias auth.client]
             [org.sparkboard.macros :refer [lazy-views]]
             [re-db.reactive :as r]
+            [tools.sparkboard.util :as u]
             #?(:cljs [tools.sparkboard.browser.query-params :as query-params])
-            #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs [shadow.lazy :as lazy])
-            #?(:clj [org.sparkboard.server.views :as server.views])
-            #?(:clj [org.sparkboard.server.env :as env])
-            [tools.sparkboard.util :as u])
+            #?(:cljs [vendor.pushy.core :as pushy]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
 
 
@@ -44,6 +40,10 @@
             ;; FIXME
             :mutate {:route ["/mutate"]
                      :mutation `mutate-query-fn}
+
+            :board/create {:route ["/o/" :org/id "/create-board"]
+                           :view `views/board:create
+                           :mutation `queries/board:create}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/skeleton"]
@@ -93,12 +93,16 @@
   (apply bidi/path-for @!bidi-routes handler params))
 
 (defn match-route [path]
-  (when-let [m (bidi/match-route @!bidi-routes path)]
-    (-> m
-        (dissoc :handler)
-        (merge
-         @(:handler m)
-         {:path path}))))
+  (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
+    (let [params (u/assoc-some (or route-params {})
+                   :query-params (not-empty #?(:cljs (query-params/path->map path)
+                                               :clj nil)))]
+      (merge
+       @(:handler m)
+       {:tag tag
+        :path path
+        :route [tag params]
+        :params params}))))
 
 #?(:cljs
    (extend-protocol bidi/Matched
@@ -113,27 +117,32 @@
 
 #?(:cljs
    (do
-     (defonce !current-location (atom nil))
+     (defonce !current-route (atom nil))
 
      (defn as-url ^js [route]
        (if (instance? js/URL route)
          route
          (new js/URL route "https://example.com")))
 
-     (defonce history (pushy/pushy
-                       (fn [{:as match :keys [view]}]
-                         (if (instance? lazy/Loadable view)
-                           (lazy/load view
-                                      (fn [view]
-                                        (reset! !current-location (assoc match
-                                                                    :query-params (query-params/path->map
-                                                                                   (:path match))
-                                                                    :view view))))
-                           (reset! !current-location match)))
-                       (fn [path]
-                         (match-route path))))
+     (defn handle-match [{:as match :keys [view]}]
+       (let [loadable? (instance? lazy/Loadable view)
+             ready-view (if loadable?
+                          (when (lazy/ready? view) @view)
+                          view)]
+         (if ready-view
+           (reset! !current-route (assoc match :view ready-view))
+           (lazy/load view
+                      #(reset! !current-route (assoc match :view %))))))
+
+     (defonce history (pushy/pushy handle-match match-route))
 
      (defn merge-query! [params]
-       (let [{:keys [path query-params]} (query-params/merge-query (:path @!current-location) params)]
+       (let [{:keys [path query-params]} (query-params/merge-query (:path @!current-route) params)]
          (pushy/set-token! history path)
-         (swap! !current-location assoc :query-params query-params)))))
+         query-params
+         #_(swap! !current-route assoc :query-params query-params)))))
+
+(defn path->route [path]
+  (cond-> path
+          (string? path)
+          (-> match-route :route)))

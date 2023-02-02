@@ -27,7 +27,7 @@
              {:entity/domain [:domain/name]}]
            [:org/id id]))
 
-(defquery $board:one [{:keys [board/id] :as _route-params}]
+(defquery $board:one [{:keys [board/id]}]
   (db/pull '[*
              :board/title
              :board.registration/open?
@@ -46,10 +46,15 @@
              {:member/tags [*]}]
            [:member/id id]))
 
-(defquery $search [{:keys [query-params org/id] :as route-params}]
+(defquery $search [{:keys [query-params org/id]}]
   (->> (sb.datalevin/q-fulltext-in-org (:q query-params)
                                        id)
        ;; Can't send Entities over the wire, so:
        (map (db/pull '[:project/title
                        :board/title]))))
 
+
+(defn board:create [context {:as params :keys [org/id]} board]
+  ;; open questions:
+  ;; - return value of a mutation goes where? (eg. errors, messages...)
+  (prn :params params :board board))
