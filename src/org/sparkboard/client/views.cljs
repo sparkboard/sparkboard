@@ -149,7 +149,7 @@
 ;; for DEBUG only:
 
 (v/defview show-query [[id :as route]]
-  (when (:query (@routes/!routes route))
+  (when (:query (@routes/!routes id))
     (let [value (ws/use-query! route)
           value-str (yawn.hooks/use-memo
                      (fn [] (with-out-str (pprint value)))
