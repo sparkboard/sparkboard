@@ -1,5 +1,6 @@
 (ns org.sparkboard.routes
   (:require [bidi.bidi :as bidi]
+            [clojure.string :as str]
             [org.sparkboard.server.queries :as-alias queries]
             [org.sparkboard.client.views :as-alias views]
             [org.sparkboard.client.slack :as-alias slack.client]
@@ -7,17 +8,11 @@
             [org.sparkboard.macros :refer [lazy-views]]
             [re-db.reactive :as r]
             [tools.sparkboard.util :as u]
+            [tools.sparkboard.http :as sb.tools]
             #?(:cljs [tools.sparkboard.browser.query-params :as query-params])
             #?(:cljs [shadow.lazy :as lazy])
             #?(:cljs [vendor.pushy.core :as pushy]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
-
-
-#?(:clj
-   (defn mutate-query-fn [body]
-     (merge body
-            {:qux "qux"}
-            {:merged? "merged"})))
 
 (r/redef !routes
   "Route definitions. Routes are identified by their keyword-id. Options:
@@ -37,33 +32,31 @@
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
 
-            ;; FIXME
-            :mutate {:route ["/mutate"]
-                     :mutation `mutate-query-fn}
-
-            :board/create {:route ["/o/" :org/id "/create-board"]
+            :org/create {:route "/v2/o/create"
+                         :mutation `queries/org:create}
+            :board/create {:route ["/v2/o/" :org/id "/create-board"]
                            :view `views/board:create
                            :mutation `queries/board:create}
 
             ;; Skeleton entry point is the full list of orgs
-            :org/index {:route ["/skeleton"]
+            :org/index {:route ["/v2"]
                         :query `queries/$org:index
                         :view `views/org:index}
             ;; Rest of the skeleton:
-            :org/one {:route ["/o/" :org/id]
+            :org/one {:route ["/v2/o/" :org/id]
                       :query `queries/$org:one
                       :view `views/org:one}
-            :org/search {:route ["/o/" :org/id "/search"]
+            :org/search {:route ["/v2/o/" :org/id "/search"]
                          :query `queries/$search}
 
-            :board/one {:route ["/b/" :board/id]
+            :board/one {:route ["/v2/b/" :board/id]
                         :query `queries/$board:one
                         :view `views/board:one}
-            :project/one {:route ["/p/" :project/id]
+            :project/one {:route ["/v2/p/" :project/id]
                           :query `queries/$project:one
                           :view `views/project:one}
             ;; member view
-            :member/one {:route ["/m/" :member/id]
+            :member/one {:route ["/v2/m/" :member/id]
                          :query `queries/$member:one
                          :view `views/member:one}})))
 
@@ -89,8 +82,8 @@
                                 :cljs result))
                             id)])))]))
 
-(defn path-for [handler & params]
-  (apply bidi/path-for @!bidi-routes handler params))
+(defn path-for [route]
+  (apply bidi/path-for @!bidi-routes route))
 
 (defn match-route [path]
   (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
@@ -117,7 +110,7 @@
 
 #?(:cljs
    (do
-     (defonce !current-route (atom nil))
+     (defonce !current-location (atom nil))
 
      (defn as-url ^js [route]
        (if (instance? js/URL route)
@@ -130,19 +123,32 @@
                           (when (lazy/ready? view) @view)
                           view)]
          (if ready-view
-           (reset! !current-route (assoc match :view ready-view))
+           (reset! !current-location (assoc match :view ready-view))
            (lazy/load view
-                      #(reset! !current-route (assoc match :view %))))))
+                      #(reset! !current-location (assoc match :view %))))))
 
      (defonce history (pushy/pushy handle-match match-route))
 
      (defn merge-query! [params]
-       (let [{:keys [path query-params]} (query-params/merge-query (:path @!current-route) params)]
+       (let [{:keys [path query-params]} (query-params/merge-query (:path @!current-location) params)]
          (pushy/set-token! history path)
          query-params
-         #_(swap! !current-route assoc :query-params query-params)))))
+         #_(swap! !current-location assoc :query-params query-params)))
+     ))
+
+
+(defn breadcrumb [path]
+  (->> (iteration #(second (re-find #"(.*)/.*$" %))
+                  :initk path)
+       (keep (comp :route match-route))))
 
 (defn path->route [path]
   (cond-> path
           (string? path)
           (-> match-route :route)))
+
+(defn mutation! [route & args]
+  (sb.tools/http-req (path-for route)
+                     {:body (vec args)
+                      :body/content-type :transit+json
+                      :method "POST"}))

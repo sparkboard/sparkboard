@@ -104,7 +104,7 @@
         method (:request-method req)]
     (when (and match (not html?))
       (cond (and (= method :post) mutation)
-            (some-> (mutation (assoc params :body (:body req)))
+            (some-> (apply mutation {:request req} params (:body-params req))
                     ring.http/ok)
 
             (and (= method :get) query)
@@ -126,15 +126,9 @@
 
 (def app
   (-> (impl/join-handlers slack.server/handlers
-                          (ws/handler "/ws" {:handlers (merge
-                                                        (sync/query-handlers
-                                                         (comp $resolve-query routes/path->route))
-                                                        {:sb/mutation
-                                                         (fn [context [id params] & args]
-                                                           (if-let [mutation (some-> (get-in @routes/!routes [id :mutation])
-                                                                                     requiring-resolve)]
-                                                             (apply mutation context params args)
-                                                             (prn :mutation-not-found {:id id})))})})
+                          (ws/handler "/ws" {:handlers
+                                             (sync/query-handlers
+                                              (comp $resolve-query routes/path->route))})
                           (-> http-handler (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors

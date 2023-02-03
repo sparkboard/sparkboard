@@ -57,4 +57,9 @@
 (defn board:create [context {:as params :keys [org/id]} board]
   ;; open questions:
   ;; - return value of a mutation goes where? (eg. errors, messages...)
-  (prn :params params :board board))
+  (prn :params params :board/create board))
+
+(defn org:create [context _ org]
+  ;; open questions:
+  ;; - return value of a mutation goes where? (eg. errors, messages...)
+  (prn :org/create org))

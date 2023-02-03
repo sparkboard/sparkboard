@@ -22,16 +22,13 @@
    [:h2 (use-tr [:tr/orgs])]
    [:section#orgs-grid
     (into [rough/grid {}]
-          (map (fn [org-obj]
+          (map (fn [org]
                  [rough/card {:class "pa3"}
-                  [rough/link {:href (routes/path-for :org/one {:org/id (:org/id org-obj)})}
-                   (:org/title org-obj)]]))
+                  [rough/link {:href (routes/path-for [:org/one org])}
+                   (:org/title org)]]))
           (ws/use-query! [:org/index]))]
    [:section#add-org
-    [rough/button {:on-click #(sb.tools/http-req "/mutate"
-                                                 {:body {:foo "foo"}
-                                                  :body/content-type :transit+json
-                                                  :method "POST"})}
+    [rough/button {:on-click #(routes/mutation! [:org/create] {:foo "foo"})}
      "create org"]]])
 
 (v/defview org:one [{:as params :keys [org/id query-params]}]
@@ -42,7 +39,7 @@
         [pending? start-transition] (react/useTransition)]
     [:div
      [:h1 (use-tr [:tr/org]) " " (:org/title value)]
-     [:a {:href (routes/path-for :board/create params)} "New Board"]
+     [:a {:href (routes/path-for [:board/create params])} "New Board"]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
@@ -66,7 +63,7 @@
      [:section [:h3 (use-tr [:tr/boards])]
       (into [:ul]
             (map (fn [board]
-                   [:li [rough/link {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
+                   [:li [rough/link {:href (routes/path-for [:board/one board])} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
             (:board/_org value))]]))
 
@@ -84,16 +81,16 @@
                  :class "db"}
       (into [:ul]
             (map (fn [proj]
-                   [:li [:a {:href (routes/path-for :project/one proj)}
+                   [:li [:a {:href (routes/path-for [:project/one proj])}
                          (:project/title proj)]]))
             (:project/_board value))]
      [rough/tab {:name (use-tr [:tr/members])
                  :class "db"}
       (into [:ul]
-            (map (fn [mbr]
+            (map (fn [member]
                    [:li
-                    [:a {:href (routes/path-for :member/one mbr)}
-                     (:member/name mbr)]]))
+                    [:a {:href (routes/path-for [:member/one member])}
+                     (:member/name member)]]))
             (:member/_board value))]
      [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
                  :class "db"}
@@ -151,12 +148,13 @@
 
 ;; for DEBUG only:
 
-(v/defview show-query [route]
-  (let [value (ws/use-query! route)
-        value-str (yawn.hooks/use-memo
-                   (fn [] (with-out-str (pprint value)))
-                   (yawn.hooks/use-deps value))]
-    [:pre value-str]))
+(v/defview show-query [[id :as route]]
+  (when (:query (@routes/!routes route))
+    (let [value (ws/use-query! route)
+          value-str (yawn.hooks/use-memo
+                     (fn [] (with-out-str (pprint value)))
+                     (yawn.hooks/use-deps value))]
+      [:pre value-str])))
 
 (v/defview drawer [{:keys [initial-height]} child]
   ;; the divider is draggable and sets the height of the drawer
@@ -198,14 +196,20 @@
 (v/defview dev-drawer [{:as match :keys [route]}]
   [drawer {:initial-height 100}
    [:Suspense {:fallback (v/x "Hi")}
-    [:p.f5
-     [:a.mr3.rounded.bg-black.white.pa2.no-underline
-      {:href (routes/path-for :org/index)} "❮"]
-     (str route)]
+    (into [:p.f5]
+          (for [[id :as route] (routes/breadcrumb (:path @routes/!current-location))]
+            [:a.mr3.rounded.bg-black.white.pa2.no-underline
+             {:href (routes/path-for route)} (str id)]))
+
+    (str route)
     [show-query route]]])
 
 
 (v/defview board:create [{:as params :keys [org/id route]}]
-  (prn :ARAMS params)
-  [:div {:on-click #(ws/send [:sb/mutation route {:board/title "My board"}])}
-   "Create a Board!"])
+  (let [[n n!] (use-state "")]
+    [:div
+     [rough/input {:label "Board title"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [:div {:on-click #(routes/mutation! route {:board/title n})}
+      "Create a Board!"]]))

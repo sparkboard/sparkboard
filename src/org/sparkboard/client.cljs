@@ -13,7 +13,7 @@
             [yawn.view :as v]))
 
 (v/defview root [] ;; top level view wrapper
-  (let [{:as current-location :keys [path view params tag route]} (use-deref routes/!current-route)]
+  (let [{:as current-location :keys [path view params tag route]} (use-deref routes/!current-location)]
     [:<>
      [views/global-header current-location]
      [:Suspense {:fallback (v/x [rough/spinner])}
