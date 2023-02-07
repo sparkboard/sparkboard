@@ -104,9 +104,10 @@
         method (:request-method req)]
     (when (and match (not html?))
       (cond (and (= method :post) mutation)
-            (some-> (apply mutation {:request req} params (:body-params req))
-                    ring.http/ok)
+            ;; mutation fns are expected to return HTTP response maps
+            (apply mutation {:request req} params (:body-params req))
 
+            ;; query fns return reactions which must be wrapped in HTTP response maps
             (and (= method :get) query)
             (some-> (query params)
                     deref
@@ -129,8 +130,7 @@
 
 (def app
   (-> (impl/join-handlers slack.server/handlers
-                          (ws/handler "/ws" {:handlers
-                                             (sync/query-handlers resolve-query)})
+                          (ws/handler "/ws" {:handlers (sync/query-handlers resolve-query)})
                           (-> http-handler (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors
