@@ -4,7 +4,8 @@
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [re-db.xform :as xf]
-            [re-db.read :as read]))
+            [re-db.read :as read]
+            [clojure.pprint :refer [pprint]]))
 
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
@@ -18,6 +19,10 @@
 (defquery $org:index [_]
   (->> (db/where [:org/id])
        (mapv (re-db.api/pull '[*]))))
+
+(comment
+ (db/transact! [{:org/id (str (rand-int 10000))
+                 :org/title (str (rand-int 10000))}]))
 
 (defquery $org:one [{:keys [org/id]}]
   (db/pull '[:org/id
@@ -92,5 +97,15 @@
  (r/become !k (r/reaction 10))
 
 
+ (r/session
+  (let [!orgs (r/reaction
+                (prn :counting-orgs)
+                (count (db/where [:org/title])))]
+    (prn @!orgs)
+    (pprint (db/transact! [{:org/id (str (rand-int 10000))
+                            :org/title (str (rand-int 10000))}]))
+    (prn @!orgs)
+
+    ))
 
  )

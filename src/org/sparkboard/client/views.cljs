@@ -26,7 +26,7 @@
                  [rough/card {:class "pa3"}
                   [rough/link {:href (routes/path-for [:org/one org])}
                    (:org/title org)]]))
-          (ws/use-query! [:org/index]))]
+          (ws/use-query! [:org/index {}]))]
    [:section#add-org
     [(routes/use-view :org/create)]]])
 
