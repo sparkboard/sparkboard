@@ -164,8 +164,12 @@
           (string? path)
           (-> match-route :route)))
 
-(defn mutation! [route & args]
+(defn mutate! [{:keys [route response-fn] :as opts} & args]
   (sb.tools/http-req (path-for route)
-                     {:body (vec args)
-                      :body/content-type :transit+json
-                      :method "POST"}))
+                     (merge {:body (vec args)
+                             :body/content-type :transit+json
+                             :method "POST"}
+                            ;; `response-fn`, if provided, should be a fn of two
+                            ;; args [response url] and returning the response
+                            ;; after doing whatever it needs to do.
+                            (dissoc opts :body :route))))

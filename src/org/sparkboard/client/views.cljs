@@ -39,7 +39,16 @@
       [rough/input {:type "text"
                     :value (:org/title @org)
                     :on-input (fn [event] (swap! org assoc :org/title (-> event .-target .-value)))}]
-      [rough/button {:on-click #(routes/mutation! [:org/create] @org)}
+      [rough/button
+       {:on-click #(routes/mutate! {:route [:org/create]
+                                    :response-fn (fn [^js/Response res _url]
+                                                   (case (.-status res)
+                                                     200 (js/console.log "200 response")
+                                                     400 (js/console.warn "400 response" (.-body res))
+                                                     500 (js/console.error "500 response")
+                                                     (js/console.error "catch-all case"))
+                                                   res)}
+                                   @org)}
        "create org"]]]))
 
 (v/defview org:one [{:as params :keys [org/id query-params]}]
@@ -222,5 +231,5 @@
      [rough/input {:label "Board title"
                    :value n
                    :on-input #(n! (-> % .-target .-value))}]
-     [:div {:on-click #(routes/mutation! route {:board/title n})}
+     [:div {:on-click #(routes/mutate! {:route route} {:board/title n})}
       "Create a Board!"]]))
