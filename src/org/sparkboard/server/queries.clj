@@ -79,11 +79,17 @@
   ;; - better way to generate UUIDs?
   ;; - schema validation
   ;; - error/validation messages (handle in client)
-  (try (let [org (assoc org :org/id (str (random-uuid))
-                            :ts/created-by {:firebase-account/id "DEV:FAKE"})]
-         (tap> (db/transact! [org]))
-         {:status 200
-          :body (select-keys org [:org/id])})
+  (try (if (empty? (db/where [[:org/title (:org/title org)]]))
+         (let [org (assoc org
+                          :org/id (str (random-uuid))
+                          ;; FIXME hook this to actual current user
+                          :ts/created-by {:firebase-account/id "DEV:FAKE"})]
+           (tap> (db/transact! [org]))
+           (return (select-keys org [:org/id])))
+         {:status 400
+          :headers {"content-type" "application/transit+json"}
+          :body {:error "org with that title already exists"
+                 :data org}})
        (catch Exception e
          {:status 500
           :body {:error (.getMessage e)}})))
