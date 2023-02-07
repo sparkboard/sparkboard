@@ -11,7 +11,9 @@
             [tools.sparkboard.http :as sb.tools]
             #?(:cljs [tools.sparkboard.browser.query-params :as query-params])
             #?(:cljs [shadow.lazy :as lazy])
-            #?(:cljs [vendor.pushy.core :as pushy]))
+            #?(:cljs [vendor.pushy.core :as pushy])
+            #?(:cljs [yawn.view :as v])
+            #?(:cljs [yawn.hooks :as hooks]))
   #?(:cljs (:require-macros org.sparkboard.routes)))
 
 (r/redef !routes
@@ -33,6 +35,7 @@
                         :view `auth.client/auth-header}
 
             :org/create {:route "/v2/o/create"
+                         :view `views/org:create
                          :mutation `queries/org:create}
             :board/create {:route ["/v2/o/" :org/id "/create-board"]
                            :view `views/board:create
@@ -89,7 +92,7 @@
   (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
     (let [params (u/assoc-some (or route-params {})
                    :query-params (not-empty #?(:cljs (query-params/path->map path)
-                                               :clj nil)))]
+                                               :clj  nil)))]
       (merge
        @(:handler m)
        {:tag tag
@@ -117,15 +120,16 @@
          route
          (new js/URL route "https://example.com")))
 
+     (defn ready-view [view]
+       (if (instance? lazy/Loadable view)
+         (when (lazy/ready? view) @view)
+         view))
+
      (defn handle-match [{:as match :keys [view]}]
-       (let [loadable? (instance? lazy/Loadable view)
-             ready-view (if loadable?
-                          (when (lazy/ready? view) @view)
-                          view)]
-         (if ready-view
-           (reset! !current-location (assoc match :view ready-view))
-           (lazy/load view
-                      #(reset! !current-location (assoc match :view %))))))
+       (if-let [view (ready-view view)]
+         (reset! !current-location (assoc match :view view))
+         (lazy/load view
+                    #(reset! !current-location (assoc match :view %)))))
 
      (defonce history (pushy/pushy handle-match match-route))
 
@@ -134,7 +138,20 @@
          (pushy/set-token! history path)
          query-params
          #_(swap! !current-location assoc :query-params query-params)))
-     ))
+
+     (defn use-view [view]
+       (let [view (if (keyword? view)
+                    (get-in @!routes [view :view])
+                    view)
+             !p (hooks/use-ref nil)]
+         (if-let [v (ready-view view)]
+           v
+           (if-let [p @!p]
+             (throw p)
+             (do (reset! !p (js/Promise.
+                             (fn [resolve reject]
+                               (lazy/load view resolve))))
+                 (throw @!p))))))))
 
 
 (defn breadcrumb [path]

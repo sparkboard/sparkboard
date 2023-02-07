@@ -3,6 +3,7 @@
             [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
+            [re-db.xform :as xf]
             [re-db.read :as read]))
 
 (defmacro defquery
@@ -59,7 +60,37 @@
   ;; - return value of a mutation goes where? (eg. errors, messages...)
   (prn :params params :board/create board))
 
+(defn return [body]
+  {:status 200
+   ;; unsure if this necessary / what we should do
+   ;; w/ muuntaja
+   :headers {"content-type" "application/transit+json"}
+   :body body})
+
 (defn org:create [context _ org]
   ;; open questions:
   ;; - return value of a mutation goes where? (eg. errors, messages...)
-  (prn :org/create org))
+
+  ;; TODO
+  ;; - better way to generate UUIDs?
+  ;; - schema validation
+  ;; - error/validation messages (handle in client)
+  (try (let [org (assoc org :org/id (str (random-uuid))
+                            :ts/created-by {:firebase-account/id "DEV:FAKE"})]
+         (tap> (db/transact! [org]))
+         {:status 200
+          :body (select-keys org [:org/id])})
+       (catch Exception e
+         {:status 500
+          :body {:error (.getMessage e)}})))
+
+(comment
+ (r/redef !k (r/reaction 100))
+ (def !kmap (xf/map inc !k))
+ (add-watch !kmap :prn (fn [_ _ _ v] (prn :!kmap v)))
+ (swap! !k inc)
+ (r/become !k (r/reaction 10))
+
+
+
+ )
