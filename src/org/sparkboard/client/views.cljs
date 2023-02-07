@@ -9,8 +9,7 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
-   [tools.sparkboard.http :as sb.tools]
-   [yawn.hooks :refer [use-deref use-state]]
+   [yawn.hooks :refer [use-state]]
    [yawn.view :as v]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

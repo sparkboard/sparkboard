@@ -67,12 +67,11 @@
 
 (defn return [body]
   {:status 200
-   ;; unsure if this necessary / what we should do
-   ;; w/ muuntaja
+   ;; FIXME unsure if this works / is necessary / what we should do w/muuntaja
    :headers {"content-type" "application/transit+json"}
    :body body})
 
-(defn org:create [context _ org]
+(defn org:create [context _params org]
   ;; open questions:
   ;; - return value of a mutation goes where? (eg. errors, messages...)
 
