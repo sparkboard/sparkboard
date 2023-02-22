@@ -6,6 +6,9 @@
             [re-db.schema :as s]
             [tools.sparkboard.util :as u]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; For bulk data import
+
 (def !registry (atom (m/default-schemas)))
 (mr/set-default-registry! (mr/mutable-registry !registry))
 
@@ -843,4 +846,36 @@
                              ]]
  :registration.step/is-complete-fn
 
+ )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; For validation of incomplete incoming data, e.g. to create an entity
+
+(defn str-uuid? [x]
+  (and (string? x)
+       (try (java.util.UUID/fromString x)
+            (catch java.lang.IllegalArgumentException _iae
+              nil))))
+
+(def proto ;; FIXME this name --DAL 2023-02-22
+  "Schema for validation"
+  {:org [:map {:closed true}
+         [:org/id    [:fn str-uuid?]]
+         [:org/title [:string {:min 2}]]
+         [:ts/created-by any?]]})
+
+
+(comment
+ (m/validate (:org proto)
+             {:org/id (str (random-uuid))
+              :org/title "foo"
+              :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
+
+ (m/validate (:org proto)
+             {:org/id (str (random-uuid))
+              :org/title "foo"
+              :ts/created-by  {:firebase-account/id "DEV:FAKE"}
+              :foo "bar"})
+ 
  )

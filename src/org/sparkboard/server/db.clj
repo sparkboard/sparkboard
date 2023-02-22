@@ -2,13 +2,16 @@
   "Database queries and mutations (transactions)"
   (:require [clojure.pprint :refer [pprint]]
             [datalevin.core :as dl]
+            [malli.core :as m]
             [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
+            [org.sparkboard.schema :as schema]
             [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [re-db.read :as read]
             [re-db.xform :as xf]
-            [ring.util.http-response :as http-rsp]))
+            [ring.util.http-response :as http-rsp]
+            [tools.sparkboard.util :as util]))
 
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
@@ -67,12 +70,19 @@
 ;;;; Mutations
 
 ;; TODO
-(defn board:create [context {:as params :keys [org/id]} board]
+(defn board:create [ctx {:as params :keys [org/id]} board]
   ;; open questions:
   ;; - return value of a mutation goes where? (eg. errors, messages...)
   (prn :params params :board/create board))
 
-(defn org:create [context _params org]
+(defn make-org [_ctx m]
+  (util/guard (assoc m
+                     :org/id (str (random-uuid))
+                     ;; FIXME use context param to hook this to actual current user
+                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+              (partial m/validate (:org schema/proto))))
+
+(defn org:create [ctx _params org]
   ;; open questions:
   ;; - return value of a mutation goes where? (eg. errors, messages...)
   ;; TODO
@@ -80,16 +90,37 @@
   ;; - schema validation
   ;; - error/validation messages (handle in client)
   (try (if (empty? (db/where [[:org/title (:org/title org)]]))
-         (let [org (assoc org
-                          :org/id (str (random-uuid))
-                          ;; FIXME hook this to actual current user
-                          :ts/created-by {:firebase-account/id "DEV:FAKE"})]
-           (tap> (db/transact! [org]))
-           (http-rsp/ok (select-keys org [:org/id])))
+         (if-let [org (make-org ctx org)]
+           (do (tap> (db/transact! [org]))
+               (http-rsp/ok org))
+           (http-rsp/bad-request {:error "can't create org with given data"
+                                  :data org}))
          (http-rsp/bad-request {:error "org with that title already exists"
                                 :data org}))
        (catch Exception e
          (http-rsp/internal-server-error {:error (.getMessage e)}))))
+
+(comment
+  (make-org {} {:org/title "foo"})
+
+  (make-org {} {:org/title "foo", :foo "bar"})
+  
+  (org:create {} nil
+              {:org/title "foo"})
+
+  ;; fail b/c no title and extra key
+  (org:create {} nil
+              {:foo "foo"})
+
+  ;; fail b/c exists
+  (org:create {} nil
+              {:org/title "Hacking Health"})
+
+  (org:create {} nil
+              {:foo "foo" ;; <-- should stop the gears
+               :org/title "baz"})
+
+  )
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
