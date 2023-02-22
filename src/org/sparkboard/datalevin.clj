@@ -36,18 +36,6 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Queries
-
-(defn qry-orgs []
-  (d/where [:org/id]))
-
-(defn qry-boards [org-id]
-  (d/where [:board/id
-            [:board/org [:org/id org-id]]]))
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Fulltext search
 
 (defn entity-in-org?
