@@ -1,5 +1,7 @@
-(ns org.sparkboard.server.queries
+(ns org.sparkboard.server.db
+  "Database queries and mutations (transactions)"
   (:require [clojure.pprint :refer [pprint]]
+            [datalevin.core :as dl]
             [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
             [re-db.api :as db]
             [re-db.memo :as memo]
@@ -60,10 +62,8 @@
                        :board/title]))))
 
 
-(defn board:create [context {:as params :keys [org/id]} board]
-  ;; open questions:
-  ;; - return value of a mutation goes where? (eg. errors, messages...)
-  (prn :params params :board/create board))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Mutations
 
 (defn return [body]
   {:status 200
@@ -71,10 +71,15 @@
    :headers {"content-type" "application/transit+json"}
    :body body})
 
+;; TODO
+(defn board:create [context {:as params :keys [org/id]} board]
+  ;; open questions:
+  ;; - return value of a mutation goes where? (eg. errors, messages...)
+  (prn :params params :board/create board))
+
 (defn org:create [context _params org]
   ;; open questions:
   ;; - return value of a mutation goes where? (eg. errors, messages...)
-
   ;; TODO
   ;; - better way to generate UUIDs?
   ;; - schema validation
@@ -94,14 +99,17 @@
          {:status 500
           :body {:error (.getMessage e)}})))
 
-(defn org:delete [context _params org]
+(defn org:delete
+  "Mutation fn. Retracts organization by given org-id."
+  [context _params org-id]
   ;; FIXME access control
-  (->> org
-       :org/id
-       (sb.datalevin/org-entity conn)
-       sb.datalevin/retract!)
-  (return {:org org
-           :deleted? true}))
+  (db/transact! [[:db.fn/retractEntity
+                  (dl/q '[:find ?e .
+                          :in $ ?org-id
+                          :where [?e :org/id ?org-id]]
+                        @conn org-id)]])
+  (return {:org/id org-id, :deleted? true}))
+
 
 (comment
  (r/redef !k (r/reaction 100))

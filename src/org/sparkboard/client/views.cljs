@@ -28,7 +28,7 @@
                   [rough/icon-button
                    {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                              (:org/title org) "?"))
-                                 (routes/mutate! {:route [:org/delete]} org))}
+                                 (routes/mutate! {:route [:org/delete]} (:org/id org)))}
                    "X"]]))
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
