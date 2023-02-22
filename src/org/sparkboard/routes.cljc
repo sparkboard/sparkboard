@@ -8,7 +8,7 @@
             [org.sparkboard.macros :refer [lazy-views]]
             [re-db.reactive :as r]
             [tools.sparkboard.util :as u]
-            [tools.sparkboard.http :as sb.tools]
+            [tools.sparkboard.http :as sb.http]
             #?(:cljs [tools.sparkboard.browser.query-params :as query-params])
             #?(:cljs [shadow.lazy :as lazy])
             #?(:cljs [vendor.pushy.core :as pushy])
@@ -168,11 +168,11 @@
           (-> match-route :route)))
 
 (defn mutate! [{:keys [route response-fn] :as opts} & args]
-  (sb.tools/http-req (path-for route)
-                     (merge {:body (vec args)
-                             :body/content-type :transit+json
-                             :method "POST"}
-                            ;; `response-fn`, if provided, should be a fn of two
-                            ;; args [response url] and returning the response
-                            ;; after doing whatever it needs to do.
-                            (dissoc opts :body :route))))
+  (sb.http/request (path-for route)
+                   (merge {:body (vec args)
+                           :body/content-type :transit+json
+                           :method "POST"}
+                          ;; `response-fn`, if provided, should be a fn of two
+                          ;; args [response url] and returning the response
+                          ;; after doing whatever it needs to do.
+                          (dissoc opts :body :route))))

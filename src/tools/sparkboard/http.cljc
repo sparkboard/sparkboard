@@ -58,7 +58,7 @@
             (dissoc :auth/token)))
     opts))
 
-(defn http-req [url {:as opts :keys [query body auth/token method response-fn]}]
+(defn request [url {:as opts :keys [query body auth/token method response-fn]}]
   (let [opts (cond-> opts
                      token (assoc-in [:headers "Authorization"] (str "Bearer: " token))
                      body (format-req-body)
@@ -81,7 +81,7 @@
   (fn [path & [opts]]
     (http-fn path (merge extra-opts opts))))
 
-(def get+ (partial-opts http-req {:method "GET"}))
-(def put+ (partial-opts http-req {:method "PUT"}))
-(def post+ (partial-opts http-req {:method "POST"}))
-(def patch+ (partial-opts http-req {:method "PATCH"}))
+(def get+ (partial-opts request {:method "GET"}))
+(def put+ (partial-opts request {:method "PUT"}))
+(def post+ (partial-opts request {:method "POST"}))
+(def patch+ (partial-opts request {:method "PATCH"}))
