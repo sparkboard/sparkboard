@@ -25,7 +25,8 @@
                  [rough/card {:class "pa3"}
                   [rough/link {:href (routes/path-for [:org/one org])}
                    (:org/title org)]
-                  [rough/icon-button {:on-click #(routes/mutate! {:route [:org/delete]} org)}
+                  [rough/icon-button {:on-click #(when (js/window.confirm (str "Really delete organization " (:org/title org) "?"))
+                                                   (routes/mutate! {:route [:org/delete]} org))}
                    "X"]]))
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
