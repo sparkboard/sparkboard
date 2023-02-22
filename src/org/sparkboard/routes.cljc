@@ -37,6 +37,9 @@
             :org/create {:route "/v2/o/create"
                          :view `views/org:create
                          :mutation `queries/org:create}
+            :org/delete {:route "/v2/o/delete"
+                         ;; :view `views/org:delete
+                         :mutation `queries/org:delete}
             :board/create {:route ["/v2/o/" :org/id "/create-board"]
                            :view `views/board:create
                            :mutation `queries/board:create}

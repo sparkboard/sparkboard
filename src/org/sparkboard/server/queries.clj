@@ -1,11 +1,11 @@
 (ns org.sparkboard.server.queries
-  (:require [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
+  (:require [clojure.pprint :refer [pprint]]
+            [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
             [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
-            [re-db.xform :as xf]
             [re-db.read :as read]
-            [clojure.pprint :refer [pprint]]))
+            [re-db.xform :as xf]))
 
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
@@ -93,6 +93,15 @@
        (catch Exception e
          {:status 500
           :body {:error (.getMessage e)}})))
+
+(defn org:delete [context _params org]
+  ;; FIXME access control
+  (->> org
+       :org/id
+       (sb.datalevin/org-entity conn)
+       sb.datalevin/retract!)
+  (return {:org org
+           :deleted? true}))
 
 (comment
  (r/redef !k (r/reaction 100))

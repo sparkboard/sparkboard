@@ -64,7 +64,6 @@
                      body (format-req-body)
                      true (dissoc :query :auth/token :response-fn))
         url (cond-> url query (str "?" (uri/map->query-string query)))]
-    (println "http-req response-fn:" response-fn)
     (p/let [response #?(:cljs
                         (p/-> (fetch url (->js opts))
                               ((if response-fn

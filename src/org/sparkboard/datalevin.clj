@@ -107,3 +107,43 @@
  ;; TODO CIDER print handler for re-db entities
 
  )
+
+(comment ;;;; how to delete?
+  ;; DAL created a bunch of dummy orgs, to test front-end reactivity &
+  ;; mutations. Now they need to go away.
+
+  ;; See all orgs so I can pick out the ones to delete
+  (->> (d/where [:org/id])
+       (mapv (d/pull '[*])))
+
+  ;; Get entity for an org
+  (dl/q '[:find ?e .
+          :in $ ?org-id
+          :where [?e :org/id ?org-id]]
+        (dl/db conn)
+        "30073ee5-ce10-43c8-ae1f-145d84e7a3ee")
+
+  ;; Delete it
+  (let [org {:org/id "30073ee5-ce10-43c8-ae1f-145d84e7a3ee",
+             :org/title "dave4",
+             :ts/created-by {:db/id 130077}}
+        eid (dl/q '[:find ?e .
+                    :in $ ?org-id
+                    :where [?e :org/id ?org-id]]
+                  (dl/db conn)
+                  (:org/id org))]
+    (d/transact! [[:db.fn/retractEntity eid]]))
+
+  ;; FIXME fails if entity does not exist / has already been deleted
+  
+  )
+
+(defn org-entity [conn org-id]
+  (dl/q '[:find ?e .
+         :in $ ?org-id
+         :where [?e :org/id ?org-id]]
+       @conn org-id))
+
+;; FIXME this probably shouldn't exist here?
+(defn retract! [entity-id]
+  (d/transact! [[:db.fn/retractEntity entity-id]]))
