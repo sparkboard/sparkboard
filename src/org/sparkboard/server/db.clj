@@ -7,7 +7,8 @@
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [re-db.read :as read]
-            [re-db.xform :as xf]))
+            [re-db.xform :as xf]
+            [ring.util.http-response :as http-rsp]))
 
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
@@ -65,12 +66,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
-(defn return [body]
-  {:status 200
-   ;; FIXME unsure if this works / is necessary / what we should do w/muuntaja
-   :headers {"content-type" "application/transit+json"}
-   :body body})
-
 ;; TODO
 (defn board:create [context {:as params :keys [org/id]} board]
   ;; open questions:
@@ -90,25 +85,23 @@
                           ;; FIXME hook this to actual current user
                           :ts/created-by {:firebase-account/id "DEV:FAKE"})]
            (tap> (db/transact! [org]))
-           (return (select-keys org [:org/id])))
-         {:status 400
-          :headers {"content-type" "application/transit+json"}
-          :body {:error "org with that title already exists"
-                 :data org}})
+           (http-rsp/ok (select-keys org [:org/id])))
+         (http-rsp/bad-request {:error "org with that title already exists"
+                                :data org}))
        (catch Exception e
-         {:status 500
-          :body {:error (.getMessage e)}})))
+         (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  [context _params org-id]
+  [_ctx _params org-id]
   ;; FIXME access control
-  (db/transact! [[:db.fn/retractEntity
-                  (dl/q '[:find ?e .
-                          :in $ ?org-id
-                          :where [?e :org/id ?org-id]]
-                        @conn org-id)]])
-  (return {:org/id org-id, :deleted? true}))
+  (if-let [eid (dl/q '[:find ?e .
+                       :in $ ?org-id
+                       :where [?e :org/id ?org-id]]
+                     @conn org-id)]
+    (do (db/transact! [[:db.fn/retractEntity eid]])
+        (http-rsp/ok {:org/id org-id, :deleted? true}))
+    (http-rsp/bad-request {:org/id org-id, :deleted? false})))
 
 
 (comment
