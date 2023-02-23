@@ -56,6 +56,16 @@
                                    @org)}
        "create org"]]]))
 
+(v/defview board:create [{:as params :keys [route org/id]}]
+  (let [[n n!] (use-state "")]
+    [:div
+     [rough/input {:placeholder "Board title"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [rough/button {:on-click #(routes/mutate! {:route route}
+                                               {:board/title n})}
+      (str "Create board")]]))
+
 (v/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
         [query-params set-query-params!] (use-state query-params)
@@ -225,16 +235,6 @@
           (for [[id :as route] (routes/breadcrumb (:path @routes/!current-location))]
             [:a.mr3.rounded.bg-black.white.pa2.no-underline
              {:href (routes/path-for route)} (str id)]))
-
     (str route)
     [show-query route]]])
 
-
-(v/defview board:create [{:as params :keys [org/id route]}]
-  (let [[n n!] (use-state "")]
-    [:div
-     [rough/input {:label "Board title"
-                   :value n
-                   :on-input #(n! (-> % .-target .-value))}]
-     [:div {:on-click #(routes/mutate! {:route route} {:board/title n})}
-      "Create a Board!"]]))

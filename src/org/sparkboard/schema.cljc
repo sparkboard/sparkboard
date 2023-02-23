@@ -1,6 +1,7 @@
 (ns org.sparkboard.schema
   (:refer-clojure :exclude [ref])
-  (:require [malli.core :as m]
+  (:require [clojure.string :as str]
+            [malli.core :as m]
             [malli.generator :as mg]
             [malli.registry :as mr]
             [re-db.schema :as s]
@@ -852,12 +853,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; For validation of incomplete incoming data, e.g. to create an entity
 
+(defn str-uuid? [x]
+  (and (string? x)
+       (try (java.util.UUID/fromString x)
+            (catch java.lang.IllegalArgumentException _iae
+              nil))))
+
 (def proto ;; FIXME this name --DAL 2023-02-22
   "Schema for validation"
   {:org [:map {:closed true}
          [:org/id    [:string {:min 2}]]
          [:org/title [:string {:min 2}]]
-         [:ts/created-by any?]]})
+         [:ts/created-by any?]]
+   :board [:map {:closed true}
+           [:board/id    [:fn str-uuid?]]
+           [:board/org   [:tuple keyword? string?]]
+           [:board/title [:string {:min 2}]]
+           [:ts/created-by any?]]})
 
 
 (comment
@@ -871,5 +883,11 @@
               :org/title "foo"
               :ts/created-by  {:firebase-account/id "DEV:FAKE"}
               :foo "bar"})
+
+ (m/validate (:board proto)
+            {:board/id (str (random-uuid))
+             :board/org [:org/id "opengeneva"]
+             :board/title "opengeneva board foo 123"
+             :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
  
  )

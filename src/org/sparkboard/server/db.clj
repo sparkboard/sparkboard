@@ -70,11 +70,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
-;; TODO
-(defn board:create [ctx {:as params :keys [org/id]} board]
-  ;; open questions:
-  ;; - return value of a mutation goes where? (eg. errors, messages...)
-  (prn :params params :board/create board))
+(defn make-board [_ctx m]
+  (util/guard (assoc m
+                     :board/id (str (random-uuid))
+                     ;; FIXME use context to hook this to actual current user
+                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+              (partial m/validate (:board schema/proto))))
+
+(defn board:create [ctx params board]
+  (try (if (empty? (db/where [[:board/title (:board/title board)]]))
+         (if-let [board (make-board ctx (assoc board :board/org [:org/id (:org/id params)]))]
+           (do (tap> (db/transact! [board]))
+               (http-rsp/ok board))
+           (http-rsp/bad-request {:error "can't create board with given data"
+                                  :data board}))
+         (http-rsp/bad-request {:error "board with that title already exists"
+                                :data board}))
+       (catch Exception e
+         (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
 (defn title->id [s]
   (-> s
