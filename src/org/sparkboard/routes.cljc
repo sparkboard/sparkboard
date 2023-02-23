@@ -158,7 +158,7 @@
 
 
 (defn breadcrumb [path]
-  (->> (iteration #(second (re-find #"(.*)/.*$" %))
+  (->> (iteration #(second (re-find #"(.*)/.*$" (or % "")))
                   :initk path)
        (keep (comp :route match-route))))
 
