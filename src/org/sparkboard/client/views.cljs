@@ -12,6 +12,9 @@
    [yawn.hooks :refer [use-state]]
    [yawn.view :as v]))
 
+(defn http-ok? [rsp]
+  (= 200 (.-status rsp)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (v/defview home [] (use-tr [:skeleton/nix]))
@@ -62,7 +65,13 @@
      [rough/input {:placeholder "Board title"
                    :value n
                    :on-input #(n! (-> % .-target .-value))}]
-     [rough/button {:on-click #(routes/mutate! {:route route}
+     [rough/button {:on-click #(routes/mutate! {:route route
+                                                :response-fn (fn [^js/Response res _url]
+                                                               (when (http-ok? res)
+                                                                 (set! (.-location js/window)
+                                                                       (routes/path-for [:org/one {:org/id (:org/id params)}]))
+                                                                 ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
+                                                                 res))}
                                                {:board/title n})}
       (str "Create board")]]))
 
