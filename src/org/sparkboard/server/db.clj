@@ -1,6 +1,7 @@
 (ns org.sparkboard.server.db
   "Database queries and mutations (transactions)"
   (:require [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
             [datalevin.core :as dl]
             [malli.core :as m]
             [org.sparkboard.datalevin :as sb.datalevin :refer [conn]]
@@ -75,10 +76,16 @@
   ;; - return value of a mutation goes where? (eg. errors, messages...)
   (prn :params params :board/create board))
 
+(defn title->id [s]
+  (-> s
+      str/lower-case
+      (str/replace #"\s" "")))
+
 (defn make-org [_ctx m]
   (util/guard (assoc m
-                     :org/id (str (random-uuid))
-                     ;; FIXME use context param to hook this to actual current user
+                     ;; TODO maybe allow user to specify id?
+                     :org/id (title->id (:org/title m))
+                     ;; FIXME use context to hook this to actual current user
                      :ts/created-by {:firebase-account/id "DEV:FAKE"})
               (partial m/validate (:org schema/proto))))
 
@@ -101,7 +108,7 @@
          (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
 (comment
-  (make-org {} {:org/title "foo"})
+  (make-org {} {:org/title "foo bar baz qux"})
 
   (make-org {} {:org/title "foo", :foo "bar"})
   
