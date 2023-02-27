@@ -41,7 +41,7 @@
   (let [org (use-state {:org/title ""})
         [pending? start-transition] (react/useTransition)]
     [:div
-     [:h2 (use-tr [:tr/org])]
+     [:h2 (use-tr [:tr/new]) " " (use-tr [:tr/org])]
      [:form
       [:label "Title"]
       [rough/input {:type "text"
@@ -62,6 +62,7 @@
 (v/defview board:create [{:as params :keys [route org/id]}]
   (let [[n n!] (use-state "")]
     [:div
+     [:h3 [:h2 (use-tr [:tr/new]) " " (use-tr [:tr/board])]]
      [rough/input {:placeholder "Board title"
                    :value n
                    :on-input #(n! (-> % .-target .-value))}]
