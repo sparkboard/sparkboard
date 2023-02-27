@@ -58,15 +58,17 @@
             (dissoc :auth/token)))
     opts))
 
-(defn http-req [url {:as opts :keys [query body auth/token method]}]
+(defn request [url {:as opts :keys [query body auth/token method response-fn]}]
   (let [opts (cond-> opts
                      token (assoc-in [:headers "Authorization"] (str "Bearer: " token))
                      body (format-req-body)
-                     true (dissoc :query :auth/token))
+                     true (dissoc :query :auth/token :response-fn))
         url (cond-> url query (str "?" (uri/map->query-string query)))]
     (p/let [response #?(:cljs
                         (p/-> (fetch url (->js opts))
-                              (assert-ok url))
+                              ((if response-fn
+                                 response-fn
+                                 assert-ok) url))
                         :clj
                         (case method
                           "GET" (client/get url opts)
@@ -79,7 +81,7 @@
   (fn [path & [opts]]
     (http-fn path (merge extra-opts opts))))
 
-(def get+ (partial-opts http-req {:method "GET"}))
-(def put+ (partial-opts http-req {:method "PUT"}))
-(def post+ (partial-opts http-req {:method "POST"}))
-(def patch+ (partial-opts http-req {:method "PATCH"}))
+(def get+ (partial-opts request {:method "GET"}))
+(def put+ (partial-opts request {:method "PUT"}))
+(def post+ (partial-opts request {:method "POST"}))
+(def patch+ (partial-opts request {:method "PATCH"}))

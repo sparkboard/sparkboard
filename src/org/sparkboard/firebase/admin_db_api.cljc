@@ -15,15 +15,15 @@
 #?(:cljs
    (defn firebase-fetch [method]
      (fn [path & [opts]]
-       (http/http-req (str database-url (str/replace-first path #"^/*" "/") ".json")
-                      (-> opts
-                          (assoc :method method)
-                          (update :query #(-> (if (map? %) % (apply hash-map %))
-                                              (assoc :auth (:firebase/database-secret env/config))
-                                              (u/update-some {:orderBy clj->json
-                                                              :startAt clj->json
-                                                              :endAt clj->json
-                                                              :equalTo clj->json}))))))))
+       (http/request (str database-url (str/replace-first path #"^/*" "/") ".json")
+                     (-> opts
+                         (assoc :method method)
+                         (update :query #(-> (if (map? %) % (apply hash-map %))
+                                             (assoc :auth (:firebase/database-secret env/config))
+                                             (u/update-some {:orderBy clj->json
+                                                             :startAt clj->json
+                                                             :endAt clj->json
+                                                             :equalTo clj->json}))))))))
 
 #?(:clj
    (defn- apply-query [ref query]

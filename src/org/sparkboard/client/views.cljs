@@ -9,8 +9,7 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
-   [tools.sparkboard.http :as sb.tools]
-   [yawn.hooks :refer [use-deref use-state]]
+   [yawn.hooks :refer [use-state]]
    [yawn.view :as v]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25,11 +24,35 @@
           (map (fn [org]
                  [rough/card {:class "pa3"}
                   [rough/link {:href (routes/path-for [:org/one org])}
-                   (:org/title org)]]))
-          (ws/use-query! [:org/index]))]
+                   (:org/title org)]
+                  [rough/icon-button {:on-click #(when (js/window.confirm (str "Really delete organization " (:org/title org) "?"))
+                                                   (routes/mutate! {:route [:org/delete]} org))}
+                   "X"]]))
+          (ws/use-query! [:org/index {}]))]
    [:section#add-org
-    [rough/button {:on-click #(routes/mutation! [:org/create] {:foo "foo"})}
-     "create org"]]])
+    [(routes/use-view :org/create)]]])
+
+(v/defview org:create [params]
+  (let [org (use-state {:org/title ""})
+        [pending? start-transition] (react/useTransition)]
+    [:div
+     [:h2 (use-tr [:tr/org])]
+     [:form
+      [:label "Title"]
+      [rough/input {:type "text"
+                    :value (:org/title @org)
+                    :on-input (fn [event] (swap! org assoc :org/title (-> event .-target .-value)))}]
+      [rough/button
+       {:on-click #(routes/mutate! {:route [:org/create]
+                                    :response-fn (fn [^js/Response res _url]
+                                                   (case (.-status res)
+                                                     200 (js/console.log "200 response")
+                                                     400 (js/console.warn "400 response" (.-body res))
+                                                     500 (js/console.error "500 response")
+                                                     (js/console.error "catch-all case"))
+                                                   res)}
+                                   @org)}
+       "create org"]]]))
 
 (v/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
@@ -55,7 +78,7 @@
                                  routes/merge-query!
                                  set-query-params!))))
           :value q}]
-        (when pending? [:div [rough/spinner]])
+        (when pending? [:div [rough/spinner {:duration 300}]])
         (into [:ul]
               (map (comp (partial vector :li)
                          str))
@@ -211,5 +234,5 @@
      [rough/input {:label "Board title"
                    :value n
                    :on-input #(n! (-> % .-target .-value))}]
-     [:div {:on-click #(routes/mutation! route {:board/title n})}
+     [:div {:on-click #(routes/mutate! {:route route} {:board/title n})}
       "Create a Board!"]]))

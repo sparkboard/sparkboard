@@ -104,31 +104,33 @@
         method (:request-method req)]
     (when (and match (not html?))
       (cond (and (= method :post) mutation)
-            (some-> (apply mutation {:request req} params (:body-params req))
-                    ring.http/ok)
+            ;; mutation fns are expected to return HTTP response maps
+            (apply mutation {:request req} params (:body-params req))
 
+            ;; query fns return reactions which must be wrapped in HTTP response maps
             (and (= method :get) query)
             (some-> (query params)
                     deref
                     ring.http/ok)))))
 
-(memo/defn-memo $resolve-query [[id & args :as route-vec]]
-  (assert (keyword? id))
-  (some-> (get-in @routes/!routes [id :query])
-          requiring-resolve
-          (apply (or (seq args) [{}]))
-          sync.entity/txs
-          (r/catch (fn [e]
-                     (println "Error in $resolve-query")
-                     (println e)
-                     {:error (ex-message e)}))))
+(memo/defn-memo $txs [ref]
+  (r/catch (sync.entity/txs ref)
+           (fn [e]
+             (println "Error in $resolve-query")
+             (println e)
+             {:error (ex-message e)})))
+
+(defn resolve-query [path-or-route]
+  (let [[id & args] (routes/path->route path-or-route)]
+    (some-> (get-in @routes/!routes [id :query])
+            requiring-resolve
+            (apply (or (seq args) [{}]))
+            $txs)))
 
 
 (def app
   (-> (impl/join-handlers slack.server/handlers
-                          (ws/handler "/ws" {:handlers
-                                             (sync/query-handlers
-                                              (comp $resolve-query routes/path->route))})
+                          (ws/handler "/ws" {:handlers (sync/query-handlers resolve-query)})
                           (-> http-handler (muu.middleware/wrap-format muuntaja)))
       wrap-index-fallback
       wrap-handle-errors
