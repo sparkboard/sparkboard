@@ -70,6 +70,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
+(defn make-project [_ctx m]
+  (util/guard (assoc m
+                     :project/id (str (random-uuid))
+                     ;; FIXME use context to hook this to actual current user
+                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+              (partial m/validate (:project schema/proto))))
+
+(defn project:create [ctx params project]
+  (try (if (empty? (db/where [[:project/title (:project/title project)]]))
+         (if-let [project (make-project ctx (assoc project :project/board
+                                                   [:board/id (:board/id params)]))]
+           (do (tap> (db/transact! [project]))
+               (http-rsp/ok project))
+           (http-rsp/bad-request {:error "can't create project with given data"
+                                  :data project}))
+         (http-rsp/bad-request {:error "project with that title already exists"
+                                :data project}))
+       (catch Exception e
+         (http-rsp/internal-server-error {:error (.getMessage e)}))))
+
 (defn make-board [_ctx m]
   (util/guard (assoc m
                      :board/id (str (random-uuid))

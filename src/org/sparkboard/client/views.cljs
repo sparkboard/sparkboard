@@ -74,7 +74,23 @@
                                                                  ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                                                                  res))}
                                                {:board/title n})}
-      (str "Create board")]]))
+      (str (use-tr [:tr/create]) " " (use-tr [:tr/board]))]]))
+
+(v/defview project:create [{:as params :keys [route board/id]}]
+  (let [[n n!] (use-state "")]
+    [:div
+     [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/project]))]
+     [rough/input {:placeholder "Project title"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [rough/button {:on-click #(routes/mutate! {:route route
+                                                :response-fn (fn [^js/Response res _url]
+                                                               (when (http-ok? res)
+                                                                 (set! (.-location js/window)
+                                                                       (routes/path-for [:board/one {:board/id (:board/id params)}]))
+                                                                 res))}
+                                               {:project/title n})}
+      (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
 
 (v/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
@@ -124,6 +140,7 @@
     [rough/tabs {:class "w-100"}
      [rough/tab {:name (use-tr [:tr/projects])
                  :class "db"}
+      [:a {:href (routes/path-for [:project/create b])} "New Project"]
       (into [:ul]
             (map (fn [proj]
                    [:li [:a {:href (routes/path-for [:project/one proj])}

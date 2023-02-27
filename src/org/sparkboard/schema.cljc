@@ -865,11 +865,18 @@
          [:org/id    [:string {:min 2}]]
          [:org/title [:string {:min 2}]]
          [:ts/created-by any?]]
+   
    :board [:map {:closed true}
            [:board/id    [:fn str-uuid?]]
            [:board/org   [:tuple keyword? string?]]
            [:board/title [:string {:min 2}]]
-           [:ts/created-by any?]]})
+           [:ts/created-by any?]]
+   
+   :project [:map {:closed true}
+             [:project/id]
+             [:project/board [:tuple keyword? string?]]
+             [:project/title [:string {:min 2}]]
+             [:ts/created-by any?]]})
 
 
 (comment
@@ -885,9 +892,15 @@
               :foo "bar"})
 
  (m/validate (:board proto)
-            {:board/id (str (random-uuid))
-             :board/org [:org/id "opengeneva"]
-             :board/title "opengeneva board foo 123"
-             :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
+             {:board/id (str (random-uuid))
+              :board/org [:org/id "opengeneva"]
+              :board/title "opengeneva board foo 123"
+              :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
+
+ (m/validate (:project proto)
+             {:project/id (str (random-uuid))
+              :project/board [:board/id "-MtC_Yd7VGM3fs2J2ibl"]
+              :project/title "open innovation project AAAAAAAAAAAA"
+              :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
  
  )
