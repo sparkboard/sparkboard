@@ -62,7 +62,7 @@
 (v/defview board:create [{:as params :keys [route org/id]}]
   (let [[n n!] (use-state "")]
     [:div
-     [:h3 [:h2 (use-tr [:tr/new]) " " (use-tr [:tr/board])]]
+     [:h3 (use-tr [:tr/new]) " " (use-tr [:tr/board])]
      [rough/input {:placeholder "Board title"
                    :value n
                    :on-input #(n! (-> % .-target .-value))}]
@@ -91,6 +91,22 @@
                                                                  res))}
                                                {:project/title n})}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
+
+(v/defview member:create [{:as params :keys [route board/id]}]
+  (let [[n n!] (use-state "")]
+    [:div
+     [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/member]))]
+     [rough/input {:placeholder "Member name"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [rough/button {:on-click #(routes/mutate! {:route route
+                                                :response-fn (fn [^js/Response res _url]
+                                                               (when (http-ok? res)
+                                                                 (set! (.-location js/window)
+                                                                       (routes/path-for [:board/one {:board/id (:board/id params)}]))
+                                                                 res))}
+                                               {:member/name n})}
+      (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
 
 (v/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
@@ -140,7 +156,8 @@
     [rough/tabs {:class "w-100"}
      [rough/tab {:name (use-tr [:tr/projects])
                  :class "db"}
-      [:a {:href (routes/path-for [:project/create b])} "New Project"]
+      [:a {:href (routes/path-for [:project/create b])}
+        (use-tr [:tr/new]) " " (use-tr [:tr/project])]
       (into [:ul]
             (map (fn [proj]
                    [:li [:a {:href (routes/path-for [:project/one proj])}
@@ -148,6 +165,8 @@
             (:project/_board value))]
      [rough/tab {:name (use-tr [:tr/members])
                  :class "db"}
+      [:a {:href (routes/path-for [:member/create b])}
+       (use-tr [:tr/new]) " " (use-tr [:tr/member])]
       (into [:ul]
             (map (fn [member]
                    [:li

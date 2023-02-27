@@ -876,6 +876,12 @@
              [:project/id]
              [:project/board [:tuple keyword? string?]]
              [:project/title [:string {:min 2}]]
+             [:ts/created-by any?]]
+
+   :member [:map {:closed true}
+             [:member/id]
+             [:member/board [:tuple keyword? string?]]
+             [:member/name [:string {:min 2}]]
              [:ts/created-by any?]]})
 
 

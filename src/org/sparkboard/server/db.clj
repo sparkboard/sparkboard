@@ -70,6 +70,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
+(defn make-member [_ctx m]
+  (util/guard (assoc m
+                     :member/id (str (random-uuid))
+                     ;; FIXME use context to hook this to actual current user
+                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+              (partial m/validate (:member schema/proto))))
+
+(defn member:create [ctx params mbr]
+  (try (if (empty? (db/where [[:member/name (:member/name mbr)]]))
+         (if-let [mbr (make-member ctx (assoc mbr :member/board
+                                              [:board/id (:board/id params)]))]
+           (do (tap> (db/transact! [mbr]))
+               (http-rsp/ok mbr))
+           (http-rsp/bad-request {:error "can't create member with given data"
+                                  :data mbr}))
+         (http-rsp/bad-request {:error "member with that title already exists"
+                                :data mbr}))
+       (catch Exception e
+         (http-rsp/internal-server-error {:error (.getMessage e)}))))
+
+
 (defn make-project [_ctx m]
   (util/guard (assoc m
                      :project/id (str (random-uuid))

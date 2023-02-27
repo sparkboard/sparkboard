@@ -46,6 +46,9 @@
             :project/create {:route ["/v2/b/" :board/id "/create-project"]
                              :view `views/project:create
                              :mutation `db/project:create}
+            :member/create {:route ["/v2/b/" :board/id "/create-member"]
+                             :view `views/member:create
+                             :mutation `db/member:create}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/v2"]
