@@ -1,7 +1,8 @@
 (ns org.sparkboard.server
   "HTTP server handling all requests
    * slack integration
-   * synced queries over websocket"
+   * synced queries over websocket
+   * mutations over websocket"
   (:gen-class)
   (:require [clojure.string :as str]
             [hiccup.util]
