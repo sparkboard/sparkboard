@@ -1,5 +1,7 @@
 (ns org.sparkboard.macros
-  (:require [clojure.walk :as walk]
+  (:require [yawn.view :as v]
+            [re-db.react]
+            [clojure.walk :as walk]
             [shadow.lazy #?(:clj :as-alias :cljs :as) lazy])
   #?(:cljs (:require-macros org.sparkboard.macros)))
 
@@ -19,3 +21,9 @@
            (dissoc x :view))
          x))
      expr)))
+
+(defmacro defview [name & args]
+  (v/defview:impl
+   (fn [expr] `(re-db.react/use-reactive ~expr))
+   name
+   args))

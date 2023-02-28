@@ -9,14 +9,16 @@
    [org.sparkboard.routes :as routes]
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
+   [org.sparkboard.macros :refer [defview]]
    [yawn.hooks :refer [use-state]]
-   [yawn.view :as v]))
+   [yawn.view :as v]
+   [inside-out.forms :as forms :refer [with-form]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(v/defview home [] (use-tr [:skeleton/nix]))
+(defview home [] (use-tr [:skeleton/nix]))
 
-(v/defview org:index [params]
+(defview org:index [params]
   [:div.pa3
    [:h2 (use-tr [:tr/orgs])]
    [:section#orgs-grid
@@ -32,29 +34,29 @@
    [:section#add-org
     [(routes/use-view :org/create)]]])
 
-(v/defview org:create [params]
-  (let [org (use-state {:org/title ""})
-        [pending? start-transition] (react/useTransition)]
+(defview org:create [params]
+  (with-form [!org {:org/title ?title}]
     [:div
      [:h2 (use-tr [:tr/org])]
      [:form
       [:label "Title"]
-      [rough/input {:type "text"
-                    :value (:org/title @org)
-                    :on-input (fn [event] (swap! org assoc :org/title (-> event .-target .-value)))}]
+      [:input {:type "text"
+               :value (or @?title "")
+               :on-change (forms/change-handler ?title)}]
       [rough/button
-       {:on-click #(routes/mutate! {:route [:org/create]
-                                    :response-fn (fn [^js/Response res _url]
-                                                   (case (.-status res)
-                                                     200 (js/console.log "200 response")
-                                                     400 (js/console.warn "400 response" (.-body res))
-                                                     500 (js/console.error "500 response")
-                                                     (js/console.error "catch-all case"))
-                                                   res)}
-                                   @org)}
+       {:on-click #(do (routes/mutate! {:route [:org/create]
+                                        :response-fn (fn [^js/Response res _url]
+                                                       (case (.-status res)
+                                                         200 (js/console.log "200 response")
+                                                         400 (js/console.warn "400 response" (.-body res))
+                                                         500 (js/console.error "500 response")
+                                                         (js/console.error "catch-all case"))
+                                                       res)}
+                                       @!org)
+                       (forms/clear! !org))}
        "create org"]]]))
 
-(v/defview org:one [{:as params :keys [org/id query-params]}]
+(defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
         [query-params set-query-params!] (use-state query-params)
         search-result (ws/use-query! [:org/search {:org/id id
@@ -90,7 +92,7 @@
                          (:board/title board)]]))
             (:board/_org value))]]))
 
-(v/defview board:one [{:as b :board/keys [id]}]
+(defview board:one [{:as b :board/keys [id]}]
   (let [value (ws/use-query! [:board/one {:board/id id}])]
     [:div
      [:h1 (str (use-tr [:tr/board]) (:board/title value))]
@@ -138,7 +140,7 @@
  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
  )
 
-(v/defview project:one [{:as p :project/keys [id]}]
+(defview project:one [{:as p :project/keys [id]}]
   (let [value (ws/use-query! [:project/one {:project/id id}])]
     [:div
      [:h1 (str (use-tr [:tr/project]) " " (:project/title value))]
@@ -152,7 +154,7 @@
        [:section [:h3 (tr [:tr/video])]
         [video-field vid]])]))
 
-(v/defview member:one [{:as mbr :member/keys [id]}]
+(defview member:one [{:as mbr :member/keys [id]}]
   (let [value (ws/use-query! [:member/one {:member/id id}])]
     [:div
      [:h1 (str/join " " [(use-tr [:tr/member]) (:member/name value)])]
@@ -171,7 +173,7 @@
 
 ;; for DEBUG only:
 
-(v/defview show-query [[id :as route]]
+(defview show-query [[id :as route]]
   (when (:query (@routes/!routes id))
     (let [value (ws/use-query! route)
           value-str (yawn.hooks/use-memo
@@ -179,7 +181,7 @@
                      (yawn.hooks/use-deps value))]
       [:pre value-str])))
 
-(v/defview drawer [{:keys [initial-height]} child]
+(defview drawer [{:keys [initial-height]} child]
   ;; the divider is draggable and sets the height of the drawer
   (let [!height (yawn.hooks/use-state initial-height)]
     [:Suspense {:fallback (v/x [rough/spinner {:duration 1000 :spinning true}])}
@@ -202,7 +204,7 @@
                              (.addEventListener "mousemove" on-mousemove))))}]
       child]]))
 
-(v/defview global-header [_]
+(defview global-header [_]
   [:<>
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
@@ -216,7 +218,7 @@
           (keys i18n/dict))]
    [rough/divider]])
 
-(v/defview dev-drawer [{:as match :keys [route]}]
+(defview dev-drawer [{:as match :keys [route]}]
   [drawer {:initial-height 100}
    [:Suspense {:fallback (v/x "Hi")}
     (into [:p.f5]
@@ -228,7 +230,7 @@
     [show-query route]]])
 
 
-(v/defview board:create [{:as params :keys [org/id route]}]
+(defview board:create [{:as params :keys [org/id route]}]
   (let [[n n!] (use-state "")]
     [:div
      [rough/input {:label "Board title"
