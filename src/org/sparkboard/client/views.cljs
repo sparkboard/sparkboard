@@ -290,11 +290,3 @@
     (str route)
     [show-query route]]])
 
-(defview board:create [{:as params :keys [org/id route]}]
-  (let [[n n!] (use-state "")]
-    [:div
-     [rough/input {:label "Board title"
-                   :value n
-                   :on-input #(n! (-> % .-target .-value))}]
-     [:div {:on-click #(routes/mutate! {:route route} {:board/title n})}
-      "Create a Board!"]]))
