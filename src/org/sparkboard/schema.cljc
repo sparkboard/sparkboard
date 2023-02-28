@@ -889,24 +889,24 @@
  (m/validate (:org proto)
              {:org/id (str (random-uuid))
               :org/title "foo"
-              :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
+              :ts/created-by {:firebase-account/id "DEV:FAKE"}})
 
  (m/validate (:org proto)
              {:org/id (str (random-uuid))
               :org/title "foo"
-              :ts/created-by  {:firebase-account/id "DEV:FAKE"}
+              :ts/created-by {:firebase-account/id "DEV:FAKE"}
               :foo "bar"})
 
  (m/validate (:board proto)
              {:board/id (str (random-uuid))
               :board/org [:org/id "opengeneva"]
               :board/title "opengeneva board foo 123"
-              :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
+              :ts/created-by {:firebase-account/id "DEV:FAKE"}})
 
  (m/validate (:project proto)
              {:project/id (str (random-uuid))
               :project/board [:board/id "-MtC_Yd7VGM3fs2J2ibl"]
               :project/title "open innovation project AAAAAAAAAAAA"
-              :ts/created-by  {:firebase-account/id "DEV:FAKE"}})
+              :ts/created-by {:firebase-account/id "DEV:FAKE"}})
  
  )
