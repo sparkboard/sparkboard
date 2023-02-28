@@ -41,11 +41,7 @@
 (def muuntaja
   ;; Note: the `:body` BytesInputStream will be present but decode/`slurp` to an
   ;; empty String if no read format is declared for the request's content-type.
-  (muu/create (-> m/default-options
-                  ;; set Transit readers & writers
-                  (update-in [:formats "application/transit+json"]
-                             merge {:decoder-opts {:handlers re-db.transit/read-handlers}
-                                    :encoder-opts {:handlers re-db.transit/write-handlers}}))))
+  (muu/create m/default-options))
 
 (defn wrap-handle-errors [f]
   (fn [req]

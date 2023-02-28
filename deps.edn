@@ -4,9 +4,12 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.4"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "6aa5573f152dbde7a5d8f5e82d18c729e053ae55"}
+                                  :git/sha "b20f07a902681cba77a998f71e88d3dc9d818660"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
-                                 :git/sha "ec725be4808dd08f60ec8770a02f19df5ae3af43"}
+                                 :git/sha "26c588805fbde8f765de2def78d54ef682c592a7"}
+        io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
+                                       :git/sha "583b9b610e76804f537684ab961297945cf66e5e"}
+
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
 
@@ -49,7 +52,7 @@
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         reagent/reagent {:mvn/version "1.1.1"}
-        thheller/shadow-cljs {:mvn/version "2.20.16"}}
+        thheller/shadow-cljs {:mvn/version "2.21.0"}}
  :aliases
  {:uberdeps {:extra-deps {uberdeps/uberdeps {:mvn/version "1.1.4"}}}
   :uberjar {:exec-fn build/uberjar}

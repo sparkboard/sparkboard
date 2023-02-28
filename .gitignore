@@ -29,3 +29,4 @@ resources/clerk
 .clerk
 .clj-kondo
 .lsp
+src/scratch
