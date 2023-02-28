@@ -326,7 +326,11 @@
  :i/join-this-board {:en "Join this board"
                      :fr "Rejoindre ce groupe"
                      :es "Únete a este foro"}
-
+ :cookie-policy/url {:en "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"
+                     :fr "https://www.iubenda.com/privacy-policy/47741885/cookie-policy"}
+ :cookie-policy/label {:en "Cookie Policy"
+                       :fr "Politique des cookies"
+                       :es "Política de cookies"}
  :privacy-policy/url {:en "https://www.iubenda.com/privacy-policy/7930385"
                       :fr "https://www.iubenda.com/privacy-policy/47741885"}
  :privacy-policy/label {:en "Privacy Policy"
