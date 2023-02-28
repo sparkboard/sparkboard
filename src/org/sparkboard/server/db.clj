@@ -1,6 +1,7 @@
 (ns org.sparkboard.server.db
   "Database queries and mutations (transactions)"
-  (:require [clojure.pprint :refer [pprint]]
+  (:require [buddy.hashers]
+            [clojure.pprint :refer [pprint]]
             [clojure.string :as str]
             [datalevin.core :as dl]
             [malli.core :as m]
@@ -55,9 +56,10 @@
   (db/pull '[*] [:project/id id]))
 
 (defquery $member:one [{:keys [member/id]}]
-  (db/pull '[*
-             {:member/tags [*]}]
-           [:member/id id]))
+  (dissoc (db/pull '[*
+                     {:member/tags [*]}]
+                   [:member/id id])
+          :member/password))
 
 (defquery $search [{:keys [query-params org/id]}]
   (->> (sb.datalevin/q-fulltext-in-org (:q query-params)
@@ -70,12 +72,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
+(def buddy-opts
+  "Options for Buddy-hashers"
+  {;; TODO allow config of `:iterations`, perhaps per
+   ;; https://security.stackexchange.com/questions/3959/recommended-of-iterations-when-using-pbkdf2-sha256/3993#3993
+   :alg :bcrypt+blake2b-512})
+
+(comment ;;;; Password encryption
+  ;; NB: resulting string is concatenation of algorithm, plaintext salt, and encrypted password
+  (buddy.hashers/derive "secretpassword" buddy-opts)
+  
+  (buddy.hashers/verify "secretpassword" "bcrypt+blake2b-512$dfb9ecb7a246d546e437418e6cd53b43$12$51fb8cef3a64337e0677182171786b14c14a40dc60f5f95c")
+
+  (db/where [[:member/name (:member/name "dave888")]])
+
+  )
+
 (defn make-member [_ctx m]
-  (util/guard (assoc m
-                     :member/id (str (random-uuid))
-                     ;; FIXME use context to hook this to actual current user
-                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
-              (partial m/validate (:member schema/proto))))
+  (-> m
+      (assoc :member/id (str (random-uuid))
+             ;; FIXME use context to hook this to actual current user
+             :ts/created-by {:firebase-account/id "DEV:FAKE"})
+      (update :member/password #(buddy.hashers/derive % buddy-opts))
+      (util/guard (partial m/validate (:member schema/proto)))))
 
 (defn member:create [ctx params mbr]
   (try (if (empty? (db/where [[:member/name (:member/name mbr)]]))

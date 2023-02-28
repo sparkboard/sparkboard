@@ -21,6 +21,7 @@
         dev.weavejester/medley {:mvn/version "1.5.0"}
         clj-gatling/clj-gatling {:mvn/version "0.17.6"}
         com.taoensso/tempura {:mvn/version "1.5.3"}
+        buddy/buddy-hashers {:mvn/version "1.8.158"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}

@@ -93,19 +93,23 @@
       (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
 
 (v/defview member:create [{:as params :keys [route board/id]}]
-  (let [[n n!] (use-state "")]
+  (let [new-mbr (use-state {:member/name "", :member/password ""})]
     [:div
      [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/member]))]
      [rough/input {:placeholder "Member name"
-                   :value n
-                   :on-input #(n! (-> % .-target .-value))}]
+                   :value (:member/name @new-mbr)
+                   :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
+     [rough/input {:placeholder "Member password"
+                   :type "password"
+                   :value (:member/password @new-mbr)
+                   :on-input #(swap! new-mbr assoc :member/password (-> % .-target .-value))}]
      [rough/button {:on-click #(routes/mutate! {:route route
                                                 :response-fn (fn [^js/Response res _url]
                                                                (when (http-ok? res)
                                                                  (set! (.-location js/window)
                                                                        (routes/path-for [:board/one {:board/id (:board/id params)}]))
                                                                  res))}
-                                               {:member/name n})}
+                                               @new-mbr)}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
 
 (v/defview org:one [{:as params :keys [org/id query-params]}]
