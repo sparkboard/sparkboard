@@ -289,4 +289,3 @@
              {:href (routes/path-for route)} (str id)]))
     (str route)
     [show-query route]]])
-
