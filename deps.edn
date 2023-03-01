@@ -24,6 +24,7 @@
         dev.weavejester/medley {:mvn/version "1.5.0"}
         clj-gatling/clj-gatling {:mvn/version "0.17.6"}
         com.taoensso/tempura {:mvn/version "1.5.3"}
+        buddy/buddy-auth {:mvn/version "3.0.1"}
         buddy/buddy-hashers {:mvn/version "1.8.158"}
 
         ;; logging

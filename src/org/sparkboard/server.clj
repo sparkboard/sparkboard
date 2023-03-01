@@ -4,7 +4,10 @@
    * synced queries over websocket
    * mutations over websocket"
   (:gen-class)
-  (:require [clojure.string :as str]
+  (:require [buddy.auth]
+            [buddy.auth.middleware]
+            [buddy.auth.backends]
+            [clojure.string :as str]
             [hiccup.util]
             [muuntaja.core :as m]
             [muuntaja.core :as muu]
@@ -29,6 +32,7 @@
             [re-db.sync.transit :as re-db.transit]
             [ring.middleware.defaults]
             [ring.middleware.format]
+            [ring.middleware.session]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime-type]
             [ring.util.request]
@@ -124,6 +128,15 @@
             (apply (or (seq args) [{}]))
             $txs)))
 
+(defn wrap-mandate-authn [f]
+  (fn [req]
+    (if (buddy.auth/authenticated? req)
+      (f req)
+      (buddy.auth/throw-unauthorized))))
+
+(def session-backend
+  "HTTP-session-based auth instance"
+  (buddy.auth.backends/session))
 
 (def app
   (-> (impl/join-handlers slack.server/handlers
@@ -132,6 +145,10 @@
       wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
+      #_wrap-mandate-authn
+      (buddy.auth.middleware/wrap-authorization session-backend)
+      (buddy.auth.middleware/wrap-authentication session-backend)
+      ring.middleware.session/wrap-session
       #_(wrap-debug-request :first)))
 
 (defonce the-server
