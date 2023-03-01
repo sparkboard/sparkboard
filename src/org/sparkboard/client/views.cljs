@@ -14,6 +14,9 @@
    [yawn.view :as v]
    [inside-out.forms :as forms :refer [with-form]]))
 
+(defn http-ok? [rsp]
+  (= 200 (.-status rsp)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defview home [] (use-tr [:skeleton/nix]))
@@ -27,8 +30,10 @@
                  [rough/card {:class "pa3"}
                   [rough/link {:href (routes/path-for [:org/one org])}
                    (:org/title org)]
-                  [rough/icon-button {:on-click #(when (js/window.confirm (str "Really delete organization " (:org/title org) "?"))
-                                                   (routes/mutate! {:route [:org/delete]} org))}
+                  [rough/icon-button
+                   {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                             (:org/title org) "?"))
+                                 (routes/mutate! {:route [:org/delete]} (:org/id org)))}
                    "X"]]))
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
@@ -37,7 +42,7 @@
 (defview org:create [params]
   (with-form [!org {:org/title ?title}]
     [:div
-     [:h2 (use-tr [:tr/org])]
+     [:h2 (use-tr [:tr/new]) " " (use-tr [:tr/org])]
      [:form
       [:label "Title"]
       [:input {:type "text"
@@ -55,6 +60,55 @@
                                        @!org)
                        (forms/clear! !org))}
        "create org"]]]))
+
+(defview board:create [{:as params :keys [route org/id]}]
+  (let [[n n!] (use-state "")]
+    [:div
+     [:h3 (use-tr [:tr/new]) " " (use-tr [:tr/board])]
+     [rough/input {:placeholder "Board title"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [rough/button {:on-click #(routes/mutate! {:route route
+                                                :response-fn (fn [^js/Response res _url]
+                                                               (when (http-ok? res)
+                                                                 (set! (.-location js/window)
+                                                                       (routes/path-for [:org/one {:org/id (:org/id params)}]))
+                                                                 ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
+                                                                 res))}
+                                               {:board/title n})}
+      (str (use-tr [:tr/create]) " " (use-tr [:tr/board]))]]))
+
+(defview project:create [{:as params :keys [route board/id]}]
+  (let [[n n!] (use-state "")]
+    [:div
+     [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/project]))]
+     [rough/input {:placeholder "Project title"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [rough/button {:on-click #(routes/mutate! {:route route
+                                                :response-fn (fn [^js/Response res _url]
+                                                               (when (http-ok? res)
+                                                                 (set! (.-location js/window)
+                                                                       (routes/path-for [:board/one {:board/id (:board/id params)}]))
+                                                                 res))}
+                                               {:project/title n})}
+      (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
+
+(defview member:create [{:as params :keys [route board/id]}]
+  (let [[n n!] (use-state "")]
+    [:div
+     [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/member]))]
+     [rough/input {:placeholder "Member name"
+                   :value n
+                   :on-input #(n! (-> % .-target .-value))}]
+     [rough/button {:on-click #(routes/mutate! {:route route
+                                                :response-fn (fn [^js/Response res _url]
+                                                               (when (http-ok? res)
+                                                                 (set! (.-location js/window)
+                                                                       (routes/path-for [:board/one {:board/id (:board/id params)}]))
+                                                                 res))}
+                                               {:member/name n})}
+      (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
 
 (defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
@@ -104,6 +158,8 @@
     [rough/tabs {:class "w-100"}
      [rough/tab {:name (use-tr [:tr/projects])
                  :class "db"}
+      [:a {:href (routes/path-for [:project/create b])}
+        (use-tr [:tr/new]) " " (use-tr [:tr/project])]
       (into [:ul]
             (map (fn [proj]
                    [:li [:a {:href (routes/path-for [:project/one proj])}
@@ -111,6 +167,8 @@
             (:project/_board value))]
      [rough/tab {:name (use-tr [:tr/members])
                  :class "db"}
+      [:a {:href (routes/path-for [:member/create b])}
+       (use-tr [:tr/new]) " " (use-tr [:tr/member])]
       (into [:ul]
             (map (fn [member]
                    [:li
@@ -225,16 +283,5 @@
           (for [[id :as route] (routes/breadcrumb (:path @routes/!current-location))]
             [:a.mr3.rounded.bg-black.white.pa2.no-underline
              {:href (routes/path-for route)} (str id)]))
-
     (str route)
     [show-query route]]])
-
-
-(defview board:create [{:as params :keys [org/id route]}]
-  (let [[n n!] (use-state "")]
-    [:div
-     [rough/input {:label "Board title"
-                   :value n
-                   :on-input #(n! (-> % .-target .-value))}]
-     [:div {:on-click #(routes/mutate! {:route route} {:board/title n})}
-      "Create a Board!"]]))

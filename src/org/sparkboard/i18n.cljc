@@ -34,9 +34,13 @@
          ;; Translations
          :skeleton/nix "Nothing to see here, folks." ;; keyed separately from `tr` to mark it as dev-only
          :tr {:lang "Language"
+              ;; verbs
               :search "Search"
+              :new "New"
+              :create "Create"
+              ;; entities
               :org "Organisation", :orgs "Organisations"
-              :boards "Boards"
+              :board "Board" :boards "Boards"
               :project "Project", :projects "Projects"
               :member "Member", :members "Members"
               :tag "Tag", :tags "Tags"
@@ -47,6 +51,8 @@
          :skeleton/nix "Rien à voir ici, les amis."
          :tr {:lang "Langue"
               :search "Rechercher"
+              :new "Nouveau"
+              ;; entities
               :org "Organisation", :orgs "Organisations"
               :boards "Tableaux"
               :project "Projet", :projects "Projets"

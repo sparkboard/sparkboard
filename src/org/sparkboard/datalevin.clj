@@ -36,18 +36,6 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Queries
-
-(defn qry-orgs []
-  (d/where [:org/id]))
-
-(defn qry-boards [org-id]
-  (d/where [:board/id
-            [:board/org [:org/id org-id]]]))
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Fulltext search
 
 (defn entity-in-org?
@@ -137,13 +125,3 @@
   ;; FIXME fails if entity does not exist / has already been deleted
   
   )
-
-(defn org-entity [conn org-id]
-  (dl/q '[:find ?e .
-         :in $ ?org-id
-         :where [?e :org/id ?org-id]]
-       @conn org-id))
-
-;; FIXME this probably shouldn't exist here?
-(defn retract! [entity-id]
-  (d/transact! [[:db.fn/retractEntity entity-id]]))

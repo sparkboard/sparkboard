@@ -1,7 +1,7 @@
 (ns org.sparkboard.routes
   (:require [bidi.bidi :as bidi]
             [clojure.string :as str]
-            [org.sparkboard.server.queries :as-alias queries]
+            [org.sparkboard.server.db :as-alias db]
             [org.sparkboard.client.views :as-alias views]
             [org.sparkboard.client.slack :as-alias slack.client]
             [org.sparkboard.client.auth :as-alias auth.client]
@@ -36,34 +36,40 @@
 
             :org/create {:route "/v2/o/create"
                          :view `views/org:create
-                         :mutation `queries/org:create}
+                         :mutation `db/org:create}
             :org/delete {:route "/v2/o/delete"
                          ;; :view `views/org:delete
-                         :mutation `queries/org:delete}
+                         :mutation `db/org:delete}
             :board/create {:route ["/v2/o/" :org/id "/create-board"]
                            :view `views/board:create
-                           :mutation `queries/board:create}
+                           :mutation `db/board:create}
+            :project/create {:route ["/v2/b/" :board/id "/create-project"]
+                             :view `views/project:create
+                             :mutation `db/project:create}
+            :member/create {:route ["/v2/b/" :board/id "/create-member"]
+                             :view `views/member:create
+                             :mutation `db/member:create}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/v2"]
-                        :query `queries/$org:index
+                        :query `db/$org:index
                         :view `views/org:index}
             ;; Rest of the skeleton:
             :org/one {:route ["/v2/o/" :org/id]
-                      :query `queries/$org:one
+                      :query `db/$org:one
                       :view `views/org:one}
             :org/search {:route ["/v2/o/" :org/id "/search"]
-                         :query `queries/$search}
+                         :query `db/$search}
 
             :board/one {:route ["/v2/b/" :board/id]
-                        :query `queries/$board:one
+                        :query `db/$board:one
                         :view `views/board:one}
             :project/one {:route ["/v2/p/" :project/id]
-                          :query `queries/$project:one
+                          :query `db/$project:one
                           :view `views/project:one}
             ;; member view
             :member/one {:route ["/v2/m/" :member/id]
-                         :query `queries/$member:one
+                         :query `db/$member:one
                          :view `views/member:one}})))
 
 ;; NOTE
@@ -158,7 +164,7 @@
 
 
 (defn breadcrumb [path]
-  (->> (iteration #(second (re-find #"(.*)/.*$" %))
+  (->> (iteration #(second (re-find #"(.*)/.*$" (or % "")))
                   :initk path)
        (keep (comp :route match-route))))
 
