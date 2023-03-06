@@ -35,7 +35,7 @@
          :skeleton/nix "Nothing to see here, folks." ;; keyed separately from `tr` to mark it as dev-only
          :tr {:lang "Language"
               ;; verbs
-              :search "Search"
+              :search "Search", :search-across-org "org-wide search"
               :new "New"
               :create "Create"
               ;; entities
@@ -50,7 +50,7 @@
          :meta/lect "Français"
          :skeleton/nix "Rien à voir ici, les amis."
          :tr {:lang "Langue"
-              :search "Rechercher"
+              :search "Rechercher", :search-across-org "rechercher dans toute l'organisation"
               :new "Nouveau"
               ;; entities
               :org "Organisation", :orgs "Organisations"

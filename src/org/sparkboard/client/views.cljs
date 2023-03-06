@@ -122,13 +122,14 @@
         [pending? start-transition] (react/useTransition)]
     [:div
      [:h1 (use-tr [:tr/org]) " " (:org/title value)]
-     [:a {:href (routes/path-for [:board/create params])} "New Board"]
+     [:a {:href (routes/path-for [:board/create params])}
+      (use-tr [:tr/new]) " " (use-tr [:tr/board])]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
         [:h3 (use-tr [:tr/search])]
         [rough/search-input
-         {:id "org-search", :placeholder "org-wide search"
+         {:id "org-search", :placeholder (use-tr [:tr/search-across-org])
           :type "search"
           :on-input (fn [event] (-> event .-target .-value set-q!))
           :on-key-down (j/fn [^js {:keys [key]}]
