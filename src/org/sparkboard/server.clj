@@ -145,7 +145,7 @@
       wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
-      #_wrap-mandate-authn
+      #_wrap-mandate-authn ;; FIXME conflicts with slack endpoints
       (buddy.auth.middleware/wrap-authorization session-backend)
       (buddy.auth.middleware/wrap-authentication session-backend)
       ring.middleware.session/wrap-session
