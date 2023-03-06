@@ -34,31 +34,36 @@
          ;; Translations
          :skeleton/nix "Nothing to see here, folks." ;; keyed separately from `tr` to mark it as dev-only
          :tr {:lang "Language"
-              ;; verbs
+              ;; verbs & instructions
               :search "Search", :search-across-org "org-wide search"
               :new "New"
               :create "Create"
+              :login "Log in"
               ;; entities
               :org "Organisation", :orgs "Organisations"
               :board "Board" :boards "Boards"
               :project "Project", :projects "Projects"
               :member "Member", :members "Members"
               :tag "Tag", :tags "Tags"
-              :badge "Badge", :badges "Badges"}}
+              :badge "Badge", :badges "Badges"
+              :member-name "Member Name", :password "Password"}}
 
    :fra {:missing ":fra texte manquant"
          :meta/lect "Français"
          :skeleton/nix "Rien à voir ici, les amis."
          :tr {:lang "Langue"
+              ;; verbs & instructions
               :search "Rechercher", :search-across-org "rechercher dans toute l'organisation"
               :new "Nouveau"
+              :login "Connexion"
               ;; entities
               :org "Organisation", :orgs "Organisations"
               :boards "Tableaux"
               :project "Projet", :projects "Projets"
               :member "Membre", :members "Membres"
               :tag "Mot-clé", :tags "Mots clés"
-              :badge "Insigne", :badges "Insignes"}}})
+              :badge "Insigne", :badges "Insignes"
+              :member-name "Nom de membre", :password "Mot de passe"}}})
 
 (defn use-tr
   ;; hook: reactive, must follow rules of hooks

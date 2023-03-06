@@ -38,7 +38,6 @@
                          :view `views/org:create
                          :mutation `db/org:create}
             :org/delete {:route "/v2/o/delete"
-                         ;; :view `views/org:delete
                          :mutation `db/org:delete}
             :board/create {:route ["/v2/o/" :org/id "/create-board"]
                            :view `views/board:create
@@ -47,13 +46,16 @@
                              :view `views/project:create
                              :mutation `db/project:create}
             :member/create {:route ["/v2/b/" :board/id "/create-member"]
-                             :view `views/member:create
-                             :mutation `db/member:create}
+                            :view `views/member:create
+                            :mutation `db/member:create}
 
             ;; Skeleton entry point is the full list of orgs
             :org/index {:route ["/v2"]
                         :query `db/$org:index
                         :view `views/org:index}
+            :login {:route ["/v2/login"]
+                    :view `views/login
+                    :mutation `db/login-handler}
             ;; Rest of the skeleton:
             :org/one {:route ["/v2/o/" :org/id]
                       :query `db/$org:one

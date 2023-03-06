@@ -4,6 +4,7 @@
    [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
+   [inside-out.forms :as forms :refer [with-form]]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.i18n :as i18n :refer [tr use-tr]]
    [org.sparkboard.routes :as routes]
@@ -11,8 +12,8 @@
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.macros :refer [defview]]
    [yawn.hooks :refer [use-state]]
-   [yawn.view :as v]
-   [inside-out.forms :as forms :refer [with-form]]))
+   [tools.sparkboard.http :as sb.http]
+   [yawn.view :as v]))
 
 (defn http-ok? [rsp]
   (= 200 (.-status rsp)))
@@ -20,6 +21,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defview home [] (use-tr [:skeleton/nix]))
+
+(defview login [params]
+  (with-form [!mbr {:member/name ?mbr-name
+                    :member/password ?pwd}]
+    [:h2 (use-tr [:tr/login])]
+    [:form {:id "login"} ;; shorthand hiccup not available here
+     [:label (use-tr [:tr/member-name])]
+     [:input {:type "text", :value (or @?mbr-name "")
+              :on-change (forms/change-handler ?mbr-name)}]
+     [:label (use-tr [:tr/password])]
+     [:input {:type "password", :value (or @?pwd "")
+              :on-change (forms/change-handler ?pwd)}]
+     [rough/button
+      {:on-click #(routes/mutate! {:route [:login]
+                                                ;; TODO :response-fn
+                                   }
+                                  @!mbr)}
+      (use-tr [:tr/login])]]))
 
 (defview org:index [params]
   [:div.pa3
@@ -59,7 +78,7 @@
                                                        res)}
                                        @!org)
                        (forms/clear! !org))}
-       "create org"]]]))
+       (str (use-tr [:tr/create]) " " (use-tr [:tr/org]))]]]))
 
 (defview board:create [{:as params :keys [route org/id]}]
   (let [[n n!] (use-state "")]
