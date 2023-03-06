@@ -152,39 +152,39 @@
 
 (defview board:one [{:as b :board/keys [id]}]
   (let [value (ws/use-query! [:board/one {:board/id id}])]
-    [:div
+    [:<>
      [:h1 (str (use-tr [:tr/board]) (:board/title value))]
-     [:p (-> value :entity/domain :domain/name)]]
-    [:blockquote
-     [safe-html (-> value
-                    :board.landing-page/description-content
-                    :text-content/string)]]
-    [rough/tabs {:class "w-100"}
-     [rough/tab {:name (use-tr [:tr/projects])
-                 :class "db"}
-      [:a {:href (routes/path-for [:project/create b])}
+     [:p (-> value :entity/domain :domain/name)]
+     [:blockquote
+      [safe-html (-> value
+                     :board.landing-page/description-content
+                     :text-content/string)]]
+     [rough/tabs {:class "w-100"}
+      [rough/tab {:name (use-tr [:tr/projects])
+                  :class "db"}
+       [:a {:href (routes/path-for [:project/create b])}
         (use-tr [:tr/new]) " " (use-tr [:tr/project])]
-      (into [:ul]
-            (map (fn [proj]
-                   [:li [:a {:href (routes/path-for [:project/one proj])}
-                         (:project/title proj)]]))
-            (:project/_board value))]
-     [rough/tab {:name (use-tr [:tr/members])
-                 :class "db"}
-      [:a {:href (routes/path-for [:member/create b])}
-       (use-tr [:tr/new]) " " (use-tr [:tr/member])]
-      (into [:ul]
-            (map (fn [member]
-                   [:li
-                    [:a {:href (routes/path-for [:member/one member])}
-                     (:member/name member)]]))
-            (:member/_board value))]
-     [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
-                 :class "db"}
-      [:ul ;; i18n stuff
-       [:li "suggested locales:" (str (:i18n/suggested-locales value))]
-       [:li "default locale:" (str (:i18n/default-locale value))]
-       [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]))
+       (into [:ul]
+             (map (fn [proj]
+                    [:li [:a {:href (routes/path-for [:project/one proj])}
+                          (:project/title proj)]]))
+             (:project/_board value))]
+      [rough/tab {:name (use-tr [:tr/members])
+                  :class "db"}
+       [:a {:href (routes/path-for [:member/create b])}
+        (use-tr [:tr/new]) " " (use-tr [:tr/member])]
+       (into [:ul]
+             (map (fn [member]
+                    [:li
+                     [:a {:href (routes/path-for [:member/one member])}
+                      (:member/name member)]]))
+             (:member/_board value))]
+      [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
+                  :class "db"}
+       [:ul ;; i18n stuff
+        [:li "suggested locales:" (str (:i18n/suggested-locales value))]
+        [:li "default locale:" (str (:i18n/default-locale value))]
+        [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
