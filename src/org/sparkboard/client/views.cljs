@@ -4,6 +4,7 @@
    [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
+   [inside-out.forms :as forms :refer [with-form]]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.i18n :as i18n :refer [tr use-tr]]
    [org.sparkboard.routes :as routes]
@@ -11,8 +12,8 @@
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.macros :refer [defview]]
    [yawn.hooks :refer [use-state]]
-   [yawn.view :as v]
-   [inside-out.forms :as forms :refer [with-form]]))
+   [tools.sparkboard.http :as sb.http]
+   [yawn.view :as v]))
 
 (defn http-ok? [rsp]
   (= 200 (.-status rsp)))
@@ -20,6 +21,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defview home [] (use-tr [:skeleton/nix]))
+
+(defview login [params]
+  (with-form [!mbr {:member/name ?mbr-name
+                    :member/password ?pwd}]
+    [:h2 (use-tr [:tr/login])]
+    [:form {:id "login"} ;; shorthand hiccup not available here
+     [:label (use-tr [:tr/member-name])]
+     [:input {:type "text", :value (or @?mbr-name "")
+              :on-change (forms/change-handler ?mbr-name)}]
+     [:label (use-tr [:tr/password])]
+     [:input {:type "password", :value (or @?pwd "")
+              :on-change (forms/change-handler ?pwd)}]
+     [rough/button
+      {:on-click #(routes/mutate! {:route [:login]
+                                                ;; TODO :response-fn
+                                   }
+                                  @!mbr)}
+      (use-tr [:tr/login])]]))
 
 (defview org:index [params]
   [:div.pa3
@@ -59,7 +78,7 @@
                                                        res)}
                                        @!org)
                        (forms/clear! !org))}
-       "create org"]]]))
+       (str (use-tr [:tr/create]) " " (use-tr [:tr/org]))]]]))
 
 (defview board:create [{:as params :keys [route org/id]}]
   (let [[n n!] (use-state "")]
@@ -95,19 +114,23 @@
       (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
 
 (defview member:create [{:as params :keys [route board/id]}]
-  (let [[n n!] (use-state "")]
+  (let [new-mbr (use-state {:member/name "", :member/password ""})]
     [:div
      [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/member]))]
      [rough/input {:placeholder "Member name"
-                   :value n
-                   :on-input #(n! (-> % .-target .-value))}]
+                   :value (:member/name @new-mbr)
+                   :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
+     [rough/input {:placeholder "Member password"
+                   :type "password"
+                   :value (:member/password @new-mbr)
+                   :on-input #(swap! new-mbr assoc :member/password (-> % .-target .-value))}]
      [rough/button {:on-click #(routes/mutate! {:route route
                                                 :response-fn (fn [^js/Response res _url]
                                                                (when (http-ok? res)
                                                                  (set! (.-location js/window)
                                                                        (routes/path-for [:board/one {:board/id (:board/id params)}]))
                                                                  res))}
-                                               {:member/name n})}
+                                               @new-mbr)}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
 
 (defview org:one [{:as params :keys [org/id query-params]}]
@@ -118,13 +141,14 @@
         [pending? start-transition] (react/useTransition)]
     [:div
      [:h1 (use-tr [:tr/org]) " " (:org/title value)]
-     [:a {:href (routes/path-for [:board/create params])} "New Board"]
+     [:a {:href (routes/path-for [:board/create params])}
+      (use-tr [:tr/new]) " " (use-tr [:tr/board])]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
         [:h3 (use-tr [:tr/search])]
         [rough/search-input
-         {:id "org-search", :placeholder "org-wide search"
+         {:id "org-search", :placeholder (use-tr [:tr/search-across-org])
           :type "search"
           :on-input (fn [event] (-> event .-target .-value set-q!))
           :on-key-down (j/fn [^js {:keys [key]}]
@@ -148,39 +172,39 @@
 
 (defview board:one [{:as b :board/keys [id]}]
   (let [value (ws/use-query! [:board/one {:board/id id}])]
-    [:div
+    [:<>
      [:h1 (str (use-tr [:tr/board]) (:board/title value))]
-     [:p (-> value :entity/domain :domain/name)]]
-    [:blockquote
-     [safe-html (-> value
-                    :board.landing-page/description-content
-                    :text-content/string)]]
-    [rough/tabs {:class "w-100"}
-     [rough/tab {:name (use-tr [:tr/projects])
-                 :class "db"}
-      [:a {:href (routes/path-for [:project/create b])}
+     [:p (-> value :entity/domain :domain/name)]
+     [:blockquote
+      [safe-html (-> value
+                     :board.landing-page/description-content
+                     :text-content/string)]]
+     [rough/tabs {:class "w-100"}
+      [rough/tab {:name (use-tr [:tr/projects])
+                  :class "db"}
+       [:a {:href (routes/path-for [:project/create b])}
         (use-tr [:tr/new]) " " (use-tr [:tr/project])]
-      (into [:ul]
-            (map (fn [proj]
-                   [:li [:a {:href (routes/path-for [:project/one proj])}
-                         (:project/title proj)]]))
-            (:project/_board value))]
-     [rough/tab {:name (use-tr [:tr/members])
-                 :class "db"}
-      [:a {:href (routes/path-for [:member/create b])}
-       (use-tr [:tr/new]) " " (use-tr [:tr/member])]
-      (into [:ul]
-            (map (fn [member]
-                   [:li
-                    [:a {:href (routes/path-for [:member/one member])}
-                     (:member/name member)]]))
-            (:member/_board value))]
-     [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
-                 :class "db"}
-      [:ul ;; i18n stuff
-       [:li "suggested locales:" (str (:i18n/suggested-locales value))]
-       [:li "default locale:" (str (:i18n/default-locale value))]
-       [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]))
+       (into [:ul]
+             (map (fn [proj]
+                    [:li [:a {:href (routes/path-for [:project/one proj])}
+                          (:project/title proj)]]))
+             (:project/_board value))]
+      [rough/tab {:name (use-tr [:tr/members])
+                  :class "db"}
+       [:a {:href (routes/path-for [:member/create b])}
+        (use-tr [:tr/new]) " " (use-tr [:tr/member])]
+       (into [:ul]
+             (map (fn [member]
+                    [:li
+                     [:a {:href (routes/path-for [:member/one member])}
+                      (:member/name member)]]))
+             (:member/_board value))]
+      [rough/tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
+                  :class "db"}
+       [:ul ;; i18n stuff
+        [:li "suggested locales:" (str (:i18n/suggested-locales value))]
+        [:li "default locale:" (str (:i18n/default-locale value))]
+        [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -274,6 +298,11 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
+   [rough/button
+    {:on-click #(routes/mutate! {:route [:logout]
+                                  ;; TODO :response-fn
+                                 })}
+    (use-tr [:tr/logout])]
    [rough/divider]])
 
 (defview dev-drawer [{:as match :keys [route]}]

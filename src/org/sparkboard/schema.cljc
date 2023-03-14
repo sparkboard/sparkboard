@@ -879,10 +879,11 @@
              [:ts/created-by any?]]
 
    :member [:map {:closed true}
-             [:member/id]
-             [:member/board [:tuple keyword? string?]]
-             [:member/name [:string {:min 2}]]
-             [:ts/created-by any?]]})
+            [:member/id]
+            [:member/board [:tuple keyword? string?]]
+            [:member/name [:string {:min 2}]]
+            [:member/password [:string {:min 50}]] ;; FIXME this might belong on a separate user entity?
+            [:ts/created-by any?]]})
 
 
 (comment
