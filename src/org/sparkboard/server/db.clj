@@ -116,6 +116,17 @@
     {:error :error/member-password-not-found
      :member/name member-name}))
 
+(defn logout-handler
+  "HTTP handler. Returns 200/OK after logging the user out."
+  [_ctx _params]
+  (dissoc {:status 200, :session nil,
+           :cookies {"ring-session" {:value ""
+                                     :expires (-> (java.time.LocalDateTime/now)
+                                                  (.minusDays 1)
+                                                  .toString)
+                                     :max-age 1}}}
+          :identity))
+
 (defn login-handler
   "HTTP handler. Returns 200/OK with result of the user/password attempt in the body.
   Body keys:
@@ -123,13 +134,14 @@
    - `valid?` - success/failure Boolean
    - `error` - describes what went wrong (if anything)"
   [_ctx _params form]
-  {:status 200 ;; Leave HTTP error codes for the transport layer
-   :body (if ((every-pred :valid?
-                          (complement :error))
-              (password-ok? (:member/name form)
-                            (:member/password form)))
-           {:success? true, :member/name (:member/name form)}
-           {:success? false})})
+  (cond-> {:status 200 ;; Leave HTTP error codes for the transport layer
+           :body {:success? false}}
+    ((every-pred :valid?
+                 (complement :error))
+     (password-ok? (:member/name form)
+                   (:member/password form)))
+    (assoc :body {:success? true, :member/name (:member/name form)}
+           :session {:identity (:member/name form)})))
 
 (comment ;;;; Password encryption
   ;; NB: resulting string is concatenation of algorithm, plaintext salt, and encrypted password

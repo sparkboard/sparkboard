@@ -56,6 +56,9 @@
             :login {:route ["/v2/login"]
                     :view `views/login
                     :mutation `db/login-handler}
+            :logout {:route ["/v2/logout"]
+                     :mutation `db/logout-handler}
+
             ;; Rest of the skeleton:
             :org/one {:route ["/v2/o/" :org/id]
                       :query `db/$org:one

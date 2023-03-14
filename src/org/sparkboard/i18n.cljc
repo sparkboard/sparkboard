@@ -38,7 +38,7 @@
               :search "Search", :search-across-org "org-wide search"
               :new "New"
               :create "Create"
-              :login "Log in"
+              :login "Log in", :logout "Log out"
               ;; entities
               :org "Organisation", :orgs "Organisations"
               :board "Board" :boards "Boards"
@@ -55,7 +55,7 @@
               ;; verbs & instructions
               :search "Rechercher", :search-across-org "rechercher dans toute l'organisation"
               :new "Nouveau"
-              :login "Connexion"
+              :login "Connexion", :logout "Se déconnecter"
               ;; entities
               :org "Organisation", :orgs "Organisations"
               :boards "Tableaux"

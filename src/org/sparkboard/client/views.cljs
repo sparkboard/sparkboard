@@ -298,6 +298,11 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
+   [rough/button
+    {:on-click #(routes/mutate! {:route [:logout]
+                                  ;; TODO :response-fn
+                                 })}
+    (use-tr [:tr/logout])]
    [rough/divider]])
 
 (defview dev-drawer [{:as match :keys [route]}]

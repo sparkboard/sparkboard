@@ -32,7 +32,8 @@
             [re-db.sync.transit :as re-db.transit]
             [ring.middleware.defaults]
             [ring.middleware.format]
-            [ring.middleware.session]
+            [ring.middleware.session :as ring.mw.session]
+            [ring.middleware.session.cookie :as ring.mw.session.cookie]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime-type]
             [ring.util.request]
@@ -128,9 +129,23 @@
             (apply (or (seq args) [{}]))
             $txs)))
 
-(defn wrap-mandate-authn [f]
+(defn- slack-route?
+  "Predicate fn. True iff given String matches a known Slack URI/path."
+  [s]
+  (some #(str/starts-with? s %)
+        (map #(str (first slack.server/routes)
+                   (if (string? %)
+                     %
+                     (first %)))
+             (keys (second slack.server/routes)))))
+
+(defn wrap-mandate-authn-or-slack [f]
   (fn [req]
-    (if (buddy.auth/authenticated? req)
+    (if (or (buddy.auth/authenticated? req)
+            (-> req :uri #{"/v2/login"
+                           "/v2/logout"
+                           "/js/compiled/app.js"})
+            (-> req :uri slack-route?))
       (f req)
       (buddy.auth/throw-unauthorized))))
 
@@ -145,10 +160,13 @@
       wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
-      #_wrap-mandate-authn ;; FIXME conflicts with slack endpoints
+      wrap-mandate-authn-or-slack
       (buddy.auth.middleware/wrap-authorization session-backend)
       (buddy.auth.middleware/wrap-authentication session-backend)
-      ring.middleware.session/wrap-session
+      (ring.mw.session/wrap-session {:store (ring.mw.session.cookie/cookie-store
+                                             {:key (byte-array (get env/config :webserver.cookie/key
+                                                                    (repeatedly 16 (partial rand-int 10))))})
+                                     :cookie-attrs {:secure true}})
       #_(wrap-debug-request :first)))
 
 (defonce the-server
@@ -183,9 +201,12 @@
      (swap! !requests conj (assoc req :debug/id id))
      (f req)))
 
+ @!requests
+
  (->> @!requests
       (remove :websocket?)
-      (map #(select-keys % [:debug/id :body-params :body :content-type]))
+      (map #(select-keys % [:debug/id :body-params :body :content-type
+                            :session :cookies :identity]))
       (into []))
 
  )
