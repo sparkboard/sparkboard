@@ -1,25 +1,11 @@
 (ns org.sparkboard.i18n
-  (:require [re-db.memo :as memo]
+  (:require [org.sparkboard.client.common :as common]
             [re-db.reactive :as r]
-            [re-db.sync.transit :as transit]
             [taoensso.tempura :as tempura]
             [yawn.hooks :refer [use-deref]]))
 
-(memo/defn-memo $local-storage
-                "Returns a 2-way syncing local-storage atom identified by `k` with default value"
-                [k default]
-                (let [k (str k)]
-                  (doto (r/atom (or (-> (.-localStorage js/window)
-                                        (.getItem k)
-                                        transit/unpack)
-                                    default))
-                    (add-watch ::update-local-storage
-                               (fn [_k _atom _old new]
-                                 (.setItem (.-localStorage js/window)
-                                           k
-                                           (transit/pack new)))))))
-
-(defonce !preferred-language ($local-storage ::preferred-language :eng))
+(defonce !preferred-language
+  (common/$local-storage ::preferred-language :eng))
 
 (defonce !locales
   (r/reaction (into [] (distinct) [@!preferred-language :eng])))
@@ -40,6 +26,7 @@
               :create "Create"
               :login "Log in", :logout "Log out"
               ;; entities
+              :user "User"
               :org "Organisation", :orgs "Organisations"
               :board "Board" :boards "Boards"
               :project "Project", :projects "Projects"
@@ -57,6 +44,7 @@
               :new "Nouveau"
               :login "Connexion", :logout "Se déconnecter"
               ;; entities
+              :user "Utilisateur" ;; FIXME feminine
               :org "Organisation", :orgs "Organisations"
               :boards "Tableaux"
               :project "Projet", :projects "Projets"

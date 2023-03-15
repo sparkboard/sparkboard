@@ -5,6 +5,7 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
    [inside-out.forms :as forms :refer [with-form]]
+   [org.sparkboard.client.common :as common]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.i18n :as i18n :refer [tr use-tr]]
    [org.sparkboard.routes :as routes]
@@ -22,6 +23,9 @@
 
 (defview home [] (use-tr [:skeleton/nix]))
 
+(defonce !session
+  (common/$local-storage ::session {}))
+
 (defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
                     :member/password ?pwd}]
@@ -34,10 +38,20 @@
      [:input {:type "password", :value (or @?pwd "")
               :on-change (forms/change-handler ?pwd)}]
      [rough/button
-      {:on-click #(routes/mutate! {:route [:login]
-                                                ;; TODO :response-fn
-                                   }
-                                  @!mbr)}
+      {:on-click #(routes/mutate!
+                   {:route [:login]
+                    :response-fn (fn [^js/Response res _url]
+                                   (when (http-ok? res)
+                                                    ;; TODO set this based on
+                                                    ;; response body instead (I
+                                                    ;; don't want to wrestle
+                                                    ;; with readablestream right
+                                                    ;; now --DAL 2023-03-15)
+                                     (reset! !session {:identity @?mbr-name})
+                                     (set! (.-location js/window)
+                                           (routes/path-for [:org/index])))
+                                   res)}
+                   @!mbr)}
       (use-tr [:tr/login])]]))
 
 (defview org:index [params]
@@ -288,6 +302,7 @@
 
 (defview global-header [_]
   [:<>
+   [:section [:span (use-tr [:tr/user]) ":" (:identity @!session "<not logged in>")]]
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
     (into [:select {:id "language-selector"
@@ -299,9 +314,14 @@
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
    [rough/button
-    {:on-click #(routes/mutate! {:route [:logout]
-                                  ;; TODO :response-fn
-                                 })}
+    {:on-click #(do (reset! !session {})
+                    (routes/mutate!
+                     {:route [:logout]
+                      :response-fn (fn [^js/Response res _url]
+                                     (when (http-ok? res)
+                                       (set! (.-location js/window)
+                                             (routes/path-for [:login])))
+                                     res)}))}
     (use-tr [:tr/logout])]
    [rough/divider]])
 

@@ -140,7 +140,7 @@
                  (complement :error))
      (password-ok? (:member/name form)
                    (:member/password form)))
-    (assoc :body {:success? true, :member/name (:member/name form)}
+    (assoc :body {:success? true, :session {:identity (:member/name form)}}
            :session {:identity (:member/name form)})))
 
 (comment ;;;; Password encryption
