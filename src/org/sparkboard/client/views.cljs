@@ -13,7 +13,6 @@
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.macros :refer [defview]]
    [yawn.hooks :refer [use-state]]
-   [tools.sparkboard.http :as sb.http]
    [yawn.view :as v]))
 
 (defn http-ok? [rsp]
@@ -42,14 +41,12 @@
                    {:route [:login]
                     :response-fn (fn [^js/Response res _url]
                                    (when (http-ok? res)
-                                                    ;; TODO set this based on
-                                                    ;; response body instead (I
-                                                    ;; don't want to wrestle
-                                                    ;; with readablestream right
-                                                    ;; now --DAL 2023-03-15)
+                                      ;; TODO set this based on response body
+                                      ;; instead (I don't want to wrestle with
+                                      ;; readablestream right now --DAL
+                                      ;; 2023-03-15)
                                      (reset! !session {:identity @?mbr-name})
-                                     (set! (.-location js/window)
-                                           (routes/path-for [:org/index])))
+                                     (routes/set-location! [:org/index]))
                                    res)}
                    @!mbr)}
       (use-tr [:tr/login])]]))
@@ -104,8 +101,7 @@
      [rough/button {:on-click #(routes/mutate! {:route route
                                                 :response-fn (fn [^js/Response res _url]
                                                                (when (http-ok? res)
-                                                                 (set! (.-location js/window)
-                                                                       (routes/path-for [:org/one {:org/id (:org/id params)}]))
+                                                                 (routes/set-location! [:org/one {:org/id (:org/id params)}])
                                                                  ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                                                                  res))}
                                                {:board/title n})}
@@ -121,8 +117,7 @@
      [rough/button {:on-click #(routes/mutate! {:route route
                                                 :response-fn (fn [^js/Response res _url]
                                                                (when (http-ok? res)
-                                                                 (set! (.-location js/window)
-                                                                       (routes/path-for [:board/one {:board/id (:board/id params)}]))
+                                                                 (routes/set-location! [:board/one {:board/id (:board/id params)}])
                                                                  res))}
                                                {:project/title n})}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
@@ -141,8 +136,7 @@
      [rough/button {:on-click #(routes/mutate! {:route route
                                                 :response-fn (fn [^js/Response res _url]
                                                                (when (http-ok? res)
-                                                                 (set! (.-location js/window)
-                                                                       (routes/path-for [:board/one {:board/id (:board/id params)}]))
+                                                                 (routes/set-location! [:board/one {:board/id (:board/id params)}])
                                                                  res))}
                                                @new-mbr)}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
@@ -319,8 +313,7 @@
                      {:route [:logout]
                       :response-fn (fn [^js/Response res _url]
                                      (when (http-ok? res)
-                                       (set! (.-location js/window)
-                                             (routes/path-for [:login])))
+                                       (routes/set-location! [:login]))
                                      res)}))}
     (use-tr [:tr/logout])]
    [rough/divider]])

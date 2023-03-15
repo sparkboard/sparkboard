@@ -165,7 +165,11 @@
              (do (reset! !p (js/Promise.
                              (fn [resolve reject]
                                (lazy/load view resolve))))
-                 (throw @!p))))))))
+                 (throw @!p))))))
+
+     (defn set-location! [route]
+       (set! (.-location js/window)
+             (path-for route)))))
 
 
 (defn breadcrumb [path]
