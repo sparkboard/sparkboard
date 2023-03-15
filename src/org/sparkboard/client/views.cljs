@@ -41,10 +41,11 @@
                    {:route [:login]
                     :response-fn (fn [^js/Response res _url]
                                    (when (http-ok? res)
-                                      ;; TODO set this based on response body
-                                      ;; instead (I don't want to wrestle with
-                                      ;; readablestream right now --DAL
-                                      ;; 2023-03-15)
+                                     ;; TODO set this based on response body
+                                     ;; instead (I don't want to wrestle with
+                                     ;; readablestream right now --DAL
+                                     ;; 2023-03-15)
+                                     ;; TODO ...or promise-style with `p/->>`
                                      (reset! !session {:identity @?mbr-name})
                                      (routes/set-location! [:org/index]))
                                    res)}
