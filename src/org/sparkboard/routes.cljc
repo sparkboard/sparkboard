@@ -75,7 +75,15 @@
             ;; member view
             :member/one {:route ["/v2/m/" :member/id]
                          :query `db/$member:one
-                         :view `views/member:one}})))
+                         :view `views/member:one}
+
+            :message.thread/one {:route ["/v2/msg/" :message.thread/id]
+                                :query `db/$message-thread:one
+                                :mutation `db/message-thread:create}
+            :message/index {:route ["/v2/msgs/" :message.thread/id]
+                            :query `db/$message:index
+                            :view `views/messaging
+                            :mutation `db/message:create}})))
 
 ;; NOTE
 ;; path params may include a special `:body` key which should correspond to

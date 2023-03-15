@@ -52,6 +52,18 @@
                    @!mbr)}
       (use-tr [:tr/login])]]))
 
+(defview messaging [{:as msg-thread :message.thread/keys [id]}]
+  (let [msg-thread (ws/use-query! [:message.thread/one {:message.thread/id id}])
+        msgs       (ws/use-query! [:message/index      {:message.thread/id id}])]
+    (when msg-thread
+      [:section
+       [:h1 (str "messaging: " ;; FIXME i18n
+                 (:message.thread/topic msg-thread))]
+       (into [:ol]
+               (map (comp (partial vector :li)
+                          :message/contents))
+               msgs)])))
+
 (defview org:index [params]
   [:div.pa3
    [:h2 (use-tr [:tr/orgs])]
@@ -68,7 +80,10 @@
                    "X"]]))
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
-    [(routes/use-view :org/create)]]])
+    [(routes/use-view :org/create)]]
+   [messaging {:message.thread/id
+               ;; FIXME only for dev:
+               "0beff516-ec33-415f-aacd-92f1328e4698"}]])
 
 (defview org:create [params]
   (with-form [!org {:org/title ?title}]

@@ -62,6 +62,27 @@
                    [:member/id id])
           :member/password))
 
+;;; private messaging / "chat"
+(defquery $message-thread:one [{:message.thread/keys [id]}]
+  (->> (db/where [[:message.thread/id id]])
+       (map (re-db.api/pull '[:message.thread/id
+                              :message.thread/topic
+                              :ts/created-by]))
+       first)
+  ;; FIXME switch back to `pull`, after we TODO add uniqueness constraint to the schema on `:message.thread/id`
+  #_ (db/pull '[:message.thread/id
+             :message.thread/topic
+             :message.thread/members]
+           [:message.thread/id id]))
+
+(defquery $message:index [{:message.thread/keys [id]}]
+  (->> (db/where [[:message/thread id]])
+       (map (re-db.api/pull '[:message/id
+                              :message/sender
+                              :message/contents
+                              :message/timestamp]))))
+
+;;;
 (defquery $search [{:keys [query-params org/id]}]
   (->> (sb.datalevin/q-fulltext-in-org (:q query-params)
                                        id)
@@ -330,3 +351,64 @@
     ))
 
  )
+
+;;; messaging
+
+(defn make-message-thread [_ctx m]
+  (-> m
+      (assoc :message.thread/id (str (random-uuid))
+             ;; FIXME use context to hook this to actual current user
+             :ts/created-by {:firebase-account/id "DEV:FAKE"})
+      (util/guard (partial m/validate (:message-thread schema/proto)))))
+
+(defn make-message [_ctx m]
+  (-> m
+      (assoc :message/id (str (random-uuid))
+             ;; FIXME use context to hook this to actual current user
+             :ts/created-by {:firebase-account/id "DEV:FAKE"})
+      (util/guard (partial m/validate (:message schema/proto)))))
+
+;; TODO message:create
+
+;; TODO message-thread:create
+
+(comment ;;; developing private messaging poc
+  (make-message-thread {} {:message.thread/topic "our nice little private messaging topic"})
+  
+  (db/transact! [{:message.thread/topic "our nice little private messaging topic",
+                  :message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698",
+                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
+  
+  (deref ($message-thread:one {:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"}))
+
+  ;; FIXME
+  (db/pull '[:message.thread/id
+             :message.thread/topic
+             :message.thread/members]
+           [:message.thread/id "foo"])
+
+  ;;; msgs in that topic
+  (deref ($message:index {:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"}))
+  
+  (make-message {} {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"]
+                    :message/sender [:member/name "dave888"]
+                    :message/contents "hello alice"})
+  
+  (db/transact! [{:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
+                  :message/sender [:member/name "dave888"],
+                  :message/contents "hello alice",
+                  :message/id "69ffcef5-7401-4a55-9c93-f5110a2710e1",
+                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}
+                 {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
+                  :message/sender [:member/name "dave888"],
+                  :message/contents "hello bob",
+                  :message/id "0d1dcaf2-9be1-441f-924d-9c02c5424f3e"
+                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
+
+  (db/where [[:message/id "0d1dcaf2-9be1-441f-924d-9c02c5424f3e"]])
+
+  (db/where [[:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"]])
+
+  (map deref (take 3 (db/where [:project/id])))
+  ;; FIXME refs are broken, maybe need to define it in schema 
+  )

@@ -883,7 +883,20 @@
             [:member/board [:tuple keyword? string?]]
             [:member/name [:string {:min 2}]]
             [:member/password [:string {:min 50}]] ;; FIXME this might belong on a separate user entity?
-            [:ts/created-by any?]]})
+            [:ts/created-by any?]]
+
+   :message-thread [:map {:closed true}
+                    [:message.thread/id string?]
+                    [:message.thread/topic string?]
+                    ;; [:message-thread/members [:string {:min 2}]] TODO
+                    [:ts/created-by any?]]
+
+   :message [:map {:closed true}
+             [:message/id string?]
+             [:message/sender [:tuple keyword? string?]]
+             [:message/thread [:tuple keyword? string?]]
+             [:message/contents string?]
+             [:ts/created-by any?]]})
 
 
 (comment
@@ -908,6 +921,19 @@
              {:project/id (str (random-uuid))
               :project/board [:board/id "-MtC_Yd7VGM3fs2J2ibl"]
               :project/title "open innovation project AAAAAAAAAAAA"
+              :ts/created-by {:firebase-account/id "DEV:FAKE"}})
+ 
+ (m/validate (:message-thread proto)
+             {:message.thread/id (str (random-uuid))
+              ;; :message.thread/members []
+              :message.thread/topic "our fun little project chat"
+              :ts/created-by {:firebase-account/id "DEV:FAKE"}})
+ 
+ (m/validate (:message proto)
+             {:message/id (str (random-uuid))
+              :message/thread [:message.thread/id (str (random-uuid))]
+              :message/sender [:member/name (str (random-uuid))]
+              :message/contents "hello alice"
               :ts/created-by {:firebase-account/id "DEV:FAKE"}})
  
  )
