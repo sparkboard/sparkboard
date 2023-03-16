@@ -859,6 +859,17 @@
             (catch java.lang.IllegalArgumentException _iae
               nil))))
 
+(defn str-inst? [x]
+  (and (string? x)
+       (try (java.time.Instant/parse x)
+            (catch java.time.format.DateTimeParseException dtpe
+              nil))))
+
+(comment
+ (str-inst? "foo")
+ (str-inst? (str (java.time.Instant/now)))
+ )
+
 (def proto ;; FIXME this name --DAL 2023-02-22
   "Schema for validation"
   {:org [:map {:closed true}
@@ -896,6 +907,7 @@
              [:message/sender [:tuple keyword? string?]]
              [:message/thread [:tuple keyword? string?]]
              [:message/contents string?]
+             [:message/timestamp [:fn str-inst?]]
              [:ts/created-by any?]]})
 
 
@@ -934,6 +946,7 @@
               :message/thread [:message.thread/id (str (random-uuid))]
               :message/sender [:member/name (str (random-uuid))]
               :message/contents "hello alice"
+              :message/timestamp (str (java.time.Instant/now))
               :ts/created-by {:firebase-account/id "DEV:FAKE"}})
  
  )

@@ -59,10 +59,14 @@
       [:section
        [:h1 (str "messaging: " ;; FIXME i18n
                  (:message.thread/topic msg-thread))]
-       (into [:ol]
-               (map (comp (partial vector :li)
-                          :message/contents))
-               msgs)])))
+       [:table
+        (into [:tbody]
+              (map #(vector :tr
+                            [:td (:message/sender %)]
+                            [:td (:message/contents %)]
+                            [:td (str (:message/timestamp %))]
+                            [:td (when (:message/id %) (str (:message/id %)))]))
+              msgs)]])))
 
 (defview org:index [params]
   [:div.pa3

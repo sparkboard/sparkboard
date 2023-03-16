@@ -80,7 +80,8 @@
        (map (re-db.api/pull '[:message/id
                               :message/sender
                               :message/contents
-                              :message/timestamp]))))
+                              :message/timestamp]))
+       (sort-by :message/timestamp)))
 
 ;;;
 (defquery $search [{:keys [query-params org/id]}]
@@ -364,6 +365,7 @@
 (defn make-message [_ctx m]
   (-> m
       (assoc :message/id (str (random-uuid))
+             :message/timestamp (str (java.time.Instant/now))
              ;; FIXME use context to hook this to actual current user
              :ts/created-by {:firebase-account/id "DEV:FAKE"})
       (util/guard (partial m/validate (:message schema/proto)))))
@@ -405,4 +407,31 @@
                   :message/id "0d1dcaf2-9be1-441f-924d-9c02c5424f3e"
                   :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
 
+  (db/transact! [{:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
+                  :message/sender [:member/name "dave888"],
+                  :message/contents "hello carolyn",
+                  :message/id (random-uuid),
+                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}
+                 {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
+                  :message/sender [:member/name "dave888"],
+                  :message/contents "hello dave",
+                  :message/id (random-uuid)
+                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
+
+
+  (->> [{:message/contents "hello alice"
+         :message/sender [:member/name "dave888"]}
+        {:message/contents "hello bob"
+         :message/sender [:member/name "fake-user"]}
+        {:message/contents "hello carolyn"
+         :message/sender [:member/name "dave888"]}
+        {:message/contents "hello dave"
+         :message/sender [:member/name "fake-user"]}
+        {:message/contents "hello elizabeth"
+         :message/sender [:member/name "fake-user"]}]
+       (map #(make-message {} (assoc % :message/thread
+                                     [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"])))
+       (into [])
+       (db/transact!))
+    
   )
