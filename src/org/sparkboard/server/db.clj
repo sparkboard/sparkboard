@@ -76,7 +76,7 @@
            [:message.thread/id id]))
 
 (defquery $message:index [{:message.thread/keys [id]}]
-  (->> (db/where [[:message/thread id]])
+  (->> (db/where [[:message/thread [:message.thread/id id]]])
        (map (re-db.api/pull '[:message/id
                               :message/sender
                               :message/contents
@@ -405,10 +405,4 @@
                   :message/id "0d1dcaf2-9be1-441f-924d-9c02c5424f3e"
                   :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
 
-  (db/where [[:message/id "0d1dcaf2-9be1-441f-924d-9c02c5424f3e"]])
-
-  (db/where [[:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"]])
-
-  (map deref (take 3 (db/where [:project/id])))
-  ;; FIXME refs are broken, maybe need to define it in schema 
   )
