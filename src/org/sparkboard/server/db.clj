@@ -362,15 +362,30 @@
              :ts/created-by {:firebase-account/id "DEV:FAKE"})
       (util/guard (partial m/validate (:message-thread schema/proto)))))
 
-(defn make-message [_ctx m]
+(defn make-message [ctx m]
+  ;; TODO do we want to `throw` if no `identity` on the request? currently fails via schema
   (-> m
       (assoc :message/id (str (random-uuid))
+             :message/sender [:member/name (-> ctx :request :identity)]
              :message/timestamp (str (java.time.Instant/now))
              ;; FIXME use context to hook this to actual current user
              :ts/created-by {:firebase-account/id "DEV:FAKE"})
       (util/guard (partial m/validate (:message schema/proto)))))
 
 ;; TODO message:create
+
+(defn message:create [ctx {:message.thread/keys [id] :as params} msg]
+  (try (if (empty? (db/where [[:message.thread/id id]]))
+         (http-rsp/bad-request {:error "no message thread with that id exists"
+                                :data msg})
+         (if-let [msg (make-message ctx (assoc msg :message/thread
+                                               [:message.thread/id id]))]
+           (do (tap> (db/transact! [msg]))
+               (http-rsp/ok msg))
+           (http-rsp/bad-request {:error "can't create message with given data"
+                                  :data msg})))
+       (catch Exception e
+         (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
 ;; TODO message-thread:create
 
@@ -433,5 +448,8 @@
                                      [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"])))
        (into [])
        (db/transact!))
-    
+
+  (make-message {:request {:identity "dave888"}}
+                {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
+                 :message/contents "foo8"})
   )

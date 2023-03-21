@@ -24,6 +24,7 @@
               :search "Search", :search-across-org "org-wide search"
               :new "New"
               :create "Create"
+              :send "Send"
               :login "Log in", :logout "Log out"
               ;; entities
               :user "User"
@@ -33,7 +34,8 @@
               :member "Member", :members "Members"
               :tag "Tag", :tags "Tags"
               :badge "Badge", :badges "Badges"
-              :member-name "Member Name", :password "Password"}}
+              :member-name "Member Name", :password "Password"
+              :message "Message" :messages "Messages"}}
 
    :fra {:missing ":fra texte manquant"
          :meta/lect "Français"
