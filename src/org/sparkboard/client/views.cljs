@@ -62,7 +62,7 @@
        [:table
         (into [:tbody]
               (map #(vector :tr
-                            [:td (:message/sender %)]
+                            [:td (second (:message/sender %))]
                             [:td (:message/contents %)]
                             [:td (str (:message/timestamp %))]
                             [:td (when (:message/id %) (str (:message/id %)))]))
@@ -115,7 +115,7 @@
   (let [[n n!] (use-state "")]
     [:div
      [:h3 (use-tr [:tr/new]) " " (use-tr [:tr/board])]
-     [rough/input {:placeholder "Board title"
+     [rough/input {:placeholder "Board title"  ;; FIXME i18n
                    :value n
                    :on-input #(n! (-> % .-target .-value))}]
      [rough/button {:on-click #(routes/mutate! {:route route
