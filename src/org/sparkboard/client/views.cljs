@@ -52,15 +52,14 @@
                    @!mbr)}
       (use-tr [:tr/login])]]))
 
-(defview messaging [{:as msg-thread :message.thread/keys [id]}]
+(defview messages:thread [{:message.thread/keys [id] :as msg-thread}]
   (let [msg-thread (ws/use-query! [:message.thread/one {:message.thread/id id}])
         msgs       (ws/use-query! [:message/index      {:message.thread/id id}])
         [new-msg new-msg!] (use-state "")]
-    (when msg-thread
-      [:section
-       [:h2 (str (use-tr [:tr/messages]) ": "
-                 (:message.thread/topic msg-thread))]
-       [:h4 (str "Id: " id)]
+    [:section
+     [:h3 "topic:" (:message.thread/topic msg-thread)]
+     [:h4 (str "Id: " id)]
+     (when (seq msgs)
        [:table
         (into [:tbody]
               (map #(vector :tr
@@ -68,20 +67,43 @@
                             [:td (:message/contents %)]
                             [:td (str (:message/timestamp %))]
                             [:td (when (:message/id %) (str (:message/id %)))]))
-              msgs)]
-       [:div
-        [rough/input {:placeholder (str (use-tr [:tr/new])
-                                        " "
-                                        (str/lower-case (use-tr [:tr/message])))
-                      :value new-msg
-                      :on-input #(new-msg! (-> % .-target .-value))}]
-        [rough/button {:on-click #(routes/mutate!
-                                   {:route [:message/index msg-thread]}
-                                   {:message/thread [:message.thread/id id]
-                                    :message/contents new-msg})}
-         (str (use-tr [:tr/send])
-              " "
-              (use-tr [:tr/message]))]]])))
+              msgs)])
+     [:div
+      [rough/input {:placeholder (str (use-tr [:tr/new])
+                                      " "
+                                      (str/lower-case (use-tr [:tr/message])))
+                    :value new-msg
+                    :on-input #(new-msg! (-> % .-target .-value))}]
+      [rough/button {:on-click #(routes/mutate!
+                                 {:route [:message/index msg-thread]}
+                                 {:message/thread [:message.thread/id id]
+                                  :message/contents new-msg})}
+       (str (use-tr [:tr/send])
+            " "
+            (use-tr [:tr/message]))]]]))
+
+(defview messaging [mbr]
+  [:<>
+   [:h2 (use-tr [:tr/messages])]
+   (let [[new-topic new-topic!] (use-state "")]
+     [:<>
+      [rough/input {:placeholder "new message thread topic"
+                    ;; FIXME i18n
+                    #_(str (use-tr [:tr/new])
+                           " "
+                           (str/lower-case (use-tr [:tr/message-thread])))
+                    :value new-topic
+                    :on-input #(new-topic! (-> % .-target .-value))}]
+      [rough/button {:on-click #(routes/mutate!
+                                 {:route [:message.thread/create mbr]}
+                                 {:message.thread/topic new-topic})}
+    ;; FIXME i18n
+       "create msg-thread"]])
+   (let [msgts (ws/use-query! [:message.thread/index mbr])]
+     (into [:ul]
+           (map (fn [msgt] (do (prn msgt)
+                               [messages:thread msgt])))
+           msgts))])
 
 (defview org:index [params]
   [:div.pa3
@@ -100,9 +122,11 @@
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
     [(routes/use-view :org/create)]]
-   [messaging {:message.thread/id
+   (when (:identity @!session)
+     [messaging {:member/name (:identity @!session)}])
+   #_[messaging {:message.thread/id
                ;; FIXME only for dev:
-               "0beff516-ec33-415f-aacd-92f1328e4698"}]])
+                 "0beff516-ec33-415f-aacd-92f1328e4698"}]])
 
 (defview org:create [params]
   (with-form [!org {:org/title ?title}]

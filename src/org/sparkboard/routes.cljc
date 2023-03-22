@@ -77,12 +77,15 @@
                          :query `db/$member:one
                          :view `views/member:one}
 
-            :message.thread/one {:route ["/v2/msg/" :message.thread/id]
-                                :query `db/$message-thread:one
-                                :mutation `db/message-thread:create}
+            :message.thread/create {:route ["/v2/mbr-msgt/" :member/name]
+                                    :mutation `db/message-thread:create}
+            :message.thread/one {:route ["/v2/msgthread/" :message.thread/id]
+                                :query `db/$message-thread:one}
+            :message.thread/index {:route ["/v2/msgthreads/" :member/name]
+                                :query `db/$message-thread:index}
             :message/index {:route ["/v2/msgs/" :message.thread/id]
                             :query `db/$message:index
-                            :view `views/messaging
+                            :view `views/message:index
                             :mutation `db/message:create}})))
 
 ;; NOTE

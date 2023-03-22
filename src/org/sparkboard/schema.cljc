@@ -431,6 +431,12 @@
                         :member-vote/board
                         :member-vote/open?]}})
 
+(def sb-message
+  {:message/id        unique-string-id
+   :message.thread/id unique-string-id
+   ;; TODO the rest
+   })
+
 (def sb-notification
   {:notification/comment (ref :one #{:post.comment/id}),
    :notification/discussion (ref :one #{:discussion/id})
@@ -785,6 +791,7 @@
              sb-images
              sb-member
              sb-member-vote
+             sb-message
              sb-notification
              sb-org
              sb-posts

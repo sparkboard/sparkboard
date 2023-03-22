@@ -64,16 +64,20 @@
 
 ;;; private messaging / "chat"
 (defquery $message-thread:one [{:message.thread/keys [id]}]
-  (->> (db/where [[:message.thread/id id]])
-       (map (re-db.api/pull '[:message.thread/id
-                              :message.thread/topic
-                              :ts/created-by]))
-       first)
-  ;; FIXME switch back to `pull`, after we TODO add uniqueness constraint to the schema on `:message.thread/id`
-  #_ (db/pull '[:message.thread/id
+  (db/pull '[:message.thread/id
              :message.thread/topic
              :message.thread/members]
            [:message.thread/id id]))
+
+(defquery $message-thread:index [params]
+  (map (db/pull '[:message.thread/id
+                  :message.thread/topic])
+     (dl/q '[:find [?msgt ...]
+             :in $ ?nom
+             :where
+             [?mbr :member/name ?nom]
+             [?mbr :member/message-threads ?msgt]]
+           @conn (:member/name params))))
 
 (defquery $message:index [{:message.thread/keys [id]}]
   (->> (db/where [[:message/thread [:message.thread/id id]]])
@@ -171,8 +175,10 @@
   
   (buddy.hashers/verify "secretpassword" "bcrypt+blake2b-512$dfb9ecb7a246d546e437418e6cd53b43$12$51fb8cef3a64337e0677182171786b14c14a40dc60f5f95c")
 
-  (db/where [[:member/name "dave888"]])
+  (deref (first (db/where [[:member/name "dave888"]])))
 
+  (deref (first (db/where [[:member/name "test-alice"]])))
+  
   (:member/password (first (db/where [[:member/name " Desiree Nsanzabera"]])))
 
   (dl/q '[:find ?pwd .
@@ -387,7 +393,23 @@
        (catch Exception e
          (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
-;; TODO message-thread:create
+(defn message-thread:create [ctx params msg-thread]
+  (prn "ctx" ctx)
+  (prn "params" params)
+  (prn "msg-thread" msg-thread)
+  ;; TODO more tightly tie the identity of the thread to the set of its members?
+  (try (let [msgt (make-message-thread ctx msg-thread)
+             mbr-x-msgt (-> params
+                            (select-keys [:member/name])
+                            (assoc :member/message-threads
+                                   [:message.thread/id (:message.thread/id msgt)]))]
+         (if (every? identity [mbr-x-msgt msgt])
+           (do (tap> (db/transact! [mbr-x-msgt msgt]))
+               (http-rsp/ok msgt))
+           (http-rsp/bad-request {:error "can't create message thread with given data"
+                                  :data msg-thread})))
+       (catch Exception e
+         (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
 (comment ;;; developing private messaging poc
   (make-message-thread {} {:message.thread/topic "our nice little private messaging topic"})
@@ -407,49 +429,15 @@
   ;;; msgs in that topic
   (deref ($message:index {:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"}))
   
-  (make-message {} {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"]
-                    :message/sender [:member/name "dave888"]
-                    :message/contents "hello alice"})
-  
-  (db/transact! [{:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
-                  :message/sender [:member/name "dave888"],
-                  :message/contents "hello alice",
-                  :message/id "69ffcef5-7401-4a55-9c93-f5110a2710e1",
-                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}
-                 {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
-                  :message/sender [:member/name "dave888"],
-                  :message/contents "hello bob",
-                  :message/id "0d1dcaf2-9be1-441f-924d-9c02c5424f3e"
-                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
-
-  (db/transact! [{:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
-                  :message/sender [:member/name "dave888"],
-                  :message/contents "hello carolyn",
-                  :message/id (random-uuid),
-                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}
-                 {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
-                  :message/sender [:member/name "dave888"],
-                  :message/contents "hello dave",
-                  :message/id (random-uuid)
-                  :ts/created-by #:firebase-account{:id "DEV:FAKE"}}])
-
-
-  (->> [{:message/contents "hello alice"
-         :message/sender [:member/name "dave888"]}
-        {:message/contents "hello bob"
-         :message/sender [:member/name "fake-user"]}
-        {:message/contents "hello carolyn"
-         :message/sender [:member/name "dave888"]}
-        {:message/contents "hello dave"
-         :message/sender [:member/name "fake-user"]}
-        {:message/contents "hello elizabeth"
-         :message/sender [:member/name "fake-user"]}]
-       (map #(make-message {} (assoc % :message/thread
-                                     [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"])))
-       (into [])
-       (db/transact!))
-
   (make-message {:request {:identity "dave888"}}
                 {:message/thread [:message.thread/id "0beff516-ec33-415f-aacd-92f1328e4698"],
                  :message/contents "foo8"})
+
+  #_
+  (for [eid (dl/q '[:find [?e ...]
+                    :in $
+                    :where [?e :message.thread/id]]
+                  @conn)]
+    (db/transact! [[:db.fn/retractEntity eid]]))
+
   )
