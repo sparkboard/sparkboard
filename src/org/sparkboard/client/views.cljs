@@ -85,18 +85,18 @@
 (defview messaging [mbr]
   [:<>
    [:h2 (use-tr [:tr/messages])]
-   (let [[new-topic new-topic!] (use-state "")]
+   (let [new-msgt (use-state {:message.thread/topic ""
+                                       ;; TODO support adding multiple members to thread
+                                       :member/name ""})]
      [:<>
-      [rough/input {:placeholder "new message thread topic"
-                    ;; FIXME i18n
-                    #_(str (use-tr [:tr/new])
-                           " "
-                           (str/lower-case (use-tr [:tr/message-thread])))
-                    :value new-topic
-                    :on-input #(new-topic! (-> % .-target .-value))}]
-      [rough/button {:on-click #(routes/mutate!
-                                 {:route [:message.thread/create mbr]}
-                                 {:message.thread/topic new-topic})}
+      [rough/input {:placeholder "new message thread topic" ;; FIXME i18n
+                    :value (:message.thread/topic @new-msgt)
+                    :on-input #(swap! new-msgt assoc :message.thread/topic (-> % .-target .-value))}]
+      [rough/input {:placeholder "member name" ;; FIXME i18n
+                    :value (:member/name @new-msgt)
+                    :on-input #(swap! new-msgt assoc :member/name (-> % .-target .-value))}]
+      [rough/button {:on-click #(routes/mutate! {:route [:message.thread/create mbr]}
+                                                @new-msgt)}
     ;; FIXME i18n
        "create msg-thread"]])
    (let [msgts (ws/use-query! [:message.thread/index mbr])]

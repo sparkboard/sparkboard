@@ -398,13 +398,20 @@
   (prn "params" params)
   (prn "msg-thread" msg-thread)
   ;; TODO more tightly tie the identity of the thread to the set of its members?
-  (try (let [msgt (make-message-thread ctx msg-thread)
-             mbr-x-msgt (-> params
-                            (select-keys [:member/name])
-                            (assoc :member/message-threads
-                                   [:message.thread/id (:message.thread/id msgt)]))]
-         (if (every? identity [mbr-x-msgt msgt])
-           (do (tap> (db/transact! [mbr-x-msgt msgt]))
+  (try (let [msgt (make-message-thread ctx (dissoc msg-thread :member/name))
+             mbrs-x-msgt [(-> params ;; current user must be in the thread
+                              (select-keys [:member/name])
+                              (assoc :member/message-threads
+                                     [:message.thread/id (:message.thread/id msgt)]))
+                          ;; FIXME enforce existence of member
+                          ;; FIXME handle assigning multiple members to thread
+                          (some-> msg-thread ;; currently they can pick one
+                                             ;; other member to message
+                                  (select-keys [:member/name])
+                                  (assoc :member/message-threads
+                                         [:message.thread/id (:message.thread/id msgt)]))]]
+         (if (every? identity [mbrs-x-msgt msgt])
+           (do (tap> (db/transact! (conj mbrs-x-msgt msgt)))
                (http-rsp/ok msgt))
            (http-rsp/bad-request {:error "can't create message thread with given data"
                                   :data msg-thread})))
