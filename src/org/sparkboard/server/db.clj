@@ -154,6 +154,7 @@
           :identity))
 
 (defn login-handler
+  ;; FIXME `member/name` is not unique
   "HTTP handler. Returns 200/OK with result of the user/password attempt in the body.
   Body keys:
    - `member/name` - who tried to log in
@@ -377,8 +378,6 @@
              ;; FIXME use context to hook this to actual current user
              :ts/created-by {:firebase-account/id "DEV:FAKE"})
       (util/guard (partial m/validate (:message schema/proto)))))
-
-;; TODO message:create
 
 (defn message:create [ctx {:message.thread/keys [id] :as params} msg]
   (try (if (empty? (db/where [[:message.thread/id id]]))
