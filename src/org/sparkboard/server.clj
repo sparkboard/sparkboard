@@ -81,13 +81,6 @@
     (or (public-resource (:uri req))
         (f req))))
 
-(def wrap-index-fallback
-  ;; fall back to index.html -- TODO: re-use the client router to serve 404s for unknown paths
-  (fn [f]
-    (fn [req]
-      (or (f req)
-          (server.views/spa-page env/client-config)))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Websockets
@@ -101,10 +94,17 @@
 
 (defn http-handler [{:as req :keys [path-info uri]}]
   (let [path (or path-info uri)
-        {:as match :keys [query mutation params]} (routes/match-route path)
+        {:as match :keys [query mutation params public?]} (routes/match-route path)
         html? (str/includes? (get-in req [:headers "accept"]) "text/html")
         method (:request-method req)]
-    (when (and match (not html?))
+    (cond
+
+      (not match) (ring.http/not-found "Not found")
+
+      (and (not public?)
+           (not (buddy.auth/authenticated? req))) (buddy.auth/throw-unauthorized)
+
+      (not html?)
       (cond (and (= method :post) mutation)
             ;; mutation fns are expected to return HTTP response maps
             (apply mutation {:request req} params (:body-params req))
@@ -113,7 +113,10 @@
             (and (= method :get) query)
             (some-> (query params)
                     deref
-                    ring.http/ok)))))
+                    ring.http/ok))
+
+      :else
+      (server.views/spa-page env/client-config))))
 
 (memo/defn-memo $txs [ref]
   (r/catch (sync.entity/txs ref)
@@ -139,16 +142,6 @@
                      (first %)))
              (keys (second slack.server/routes)))))
 
-(defn wrap-mandate-authn-or-slack [f]
-  (fn [req]
-    (if (or (buddy.auth/authenticated? req)
-            (-> req :uri #{"/v2/login"
-                           "/v2/logout"
-                           "/js/compiled/app.js"})
-            (-> req :uri slack-route?))
-      (f req)
-      (buddy.auth/throw-unauthorized))))
-
 (def session-backend
   "HTTP-session-based auth instance"
   (buddy.auth.backends/session))
@@ -157,10 +150,8 @@
   (-> (impl/join-handlers slack.server/handlers
                           (ws/handler "/ws" {:handlers (sync/query-handlers resolve-query)})
                           (-> http-handler (muu.middleware/wrap-format muuntaja)))
-      wrap-index-fallback
       wrap-handle-errors
       wrap-static-first
-      wrap-mandate-authn-or-slack
       (buddy.auth.middleware/wrap-authorization session-backend)
       (buddy.auth.middleware/wrap-authentication session-backend)
       (ring.mw.session/wrap-session {:store (ring.mw.session.cookie/cookie-store

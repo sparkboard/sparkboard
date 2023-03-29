@@ -26,6 +26,7 @@
   This lets us require this namespace without causing circular dependencies."
   (r/atom (lazy-views
            {:home {:route ["/"]
+                   :public? true
                    :view `views/home}
             :slack/invite-offer {:route ["/slack/invite-offer"]
                                  :view `slack.client/invite-offer}
@@ -54,9 +55,11 @@
                         :query `db/$org:index
                         :view `views/org:index}
             :login {:route ["/v2/login"]
+                    :public? true
                     :view `views/login
                     :mutation `db/login-handler}
             :logout {:route ["/v2/logout"]
+                     :public? true
                      :mutation `db/logout-handler}
 
             ;; Rest of the skeleton:
