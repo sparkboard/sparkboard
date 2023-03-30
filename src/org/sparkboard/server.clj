@@ -32,10 +32,10 @@
             [re-db.sync.transit :as re-db.transit]
             [ring.middleware.defaults]
             [ring.middleware.format]
-            [ring.middleware.session :as ring.mw.session]
-            [ring.middleware.session.cookie :as ring.mw.session.cookie]
+            [ring.middleware.session :as ring.session]
+            [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.http-response :as ring.http]
-            [ring.util.mime-type :as ring.mime-type]
+            [ring.util.mime-type :as ring.mime]
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]))
@@ -73,7 +73,7 @@
 
 (defn public-resource [path]
   (some-> (ring.response/resource-response path {:root "public"})
-          (ring.response/content-type (ring.mime-type/ext-mime-type path))))
+          (ring.response/content-type (ring.mime/ext-mime-type path))))
 
 (defn wrap-static-first [f]
   ;; serve static files before all the other middleware, logging, etc.
@@ -154,10 +154,10 @@
       wrap-static-first
       (buddy.auth.middleware/wrap-authorization session-backend)
       (buddy.auth.middleware/wrap-authentication session-backend)
-      (ring.mw.session/wrap-session {:store (ring.mw.session.cookie/cookie-store
-                                             {:key (byte-array (get env/config :webserver.cookie/key
-                                                                    (repeatedly 16 (partial rand-int 10))))})
-                                     :cookie-attrs {:secure true}})
+      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
+                                          {:key (byte-array (get env/config :webserver.cookie/key
+                                                                 (repeatedly 16 (partial rand-int 10))))})
+                                  :cookie-attrs {:secure true}})
       #_(wrap-debug-request :first)))
 
 (defonce the-server

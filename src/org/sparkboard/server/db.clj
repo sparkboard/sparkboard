@@ -45,7 +45,7 @@
 (defquery $board:one [{:keys [board/id]}]
   (db/pull '[*
              :board/title
-             :board.registration/open?
+             :board/registration-open?
              :board/title
              {:project/_board [*]}
              {:board/org [:org/title :org/id]}
@@ -187,7 +187,7 @@
   (-> m
       (assoc :member/id (str (random-uuid))
              ;; FIXME use context to hook this to actual current user
-             :ts/created-by {:firebase-account/id "DEV:FAKE"})
+             :ts/created-by {:account/id "DEV:FAKE"})
       (update :member/password #(buddy.hashers/derive % buddy-opts))
       (util/guard (partial m/validate (:member schema/proto)))))
 
@@ -207,9 +207,9 @@
 
 (defn make-project [_ctx m]
   (util/guard (assoc m
-                     :project/id (str (random-uuid))
-                     ;; FIXME use context to hook this to actual current user
-                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+                :project/id (str (random-uuid))
+                ;; FIXME use context to hook this to actual current user
+                :ts/created-by {:account/id "DEV:FAKE"})
               (partial m/validate (:project schema/proto))))
 
 (defn project:create [ctx params project]
@@ -227,9 +227,9 @@
 
 (defn make-board [_ctx m]
   (util/guard (assoc m
-                     :board/id (str (random-uuid))
-                     ;; FIXME use context to hook this to actual current user
-                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+                :board/id (str (random-uuid))
+                ;; FIXME use context to hook this to actual current user
+                :ts/created-by {:account/id "DEV:FAKE"})
               (partial m/validate (:board schema/proto))))
 
 (defn board:create [ctx params board]
@@ -251,10 +251,10 @@
 
 (defn make-org [_ctx m]
   (util/guard (assoc m
-                     ;; TODO maybe allow user to specify id?
-                     :org/id (title->id (:org/title m))
-                     ;; FIXME use context to hook this to actual current user
-                     :ts/created-by {:firebase-account/id "DEV:FAKE"})
+                ;; TODO maybe allow user to specify id?
+                :org/id (title->id (:org/title m))
+                ;; FIXME use context to hook this to actual current user
+                :ts/created-by {:account/id "DEV:FAKE"})
               (partial m/validate (:org schema/proto))))
 
 (defn org:create [ctx _params org]

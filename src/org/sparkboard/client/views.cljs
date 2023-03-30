@@ -186,7 +186,7 @@
      [:p (-> value :entity/domain :domain/name)]
      [:blockquote
       [safe-html (-> value
-                     :board.landing-page/description-content
+                     :board/description
                      :text-content/string)]]
      [rough/tabs {:class "w-100"}
       [rough/tab {:name (use-tr [:tr/projects])
@@ -222,9 +222,9 @@
 
 (defn video-field [[kind v]]
   (case kind
-    :field.video/youtube-id (youtube-embed v)
-    :field.video/youtube-url [rough/link {:href v} "youtube video"]
-    :field.video/vimeo-url [rough/link {:href v} "vimeo video"]
+    :video/youtube-id (youtube-embed v)
+    :video/youtube-url [rough/link {:href v} "youtube video"]
+    :video/vimeo-url [rough/link {:href v} "vimeo video"]
     {kind v}))
 
 (comment
@@ -236,7 +236,7 @@
     [:div
      [:h1 (str (use-tr [:tr/project]) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
-     (when-let [badges (:project.admin/badges value)]
+     (when-let [badges (:project/badges value)]
        [:section [:h3 (tr [:tr/badges])]
         (into [:ul]
               (map (fn [bdg] [:li (:badge/label bdg)]))

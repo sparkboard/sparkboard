@@ -1,7 +1,7 @@
 (ns org.sparkboard.datalevin
   (:require [datalevin.core :as dl]
             [org.sparkboard.server.env :as env]
-            [re-db.api :as d]
+            [re-db.api :as db]
             [re-db.integrations.datalevin]
             [re-db.read]))
 
@@ -17,18 +17,18 @@
  (dl/clear conn)
 
 
- (->> (d/where [:org/id])
-      (map (d/pull '[*
+ (->> (db/where [:org/id])
+      (map (db/pull '[*
                      :db/id
-                     #_{:board.settings/default-template [*]}
+                     #_{:org/default-board-template [*]}
                      {:entity/domain [*]}
                      {:ts/created-by [*]}])))
 
- (->> (d/where [[:org/id "postcovid"]])
-      (map (d/pull '[*
+ (->> (db/where [[:org/id "postcovid"]])
+      (map (db/pull '[*
                      :db/id
                      :org/title
-                     #_{:board.settings/default-template [*]}
+                     #_{:org/default-board-template [*]}
                      {:entity/domain [*]}
                      {:ts/created-by [*]}])))
 
@@ -64,7 +64,7 @@
   ;; TODO incorporate org clauses into query directly instead of filtering in app layer
   [terms org-id]
   (->> (q-fulltext terms)
-       (map (comp d/entity first))
+       (map (comp db/entity first))
        (filter (partial entity-in-org? org-id))))
 
 
@@ -86,7 +86,7 @@
             #_"masa"
             "idée innovante"
             #_"innovante")
-      (map (comp d/entity first))
+      (map (comp db/entity first))
       (filter (partial entity-in-org? "robo-avatar" #_"opengeneva"))
       (map #(into {} %)))
 
@@ -101,8 +101,8 @@
   ;; mutations. Now they need to go away.
 
   ;; See all orgs so I can pick out the ones to delete
-  (->> (d/where [:org/id])
-       (mapv (d/pull '[*])))
+  (->> (db/where [:org/id])
+       (mapv (db/pull '[*])))
 
   ;; Get entity for an org
   (dl/q '[:find ?e .
@@ -120,7 +120,7 @@
                     :where [?e :org/id ?org-id]]
                   (dl/db conn)
                   (:org/id org))]
-    (d/transact! [[:db.fn/retractEntity eid]]))
+    (db/transact! [[:db.fn/retractEntity eid]]))
 
   ;; FIXME fails if entity does not exist / has already been deleted
   
