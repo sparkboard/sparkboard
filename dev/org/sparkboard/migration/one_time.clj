@@ -56,24 +56,24 @@
 
 (def MONGODB_URI (-> env/config :prod :mongodb/readonly-uri))
 
-(def mongo-colls {:sb/member "users"
-                  :sb/account "users"
+(def mongo-colls {:member/as-map "users"
+                  :account/as-map "users"
                   :member-vote/ballot "users"
-                  :sb/notification "notificationschemas"
-                  :sb/project "projectschemas"
-                  :sb/discussion "discussionschemas"
-                  :sb/thread "threadschemas"
+                  :notification/as-map "notificationschemas"
+                  :project/as-map "projectschemas"
+                  :discussion/as-map "discussionschemas"
+                  :thread/as-map "threadschemas"
                   })
 
-(def firebase-colls {:sb/org "org"
-                     :sb/board "settings"
-                     :sb/domain "domain"
-                     :sb/collection "collection"
-                     :sb/membership "roles"
-                     :sb/slack.user "slack-user"
-                     :sb/slack.team "slack-team"
-                     :sb/slack.broadcast "slack-broadcast"
-                     :sb/slack.channel "slack-channel"})
+(def firebase-colls {:org/as-map "org"
+                     :board/as-map "settings"
+                     :domain/as-map "domain"
+                     :collection/as-map "collection"
+                     :membership/as-map "roles"
+                     :slack.user/as-map "slack-user"
+                     :slack.team/as-map "slack-team"
+                     :slack.broadcast/as-map "slack-broadcast"
+                     :slack.channel/as-map "slack-channel"})
 
 (def colls (vec (concat (keys mongo-colls)
                         (keys firebase-colls))))
@@ -134,12 +134,12 @@
 (def read-coll
   (memoize
    (fn [k]
-     (cond (#{:sb/account} k) @!accounts
+     (cond (#{:account/as-map} k) @!accounts
            (mongo-colls k)
            (read-string (slurp (env/db-path (str (mongo-colls k) ".edn"))))
            (firebase-colls k) (-> ((read-firebase) (firebase-colls k))
                                   (cond->>
-                                   (= k :sb/board) (merge-with merge ((read-firebase) "privateSettings")))
+                                   (= k :board/as-map) (merge-with merge ((read-firebase) "privateSettings")))
                                   #_(#(apply dissoc % delete-boards)))
            :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
@@ -150,17 +150,17 @@
 (def !id-index
   (delay
    (merge {:domain/name (delay
-                         (into #{} (map :domain/name) (coll-entities :sb/domain)))
+                         (into #{} (map :domain/name) (coll-entities :domain/as-map)))
            :post/id (delay
                      (into #{} (comp (mapcat :discussion/posts)
                                      (map :post/id))
-                           (coll-entities :sb/discussion)))
+                           (coll-entities :discussion/as-map)))
            :comment/id (delay
                         (into #{}
                               (comp (mapcat :discussion/posts)
                                     (mapcat :post/comments)
                                     (map :comment/id))
-                              (coll-entities :sb/discussion)))}
+                              (coll-entities :discussion/as-map)))}
           (into {} (for [k colls]
                      (let [entity-k k
                            id-k (keyword (name k) "id")]
@@ -245,8 +245,8 @@
       (if (= ref [:site/id "account"])
         {:domain/target-type :domain/url
          :domain/url "https://account.sparkboard.com"}
-        {:domain/target-type :domain/entity
-         :domain/entity (parse-sparkboard-id s)}))))
+        {:domain/target-type :domain/as-map
+         :domain/as-map (parse-sparkboard-id s)}))))
 
 (comment
  (map parse-sparkboard-id ["sparkboard.org:x" "sparkboard_board:-abc"]))
@@ -277,7 +277,7 @@
 
 (def !all-field-types
   (delay
-   (->> (read-coll :sb/board)
+   (->> (read-coll :board/as-map)
         fire-flat
         (mapcat (juxt #(% "groupFields") #(% "userFields")))
         (mapcat identity)
@@ -298,7 +298,7 @@
 
 (def !domain->board
   (delay
-   (->> (read-coll :sb/board)
+   (->> (read-coll :board/as-map)
         (fire-flat :board/id)
         (group-by #(% "domain"))
         (#(update-vals % (comp :board/id first))))))
@@ -375,11 +375,11 @@
       m)))
 
 (comment
- (first (read-coll :sb/board)))
+ (first (read-coll :board/as-map)))
 
 (def !tag->id
   (delay (into {}
-               (for [[board-id {:strs [tags]}] (read-coll :sb/board)
+               (for [[board-id {:strs [tags]}] (read-coll :board/as-map)
                      :let [tags (update-vals tags #(update % "label" (fn [l] (or l (get % "name") :NO_TAG))))]]
                  [board-id (-> (merge (zipmap (map #(str/lower-case (get % "label")) (vals tags))
                                               (keys tags))
@@ -399,7 +399,7 @@
   (try (do (bson-id-timestamp "ORqqqQ1zcFPAtWYIB4QBWlkc4Kp1") true)
        (catch Exception e false)))
 
-(def changes {:sb/board
+(def changes {:board/as-map
               [::prepare (partial fire-flat :board/id)
                ::defaults {:board/registration-open? true
                            :visibility/public? true
@@ -573,7 +573,7 @@
                                                (update :board/rules assoc
                                                        :action/project.approve {:policy/requires-role #{:role/admin}})))
                "languages" (& (xf (partial mapv #(get % "code"))) (rename :i18n/suggested-locales))]
-              :sb/org [::prepare (partial fire-flat :org/id)
+              :org/as-map [::prepare (partial fire-flat :org/id)
                        ::defaults {:visibility/public? true}
                        "title" (rename :org/title)
                        "allowPublicViewing" (rename :visibility/public?)
@@ -584,11 +584,11 @@
                                     (rename :ts/created-by))
                        "boardTemplate" (& (lookup-ref :board/id)
                                           (rename :org/default-board-template))]
-              :sb/slack.user [::prepare (partial fire-flat :slack.user/id)
+              :slack.user/as-map [::prepare (partial fire-flat :slack.user/id)
                               "account-id" (rename :slack.user/firebase-account-id)
                               "team-id" (& (lookup-ref :slack.team/id)
                                            (rename :slack.user/slack.team))]
-              :sb/slack.team [::prepare (partial fire-flat :slack.team/id)
+              :slack.team/as-map [::prepare (partial fire-flat :slack.team/id)
                               "board-id" (& (lookup-ref :board/id)
                                             (rename :slack.team/board))
                               "team-id" (rename :slack.team/id)
@@ -606,7 +606,7 @@
 
               ;; response => destination-thread where team-responses are collected
               ;; reply    => team-thread where the message with "Reply" button shows up
-              :sb/slack.broadcast [::prepare (partial fire-flat :slack.broadcast/id)
+              :slack.broadcast/as-map [::prepare (partial fire-flat :slack.broadcast/id)
                                    "replies" (& (xf (comp (partial change-keys ["message" (rename :slack.broadcast.reply/text)
                                                                                 "user-id" (& (lookup-ref :slack.user/id)
                                                                                              (rename :slack.broadcast.reply/slack.user))
@@ -621,16 +621,16 @@
                                    "response-channel" (rename :slack.broadcast/response-channel-id)
                                    "response-thread" (rename :slack.broadcast/response-thread-id)
                                    ]
-              :sb/slack.channel [::prepare (partial fire-flat :slack.channel/id)
+              :slack.channel/as-map [::prepare (partial fire-flat :slack.channel/id)
                                  "project-id" (& (lookup-ref :project/id)
                                                  (rename :slack.channel/project))
                                  ::always (remove-when (comp missing-ref? :slack.channel/project))
                                  "team-id" (& (lookup-ref :slack.team/id)
                                               (rename :slack.channel/slack.team))]
-              :sb/domain [::prepare (partial mapv (fn [[name target]]
+              :domain/as-map [::prepare (partial mapv (fn [[name target]]
                                                     (merge {:domain/name (unmunge-domain name)}
                                                            (parse-domain-target target))))]
-              :sb/collection [::prepare (partial fire-flat :collection/id)
+              :collection/as-map [::prepare (partial fire-flat :collection/id)
                               "title" (rename :collection/title)
                               "images" (& parse-image-urls
                                           (rename :collection/images))
@@ -639,7 +639,7 @@
                                           (rename :collection/boards)) ;; ordered list!
 
                               ]
-              :sb/membership [::prepare
+              :membership/as-map [::prepare
                               (fn [{:strs [e-u-r]}]
                                 (into [] (mapcat
                                           (fn [[ent user-map]]
@@ -650,7 +650,7 @@
                                                        {:membership/member [:member/id user-id]}
                                                        {:membership/account [:account/id user-id]})
                                                      {:membership/id (membership-id user-ref entity-ref)
-                                                      :membership/entity entity-ref
+                                                      :membership/as-map entity-ref
                                                       :membership/roles (into #{} (comp (filter val)
                                                                                         (map key)
                                                                                         (map (fn [r]
@@ -665,7 +665,7 @@
                                           (rename :social/feed))
                           "domain" (& (lookup-ref :domain/name)
                                       (rename :entity/domain))]
-              :sb/account [::prepare (fn [accounts]
+              :account/as-map [::prepare (fn [accounts]
                                        (->> accounts
                                             (map (fn [{:as account [provider] :providerUserInfo}]
                                                    (assoc-some-value {}
@@ -693,7 +693,7 @@
                                                                                     :ballot/member
                                                                                     :ballot/board)
                                                                               %)))]
-              :sb/member [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+              :member/as-map [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                           ::always (remove-when (comp nil? :firebaseAccount))
                           ::always (remove-when :ts/deleted-at)
 
@@ -740,7 +740,7 @@
                                                          entity-ref (:member/board m)]
                                                      [{:membership/id (membership-id member-ref entity-ref)
                                                        :membership/member member-ref
-                                                       :membership/entity entity-ref
+                                                       :membership/as-map entity-ref
                                                        :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
                                     (rename :membership/_member))
                           :tags (& (fn [m a v]
@@ -765,7 +765,7 @@
                           ::always (remove-when (comp str/blank? :member/name))
                           ::always (remove-when :suspectedFake)]
 
-              :sb/discussion [#_#_::prepare (fn [m]
+              :discussion/as-map [#_#_::prepare (fn [m]
                                               (when-not (empty? (:posts m))
                                                 m))
                               :_id (& (timestamp-from-id)
@@ -809,7 +809,7 @@
                                         (rename :discussion/posts))
                               :boardId rm
                               ::always (remove-when (comp empty? :discussion/posts))]
-              :sb/project [::defaults {:project/inactive? false}
+              :project/as-map [::defaults {:project/inactive? false}
                            ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                            :_id (& (timestamp-from-id)
                                    (rename :project/id))
@@ -844,7 +844,7 @@
                                                                              (dissoc :role :user_id)
                                                                              (assoc :membership/id (membership-id (:user_id m) project-id)
                                                                                     :membership/roles #{role}
-                                                                                    :membership/entity [:project/id project-id]
+                                                                                    :membership/as-map [:project/id project-id]
                                                                                     :membership/member [:member/id (:user_id m)])))))))))
                                      (rename :membership/_entity))
                            :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
@@ -860,7 +860,7 @@
                            ::always (remove-when (comp str/blank? :project/title))
                            :ts/created-by remove-missing-ref
                            ]
-              :sb/notification [::defaults {:notification/emailed? false}
+              :notification/as-map [::defaults {:notification/emailed? false}
                                 ::always (fn [m]
                                            (-> m
                                                (dissoc :targetViewed :notificationViewed)
@@ -918,8 +918,8 @@
                                 :notification/board rm
 
                                 ]
-              :sb/thread [:_id (& (timestamp-from-id)
-                                  (rename :thread/id))
+              :thread/as-map [:_id (& (timestamp-from-id)
+                                      (rename :thread/id))
                           :participantIds (& (lookup-ref :member/id)
                                              (rename :thread/members))
                           ::always (remove-when #(some missing-ref? (:thread/members %)))
@@ -1127,7 +1127,7 @@
                    (into #{})))
 
  ;; example of looking for any project that contains a particular id
- (->> (coll-entities :sb/project)
+ (->> (coll-entities :project/as-map)
       (filter (partial contains-somewhere? "527a76956fe44c0200000005"))
       distinct)
 
@@ -1135,7 +1135,7 @@
  ;; misc
  (explain-errors!)
  (:out (sh "ls" "-lh" (env/db-path)))
- (map parse-domain-target (vals (read-coll :sb/domain)))
+ (map parse-domain-target (vals (read-coll :domain/as-map)))
 
  ;; try validating generated docs
  (check-docs

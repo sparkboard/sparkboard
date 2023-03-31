@@ -22,7 +22,7 @@
    (let [nested? (= 1 (count ks))
          leaf-type (if nested?
                      [:multi {:dispatch 'map?}
-                      [true [:ref (keyword "sb" (namespace (first ks)))]]
+                      [true [:ref (keyword (namespace (first ks)) "as-map")]]
                       [false (lookup-ref ks)]]
                      (lookup-ref ks))]
      (case cardinality :one (merge s/ref

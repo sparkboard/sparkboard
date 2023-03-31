@@ -51,10 +51,10 @@
    :board/sticky-color {:doc "Border color for sticky projects", s- :html/color}
    :board/member-tags (ref :many #{:tag/id})
    :board/project-fields (merge (ref :many #{:field-spec/id})
-                                {s- [:sequential :sb/field.spec]})
+                                {s- [:sequential :field-spec/as-map]})
    :board/images {s- :map/image-urls}
    :board/social-feed {s- :social/feed}
-   :board/member-fields {s- [:sequential :sb/field.spec]}
+   :board/member-fields {s- [:sequential :field-spec/as-map]}
    :board/registration-invitation-email-text {:doc "Body of email sent when inviting a user to a board."
                                               s- :string},
    :board/registration-newsletter-field? {:doc "During registration, request permission to send the user an email newsletter"
@@ -72,57 +72,57 @@
                       [:policy/requires-role [:set :membership.role]]]]}
    :board/member-vote-open? {:doc "Opens a community vote (shown as a tab on the board)"
                              s- :boolean}
-   :sb/board {s- [:map {:closed true}
-                  (? [:board/custom-css {:to-deprecate true} :string])
-                  (? [:board/custom-js {:to-deprecate true} :string])
-                  (? [:board/custom-meta-description :string])
-                  (? :board/description)
-                  (? :board/instructions)
-                  (? :board/is-template?)
-                  (? :board/labels)
-                  (? :board/learn-more-url)
-                  (? :board/max-members-per-project)
-                  (? :board/max-projects-per-member)
-                  (? :board/member-fields)
-                  (? :board/member-tags)
-                  (? :board/member-vote-open?)
-                  (? :board/rules)
-                  (? :board/project-fields)
-                  (? :board/project-sharing-buttons)
-                  (? :board/registration-codes)
-                  (? :board/registration-invitation-email-text)
-                  (? :board/registration-message-content)
-                  (? :board/registration-newsletter-field?)
-                  (? :board/registration-url-override)
-                  (? :board/show-project-numbers?)
-                  (? :board/slack.team)
-                  (? :board/sticky-color)
-                  (? :entity/domain)
-                  (? :i18n/default-locale)
-                  (? :i18n/extra-translations)
-                  (? :i18n/suggested-locales)
-                  (? :board/images)
-                  (? :board/social-feed)
-                  (? :ts/deleted-at)
-                  (? :webhook/subscriptions)
-                  :board/id
-                  :board/org
-                  :board/title
-                  :board/registration-open?
-                  :ts/created-at
-                  :visibility/public?]}})
+   :board/as-map {s- [:map {:closed true}
+                      (? [:board/custom-css {:to-deprecate true} :string])
+                      (? [:board/custom-js {:to-deprecate true} :string])
+                      (? [:board/custom-meta-description :string])
+                      (? :board/description)
+                      (? :board/instructions)
+                      (? :board/is-template?)
+                      (? :board/labels)
+                      (? :board/learn-more-url)
+                      (? :board/max-members-per-project)
+                      (? :board/max-projects-per-member)
+                      (? :board/member-fields)
+                      (? :board/member-tags)
+                      (? :board/member-vote-open?)
+                      (? :board/rules)
+                      (? :board/project-fields)
+                      (? :board/project-sharing-buttons)
+                      (? :board/registration-codes)
+                      (? :board/registration-invitation-email-text)
+                      (? :board/registration-message-content)
+                      (? :board/registration-newsletter-field?)
+                      (? :board/registration-url-override)
+                      (? :board/show-project-numbers?)
+                      (? :board/slack.team)
+                      (? :board/sticky-color)
+                      (? :entity/domain)
+                      (? :i18n/default-locale)
+                      (? :i18n/extra-translations)
+                      (? :i18n/suggested-locales)
+                      (? :board/images)
+                      (? :board/social-feed)
+                      (? :ts/deleted-at)
+                      (? :webhook/subscriptions)
+                      :board/id
+                      :board/org
+                      :board/title
+                      :board/registration-open?
+                      :ts/created-at
+                      :visibility/public?]}})
 
 (def sb-collections
   {:collection/id unique-string-id
    :collection/boards (ref :many #{:board/id})
    :collection/title {s- :string}
    :collection/images {s- :map/image-urls}
-   :sb/collection {s- [:map {:closed true}
-                       :collection/images
-                       :collection/boards
-                       :collection/id
-                       :collection/title
-                       :entity/domain]}})
+   :collection/as-map {s- [:map {:closed true}
+                           :collection/images
+                           :collection/boards
+                           :collection/id
+                           :collection/title
+                           :entity/domain]}})
 
 (def sb-discussion
   {:discussion/id unique-string-id
@@ -130,35 +130,35 @@
    :discussion/posts (merge (ref :many #{:post/id})
                             s/component)
    :discussion/project (ref :one #{:project/id})
-   :sb/discussion {s- [:map {:closed true}
-                       (? :discussion/followers)
-                       (? :discussion/posts)
-                       :discussion/id
-                       :discussion/project
-                       :ts/created-at]}})
+   :discussion/as-map {s- [:map {:closed true}
+                           (? :discussion/followers)
+                           (? :discussion/posts)
+                           :discussion/id
+                           :discussion/project
+                           :ts/created-at]}})
 
 (def sb-domains
   {:domain/url {s- :http/url}
    :domain/target-type {s- [:enum
                             :domain/url
-                            :domain/entity]}
-   :domain/entity (merge (ref :one #{:board/id :org/id :collection/id})
+                            :domain/as-map]}
+   :domain/as-map (merge (ref :one #{:board/id :org/id :collection/id})
                          {:doc "The entity this domain points to",})
    :domain/name (merge {:doc "A complete domain name, eg a.b.com",}
                        unique-string-id)
    :entity/domain (merge (ref :one #{:domain/name}) {:doc "Domain name linked to this entity"})
-   :sb/domain (merge (ref :one #{:domain/name})
-                     {s- [:multi {:dispatch :domain/target-type}
-                          [:domain/url
-                           [:map {:closed true}
-                            [:domain/target-type [:= :domain/url]]
-                            :domain/url
-                            :domain/name]]
-                          [:domain/entity
-                           [:map {:closed true}
-                            [:domain/target-type [:= :domain/entity]]
-                            :domain/entity
-                            :domain/name]]]})})
+   :domain/as-map (merge (ref :one #{:domain/name})
+                         {s- [:multi {:dispatch :domain/target-type}
+                              [:domain/url
+                               [:map {:closed true}
+                                [:domain/target-type [:= :domain/url]]
+                                :domain/url
+                                :domain/name]]
+                              [:domain/as-map
+                               [:map {:closed true}
+                                [:domain/target-type [:= :domain/as-map]]
+                                :domain/as-map
+                                :domain/name]]]})})
 
 (def sb-fields
   {:field/id (merge unique-string-id
@@ -225,43 +225,43 @@
    :option/label {s- :string},
    :option/value {s- :string},
    :video/youtube-id {s- :string}
-   :sb/field {s- [:map {:closed true}
-                  :field/field-spec
-                  :field/id
-                  :field/value]}
-   :sb/field.spec {:doc "Description of a field."
-                   :todo ["Field specs should be definable at a global, org or board level."
-                          "Orgs/boards should be able to override/add field.spec options."
-                          "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
-                   s- [:map {:closed true}
-                       (? :field-spec/hint)
-                       (? :field-spec/label)
-                       (? :field-spec/options)
-                       (? :field-spec/required?)
-                       (? :field-spec/show-as-filter?)
-                       (? :field-spec/show-at-create?)
-                       (? :field-spec/show-on-card?)
-                       :field-spec/id
-                       :field-spec/managed-by
-                       :field-spec/order
-                       :field/type]}})
+   :field/as-map {s- [:map {:closed true}
+                      :field/field-spec
+                      :field/id
+                      :field/value]}
+   :field-spec/as-map {:doc "Description of a field."
+                       :todo ["Field specs should be definable at a global, org or board level."
+                              "Orgs/boards should be able to override/add field.spec options."
+                              "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
+                       s- [:map {:closed true}
+                           (? :field-spec/hint)
+                           (? :field-spec/label)
+                           (? :field-spec/options)
+                           (? :field-spec/required?)
+                           (? :field-spec/show-as-filter?)
+                           (? :field-spec/show-at-create?)
+                           (? :field-spec/show-on-card?)
+                           :field-spec/id
+                           :field-spec/managed-by
+                           :field-spec/order
+                           :field/type]}})
 
 (def sb-firebase-account
   {:account/id unique-string-id
    :account/email {s- :string}
    :account/type {s- [:enum :account.type/firebase]}
-   :sb/account {s- [:map {:closed true}
-                    :account/id
-                    :account/email
-                    :account/type]}})
+   :account/as-map {s- [:map {:closed true}
+                        :account/id
+                        :account/email
+                        :account/type]}})
 
 (def sb-memberships
-  {:membership/_entity {s- [:sequential :sb/membership]}
-   :membership/_member {s- [:sequential :sb/membership]}
+  {:membership/_entity {s- [:sequential :membership/as-map]}
+   :membership/_member {s- [:sequential :membership/as-map]}
    :membership/id (merge {:doc "ID field allowing for direct lookup of permissions"
                           :todo "Replace with composite unique-identity attribute :grant/member+entity"}
                          unique-string-id)
-   :membership/entity (merge {:doc "Entity to which a grant applies"}
+   :membership/as-map (merge {:doc "Entity to which a grant applies"}
                              (ref :one #{:board/id
                                          :collection/id
                                          :org/id
@@ -275,16 +275,16 @@
                              s- [:set :membership.role]}
                             s/keyword
                             s/many)
-   :sb/membership {s- [:and [:map {:closed true}
-                             (? :membership/member)
-                             (? :membership/account)
-                             :membership/id
-                             :membership/roles
-                             :membership/entity]
-                       [:fn {:error/message "Grant must contain :grant/member or :grant/firebase-account"}
-                        '(fn [{:keys [:membership/member :membership/account]}]
-                           (and (or member account)
-                                (not (and member account))))]]}})
+   :membership/as-map {s- [:and [:map {:closed true}
+                                 (? :membership/member)
+                                 (? :membership/account)
+                                 :membership/id
+                                 :membership/roles
+                                 :membership/as-map]
+                           [:fn {:error/message "Grant must contain :grant/member or :grant/firebase-account"}
+                            '(fn [{:keys [:membership/member :membership/account]}]
+                               (and (or member account)
+                                    (not (and member account))))]]}})
 
 (def sb-util
   {:visibility/public? {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
@@ -330,25 +330,25 @@
    :member/account (ref :one #{:account/id})
    :member/id unique-string-id
    :member/image-url {s- :http/url},
-   :sb/member {s- [:map {:closed true}
-                   (? :membership/_member)
-                   (? :member/fields)
-                   (? :member/tags.custom)
-                   (? :member/image-url)
-                   (? :member/newsletter-subscription?)
-                   (? :member/tags)
-                   (? :ts/deleted-at)
-                   (? :ts/modified-by)
-                   :member/inactive?
-                   :member/board
-                   :member/email-frequency
-                   :member/account
-                   :member/id
-                   :member/name
-                   :member/new?
-                   :member/project-participant?
-                   :ts/created-at
-                   :ts/updated-at]}})
+   :member/as-map {s- [:map {:closed true}
+                       (? :membership/_member)
+                       (? :member/fields)
+                       (? :member/tags.custom)
+                       (? :member/image-url)
+                       (? :member/newsletter-subscription?)
+                       (? :member/tags)
+                       (? :ts/deleted-at)
+                       (? :ts/modified-by)
+                       :member/inactive?
+                       :member/board
+                       :member/email-frequency
+                       :member/account
+                       :member/id
+                       :member/name
+                       :member/new?
+                       :member/project-participant?
+                       :ts/created-at
+                       :ts/updated-at]}})
 
 (def sb-member-vote
   {:ballot/board (ref :one #{:board/id})
@@ -388,20 +388,20 @@
                            :notification.type/new-thread-message
                            :notification.type/new-discussion-post
                            :notification.type/new-post-comment]}
-   :sb/notification {s- [:map {:closed true}
-                         (? :notification/discussion)
-                         (? :notification/member)
-                         (? :notification/post)
-                         (? :notification/post.comment)
-                         (? :notification/project)
-                         (? :notification/thread)
-                         (? :notification/thread.message.text)
-                         :notification/emailed?
-                         :notification/id
-                         :notification/recipient
-                         :notification/type
-                         :notification/viewed?
-                         :ts/created-at]}})
+   :notification/as-map {s- [:map {:closed true}
+                             (? :notification/discussion)
+                             (? :notification/member)
+                             (? :notification/post)
+                             (? :notification/post.comment)
+                             (? :notification/project)
+                             (? :notification/thread)
+                             (? :notification/thread.message.text)
+                             :notification/emailed?
+                             :notification/id
+                             :notification/recipient
+                             :notification/type
+                             :notification/viewed?
+                             :ts/created-at]}})
 
 (def sb-org
   {:board/show-org-tab? {:doc "When true, boards should visually link to the parent organization (in main nav)"
@@ -412,21 +412,21 @@
    :org/default-board-template (merge {:doc "Default template (a board with :board/is-template? true) for new boards created within this org"}
                                       (ref :one #{:board/id}))
    :org/social-feed {s- :social/feed}
-   :sb/org {s- [:map {:closed true}
-                (? :board/show-org-tab?)
-                (? :org/default-board-template)
-                (? :org/social-feed)
-                (? :i18n/default-locale)
-                (? :i18n/suggested-locales)
-                :org/images
-                :org/title
-                :org/id
-                :entity/domain
-                :visibility/public?
-                :ts/created-by]}})
+   :org/as-map {s- [:map {:closed true}
+                    (? :board/show-org-tab?)
+                    (? :org/default-board-template)
+                    (? :org/social-feed)
+                    (? :i18n/default-locale)
+                    (? :i18n/suggested-locales)
+                    :org/images
+                    :org/title
+                    :org/id
+                    :entity/domain
+                    :visibility/public?
+                    :ts/created-by]}})
 
 (def sb-posts
-  {:post/_discussion {s- [:sequential :sb/post]}
+  {:post/_discussion {s- [:sequential :post/as-map]}
    :post/id unique-string-id
    :post/comments (merge (ref :many #{:comment/id})
                          s/component)
@@ -439,19 +439,19 @@
                           (ref :many #{:member/id}))
    :comment/id unique-string-id
    :comment/text {s- :string}
-   :sb/post {s- [:map {:closed true}
-                 (? :post/comments)
-                 (? :post/do-not-follow)
-                 (? :post/followers)
-                 :post/id
-                 :post/text-content
-                 :ts/created-by
-                 :ts/created-at]}
-   :sb/comment {s- [:map {:closed true}
-                    :ts/created-at
-                    :ts/created-by
-                    :comment/id
-                    :comment/text]}})
+   :post/as-map {s- [:map {:closed true}
+                     (? :post/comments)
+                     (? :post/do-not-follow)
+                     (? :post/followers)
+                     :post/id
+                     :post/text-content
+                     :ts/created-by
+                     :ts/created-at]}
+   :comment/as-map {s- [:map {:closed true}
+                        :ts/created-at
+                        :ts/created-by
+                        :comment/id
+                        :comment/text]}})
 
 (def sb-projects
   {:project/id unique-string-id
@@ -481,29 +481,29 @@
                        s- :boolean}
    :project/sticky? {:doc "Show project with border at top of project list"
                      s- :boolean}
-   :sb/project {s- [:map {:closed true}
-                    (? :membership/_entity)
-                    (? [:project/card-classes {:doc "css classes for card" :to-deprecate true}
-                        :string])
-                    (? :project/admin-approved?)
-                    (? :project/badges)
-                    (? :project/number)
-                    (? :project/admin-description)
-                    (? :project/inactive?)
-                    (? :project/sticky?)
-                    (? :project/fields)
-                    (? :project/open-requests)
-                    (? :project/summary-text)
-                    (? :project/team-complete?)
-                    (? :project/video)
-                    (? :ts/created-by)
-                    (? :ts/deleted-at)
-                    (? :ts/modified-by)
-                    :project/board
-                    :project/id
-                    :project/title
-                    :ts/created-at
-                    :ts/updated-at]}})
+   :project/as-map {s- [:map {:closed true}
+                        (? :membership/_entity)
+                        (? [:project/card-classes {:doc "css classes for card" :to-deprecate true}
+                            :string])
+                        (? :project/admin-approved?)
+                        (? :project/badges)
+                        (? :project/number)
+                        (? :project/admin-description)
+                        (? :project/inactive?)
+                        (? :project/sticky?)
+                        (? :project/fields)
+                        (? :project/open-requests)
+                        (? :project/summary-text)
+                        (? :project/team-complete?)
+                        (? :project/video)
+                        (? :ts/created-by)
+                        (? :ts/deleted-at)
+                        (? :ts/modified-by)
+                        :project/board
+                        :project/id
+                        :project/title
+                        :ts/created-at
+                        :ts/updated-at]}})
 
 (def sb-requests
   {:request/text {:doc "Free text description of the request"
@@ -532,7 +532,7 @@
    :slack.broadcast/slack.broadcast.replies (merge s/many
                                                    s/ref
                                                    {s- [:sequential [:multi {:dispatch 'map?}
-                                                                     [true :sb/slack.broadcast.reply]
+                                                                     [true :slack.broadcast.reply/as-map]
                                                                      [false (lookup-ref #{:slack.broadcast.reply/id})]]]})
    :slack.broadcast/slack.user (ref :one #{:slack.user/id})
    :slack.channel/id unique-string-id
@@ -560,34 +560,34 @@
 
    :board/slack.team (merge s/component
                             (ref :one #{:slack.team/id}))
-   :sb/slack.broadcast {s- [:map {:closed true}
-                            (? :slack.broadcast/response-channel-id)
-                            (? :slack.broadcast/response-thread-id)
-                            (? :slack.broadcast/slack.broadcast.replies)
-                            (? :slack.broadcast/slack.team)
-                            (? :slack.broadcast/slack.user)
-                            :slack.broadcast/id
-                            :slack.broadcast/text]},
-   :sb/slack.broadcast.reply {s- [:map {:closed true}
-                                  :slack.broadcast.reply/id
-                                  :slack.broadcast.reply/text
-                                  :slack.broadcast.reply/slack.user
-                                  :slack.broadcast.reply/channel-id]}
-   :sb/slack.channel {s- [:map {:closed true}
-                          :slack.channel/id
-                          :slack.channel/project
-                          :slack.channel/slack.team]},
-   :sb/slack.team {s- [:map {:closed true}
-                       (? :slack.team/custom-messages)
-                       (? :slack.team/invite-link)
-                       :slack.team/board
-                       :slack.team/id
-                       :slack.team/name
-                       :slack.team/slack.app]},
-   :sb/slack.user {s- [:map {:closed true}
-                       :slack.user/id
-                       :slack.user/firebase-account-id
-                       :slack.user/slack.team]},})
+   :slack.broadcast/as-map {s- [:map {:closed true}
+                                (? :slack.broadcast/response-channel-id)
+                                (? :slack.broadcast/response-thread-id)
+                                (? :slack.broadcast/slack.broadcast.replies)
+                                (? :slack.broadcast/slack.team)
+                                (? :slack.broadcast/slack.user)
+                                :slack.broadcast/id
+                                :slack.broadcast/text]},
+   :slack.broadcast.reply/as-map {s- [:map {:closed true}
+                                      :slack.broadcast.reply/id
+                                      :slack.broadcast.reply/text
+                                      :slack.broadcast.reply/slack.user
+                                      :slack.broadcast.reply/channel-id]}
+   :slack.channel/as-map {s- [:map {:closed true}
+                              :slack.channel/id
+                              :slack.channel/project
+                              :slack.channel/slack.team]},
+   :slack.team/as-map {s- [:map {:closed true}
+                           (? :slack.team/custom-messages)
+                           (? :slack.team/invite-link)
+                           :slack.team/board
+                           :slack.team/id
+                           :slack.team/name
+                           :slack.team/slack.app]},
+   :slack.user/as-map {s- [:map {:closed true}
+                           :slack.user/id
+                           :slack.user/firebase-account-id
+                           :slack.user/slack.team]},})
 
 (def sb-social-feed
   {:social-feed.twitter/hashtags (merge s/many
@@ -618,13 +618,13 @@
    :tag/restricted? {:doc "Tag may only be modified by an admin of the owner of this tag"
                      s- :boolean}
    :tag.ad-hoc/label {s- :string}
-   :sb/tag {:doc "Description of a tag which may be applied to an entity."
-            s- [:map {:closed true}
-                (? :tag/background-color)
-                (? :tag/restricted?)
-                :tag/label
-                :tag/id
-                :tag/managed-by]}})
+   :tag/as-map {:doc "Description of a tag which may be applied to an entity."
+                s- [:map {:closed true}
+                    (? :tag/background-color)
+                    (? :tag/restricted?)
+                    :tag/label
+                    :tag/id
+                    :tag/managed-by]}})
 
 (def sb-text-content
   {:text-content/format {s- [:enum
@@ -643,23 +643,23 @@
    :thread.message/text {s- :string}
    :thread/messages {:doc "List of messages in a thread.",
                      :order-by :ts/created-at
-                     s- [:sequential :sb/thread.message]},
+                     s- [:sequential :thread.message/as-map]},
    :thread/read-by (merge
                     (ref :many #{:member/id})
                     {:doc "Set of members who have read the most recent message.",
                      :todo "Map of {member, last-read-message} so that we can show unread messages for each member."})
-   :sb/thread {s- [:map {:closed true}
-                   :ts/created-at
-                   :ts/updated-at
-                   :thread/id
-                   :thread/members
-                   :thread/messages
-                   :thread/read-by]},
-   :sb/thread.message {s- [:map {:closed true}
-                           :thread.message/id
-                           :thread.message/text
-                           :ts/created-by
-                           :ts/created-at]}})
+   :thread/as-map {s- [:map {:closed true}
+                       :ts/created-at
+                       :ts/updated-at
+                       :thread/id
+                       :thread/members
+                       :thread/messages
+                       :thread/read-by]},
+   :thread.message/as-map {s- [:map {:closed true}
+                               :thread.message/id
+                               :thread.message/text
+                               :ts/created-by
+                               :ts/created-at]}})
 
 (def sb-ts
   {:ts/created-at {s- 'inst?, :doc "Date the entity was created"},
@@ -727,7 +727,7 @@
               (map key))
         sb-schema))
 
-(def entity-schemas (into {} (map (fn [k] [k (keyword "sb" (namespace k))])) id-keys))
+(def entity-schemas (into {} (map (fn [k] [k (keyword (namespace k) "entity")])) id-keys))
 
 (defn unique-keys [m]
   (cond (map? m) (concat (some-> (select-keys m id-keys) (u/guard seq) list)
