@@ -52,7 +52,7 @@
    :board/member-tags (ref :many #{:tag/id})
    :board/project-fields (merge (ref :many #{:field-spec/id})
                                 {s- [:sequential :field-spec/as-map]})
-   :board/images {s- :map/image-urls}
+   :board/images {s- :image-urls/as-map}
    :board/social-feed {s- :social/feed}
    :board/member-fields {s- [:sequential :field-spec/as-map]}
    :board/registration-invitation-email-text {:doc "Body of email sent when inviting a user to a board."
@@ -72,10 +72,16 @@
                       [:policy/requires-role [:set :membership.role]]]]}
    :board/member-vote-open? {:doc "Opens a community vote (shown as a tab on the board)"
                              s- :boolean}
+   :board/custom-css {:doc "Custom CSS for this board"
+                      s- :string}
+   :board/custom-js {:doc "Custom JS for this board"
+                     s- :string}
+   :board/custom-meta-description {:doc "Custom meta description for this board"
+                                   s- :string}
    :board/as-map {s- [:map {:closed true}
-                      (? [:board/custom-css {:to-deprecate true} :string])
-                      (? [:board/custom-js {:to-deprecate true} :string])
-                      (? [:board/custom-meta-description :string])
+                      :board/custom-css
+                      :board/custom-js
+                      :board/custom-meta-description
                       (? :board/description)
                       (? :board/instructions)
                       (? :board/is-template?)
@@ -116,7 +122,7 @@
   {:collection/id unique-string-id
    :collection/boards (ref :many #{:board/id})
    :collection/title {s- :string}
-   :collection/images {s- :map/image-urls}
+   :collection/images {s- :image-urls/as-map}
    :collection/as-map {s- [:map {:closed true}
                            :collection/images
                            :collection/boards
@@ -141,8 +147,8 @@
   {:domain/url {s- :http/url}
    :domain/target-type {s- [:enum
                             :domain/url
-                            :domain/as-map]}
-   :domain/as-map (merge (ref :one #{:board/id :org/id :collection/id})
+                            :domain/entity]}
+   :domain/entity (merge (ref :one #{:board/id :org/id :collection/id})
                          {:doc "The entity this domain points to",})
    :domain/name (merge {:doc "A complete domain name, eg a.b.com",}
                        unique-string-id)
@@ -154,10 +160,10 @@
                                 [:domain/target-type [:= :domain/url]]
                                 :domain/url
                                 :domain/name]]
-                              [:domain/as-map
+                              [:domain/entity
                                [:map {:closed true}
-                                [:domain/target-type [:= :domain/as-map]]
-                                :domain/as-map
+                                [:domain/target-type [:= :domain/entity]]
+                                :domain/entity
                                 :domain/name]]]})})
 
 (def sb-fields
@@ -249,11 +255,26 @@
 (def sb-firebase-account
   {:account/id unique-string-id
    :account/email {s- :string}
-   :account/type {s- [:enum :account.type/firebase]}
+   :account/email-verified? {s- :boolean}
+   :account/display-name {s- :string}
+   :account/google-id {s- :string}
+   :account/last-sign-in {s- 'inst?}
+   :account/password-hash {s- :string}
+   :account/password-salt {s- :string}
+   :account/photo-url {s- :http/url}
    :account/as-map {s- [:map {:closed true}
                         :account/id
                         :account/email
-                        :account/type]}})
+                        :account/email-verified?
+                        :ts/created-at
+                        (? :account/last-sign-in)
+                        (? :account/display-name)
+                        (? :account/password-hash)
+                        (? :account/password-salt)
+                        (? :account/photo-url)
+                        (? :account/google-id)]}})
+
+
 
 (def sb-memberships
   {:membership/_entity {s- [:sequential :membership/as-map]}
@@ -261,7 +282,7 @@
    :membership/id (merge {:doc "ID field allowing for direct lookup of permissions"
                           :todo "Replace with composite unique-identity attribute :grant/member+entity"}
                          unique-string-id)
-   :membership/as-map (merge {:doc "Entity to which a grant applies"}
+   :membership/entity (merge {:doc "Entity to which a grant applies"}
                              (ref :one #{:board/id
                                          :collection/id
                                          :org/id
@@ -280,8 +301,8 @@
                                  (? :membership/account)
                                  :membership/id
                                  :membership/roles
-                                 :membership/as-map]
-                           [:fn {:error/message "Grant must contain :grant/member or :grant/firebase-account"}
+                                 :membership/entity]
+                           [:fn {:error/message "Membership must contain :membership/member or :membership/account"}
                             '(fn [{:keys [:membership/member :membership/account]}]
                                (and (or member account)
                                     (not (and member account))))]]}})
@@ -303,9 +324,9 @@
                             s- [:vector :i18n/name]}})
 
 (def sb-images
-  {:map/image-urls {s- [:map-of
-                        [:qualified-keyword {:namespace :image}]
-                        :http/url]}})
+  {:image-urls/as-map {s- [:map-of
+                           [:qualified-keyword {:namespace :image}]
+                           :http/url]}})
 
 (def sb-member
   {:member/fields (merge (ref :many #{:field/id})
@@ -407,11 +428,12 @@
   {:board/show-org-tab? {:doc "When true, boards should visually link to the parent organization (in main nav)"
                          s- :boolean}
    :org/id unique-string-id
-   :org/image-urls {s- :map/image-urls}
+   :org/image-urls {s- :image-urls/as-map}
    :org/title {s- :string}
    :org/default-board-template (merge {:doc "Default template (a board with :board/is-template? true) for new boards created within this org"}
                                       (ref :one #{:board/id}))
    :org/social-feed {s- :social/feed}
+   :org/images {s- :image-urls/as-map}
    :org/as-map {s- [:map {:closed true}
                     (? :board/show-org-tab?)
                     (? :org/default-board-template)
@@ -483,8 +505,9 @@
                      s- :boolean}
    :project/as-map {s- [:map {:closed true}
                         (? :membership/_entity)
-                        (? [:project/card-classes {:doc "css classes for card" :to-deprecate true}
-                            :string])
+                        (? [:project/card-classes {:doc "css classes for card"
+                                                   :to-deprecate true}
+                            [:sequential :string]])
                         (? :project/admin-approved?)
                         (? :project/badges)
                         (? :project/number)

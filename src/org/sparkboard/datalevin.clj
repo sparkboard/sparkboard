@@ -8,9 +8,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
 
-(def conn (dl/get-conn (env/db-path "datalevin") {}))
-
-(alter-var-root #'re-db.api/*conn* (constantly conn))
+(do
+  (def conn (dl/get-conn (env/db-path "datalevin") {}))
+  (alter-var-root #'re-db.api/*conn* (constantly conn)))
 
 (comment
  (dl/close conn)
