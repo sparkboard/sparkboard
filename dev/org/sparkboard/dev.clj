@@ -44,6 +44,11 @@
 
  (keys sb.schema/sb-schema)
 
+ (-> (db/where [:board/id])
+      first
+     :ts/created-at
+     type)
+
  )
 
 ;; TODO

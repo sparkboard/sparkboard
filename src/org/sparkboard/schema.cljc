@@ -662,13 +662,16 @@
                            :ts/created-at]}})
 
 (def sb-ts
-  {:ts/created-at {s- 'inst?, :doc "Auto-generated creation-date of entity"},
-   :ts/created-by (merge (ref :one #{:member/id :account/id}) {:doc "Member who created this entity"}),
-   :ts/deleted-at {:doc "Deletion flag"
+  {:ts/created-at {s- 'inst?, :doc "Date the entity was created"},
+   :ts/created-by (merge (ref :one #{:member/id :account/id})
+                         {:doc "Member or account who created this entity"}),
+   :ts/deleted-at {:doc "Date when entity was marked deleted"
                    :todo "Excise deleted data after a grace period"
                    s- 'inst?}
-   :ts/modified-by (ref :one #{:member/id})
-   :ts/updated-at {s- 'inst?}})
+   :ts/modified-by (merge (ref :one #{:member/id})
+                          {:doc "Member who last modified this entity"}),
+   :ts/updated-at {s- 'inst?
+                   :doc "Date the entity was last modified"}})
 
 (def sb-webhooks
   {:webhook/event {s- [:enum
