@@ -105,17 +105,25 @@
 (defn path-for [route]
   (apply bidi/path-for @!bidi-routes route))
 
+(defn normalize-slashes [path]
+  ;; remove trailing /'s, but ensure path starts with /
+  (-> path
+      (cond-> (and (> (count path) 1) (str/ends-with? path "/"))
+              (subs 0 (dec (count path))))
+      (u/ensure-prefix "/")))
+
 (defn match-route [path]
-  (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
-    (let [params (u/assoc-some (or route-params {})
-                   :query-params (not-empty #?(:cljs (query-params/path->map path)
-                                               :clj  nil)))]
-      (merge
-       @(:handler m)
-       {:tag tag
-        :path path
-        :route [tag params]
-        :params params}))))
+  (let [path (normalize-slashes path)]
+    (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
+      (let [params (u/assoc-some (or route-params {})
+                     :query-params (not-empty #?(:cljs (query-params/path->map path)
+                                                 :clj  nil)))]
+        (merge
+         @(:handler m)
+         {:tag tag
+          :path path
+          :route [tag params]
+          :params params})))))
 
 #?(:cljs
    (extend-protocol bidi/Matched
