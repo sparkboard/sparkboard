@@ -179,8 +179,9 @@
                  (throw @!p))))))
 
      (defn set-location! [route]
-       (set! (.-location js/window)
-             (path-for route)))))
+       (pushy/set-token! history (path-for route)))
+
+       ))
 
 
 (defn breadcrumb [path]
