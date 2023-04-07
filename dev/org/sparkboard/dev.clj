@@ -28,9 +28,9 @@
 
 (comment
 
- ;; DATA IMPORT
- (one-time/fetch-mongodb) ;; copies to ./.db
- (one-time/fetch-firebase) ;; copies to ./.db
+ ;; DATA IMPORT - copies to ./.db
+ (one-time/fetch-mongodb)
+ (one-time/fetch-firebase)
  (one-time/fetch-accounts)
 
  ;; RESHAPED ENTITIES

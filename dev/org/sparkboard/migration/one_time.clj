@@ -575,16 +575,16 @@
                                                        :action/project.approve {:policy/requires-role #{:role/admin}})))
                "languages" (& (xf (partial mapv #(get % "code"))) (rename :i18n/suggested-locales))]
               :org/as-map [::prepare (partial fire-flat :org/id)
-                       ::defaults {:visibility/public? true}
-                       "title" (rename :org/title)
-                       "allowPublicViewing" (rename :visibility/public?)
-                       "images" (& parse-image-urls
-                                   (rename :org/images))
-                       "showOrgTab" (rename :board/show-org-tab?)
-                       "creator" (& (lookup-ref :account/id)
-                                    (rename :ts/created-by))
-                       "boardTemplate" (& (lookup-ref :board/id)
-                                          (rename :org/default-board-template))
+                           ::defaults {:visibility/public? true}
+                           "title" (rename :org/title)
+                           "allowPublicViewing" (rename :visibility/public?)
+                           "images" (& parse-image-urls
+                                       (rename :org/images))
+                           "showOrgTab" (rename :board/show-org-tab?)
+                           "creator" (& (lookup-ref :account/id)
+                                        (rename :ts/created-by))
+                           "boardTemplate" (& (lookup-ref :board/id)
+                                              (rename :org/default-board-template))
                            "socialFeed" (rename :org/social-feed)]
               :slack.user/as-map [::prepare (partial fire-flat :slack.user/id)
                                   "account-id" (rename :slack.user/firebase-account-id)
@@ -993,22 +993,37 @@
       (throw (Exception. err)))
     (spit (env/db-path (str mongo-coll ".edn")) clj)))
 
+
+
 (defn fetch-accounts []
-  (let [path (env/db-path "accounts.json")
-        _ (sh "rm" path)
-        {:keys [out err exit]} (sh "firebase"
-                                   "auth:export"
-                                   path
-                                   "-P"
-                                   (:project_id (:firebase/service-account (:prod env/config))))]
-    (if err
-      (prn :error-downloading-accounts err)
+  ;; if you get a 401 despite having a valid service-account in .local.config.edn,
+  ;; try `firebase logout` first
+  (let [json-path (doto (env/db-path "accounts.json") (->> (sh "rm")))
+        {:keys [out err exit]} (try
+                                 (spit (env/db-path "service-account.json")
+                                       (-> env/config :prod :firebase/service-account json/write-value-as-string))
+                                 (sh "npx"
+                                     "firebase"
+                                     "auth:export"
+                                     json-path
+                                     "-P"
+                                     (:project_id (:firebase/service-account (:prod env/config)))
+                                     :env
+                                     (into {"GOOGLE_APPLICATION_CREDENTIALS"
+                                            (env/db-path "service-account.json")}
+                                           (System/getenv)))
+                                 (finally (sh "rm" (env/db-path "service-account.json"))))]
+    (if (seq err)
+      (prn :fetch-accounts/error {:err err :out out})
       (do
         (prn :downloaded-accounts out)
         (spit (env/db-path "accounts.edn")
               (json/read-value
                (slurp (env/db-path "accounts.json"))
                json/keyword-keys-object-mapper))))))
+
+(comment
+ (fetch-accounts))
 
 (defn fetch-firebase []
   (let [{token :firebase/database-secret

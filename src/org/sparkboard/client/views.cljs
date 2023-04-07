@@ -12,6 +12,8 @@
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.macros :refer [defview]]
+   [promesa.core :as p]
+   [re-db.reactive :as r]
    [yawn.hooks :refer [use-state]]
    [yawn.view :as v]))
 
@@ -23,7 +25,7 @@
 (defview home [] (use-tr [:skeleton/nix]))
 
 (defonce !session
-  (common/$local-storage ::session {}))
+  (r/atom {}))
 
 (defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
@@ -37,19 +39,22 @@
      [:input {:type "password", :value (or @?pwd "")
               :on-change (forms/change-handler ?pwd)}]
      [rough/button
-      {:on-click #(routes/mutate!
-                   {:route [:login]
-                    :response-fn (fn [^js/Response res _url]
-                                   (when (http-ok? res)
-                                     ;; TODO set this based on response body
-                                     ;; instead (I don't want to wrestle with
-                                     ;; readablestream right now --DAL
-                                     ;; 2023-03-15)
-                                     ;; TODO ...or promise-style with `p/->>`
-                                     (reset! !session {:identity @?mbr-name})
-                                     (routes/set-location! [:org/index]))
-                                   res)}
-                   @!mbr)}
+      {:on-click #(p/let [res (routes/mutate!
+                               {:route [:login]
+                                :response-fn (fn [^js/Response res _url]
+                                               (when (http-ok? res)
+                                                 ;; TODO set this based on response body
+                                                 ;; instead (I don't want to wrestle with
+                                                 ;; readablestream right now --DAL
+                                                 ;; 2023-03-15)
+                                                 ;; TODO ...or promise-style with `p/->>`
+                                                 (reset! !session {:identity @?mbr-name})
+                                                 (routes/set-location! [:org/index]))
+                                               res)}
+                               @!mbr)]
+                    (prn :logged-in res :mbr @!mbr)
+                    (reset! !session {:identity @?mbr-name})
+                    )}
       (use-tr [:tr/login])]]))
 
 (defview org:index [params]
@@ -308,15 +313,18 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
-   [rough/button
-    {:on-click #(do (reset! !session {})
-                    (routes/mutate!
-                     {:route [:logout]
-                      :response-fn (fn [^js/Response res _url]
-                                     (when (http-ok? res)
-                                       (routes/set-location! [:login]))
-                                     res)}))}
-    (use-tr [:tr/logout])]
+   (if (:identity @!session)
+     [rough/button
+      {:on-click #(do (reset! !session {})
+                      (routes/mutate!
+                       {:route [:logout]
+                        :response-fn (fn [^js/Response res _url]
+                                       (when (http-ok? res)
+                                         (routes/set-location! [:login]))
+                                       res)}))}
+      (use-tr [:tr/logout])]
+     [rough/button {:on-click #(routes/set-location! [:login])}
+      (use-tr [:tr/login])])
    [rough/divider]])
 
 (defview dev-drawer [{:as match :keys [route]}]
