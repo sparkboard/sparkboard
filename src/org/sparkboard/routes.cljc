@@ -26,6 +26,7 @@
   This lets us require this namespace without causing circular dependencies."
   (r/atom (lazy-views
            {:home {:route ["/"]
+                   :public? true
                    :view `views/home}
             :slack/invite-offer {:route ["/slack/invite-offer"]
                                  :view `slack.client/invite-offer}
@@ -54,9 +55,11 @@
                         :query `db/$org:index
                         :view `views/org:index}
             :login {:route ["/v2/login"]
+                    :public? true
                     :view `views/login
                     :mutation `db/login-handler}
             :logout {:route ["/v2/logout"]
+                     :public? true
                      :mutation `db/logout-handler}
 
             ;; Rest of the skeleton:
@@ -102,17 +105,25 @@
 (defn path-for [route]
   (apply bidi/path-for @!bidi-routes route))
 
+(defn normalize-slashes [path]
+  ;; remove trailing /'s, but ensure path starts with /
+  (-> path
+      (cond-> (and (> (count path) 1) (str/ends-with? path "/"))
+              (subs 0 (dec (count path))))
+      (u/ensure-prefix "/")))
+
 (defn match-route [path]
-  (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
-    (let [params (u/assoc-some (or route-params {})
-                   :query-params (not-empty #?(:cljs (query-params/path->map path)
-                                               :clj  nil)))]
-      (merge
-       @(:handler m)
-       {:tag tag
-        :path path
-        :route [tag params]
-        :params params}))))
+  (let [path (normalize-slashes path)]
+    (when-let [{:as m :keys [tag route-params]} (bidi/match-route @!bidi-routes path)]
+      (let [params (u/assoc-some (or route-params {})
+                     :query-params (not-empty #?(:cljs (query-params/path->map path)
+                                                 :clj  nil)))]
+        (merge
+         @(:handler m)
+         {:tag tag
+          :path path
+          :route [tag params]
+          :params params})))))
 
 #?(:cljs
    (extend-protocol bidi/Matched
@@ -168,8 +179,9 @@
                  (throw @!p))))))
 
      (defn set-location! [route]
-       (set! (.-location js/window)
-             (path-for route)))))
+       (pushy/set-token! history (path-for route)))
+
+       ))
 
 
 (defn breadcrumb [path]

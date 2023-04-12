@@ -6,7 +6,7 @@
   #?(:cljs (:require-macros org.sparkboard.macros)))
 
 (defmacro lazy-views
-  ;; wraps :browse keys with lazy/loadable (and resolves aliases, with :as-alias support)
+  ;; wraps :view keys with lazy/loadable (and resolves aliases, with :as-alias support)
   [expr]
   (let [aliases (ns-aliases *ns*)
         resolve-sym (fn [sym]

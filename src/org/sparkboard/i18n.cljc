@@ -53,13 +53,15 @@
               :badge "Insigne", :badges "Insignes"
               :member-name "Nom de membre", :password "Mot de passe"}}})
 
+(def dev? false)
+
 (defn use-tr
   ;; hook: reactive, must follow rules of hooks
-  ([resource-ids] (tempura/tr {:dict dict} (use-deref !locales) resource-ids))
-  ([resource-ids resource-args] (tempura/tr {:dict dict} (use-deref !locales) resource-ids resource-args)))
+  ([resource-ids] (str (when dev? resource-ids) (tempura/tr {:dict dict} (use-deref !locales) resource-ids)))
+  ([resource-ids resource-args] (str (when dev? resource-ids) (tempura/tr {:dict dict} (use-deref !locales) resource-ids resource-args))))
 
 (defn tr
   ;; not reactive within yawn, doesn't need to follow rules of hooks
   ;; (raises the NB question: how (far) to integrate re-db.reactive with yawn)
-  ([resource-ids] (tempura/tr {:dict dict} @!locales resource-ids))
-  ([resource-ids resource-args] (tempura/tr {:dict dict} @!locales resource-ids resource-args)))
+  ([resource-ids] (str (when dev? resource-ids) (tempura/tr {:dict dict} @!locales resource-ids)))
+  ([resource-ids resource-args] (str (when dev? resource-ids) (tempura/tr {:dict dict} @!locales resource-ids resource-args))))

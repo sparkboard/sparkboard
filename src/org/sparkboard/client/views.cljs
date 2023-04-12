@@ -12,6 +12,8 @@
    [org.sparkboard.views.rough :as rough]
    [org.sparkboard.websockets :as ws]
    [org.sparkboard.macros :refer [defview]]
+   [promesa.core :as p]
+   [re-db.reactive :as r]
    [yawn.hooks :refer [use-state]]
    [yawn.view :as v]))
 
@@ -23,7 +25,7 @@
 (defview home [] (use-tr [:skeleton/nix]))
 
 (defonce !session
-  (common/$local-storage ::session {}))
+  (r/atom {}))
 
 (defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
@@ -37,19 +39,22 @@
      [:input {:type "password", :value (or @?pwd "")
               :on-change (forms/change-handler ?pwd)}]
      [rough/button
-      {:on-click #(routes/mutate!
-                   {:route [:login]
-                    :response-fn (fn [^js/Response res _url]
-                                   (when (http-ok? res)
-                                     ;; TODO set this based on response body
-                                     ;; instead (I don't want to wrestle with
-                                     ;; readablestream right now --DAL
-                                     ;; 2023-03-15)
-                                     ;; TODO ...or promise-style with `p/->>`
-                                     (reset! !session {:identity @?mbr-name})
-                                     (routes/set-location! [:org/index]))
-                                   res)}
-                   @!mbr)}
+      {:on-click #(p/let [res (routes/mutate!
+                               {:route [:login]
+                                :response-fn (fn [^js/Response res _url]
+                                               (when (http-ok? res)
+                                                 ;; TODO set this based on response body
+                                                 ;; instead (I don't want to wrestle with
+                                                 ;; readablestream right now --DAL
+                                                 ;; 2023-03-15)
+                                                 ;; TODO ...or promise-style with `p/->>`
+                                                 (reset! !session {:identity @?mbr-name})
+                                                 (routes/set-location! [:org/index]))
+                                               res)}
+                               @!mbr)]
+                    (prn :logged-in res :mbr @!mbr)
+                    (reset! !session {:identity @?mbr-name})
+                    )}
       (use-tr [:tr/login])]]))
 
 (defview org:index [params]
@@ -186,7 +191,7 @@
      [:p (-> value :entity/domain :domain/name)]
      [:blockquote
       [safe-html (-> value
-                     :board.landing-page/description-content
+                     :board/description
                      :text-content/string)]]
      [rough/tabs {:class "w-100"}
       [rough/tab {:name (use-tr [:tr/projects])
@@ -222,9 +227,9 @@
 
 (defn video-field [[kind v]]
   (case kind
-    :field.video/youtube-id (youtube-embed v)
-    :field.video/youtube-url [rough/link {:href v} "youtube video"]
-    :field.video/vimeo-url [rough/link {:href v} "vimeo video"]
+    :video/youtube-id (youtube-embed v)
+    :video/youtube-url [rough/link {:href v} "youtube video"]
+    :video/vimeo-url [rough/link {:href v} "vimeo video"]
     {kind v}))
 
 (comment
@@ -236,7 +241,7 @@
     [:div
      [:h1 (str (use-tr [:tr/project]) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
-     (when-let [badges (:project.admin/badges value)]
+     (when-let [badges (:project/badges value)]
        [:section [:h3 (tr [:tr/badges])]
         (into [:ul]
               (map (fn [bdg] [:li (:badge/label bdg)]))
@@ -308,15 +313,18 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
-   [rough/button
-    {:on-click #(do (reset! !session {})
-                    (routes/mutate!
-                     {:route [:logout]
-                      :response-fn (fn [^js/Response res _url]
-                                     (when (http-ok? res)
-                                       (routes/set-location! [:login]))
-                                     res)}))}
-    (use-tr [:tr/logout])]
+   (if (:identity @!session)
+     [rough/button
+      {:on-click #(do (reset! !session {})
+                      (routes/mutate!
+                       {:route [:logout]
+                        :response-fn (fn [^js/Response res _url]
+                                       (when (http-ok? res)
+                                         (routes/set-location! [:login]))
+                                       res)}))}
+      (use-tr [:tr/logout])]
+     [rough/button {:on-click #(routes/set-location! [:login])}
+      (use-tr [:tr/login])])
    [rough/divider]])
 
 (defview dev-drawer [{:as match :keys [route]}]

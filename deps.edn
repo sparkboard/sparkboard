@@ -2,7 +2,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
 
         ;; v2
-        datalevin/datalevin {:mvn/version "0.8.4"}
+        datalevin/datalevin {:mvn/version "0.8.12"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "05d16d9e09bcba39907ff7c33a4db51a9b1fc819"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
@@ -54,7 +54,8 @@
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         reagent/reagent {:mvn/version "1.1.1"}
-        thheller/shadow-cljs {:mvn/version "2.21.0"}}
+        thheller/shadow-cljs {:mvn/version "2.21.0"}
+        net.clojars.wkok/openai-clojure {:mvn/version "0.5.0"}}
  :aliases
  {:uberdeps {:extra-deps {uberdeps/uberdeps {:mvn/version "1.1.4"}}}
   :uberjar {:exec-fn build/uberjar}
