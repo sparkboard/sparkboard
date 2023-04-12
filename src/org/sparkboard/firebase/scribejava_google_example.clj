@@ -20,11 +20,12 @@
   (str "secret" (rand-int 999999)))
 
 (def svc
-  (.build (doto (ServiceBuilder. (env/config :oauth/client-id))
-            (.apiSecret (env/config :oauth/client-secret))
-            (.defaultScope "profile")
-            ;; the following URL must be explicitly allowed in your GCP project
-            (.callback "https://www.daveliepmann.com/"))
+  (.build (doto (ServiceBuilder. (env/config :oauth.google/client-id))
+            (.apiSecret (env/config :oauth.google/client-secret))
+            ;; space-separated strings identifying individual scopes:
+            (.defaultScope "profile openid email")
+            ;; the following URL must be explicitly allowed in the GCP project
+            (.callback "http://localhost:3000/auth/handler"))
           (GoogleApi20/instance)))
 
 ;; https://developers.google.com/identity/protocols/OAuth2WebServer#preparing-to-start-the-oauth-20-flow
@@ -39,6 +40,7 @@
 (comment
  ;; In your browser, go through the auth flow:
  (clojure.java.browse/browse-url auth-url)
+
  )
 
 ;; --> verify that `state` in the redirected URL is equal to `secret-state` above
@@ -60,7 +62,7 @@
 
 (comment  
   ;; a dummied sample URL, not valid:
-  (url->auth-code "https://www.daveliepmann.com/?state=secret682707&code=4%2F0BBBEtk6Qd8BYAU5vKMTGtZmGcO3pJbt2Cj66rwbRQXdgFkkFCvZ5kDnViuJvTiNzXwGs0h&scope=profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile")
+  (url->auth-code "http://localhost:3000/auth/handler?state=secret20720&code=4%2F0AVHEzk56jO4oO1Q4YfqjqiNrOHzOEsq5I7q8DFM9hwG0kBnn7PRgSq1ZUp5N2fmfLjai2w&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&authuser=0&prompt=consent")
   ;; => "4/0BBBEtk6Qd8BYAU5vKMTGtZmGcO3pJbt2Cj66rwbRQXdgFkkFCvZ5kDnViuJvTiNzXwGs0h"
   ;; (copy-paste that into `auth-code`)
   
@@ -68,7 +70,7 @@
 
 (def auth-code
   ;; a sample, not valid:
-  "4/0BBBEtk6Qd8BYAU5vKMTGtZmGcO3pJbt2Cj66rwbRQXdgFkkFCvZ5kDnViuJvTiNzXwGs0h")
+  "4/0AVHEzk56jO4oO1Q4YfqjqiNrOHzOEsq5I7q8DFM9hwG0kBnn7PRgSq1ZUp5N2fmfLjai2w")
 
 (def access-token
   ;; this is defined outside the below `let` so it fails early in the case of
