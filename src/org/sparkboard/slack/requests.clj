@@ -1,6 +1,5 @@
 (ns org.sparkboard.slack.requests
-  (:require [lambdaisland.uri]
-            [tools.sparkboard.slack.api :refer [*context* request!]]))
+  (:require [tools.sparkboard.slack.api :refer [*context* request!]]))
 
 (def channel-info
   (memoize

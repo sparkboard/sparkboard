@@ -9,6 +9,7 @@
             [buddy.auth.backends]
             [clojure.string :as str]
             [hiccup.util]
+            [lambdaisland.uri :as uri]
             [muuntaja.core :as m]
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
@@ -92,10 +93,23 @@
 
 #_(memo/clear-memo! $resolve-ref)
 
+(defn oauth-redirect-handler [ctx params]
+  ;; TODO check `state` secret against db (or atom)
+  (prn "oauth-redirect-handler / query map"   ;; FIXME actually do something
+       (-> ctx
+           :request
+           :query-string
+           uri/query-string->map)))
+
 (defn http-handler [{:as req :keys [path-info uri]}]
   (let [path (or path-info uri)
         {:as match :keys [query mutation params public?]} (routes/match-route path)
         html? (str/includes? (get-in req [:headers "accept"]) "text/html")
+        oauth? (= "/auth/handler" uri) ;; It's inelegant to special-case Oauth
+                                       ;; redirects (e.g. from Google), but we
+                                       ;; don't control them & I don't see an
+                                       ;; elegant way to identify them. --DAL
+                                       ;; 2023-04-12
         method (:request-method req)]
     (cond
 
@@ -104,7 +118,14 @@
       (and (not public?)
            (not (buddy.auth/authenticated? req))) (buddy.auth/throw-unauthorized)
 
-      (not html?)
+      oauth?
+      (oauth-redirect-handler {:request req}
+                              params)
+
+      html?
+      (server.views/spa-page env/client-config)
+
+      :else
       (cond (and (= method :post) mutation)
             ;; mutation fns are expected to return HTTP response maps
             (apply mutation {:request req} params (:body-params req))
@@ -113,10 +134,7 @@
             (and (= method :get) query)
             (some-> (query params)
                     deref
-                    ring.http/ok))
-
-      :else
-      (server.views/spa-page env/client-config))))
+                    ring.http/ok)))))
 
 (memo/defn-memo $txs [ref]
   (r/catch (sync.entity/txs ref)
@@ -196,7 +214,8 @@
 
  (->> @!requests
       (remove :websocket?)
-      (map #(select-keys % [:debug/id :body-params :body :content-type
+      (remove (comp #{"/favicon.ico"} :uri))
+      #_      (map #(select-keys % [:debug/id :body-params :body :content-type
                             :session :cookies :identity]))
       (into []))
 

@@ -41,6 +41,7 @@
         metosin/reitit {:mvn/version "0.5.2"}
         mhuebert/cljs-static {:mvn/version "0.1.0"}
         metosin/muuntaja {:mvn/version "0.6.8"}
+        com.github.scribejava/scribejava-apis {:mvn/version "8.3.3"} ;; the slimmer "core" might be sufficient
 
         ;; schema
         metosin/malli {:mvn/version "0.8.4"}

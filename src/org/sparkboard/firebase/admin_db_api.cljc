@@ -1,7 +1,6 @@
 (ns org.sparkboard.firebase.admin-db-api
   (:refer-clojure :exclude [read])
   (:require [clojure.string :as str]
-            [lambdaisland.uri :as uri]
             [org.sparkboard.server.env :as env]
             [tools.sparkboard.js-convert :refer [clj->json ->clj]]
             #?(:clj  [org.sparkboard.firebase.jvm :as fire-jvm]
