@@ -1,5 +1,7 @@
-(ns org.sparkboard.firebase.scribejava-google-example
-  "Experimenting with ScribeJava for OAuth with a Clojure port of https://github.com/scribejava/scribejava/blob/master/scribejava-apis/src/test/java/com/github/scribejava/apis/examples/Google20Example.java"
+(ns org.sparkboard.google-oauth
+  "Minimum viable Google login with OAuth.
+
+  Originally a Clojure port of ScribeJava example: https://github.com/scribejava/scribejava/blob/master/scribejava-apis/src/test/java/com/github/scribejava/apis/examples/Google20Example.java"
   (:import (com.github.scribejava.core.builder ServiceBuilder)
            (com.github.scribejava.apis GoogleApi20)
            (com.github.scribejava.core.model OAuthRequest)
