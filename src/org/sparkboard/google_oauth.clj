@@ -1,9 +1,10 @@
 (ns org.sparkboard.google-oauth
-  "Minimum viable Google login with OAuth.
+  "Minimum viable Google login with OAuth 2.0 using PKCE.
 
-  Originally a Clojure port of ScribeJava example: https://github.com/scribejava/scribejava/blob/master/scribejava-apis/src/test/java/com/github/scribejava/apis/examples/Google20Example.java"
+  Originally a Clojure port of ScribeJava's Google-with-PKCE example: https://github.com/scribejava/scribejava/blob/master/scribejava-apis/src/test/java/com/github/scribejava/apis/examples/Google20WithPKCEExample.java"
   (:import (com.github.scribejava.core.builder ServiceBuilder)
            (com.github.scribejava.apis GoogleApi20)
+           (com.github.scribejava.core.oauth AccessTokenRequestParams)
            (com.github.scribejava.core.model OAuthRequest)
            (com.github.scribejava.core.model Verb))
   (:require [clojure.java.browse]
@@ -18,7 +19,7 @@
 (def protected-resource-url
   "https://www.googleapis.com/oauth2/v3/userinfo")
 
-(def secret-state
+(def secret-state ;; XXX not so secret because sent to front-end
   (str "secret" (rand-int 999999)))
 
 (def svc
@@ -32,16 +33,17 @@
 
 ;; https://developers.google.com/identity/protocols/OAuth2WebServer#preparing-to-start-the-oauth-20-flow
 
-(def auth-url
-  (.build (doto (.createAuthorizationUrlBuilder svc)
+(def auth-url-builder
+  (doto (.createAuthorizationUrlBuilder svc)
             (.state secret-state)
             (.additionalParams {"access_type" "offline"
                                 ;; force to reget refresh token (if user are asked not the first time)
-                                "prompt" "consent"}))))
+                                "prompt" "consent"})
+            (.initPKCE)))
 
 (comment
  ;; In your browser, go through the auth flow:
- (clojure.java.browse/browse-url auth-url)
+ (clojure.java.browse/browse-url (.build auth-url-builder))
 
  )
 
@@ -74,15 +76,15 @@
   ;; a sample, not valid:
   "4/0AVHEzk56jO4oO1Q4YfqjqiNrOHzOEsq5I7q8DFM9hwG0kBnn7PRgSq1ZUp5N2fmfLjai2w")
 
-(def access-token
-  ;; this is defined outside the below `let` so it fails early in the case of
-  ;; auth code mistake
-  (try (.getAccessToken svc auth-code)
-       (catch com.github.scribejava.core.model.OAuth2AccessTokenErrorResponse oa2ater
-         oa2ater)))
-
 (comment
   ;; in `comment` to avoid exception-throwing HTTP calls when not desired
+
+  (def access-token
+    ;; this is defined outside the below `let` so it fails early in the case of
+    ;; auth code mistake
+    (.getAccessToken svc (.pkceCodeVerifier (AccessTokenRequestParams/create auth-code)
+                                            (.getCodeVerifier (.getPkce auth-url-builder)))))
+
   (def response
     (let [request (OAuthRequest. Verb/GET
                                  ;; following can take additional "?fields=" but
