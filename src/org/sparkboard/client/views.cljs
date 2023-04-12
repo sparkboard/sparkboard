@@ -29,8 +29,8 @@
 (defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
                     :member/password ?pwd}]
-    [:h2 (use-tr [:tr/login])]
     [:form {:id "login"} ;; shorthand hiccup not available here
+     [:h2 (use-tr [:tr/login])]
      [:label (use-tr [:tr/member-name])]
      [:input {:type "text", :value (or @?mbr-name "")
               :on-change (forms/change-handler ?mbr-name)}]

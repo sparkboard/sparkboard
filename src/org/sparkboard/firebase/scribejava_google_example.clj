@@ -25,7 +25,7 @@
             ;; space-separated strings identifying individual scopes:
             (.defaultScope "profile openid email")
             ;; the following URL must be explicitly allowed in the GCP project
-            (.callback "http://localhost:3000/auth/handler"))
+            (.callback "http://localhost:3000/auth/handler")) ;; FIXME
           (GoogleApi20/instance)))
 
 ;; https://developers.google.com/identity/protocols/OAuth2WebServer#preparing-to-start-the-oauth-20-flow

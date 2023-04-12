@@ -94,8 +94,8 @@
 #_(memo/clear-memo! $resolve-ref)
 
 (defn oauth-redirect-handler [ctx params]
-  ;; FIXME
-  (prn "oauth-redirect-handler / query map"
+  ;; TODO check `state` secret against db (or atom)
+  (prn "oauth-redirect-handler / query map"   ;; FIXME actually do something
        (-> ctx
            :request
            :query-string
