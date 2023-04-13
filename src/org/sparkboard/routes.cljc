@@ -34,6 +34,16 @@
                                   :view `slack.client/link-complete}
             :auth-test {:route ["/auth-test"]
                         :view `auth.client/auth-header}
+            :oauth/redirect {;; route must match redirect URL configured in GCP
+                             :route ["/auth/handler"]
+                             ;; NB: this route is kept here for completeness &
+                             ;; documentation, but understand: it is never hit
+                             ;; as a view or mutation, because
+                             ;; `org.sparkboard.server/http-handler` catches it
+                             ;; as a special case.
+                             ;; TODO
+                             ;; add support for :server-handler here
+                             :public? true}
 
             :org/create {:route "/v2/o/create"
                          :view `views/org:create

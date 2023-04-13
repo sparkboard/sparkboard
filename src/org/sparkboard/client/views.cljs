@@ -5,7 +5,6 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
    [inside-out.forms :as forms :refer [with-form]]
-   [org.sparkboard.client.common :as common]
    [org.sparkboard.client.sanitize :refer [safe-html]]
    [org.sparkboard.i18n :as i18n :refer [tr use-tr]]
    [org.sparkboard.routes :as routes]
@@ -30,8 +29,8 @@
 (defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
                     :member/password ?pwd}]
-    [:h2 (use-tr [:tr/login])]
-    [:form {:id "login"} ;; shorthand hiccup not available here
+    [:form {:id "login"} ;; shorthand hiccup not available here, TODO: why not?
+     [:h2 (use-tr [:tr/login])]
      [:label (use-tr [:tr/member-name])]
      [:input {:type "text", :value (or @?mbr-name "")
               :on-change (forms/change-handler ?mbr-name)}]
