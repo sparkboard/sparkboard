@@ -41,5 +41,5 @@
 
 (def client-config
   (-> config
-      (select-keys [:firebase/app-config :sparkboard/jvm-root])
+      (select-keys [:firebase/app-config :sparkboard/jvm-root :env])
       (assoc :slack/app-id (-> config :slack :app-id))))

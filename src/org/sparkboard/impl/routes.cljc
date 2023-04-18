@@ -27,15 +27,17 @@
 (defn match-route [routes path]
   (let [path (normalize-slashes path)]
     (let [{:as m :keys [view tag route-params]} (bidi/match-route routes path)]
-      (let [params (u/assoc-some (or route-params {})
-                     :query-params (not-empty (query-params/path->map path)))
-            match @(:handler m)]
-        (merge
-         match
-         {:tag tag
-          :path path
-          :route [tag params]
-          :params params})))))
+      (if m
+        (let [params (u/assoc-some (or route-params {})
+                       :query-params (not-empty (query-params/path->map path)))
+              match @(:handler m)]
+          (merge
+           match
+           {:tag tag
+            :path path
+            :route [tag params]
+            :params params}))
+        (prn :no-match! path)))))
 
 #?(:cljs
    (extend-protocol bidi/Matched

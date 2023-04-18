@@ -6,6 +6,7 @@
             [malli.registry :as mr]
             [malli.util :as mu]
             [re-db.schema :as s]
+            [re-db.api :as db]
             [tools.sparkboard.util :as u]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -257,7 +258,7 @@
    :account/email {s- :string}
    :account/email-verified? {s- :boolean}
    :account/display-name {s- :string}
-   :provider.google/sub {s- :string}
+   :provider.google/sub unique-string-id
    :account/last-sign-in {s- 'inst?}
    :account/password-hash {s- :string}
    :account/password-salt {s- :string}
@@ -273,7 +274,6 @@
                         (? :account/password-salt)
                         (? :account/photo-url)
                         (? :provider.google/sub)]}})
-
 
 
 (def sb-memberships

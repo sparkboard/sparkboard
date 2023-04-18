@@ -28,50 +28,49 @@
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
-                "oauth2/" {"google" (E :oauth2.google/launch {})
-                           "google/callback" (E :oauth2.google/callback {})
-                           "google/landing" (E :oauth2.google/landing
-                                               {:public? true
-                                                :handler 'org.sparkboard.server.auth/oauth2-google-landing})}
-                "v2/" {"" (E :org/index
-                             {:query `db/$org:index
-                              :view `views/org:index})
-                       "login" (E :login
+                "logout" (E :auth/logout {:handler 'org.sparkboard.server.auth/logout
+                                          :public? true})
+                "oauth2" {"/google" (E :oauth2.google/launch {})
+                          "/google/callback" (E :oauth2.google/callback {})
+                          "/google/landing" (E :oauth2.google/landing
+                                              {:public? true
+                                               :handler 'org.sparkboard.server.auth/oauth2-google-landing})}
+                "v2" {"" (E :org/index
+                            {:query `db/$org:index
+                             :view `views/org:index})
+                      "/login" (E :login
                                   {:public? true
                                    :view `views/login
                                    :mutation `db/login-handler})
-                       "logout" (E :logout
-                                   {:public? true
-                                    :mutation `db/logout-handler})
 
-                       "o/create" (E :org/create
+                      "/o/create" (E :org/create
                                      {:view `views/org:create
                                       :mutation `db/org:create})
-                       "o/delete" (E :org/delete
+                      "/o/delete" (E :org/delete
                                      {:mutation `db/org:delete})
-                       ["o/" :org/id "/create-board"] (E :board/create
+                      ["/o/" :org/id "/create-board"] (E :board/create
                                                          {:view `views/board:create
                                                           :mutation `db/board:create})
-                       ["o/" :org/id] (E :org/one
+                      ["/o/" :org/id] (E :org/one
                                          {:query `db/$org:one
                                           :view `views/org:one})
-                       ["o/" :org/id "/search"] (E :org/search
+                      ["/o/" :org/id "/search"] (E :org/search
                                                    {:query `db/$search})
 
 
-                       ["b/" :board/id "/create-project"] (E :project/create
+                      ["/b/" :board/id "/create-project"] (E :project/create
                                                              {:view `views/project:create
                                                               :mutation `db/project:create})
-                       ["b/" :board/id "/create-member"] (E :member/create
+                      ["/b/" :board/id "/create-member"] (E :member/create
                                                             {:view `views/member:create
                                                              :mutation `db/member:create})
-                       ["b/" :board/id] (E :board/one
+                      ["/b/" :board/id] (E :board/one
                                            {:query `db/$board:one
                                             :view `views/board:one})
-                       ["p/" :project/id] (E :project/one
+                      ["/p/" :project/id] (E :project/one
                                              {:query `db/$project:one
                                               :view `views/project:one})
-                       ["m/" :member/id] (E :member/one
+                      ["/m/" :member/id] (E :member/one
                                             {:query `db/$member:one
                                              :view `views/member:one})}}]))
 

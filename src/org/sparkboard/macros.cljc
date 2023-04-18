@@ -15,11 +15,12 @@
                         (symbol (str resolved) (name sym))
                         sym))]
     `(~'bidi.bidi/tag
-      (delay ~(u/update-some endpoint (if (:ns &env)
-                                        {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
-                                        {:query (fn [s] `(requiring-resolve ~s))
-                                         :mutation (fn [s] `(requiring-resolve ~s))
-                                         :handler (fn [s] `(requiring-resolve ~s))})))
+      (delay
+       ~(u/update-some endpoint (if (:ns &env)
+                                  {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
+                                  {:query (fn [s] `(requiring-resolve ~s))
+                                   :mutation (fn [s] `(requiring-resolve ~s))
+                                   :handler (fn [s] `(requiring-resolve ~s))})))
       ~tag)))
 
 (defmacro defview [name & args]

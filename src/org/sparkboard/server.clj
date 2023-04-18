@@ -32,6 +32,7 @@
             [ring.middleware.format]
             [ring.middleware.params :as ring.params]
             [ring.middleware.session :as ring.session]
+            [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime]
@@ -97,7 +98,7 @@
               method (:request-method req)
               html? (and (= method :get)
                          (str/includes? (get-in req [:headers "accept"]) "text/html"))
-              authed? (buddy.auth/authenticated? req)]
+              authed? (:account req)]
           (cond
 
             (and (not authed?) (not public?)) (buddy.auth/throw-unauthorized)
@@ -107,7 +108,9 @@
             ;; mutation fns are expected to return HTTP response maps
             (and mutation (= method :post)) (apply mutation req params (:body-params req))
 
-            (and html? (or query view)) (server.views/spa-page env/client-config)
+            (and html? (or query view)) (server.views/spa-page
+                                         (merge env/client-config
+                                                (select-keys req [:account])))
 
             query (some-> (query params) deref ring.http/ok)
 
@@ -126,7 +129,7 @@
   (let [{:keys [route query]} (routes/match-route path-or-route)
         [id & args] route]
     (some-> query
-            requiring-resolve
+            deref
             (apply (or (seq args) [{}]))
             $txs)))
 
@@ -135,11 +138,7 @@
                           (ws/handler "/ws" {:handlers (sync/query-handlers resolve-query)})
                           #'route-handler)
       auth/wrap-auth
-      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
-                                          {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
-                                           :readers {'clj-time/date-time clj-time.coerce/from-string}})
-                                  :cookie-attrs {:http-only true
-                                                 :secure (= (env/config :env) "prod")}})
+
       ring.params/wrap-params
       wrap-handle-errors
       wrap-static-first

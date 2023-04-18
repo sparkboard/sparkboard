@@ -21,10 +21,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defview home [] (use-tr [:skeleton/nix]))
-
-(defonce !session
-  (r/atom {}))
+(defonce !account
+  (r/atom (:account org.sparkboard.client.env/config)))
 
 (defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
@@ -47,12 +45,12 @@
                                                  ;; readablestream right now --DAL
                                                  ;; 2023-03-15)
                                                  ;; TODO ...or promise-style with `p/->>`
-                                                 (reset! !session {:identity @?mbr-name})
+                                                 (reset! !account {:identity @?mbr-name})
                                                  (routes/set-location! [:org/index]))
                                                res)}
                                @!mbr)]
                     (prn :logged-in res :mbr @!mbr)
-                    (reset! !session {:identity @?mbr-name})
+                    (reset! !account {:identity @?mbr-name})
                     )}
       (use-tr [:tr/login])]]))
 
@@ -73,6 +71,11 @@
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
     [(routes/use-view [:org/create])]]])
+
+(defview home []
+  (if @!account
+    [org:index nil]
+    (use-tr [:skeleton/nix])))
 
 (defview org:create [params]
   (with-form [!org {:org/title ?title}]
@@ -300,7 +303,7 @@
 
 (defview global-header [_]
   [:<>
-   [:section [:span (use-tr [:tr/user]) ":" (:identity @!session "<not logged in>")]]
+   [:section [:span (use-tr [:tr/user]) ":" (:account/display-name @!account)]]
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
     (into [:select {:id "language-selector"
@@ -311,15 +314,9 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
-   (if (:identity @!session)
-     [rough/button
-      {:on-click #(do (reset! !session {})
-                      (routes/mutate!
-                       {:route [:logout]
-                        :response-fn (fn [^js/Response res _url]
-                                       (when (http-ok? res)
-                                         (routes/set-location! [:login]))
-                                       res)}))}
+   (if @!account
+     [:a
+      {:href (routes/path-for [:auth/logout])}
       (use-tr [:tr/logout])]
      [:a {:href (routes/path-for [:oauth2.google/launch])}
       (use-tr [:tr/login])])
