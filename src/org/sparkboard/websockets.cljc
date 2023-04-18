@@ -84,7 +84,10 @@
 
 #?(:cljs
    (defn use-query! [query-vec]
-     (let [{:as x :keys [value error loading?]} (use-deref ($query (routes/path->route query-vec)))]
+     (let [{:keys [query]} (routes/match-route query-vec)
+           {:keys [value error loading?]} (use-deref (if query
+                                                       ($query (routes/path->route query-vec))
+                                                       (atom nil)))]
        (cond error (throw (ex-info error {:query query-vec}))
              loading? (throw loading?)
              :else value))))

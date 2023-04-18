@@ -1,4 +1,4 @@
-(ns tools.sparkboard.browser.query-params
+(ns tools.sparkboard.query-params
   (:require [applied-science.js-interop :as j]
             [clojure.string :as str])
   #?(:clj (:import [java.net URL URI])))

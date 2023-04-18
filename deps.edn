@@ -24,8 +24,6 @@
         dev.weavejester/medley {:mvn/version "1.5.0"}
         clj-gatling/clj-gatling {:mvn/version "0.17.6"}
         com.taoensso/tempura {:mvn/version "1.5.3"}
-        buddy/buddy-auth {:mvn/version "3.0.1"}
-        buddy/buddy-hashers {:mvn/version "1.8.158"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}
@@ -33,15 +31,20 @@
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.19"}
 
         ;; http server
-        http-kit/http-kit {:mvn/version "2.6.0"}
-        ring/ring-defaults {:mvn/version "0.3.2"}
-        bidi/bidi {:mvn/version "2.1.6"}
+        ring/ring-core {:mvn/version "1.10.0"}
+        ring/ring-defaults {:mvn/version "0.3.4"}
+        ring-oauth2/ring-oauth2 {:mvn/version "0.2.0"}
         ring-middleware-format/ring-middleware-format {:mvn/version "0.7.4"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
+        buddy/buddy-auth {:mvn/version "3.0.1"}
+        buddy/buddy-hashers {:mvn/version "1.8.158"}
+        buddy/buddy-sign {:mvn/version "3.4.333"}
+        http-kit/http-kit {:mvn/version "2.6.0"}
+        bidi/bidi {:mvn/version "2.1.6"}
         metosin/reitit {:mvn/version "0.5.2"}
         mhuebert/cljs-static {:mvn/version "0.1.0"}
         metosin/muuntaja {:mvn/version "0.6.8"}
-        com.github.scribejava/scribejava-apis {:mvn/version "8.3.3"} ;; the slimmer "core" might be sufficient
+
 
         ;; schema
         metosin/malli {:mvn/version "0.8.4"}

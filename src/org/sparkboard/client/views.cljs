@@ -72,7 +72,7 @@
                    "X"]]))
           (ws/use-query! [:org/index {}]))]
    [:section#add-org
-    [(routes/use-view :org/create)]]])
+    [(routes/use-view [:org/create])]]])
 
 (defview org:create [params]
   (with-form [!org {:org/title ?title}]
@@ -269,12 +269,11 @@
 ;; for DEBUG only:
 
 (defview show-query [[id :as route]]
-  (when (:query (@routes/!routes id))
-    (let [value (ws/use-query! route)
-          value-str (yawn.hooks/use-memo
-                     (fn [] (with-out-str (pprint value)))
-                     (yawn.hooks/use-deps value))]
-      [:pre value-str])))
+  (let [value (ws/use-query! route)
+        value-str (yawn.hooks/use-memo
+                   (fn [] (with-out-str (pprint value)))
+                   (yawn.hooks/use-deps value))]
+    [:pre value-str]))
 
 (defview drawer [{:keys [initial-height]} child]
   ;; the divider is draggable and sets the height of the drawer
@@ -322,7 +321,7 @@
                                          (routes/set-location! [:login]))
                                        res)}))}
       (use-tr [:tr/logout])]
-     [rough/button {:on-click #(routes/set-location! [:login])}
+     [:a {:href (routes/path-for [:oauth2.google/launch])}
       (use-tr [:tr/login])])
    [rough/divider]])
 

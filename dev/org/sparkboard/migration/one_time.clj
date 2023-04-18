@@ -680,7 +680,7 @@
                                                                          :account/password-salt (:salt account)
                                                                          :account/photo-url (or (:photoUrl account)
                                                                                                 (:photoUrl provider))
-                                                                         :account/google-id (:rawId provider))))))]
+                                                                         :provider.google/sub (:rawId provider))))))]
               :member-vote/ballot [::prepare (fn [users]
                                                (->> users
                                                     (mapcat (fn [{:keys [_id boardId votesByDomain]}]

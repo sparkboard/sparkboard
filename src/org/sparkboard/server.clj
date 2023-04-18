@@ -4,12 +4,9 @@
    * synced queries over websocket
    * mutations over websocket"
   (:gen-class)
-  (:require [buddy.auth]
-            [buddy.auth.middleware]
-            [buddy.auth.backends]
+  (:require [clj-time.coerce]
             [clojure.string :as str]
             [hiccup.util]
-            [lambdaisland.uri :as uri]
             [muuntaja.core :as m]
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
@@ -19,6 +16,7 @@
             [org.sparkboard.firebase.tokens :as fire-tokens]
             [org.sparkboard.log]
             [org.sparkboard.routes :as routes]
+            [org.sparkboard.server.auth :as auth]
             [org.sparkboard.server.env :as env]
             [org.sparkboard.server.impl :as impl]
             [org.sparkboard.server.nrepl :as nrepl]
@@ -30,9 +28,9 @@
             [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.sync.entity-diff-1 :as sync.entity]
-            [re-db.sync.transit :as re-db.transit]
             [ring.middleware.defaults]
             [ring.middleware.format]
+            [ring.middleware.params :as ring.params]
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.http-response :as ring.http]
@@ -40,9 +38,6 @@
             [ring.util.request]
             [ring.util.response :as ring.response]
             [taoensso.timbre :as log]))
-
-(comment
- (fire-tokens/decode token))
 
 (def muuntaja
   ;; Note: the `:body` BytesInputStream will be present but decode/`slurp` to an
@@ -54,6 +49,7 @@
     (log/info :URI (:uri req))
     (try (f req)
          (catch Exception e
+           (tap> e)
            (if (env/config :dev.logging/tap?)
              (log/error (ex-message e) e)
              (log/error (ex-message e)
@@ -93,48 +89,31 @@
 
 #_(memo/clear-memo! $resolve-ref)
 
-(defn oauth-redirect-handler [ctx params]
-  ;; TODO check `state` secret against db (or atom)
-  (prn "oauth-redirect-handler / query map"   ;; FIXME actually do something
-       (-> ctx
-           :request
-           :query-string
-           uri/query-string->map)))
 
-(defn http-handler [{:as req :keys [path-info uri]}]
-  (let [path (or path-info uri)
-        {:as match :keys [query mutation params public?]} (routes/match-route path)
-        html? (str/includes? (get-in req [:headers "accept"]) "text/html")
-        oauth? (= "/auth/handler" uri) ;; It's inelegant to special-case Oauth
-                                       ;; redirects (e.g. from Google), but we
-                                       ;; don't control them & I don't see an
-                                       ;; elegant way to identify them. --DAL
-                                       ;; 2023-04-12
-        method (:request-method req)]
-    (cond
+(def route-handler
+  (-> (fn [{:as req :keys [uri query-string]}]
+        (let [uri (str uri (some->> query-string (str "?")))
+              {:as match :keys [view query mutation handler params public?]} (routes/match-route uri)
+              method (:request-method req)
+              html? (and (= method :get)
+                         (str/includes? (get-in req [:headers "accept"]) "text/html"))
+              authed? (buddy.auth/authenticated? req)]
+          (cond
 
-      (not match) (ring.http/not-found "Not found")
+            (and (not authed?) (not public?)) (buddy.auth/throw-unauthorized)
 
-      (and (not public?)
-           (not (buddy.auth/authenticated? req))) (buddy.auth/throw-unauthorized)
+            handler (handler req params)
 
-      oauth?
-      (oauth-redirect-handler {:request req}
-                              params)
-
-      html?
-      (server.views/spa-page env/client-config)
-
-      :else
-      (cond (and (= method :post) mutation)
             ;; mutation fns are expected to return HTTP response maps
-            (apply mutation {:request req} params (:body-params req))
+            (and mutation (= method :post)) (apply mutation req params (:body-params req))
+
+            (and html? (or query view)) (server.views/spa-page env/client-config)
+
+            query (some-> (query params) deref ring.http/ok)
 
             ;; query fns return reactions which must be wrapped in HTTP response maps
-            (and (= method :get) query)
-            (some-> (query params)
-                    deref
-                    ring.http/ok)))))
+            :else (ring.http/not-found "Not found"))))
+      #_(muu.middleware/wrap-format muuntaja)))
 
 (memo/defn-memo $txs [ref]
   (r/catch (sync.entity/txs ref)
@@ -144,38 +123,26 @@
              {:error (ex-message e)})))
 
 (defn resolve-query [path-or-route]
-  (let [[id & args] (routes/path->route path-or-route)]
-    (some-> (get-in @routes/!routes [id :query])
+  (let [{:keys [route query]} (routes/match-route path-or-route)
+        [id & args] route]
+    (some-> query
             requiring-resolve
             (apply (or (seq args) [{}]))
             $txs)))
 
-(defn- slack-route?
-  "Predicate fn. True iff given String matches a known Slack URI/path."
-  [s]
-  (some #(str/starts-with? s %)
-        (map #(str (first slack.server/routes)
-                   (if (string? %)
-                     %
-                     (first %)))
-             (keys (second slack.server/routes)))))
-
-(def session-backend
-  "HTTP-session-based auth instance"
-  (buddy.auth.backends/session))
-
 (def app
   (-> (impl/join-handlers slack.server/handlers
                           (ws/handler "/ws" {:handlers (sync/query-handlers resolve-query)})
-                          (-> http-handler (muu.middleware/wrap-format muuntaja)))
+                          #'route-handler)
+      auth/wrap-auth
+      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
+                                          {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
+                                           :readers {'clj-time/date-time clj-time.coerce/from-string}})
+                                  :cookie-attrs {:http-only true
+                                                 :secure (= (env/config :env) "prod")}})
+      ring.params/wrap-params
       wrap-handle-errors
       wrap-static-first
-      (buddy.auth.middleware/wrap-authorization session-backend)
-      (buddy.auth.middleware/wrap-authentication session-backend)
-      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
-                                          {:key (byte-array (get env/config :webserver.cookie/key
-                                                                 (repeatedly 16 (partial rand-int 10))))})
-                                  :cookie-attrs {:secure true}})
       #_(wrap-debug-request :first)))
 
 (defonce the-server
@@ -215,8 +182,8 @@
  (->> @!requests
       (remove :websocket?)
       (remove (comp #{"/favicon.ico"} :uri))
-      #_      (map #(select-keys % [:debug/id :body-params :body :content-type
-                            :session :cookies :identity]))
+      #_(map #(select-keys % [:debug/id :body-params :body :content-type
+                              :session :cookies :identity]))
       (into []))
 
  )

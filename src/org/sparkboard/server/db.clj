@@ -249,7 +249,7 @@
       str/lower-case
       (str/replace #"\s" "")))
 
-(defn make-org [_ctx m]
+(defn make-org [_ m]
   (util/guard (assoc m
                 ;; TODO maybe allow user to specify id?
                 :org/id (title->id (:org/title m))

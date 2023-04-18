@@ -16,6 +16,8 @@
  (dl/close conn)
  (dl/clear conn)
 
+ (db/where [[:provider.google/sub "x"]])
+
 
  (->> (db/where [:org/id])
       (map (db/pull '[*

@@ -257,7 +257,7 @@
    :account/email {s- :string}
    :account/email-verified? {s- :boolean}
    :account/display-name {s- :string}
-   :account/google-id {s- :string}
+   :provider.google/sub {s- :string}
    :account/last-sign-in {s- 'inst?}
    :account/password-hash {s- :string}
    :account/password-salt {s- :string}
@@ -272,7 +272,7 @@
                         (? :account/password-hash)
                         (? :account/password-salt)
                         (? :account/photo-url)
-                        (? :account/google-id)]}})
+                        (? :provider.google/sub)]}})
 
 
 
