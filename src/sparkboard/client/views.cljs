@@ -12,7 +12,7 @@
    [sparkboard.views.ui :as ui]
    [sparkboard.websockets :as ws]
    [promesa.core :as p]
-   [yawn.hooks :refer [use-state]]
+   [yawn.hooks :as hooks :refer [use-state]]
    [yawn.view :as v]
    [inside-out.forms :as forms]))
 
@@ -48,69 +48,105 @@
                       "focous-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       "disabled:cursor-not-allowed disabled:opacity-50"]}))
 
-(ui/defview login [params]
-  (ui/with-form [!mbr {:account/email (?email :init "")
-                       :account/password (?password :init "")}]
-    [:div.grid.md:grid-cols-2.gap-4
-     [:div.hidden.md:block.bg-zinc-300.text-white.p-5.text-2xl
-      "Sparkboard"]
-     #_[nav:language-select]
-     [:form#login.flex.flex-col.h-screen
-      [:div.flex.flex-grow
-       [:div.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
-        [:h1.text-3xl.font-medium.mb-4 "Welcome."]
-        [:div.flex.flex-col.gap-2
-         [input {:type "email"
-                 :value @?email
-                 :placeholder (tr [:tr/email-example])
-                 :on-change (forms/change-handler ?email)}]
-         (comment
-          ;; TODO
-          ;; show this after user clicks sign in
-          [input {:type "password"
-                  :value @?password
-                  :placeholder (tr [:tr/password])
-                  :on-change (forms/change-handler ?password)}])
-         [ui/a:dark-button
-          {:class "w-full h-10 text-sm"
-           :on-click #(p/let [res (routes/mutate!
-                                   {:route [:login]
-                                    :response-fn (fn [^js/Response res _url]
-                                                   (when (http-ok? res)
-                                                     ;; TODO set this based on response body
-                                                     ;; instead (I don't want to wrestle with
-                                                     ;; readablestream right now --DAL
-                                                     ;; 2023-03-15)
-                                                     ;; TODO ...or promise-style with `p/->>`
-                                                     (comment
-                                                      ;; transact account...
-                                                      (db/transact! [(assoc foo :db/id :env/account)])
-                                                      )
-                                                     #_(reset! !account {:identity @?mbr-name})
-                                                     (routes/set-path! [:org/index]))
-                                                   res)}
-                                   @!mbr)]
-                        (prn :logged-in res :mbr @!mbr)
-                        #_(reset! !account {:identity @?mbr-name})
-                        )}
-          "Sign in with Email"]]
+(defn show-messages [field]
+  (when-let [messages (forms/visible-messages field)]
+    (into [:div.mb-3]
+          (map (fn [{:keys [content type]}]
+                 [:div.px-3.text-xs {:class (case type
+                                      :invalid "text-red-500"
+                                      "text-gray-500")} content]))
+          messages)))
 
-        [:div.relative
-         [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
-         [:div.relative.flex.justify-center.text-xs.uppercase [:span.bg-background.px-2.text-muted-foreground "Or"]]]
-        [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"}
-         [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] "Sign in with Google"]
-        [:p.px-8.text-center.text-sm.text-muted-foreground "By clicking continue, you agree to our"
-         [:a.underline.underline-offset-4.hover:text-primary.px-1 {:href "/terms"} "Terms of Service"]
-         "and"
-         [:a.underline.underline-offset-4.hover:text-primary.px-1 {:href "/privacy"} "Privacy Policy"] "."]]]
-      [:div.p-4.flex
-       [:div.flex-grow]
-       [nav:language-select]]]]))
+(ui/defview login [params]
+  [:div.grid.md:grid-cols-2.gap-4
+
+   ;; left column
+   [:div.hidden.md:block.bg-zinc-300.text-white.p-5.text-2xl.bg-cover
+    {:style {:background-image "url(https://cdn.midjourney.com/89c9e7a8-2c95-4792-aaa8-efe08d0b6bdb/0_2.png)"}}
+    "Sparkboard"]
+   #_[nav:language-select]
+
+   ;; right column
+   [:div.flex.flex-col.h-screen
+    [:div.flex.flex-grow
+     (ui/with-form [!form {:account/email (?email :init "")
+                           :account/password (?password :init "")}
+                    :validators {?email (fn [v _]
+                                          (when-not (re-find #"^[^@]+@[^@]+$" v)
+                                            (tr :tr/invalid-email)))}
+                    :required [?email ?password]]
+       (let [!step (hooks/use-state :email)]
+         [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
+          {:on-submit (fn [^js e]
+                        (.preventDefault e)
+                        (case @!step
+                          :email (reset! !step :password)
+                          :password (prn :submit @!form)))}
+          [:h1.text-3xl.font-medium.mb-4 (tr :tr/welcome)]
+          [:div.flex.flex-col.gap-2
+           [input {:type "email"
+                   :value @?email
+                   :placeholder (tr :tr/email-example)
+                   :on-change (forms/change-handler ?email)}]
+           (show-messages ?email)
+           (when (= :password @!step)
+             [:<>
+              [input {:type "password"
+                      :id (str ::password)
+                      :value @?password
+                      :placeholder (tr :tr/password)
+                      :on-change (forms/change-handler ?password)}]
+              (str (forms/visible-messages ?password))])
+           (str (forms/visible-messages !form))
+           [:button
+            {:class ["w-full h-10 text-sm p-3"
+                     ui/c:dark-button]
+             :on-click (fn []
+                         (forms/touch! !form)
+                         (prn (forms/submittable? !form))
+                         (reset! !step :password)
+                         (js/setTimeout #(.focus (js/document.getElementById (str ::password)))
+                                        100)
+                         #_(p/let [res (routes/mutate!
+                                        {:route [:login]
+                                         :response-fn (fn [^js/Response res _url]
+                                                        (when (http-ok? res)
+                                                          ;; TODO set this based on response body
+                                                          ;; instead (I don't want to wrestle with
+                                                          ;; readablestream right now --DAL
+                                                          ;; 2023-03-15)
+                                                          ;; TODO ...or promise-style with `p/->>`
+                                                          (comment
+                                                           ;; transact account...
+                                                           (db/transact! [(assoc foo :db/id :env/account)])
+                                                           )
+                                                          #_(reset! !account {:identity @?mbr-name})
+                                                          (routes/set-path! [:org/index]))
+                                                        res)}
+                                        @!mbr)]
+                             (prn :logged-in res :mbr @!mbr)
+                             #_(reset! !account {:identity @?mbr-name})
+                             ))}
+            (tr :tr/sign-in-with-email)]]
+
+          [:div.relative
+           [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+           [:div.relative.flex.justify-center.text-xs.uppercase
+            [:span.bg-background.px-2.text-muted-foreground
+             (tr :tr/or)]]]
+          [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"}
+           [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] "Google"]
+          [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/by-signing-up-you-agree-to)
+           [:a.gray-link {:href "/terms"} (tr :tr/tos)]
+           (tr :tr/and)
+           [:a.gray-link {:href "/privacy"} (tr :tr/pp)] "."]]))]
+    [:div.p-4.flex
+     [:div.flex-grow]
+     [nav:language-select]]]])
 
 (ui/defview org:index [params]
   [:div.pa3
-   [:h2 (tr [:tr/orgs])]
+   [:h2 (tr :tr/orgs)]
    [:section#orgs-grid
     (into [:div.grid.grid-cols-4.gap-4]
           (map (fn [org]
@@ -137,7 +173,7 @@
 (ui/defview org:create [params]
   (with-form [!org {:org/title ?title}]
     [:div
-     [:h2 (tr [:tr/new]) " " (tr [:tr/org])]
+     [:h2 (tr :tr/new) " " (tr :tr/org)]
      [:form
       [:label "Title"]
       [input {:type "text"
@@ -154,12 +190,12 @@
                                                        res)}
                                        @!org)
                        (forms/clear! !org))}
-       (str (tr [:tr/create]) " " (tr [:tr/org]))]]]))
+       (str (tr :tr/create) " " (tr :tr/org))]]]))
 
 (ui/defview board:create [{:as params :keys [route org/id]}]
   (let [[n n!] (use-state "")]
     [:div
-     [:h3 (tr [:tr/new]) " " (tr [:tr/board])]
+     [:h3 (tr :tr/new) " " (tr :tr/board)]
      [input {:placeholder "Board title"
              :value n
              :on-input #(n! (-> % .-target .-value))}]
@@ -170,12 +206,12 @@
                                                             ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                                                             res))}
                                           {:board/title n})}
-      (str (tr [:tr/create]) " " (tr [:tr/board]))]]))
+      (str (tr :tr/create) " " (tr :tr/board))]]))
 
 (ui/defview project:create [{:as params :keys [route board/id]}]
   (let [[n n!] (use-state "")]
     [:div
-     [:h3 (str (tr [:tr/new]) " " (tr [:tr/project]))]
+     [:h3 (str (tr :tr/new) " " (tr :tr/project))]
      [input {:placeholder "Project title"
              :value n
              :on-input #(n! (-> % .-target .-value))}]
@@ -185,12 +221,12 @@
                                                             (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
                                           {:project/title n})}
-      (str (tr [:tr/create]) " " (tr [:tr/project]))]]))
+      (str (tr :tr/create) " " (tr :tr/project))]]))
 
 (ui/defview member:create [{:as params :keys [route board/id]}]
   (let [new-mbr (use-state {:member/name "", :member/password ""})]
     [:div
-     [:h3 (str (tr [:tr/new]) " " (tr [:tr/member]))]
+     [:h3 (str (tr :tr/new) " " (tr :tr/member))]
      [input {:placeholder "Member name"
              :value (:member/name @new-mbr)
              :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
@@ -204,7 +240,7 @@
                                                             (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
                                           @new-mbr)}
-      (str (tr [:tr/create]) " " (tr [:tr/member]))]]))
+      (str (tr :tr/create) " " (tr :tr/member))]]))
 
 (ui/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
@@ -213,16 +249,16 @@
                                                    :query-params query-params}])
         [pending? start-transition] (react/useTransition)]
     [:div
-     [:h1 (tr [:tr/org]) " " (:org/title value)]
+     [:h1 (tr :tr/org) " " (:org/title value)]
      [:a {:href (routes/path-for [:board/create params])}
-      (tr [:tr/new]) " " (tr [:tr/board])]
+      (tr :tr/new) " " (tr :tr/board)]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
-        [:h3 (tr [:tr/search])]
+        [:h3 (tr :tr/search)]
         [input
          {:id "org-search"
-          :placeholder (tr [:tr/search-across-org])
+          :placeholder (tr :tr/search-across-org)
           :type "search"
           :on-input (fn [event] (-> event .-target .-value set-q!))
           :on-key-down (j/fn [^js {:keys [key]}]
@@ -237,7 +273,7 @@
               (map (comp (partial vector :li)
                          str))
               search-result)])
-     [:section [:h3 (tr [:tr/boards])]
+     [:section [:h3 (tr :tr/boards)]
       (into [:ul]
             (map (fn [board]
                    [:li [:a {:href (routes/path-for [:board/one board])} ;; path-for knows which key it wants (:board/id)
@@ -247,26 +283,26 @@
 (ui/defview board:one [{:as b :board/keys [id]}]
   (let [value (ws/use-query! [:board/one {:board/id id}])]
     [:<>
-     [:h1 (str (tr [:tr/board]) (:board/title value))]
+     [:h1 (str (tr :tr/board) (:board/title value))]
      [:p (-> value :entity/domain :domain/name)]
      [:blockquote
       [safe-html (-> value
                      :board/description
                      :text-content/string)]]
      [:div.rough-tabs {:class "w-100"}
-      [:div.rough-tab {:name (tr [:tr/projects])
+      [:div.rough-tab {:name (tr :tr/projects)
                        :class "db"}
        [:a {:href (routes/path-for [:project/create b])}
-        (tr [:tr/new]) " " (tr [:tr/project])]
+        (tr :tr/new) " " (tr :tr/project)]
        (into [:ul]
              (map (fn [proj]
                     [:li [:a {:href (routes/path-for [:project/one proj])}
                           (:project/title proj)]]))
              (:project/_board value))]
-      [:div.rough-tab {:name (tr [:tr/members])
+      [:div.rough-tab {:name (tr :tr/members)
                        :class "db"}
        [:a {:href (routes/path-for [:member/create b])}
-        (tr [:tr/new]) " " (tr [:tr/member])]
+        (tr :tr/new) " " (tr :tr/member)]
        (into [:ul]
              (map (fn [member]
                     [:li
@@ -299,24 +335,24 @@
 (ui/defview project:one [{:as p :project/keys [id]}]
   (let [value (ws/use-query! [:project/one {:project/id id}])]
     [:div
-     [:h1 (str (tr [:tr/project]) " " (:project/title value))]
+     [:h1 (str (tr :tr/project) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
      (when-let [badges (:project/badges value)]
-       [:section [:h3 (tr [:tr/badges])]
+       [:section [:h3 (tr :tr/badges)]
         (into [:ul]
               (map (fn [bdg] [:li (:badge/label bdg)]))
               badges)])
      (when-let [vid (:project/video value)]
-       [:section [:h3 (tr [:tr/video])]
+       [:section [:h3 (tr :tr/video)]
         [video-field vid]])]))
 
 (ui/defview member:one [{:as mbr :member/keys [id]}]
   (let [value (ws/use-query! [:member/one {:member/id id}])]
     [:div
-     [:h1 (str/join " " [(tr [:tr/member]) (:member/name value)])]
+     [:h1 (str/join " " [(tr :tr/member) (:member/name value)])]
      (when-let [tags (seq (concat (:member/tags value)
                                   (:member/tags.custom value)))]
-       [:section [:h3 (tr [:tr/tags])]
+       [:section [:h3 (tr :tr/tags)]
         (into [:ul]
               (map (fn [tag]
                      (if (:tag.ad-hoc/label tag)
@@ -361,17 +397,18 @@
 
 (ui/defview nav:account [{[route-id] :route}]
   (if (db/get :env/account)
-    [ui/a:dark-button
+    [:a
      {:href (routes/path-for [:auth/logout])
-      :class "text-sm m-1"}
-     (tr [:tr/logout])]
-    [ui/a:dark-button
+      :class [ui/c:dark-button
+              "text-sm m-1 p-3"]}
+     (tr :tr/logout)]
+    [:a
      {:href (routes/path-for [:auth/sign-in])
-      :class "text-sm m-1 h-8"}
-     (tr [:tr/sign-in])]))
+      :class [ui/c:dark-button
+              "text-sm m-1 h-8 p-3"]}
+     (tr :tr/sign-in)]))
 
 (ui/defview navbar [params]
-  (prn :par (-> params :route first))
   (when-not (#{:home :auth/sign-in} (-> params :route first))
     [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
      [nav:language-select]
