@@ -1,14 +1,22 @@
 (ns sparkboard.slack.screens
-  (:require [sparkboard.firebase.jvm :as fire-jvm]
+  (:require [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.server.env :as env]
             [sparkboard.slack.requests :as slack]
             [sparkboard.slack.db :as slack.db]
             [sparkboard.slack.urls :as urls]
             [sparkboard.slack.view :as v]
             [sparkboard.slack.view-examples :as examples]
-            [sparkboard.future :refer [try-future]]
             [sparkboard.slack.api :as slack.api]
             [sparkboard.transit :as transit]))
+
+(defmacro try-future [& body]
+  `(future
+    (try
+      ~@body
+      (catch Exception e#
+        (~'taoensso.timbre/error :future/Exception e#))
+      (catch java.lang.AssertionError e#
+        (~'taoensso.timbre/error {:future/AssertionError e#})))))
 
 (def team-messages
   {:welcome

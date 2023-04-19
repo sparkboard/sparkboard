@@ -1,8 +1,8 @@
 (ns sparkboard.slack.account-bridge-node
-  (:require [sparkboard.firebase.tokens :as tokens]
+  (:require [sparkboard.slack.firebase.tokens :as tokens]
             [sparkboard.server.env :as env]
             [sparkboard.js-convert :refer [->clj]]
-            [sparkboard.promise :as p]))
+            [sparkboard.slack.promise :as p]))
 
 ;; this fn is called by the legacy node server and handles inbound links (from slack to sparkboard).
 (defn slack-link-proxy [legacy-session]

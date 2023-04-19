@@ -1,6 +1,6 @@
-(ns sparkboard.server.impl
+(ns sparkboard.impl.server
   (:require [clojure.string :as str]
-            [sparkboard.firebase.tokens :as fire-tokens]
+            [sparkboard.slack.firebase.tokens :as fire-tokens]
             [taoensso.timbre :as log]))
 
 (defn req-auth-token [req]

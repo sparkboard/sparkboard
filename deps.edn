@@ -8,7 +8,7 @@
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "b03a76ad990f2ea045b2c48ac61f480b806b1b7b"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
-                                 :git/sha "5c85e6f524b28d89830fbf86910a0ed9ca5844bd"}
+                                 :git/sha "f4b82b67ccdee4869f5fa1a3dc63e54f3cca9c73"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
                                        :git/sha "583b9b610e76804f537684ab961297945cf66e5e"}
 
@@ -56,13 +56,13 @@
         nrepl/nrepl {:mvn/version "0.9.0"}
 
         ;; client
-
+        funcool/promesa {:mvn/version "10.0.571"}
         babashka/process {:mvn/version "0.4.16"}
         mhuebert/kitchen-async {:mvn/version "0.1.0"}
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         reagent/reagent {:mvn/version "1.1.1"}
-        thheller/shadow-cljs {:mvn/version "2.21.0"}
+        thheller/shadow-cljs {:mvn/version "2.22.10"}
         net.clojars.wkok/openai-clojure {:mvn/version "0.5.0"}}
  :aliases
  {:uberjar {:exec-fn sparkboard.build/uberjar}

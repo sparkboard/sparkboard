@@ -13,25 +13,33 @@
    [sparkboard.websockets :as ws]
    [promesa.core :as p]
    [yawn.hooks :refer [use-state]]
-   [yawn.view :as v]))
+   [yawn.view :as v]
+   [inside-out.forms :as forms]))
 
 (defn http-ok? [rsp]
   (= 200 (.-status rsp)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def input (v/from-element :input
+             {:class ["flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2"
+                      "text-sm ring-offset-background placeholder:text-muted-foreground"
+                      "focous-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      "disabled:cursor-not-allowed disabled:opacity-50"]}))
 
-(ui/defview login [params]
-  (with-form [!mbr {:member/name ?mbr-name
-                    :member/password ?pwd}]
-    [:form#login ;; shorthand hiccup not available here, TODO: why not?
-     [:h2 (tr [:tr/login])]
-     [:label (tr [:tr/member-name])]
-     [:input {:type "text", :value (or @?mbr-name "")
-              :on-change (forms/change-handler ?mbr-name)}]
+(ui/defview account:login [params]
+  (ui/with-form [!mbr {:account/email (?email :init "")
+                       :account/password (?password :init "")}]
+    [:form#login.flex.flex-col
+     {:class "w-[500px]"}
+     [:label (tr [:tr/email])]
+     [input {:type "email"
+             :value @?email
+             :on-change (forms/change-handler ?email)}]
      [:label (tr [:tr/password])]
-     [:input {:type "password", :value (or @?pwd "")
-              :on-change (forms/change-handler ?pwd)}]
+     [input {:type "password"
+             :value @?password
+             :on-change (forms/change-handler ?password)}]
      [:button
       {:on-click #(p/let [res (routes/mutate!
                                {:route [:login]
@@ -52,8 +60,7 @@
                                @!mbr)]
                     (prn :logged-in res :mbr @!mbr)
                     #_(reset! !account {:identity @?mbr-name})
-                    )}
-      (tr [:tr/login])]]))
+                    )}]]))
 
 (ui/defview org:index [params]
   [:div.pa3
@@ -79,7 +86,7 @@
 (ui/defview home []
   (if (db/get :env/account)
     [org:index nil]
-    (tr [:skeleton/nix])))
+    [account:login nil]))
 
 (ui/defview org:create [params]
   (with-form [!org {:org/title ?title}]
@@ -87,9 +94,9 @@
      [:h2 (tr [:tr/new]) " " (tr [:tr/org])]
      [:form
       [:label "Title"]
-      [:input {:type "text"
-               :value (or @?title "")
-               :on-change (forms/change-handler ?title)}]
+      [input {:type "text"
+              :value (or @?title "")
+              :on-change (forms/change-handler ?title)}]
       [:button
        {:on-click #(do (routes/mutate! {:route [:org/create]
                                         :response-fn (fn [^js/Response res _url]
@@ -107,9 +114,9 @@
   (let [[n n!] (use-state "")]
     [:div
      [:h3 (tr [:tr/new]) " " (tr [:tr/board])]
-     [:input {:placeholder "Board title"
-              :value n
-              :on-input #(n! (-> % .-target .-value))}]
+     [input {:placeholder "Board title"
+             :value n
+             :on-input #(n! (-> % .-target .-value))}]
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
@@ -123,9 +130,9 @@
   (let [[n n!] (use-state "")]
     [:div
      [:h3 (str (tr [:tr/new]) " " (tr [:tr/project]))]
-     [:input {:placeholder "Project title"
-              :value n
-              :on-input #(n! (-> % .-target .-value))}]
+     [input {:placeholder "Project title"
+             :value n
+             :on-input #(n! (-> % .-target .-value))}]
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
@@ -138,13 +145,13 @@
   (let [new-mbr (use-state {:member/name "", :member/password ""})]
     [:div
      [:h3 (str (tr [:tr/new]) " " (tr [:tr/member]))]
-     [:input {:placeholder "Member name"
-              :value (:member/name @new-mbr)
-              :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
-     [:input {:placeholder "Member password"
-              :type "password"
-              :value (:member/password @new-mbr)
-              :on-input #(swap! new-mbr assoc :member/password (-> % .-target .-value))}]
+     [input {:placeholder "Member name"
+             :value (:member/name @new-mbr)
+             :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
+     [input {:placeholder "Member password"
+             :type "password"
+             :value (:member/password @new-mbr)
+             :on-input #(swap! new-mbr assoc :member/password (-> % .-target .-value))}]
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
@@ -167,7 +174,7 @@
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
         [:h3 (tr [:tr/search])]
-        [:input
+        [input
          {:id "org-search"
           :placeholder (tr [:tr/search-across-org])
           :type "search"
@@ -307,8 +314,7 @@
       child]]))
 
 (ui/defview global-header [_]
-  [:<>
-   [:section [:span (tr [:tr/user]) ":" (db/get :env/account :account/display-name)]]
+  [:div.flex.flex-row.bg-zinc-100.w-full.items-center
    [:section
     [:label {:for "language-selector"} (tr [:tr/lang])]
     (into [:select {:id "language-selector"
@@ -319,11 +325,12 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
+   [:div.flex-grow]
    (if (db/get :env/account)
-     [:a
+     [ui/button:dark
       {:href (routes/path-for [:auth/logout])}
       (tr [:tr/logout])]
-     [:a {:href (routes/path-for [:auth/login])}
+     [ui/button:dark {:href (routes/path-for [:auth/login])}
       (tr [:tr/login])])
    [:div.rough-divider]])
 

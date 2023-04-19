@@ -1,6 +1,6 @@
 (ns sparkboard.slack.urls
   (:require [lambdaisland.uri :as uri]
-            [sparkboard.firebase.tokens :as tokens]
+            [sparkboard.slack.firebase.tokens :as tokens]
             [sparkboard.server.env :as env]
             [sparkboard.slack.db :as slack.db]
             [taoensso.timbre :as log]))

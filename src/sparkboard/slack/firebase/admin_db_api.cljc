@@ -1,9 +1,9 @@
-(ns sparkboard.firebase.admin-db-api
+(ns sparkboard.slack.firebase.admin-db-api
   (:refer-clojure :exclude [read])
   (:require [clojure.string :as str]
             [sparkboard.server.env :as env]
             [sparkboard.js-convert :refer [clj->json ->clj]]
-            #?(:clj  [sparkboard.firebase.jvm :as fire-jvm]
+            #?(:clj  [sparkboard.slack.firebase.jvm :as fire-jvm]
                :cljs [sparkboard.http :as http])
             [sparkboard.util :as u])
   #?(:clj (:import (com.google.firebase.database DatabaseReference))))

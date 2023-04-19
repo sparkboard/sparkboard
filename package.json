@@ -21,6 +21,8 @@
         "@tailwindcss/forms": "^0.5.3",
         "@tailwindcss/line-clamp": "^0.4.4",
         "@tailwindcss/typography": "^0.5.9",
+        "class-variance-authority": "^0.5.2",
+        "clsx": "^1.2.1",
         "d3-require": "^1.2.4",
         "emoji-regex": "^10.2.1",
         "firebase": "^7.15.0",
@@ -31,6 +33,7 @@
         "katex": "^0.12.0",
         "linkify-element": "^4.1.0",
         "linkifyjs": "^4.1.0",
+        "lucide-react": "^0.162.0",
         "markdown-it": "^12.2.0",
         "markdown-it-block-image": "^0.0.3",
         "markdown-it-sidenote": "gerwitz/markdown-it-sidenote#aa5de8ce3168b7d41cb33c3aed071a5f41ce0083",
@@ -42,13 +45,15 @@
         "react-dom": "^18.2.0",
         "react-refresh": "^0.14.0",
         "shadcn-ui": "^0.1.0",
+        "tailwind-merge": "^1.12.0",
         "tailwindcss": "^3.3.1",
+        "tailwindcss-animate": "^1.0.5",
         "typescript": "^5.0.4",
         "use-sync-external-store": "1.2.0",
         "vh-sticky-table-header": "1.2.1",
         "w3c-keyname": "^2.2.4"
     },
     "devDependencies": {
-        "shadow-cljs": "^2.20.16"
+        "shadow-cljs": "^2.22.10"
     }
 }

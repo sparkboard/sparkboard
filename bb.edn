@@ -11,7 +11,7 @@
                    (def app (:app options (apps env))))
          server (shell "yarn shadow-cljs server")
          dev (do (shell "rm -rf ./classes")
-                 (shell "yarn shadow-cljs clj-run sparkboard.build/start"))
+                 (shell "yarn shadow-cljs watch web"))
          cljs (do (shell "yarn install")
                   (shell "yarn shadow-cljs release web"))
          clj (do (shell "mkdir -p classes")

@@ -1,12 +1,14 @@
 (ns sparkboard.server.env
   (:require [applied-science.js-interop :as j]
+            #?(:clj [clojure.java.io :as io])
             #?(:clj [clojure.java.shell :refer [sh]])
             #?(:cljs [cljs.reader :refer [read-string]])
             [sparkboard.js-convert :refer [json->clj]]
-            [sparkboard.resources :as rc]
+            [shadow.resource]
             [sparkboard.util :as u]
             [clojure.walk :as walk])
-  #?(:clj (:import java.util.Base64)))
+  #?(:clj (:import java.util.Base64))
+  #?(:cljs (:require-macros [sparkboard.server.env :refer [some-inline-resource]])))
 
 (defn env-var
   ([k]
@@ -26,16 +28,21 @@
 
 (defn parse-config [c]
   (some->> c
-          (read-string)
-          (walk/postwalk #(cond-> %
-                                  (map? %)
-                                  (u/update-some {:firebase/app-config json->clj
-                                                  :firebase/service-account json->clj})))))
+           (read-string)
+           (walk/postwalk #(cond-> %
+                                   (map? %)
+                                   (u/update-some {:firebase/app-config json->clj
+                                                   :firebase/service-account json->clj})))))
+
+(defmacro some-inline-resource [path]
+  (if (:ns &env)
+    (when (some? (io/resource path))
+      `(shadow.resource/inline ~path))
+    `(some-> (io/resource ~path) slurp)))
 
 (defn read-config []
   (parse-config (or (env-var :SPARKBOARD_CONFIG)
-                    (rc/some-inline-resource "/.local.config.edn"))))
-
+                    (some-inline-resource ".local.config.edn"))))
 (def config
   (or (read-config) {}))
 

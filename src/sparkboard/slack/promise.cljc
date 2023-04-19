@@ -1,10 +1,10 @@
-(ns sparkboard.promise
+(ns sparkboard.slack.promise
   (:refer-clojure :exclude [let -> ->> do resolve try catch promise])
   (:require [kitchen-async.promise]
             #?(:clj [net.cgrand.macrovich :as m]))
   #?(:cljs
      (:require-macros [net.cgrand.macrovich :as m]
-                      sparkboard.promise)))
+                      sparkboard.slack.promise)))
 
 (m/deftime
  (defmacro alt [{:keys [cljs clj]} & body]

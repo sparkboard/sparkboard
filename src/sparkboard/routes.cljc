@@ -7,11 +7,10 @@
             [bidi.bidi :as bidi]
             [re-db.api :as db]
             [re-db.reactive :as r]
-            [sparkboard.client.auth :as-alias auth.client]
             [sparkboard.client.slack :as-alias slack.client]
             [sparkboard.client.views :as-alias views]
             [sparkboard.server.db :as-alias server.db]
-            [sparkboard.http :as sb.http]
+            [sparkboard.http :as http]
             [sparkboard.util :as u]
             [sparkboard.impl.routes :as impl :refer [E]])
   #?(:cljs (:require-macros [sparkboard.routes])))
@@ -28,7 +27,7 @@
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
-                "login" (E :auth/login {:view `views/login
+                "login" (E :auth/login {:view `views/account:login
                                         :public true})
                 "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout
                                           :public true})
@@ -42,7 +41,7 @@
                              :view `views/org:index})
                       "/login" (E :login
                                   {:public true
-                                   :view `views/login
+                                   :view `views/account:login
                                    :mutation `server.db/login-handler})
 
                       "/o/create" (E :org/create
@@ -137,11 +136,11 @@
           (->> (impl/match-route @!routes) :route)))
 
 (defn mutate! [{:keys [route response-fn] :as opts} & args]
-  (sb.http/request (path-for route)
-                   (merge {:body (vec args)
-                           :body/content-type :transit+json
-                           :method "POST"}
-                          ;; `response-fn`, if provided, should be a fn of two
-                          ;; args [response url] and returning the response
-                          ;; after doing whatever it needs to do.
-                          (dissoc opts :body :route))))
+  (http/request (path-for route)
+                (merge {:body (vec args)
+                        :body/content-type :transit+json
+                        :method "POST"}
+                       ;; `response-fn`, if provided, should be a fn of two
+                       ;; args [response url] and returning the response
+                       ;; after doing whatever it needs to do.
+                       (dissoc opts :body :route))))

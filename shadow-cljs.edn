@@ -1,14 +1,18 @@
 {:deps {:aliases [:nio :dev]}
+ :dev-http
+ {3000 {:root "resources/public"
+        :handler sparkboard.server.core/handler}}
  :builds
  {:web
   {:target :browser
    :module-loader true
-   :modules {:app {:init-fn sparkboard.client/init}
+   :modules {:app {:init-fn sparkboard.client.core/init}
              :slack {:entries [sparkboard.client.slack]
                      :depends-on #{:app}}}
-   :output-dir "resources/public/js/compiled"
-   :asset-path "/js/compiled"
-   :devtools {:preloads [yawn.view.refresh-preload]}
+   :output-dir "resources/public/js/"
+   :asset-path "/js"
+   :devtools {:preloads [yawn.view.refresh-preload]
+              :watch-dir "resources/public"}
    :dev {:build-hooks [(sparkboard.build/tailwind-dev!)]}
    :release {:build-hooks [(sparkboard.build/tailwind-release!)]}}}}
 

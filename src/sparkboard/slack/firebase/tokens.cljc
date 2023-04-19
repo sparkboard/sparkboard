@@ -1,8 +1,8 @@
-(ns sparkboard.firebase.tokens
-  (:require [sparkboard.server.env :as env]
-            [sparkboard.http :as http]
-            [sparkboard.jwt-rs256 :as jwt]
-            [sparkboard.promise :as p]))
+(ns sparkboard.slack.firebase.tokens
+  (:require [sparkboard.http :as http]
+            [sparkboard.server.env :as env]
+            [sparkboard.slack.jwt-rs256 :as jwt]
+            [sparkboard.slack.promise :as p]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Firebase token encode/decode for secure communication with legacy services

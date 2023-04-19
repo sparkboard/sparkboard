@@ -1,13 +1,6 @@
 (ns sparkboard.build
   (:require [babashka.process :as bp]))
 
-(defn start
-  {:shadow/requires-server true}
-  []
-  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :web)
-  ((requiring-resolve 'sparkboard.server/restart-server!) 3000))
-
-
 (defn tailwind-dev!
   {:shadow.build/stage :flush}
   [state]
@@ -31,8 +24,8 @@
  (clerk/clear-cache!))
 
 (defn aot [_]
-  (require 'sparkboard.server)
-  (compile 'sparkboard.server))
+  (require 'sparkboard.server.core)
+  (compile 'sparkboard.server.core))
 
 (defn uberjar [_]
   (let [deps (clojure.edn/read-string (slurp "deps.edn"))]

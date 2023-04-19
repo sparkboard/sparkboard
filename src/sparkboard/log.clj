@@ -9,7 +9,7 @@
       (case (env/config :env)
         "staging" '{:all :info
                     sparkboard.slack.oauth :trace
-                    sparkboard.server :trace}
+                    sparkboard.server.core :trace}
         "prod" {:all :warn}
         '{:all :info})))
 

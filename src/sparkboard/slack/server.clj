@@ -7,9 +7,9 @@
    [clojure.string :as str]
    [cognitect.transit :as transit]
    [lambdaisland.uri :as uri]
-   [sparkboard.firebase.jvm :as fire-jvm]
+   [sparkboard.slack.firebase.jvm :as fire-jvm]
    [sparkboard.server.env :as env]
-   [sparkboard.server.impl :refer [wrap-sparkboard-verify]]
+   [sparkboard.impl.server :refer [wrap-sparkboard-verify]]
    [sparkboard.slack.db :as slack.db]
    [sparkboard.slack.oauth :as slack-oauth]
    [sparkboard.slack.requests :as slack]
@@ -350,13 +350,13 @@
 
 (def handlers*
   (-> (bidi.ring/make-handler routes)
-      #_(sparkboard.server/wrap-debug-request :slack/last)
+      #_(sparkboard.server.core/wrap-debug-request :slack/last)
       ;; Note: if the following `wrap-restful-format` middleware runs, it will
       ;; stomp on muuntaja's `body-params` elsewhere in the non-slack middleware
       ;; stack. This is why we have `handler` protecting `handler*` from
       ;; executing unless needed.
       (ring.middleware.format/wrap-restful-format {:formats [:json-kw :transit-json]})
-      #_(sparkboard.server/wrap-debug-request :slack/one)
+      #_(sparkboard.server.core/wrap-debug-request :slack/one)
       wrap-slack-verify
       (ring.middleware.defaults/wrap-defaults ring.middleware.defaults/api-defaults)))
 

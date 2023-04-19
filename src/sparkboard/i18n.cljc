@@ -41,8 +41,8 @@
          :tr/tags "Tags"
          :tr/badge "Badge"
          :tr/badges "Badges"
-         :tr/member-name "Member Name"
-         :tr/password "Password"}
+         :tr/password "Password"
+         :tr/email "Email"}
 
    :fra {:missing ":fra texte manquant"
          :meta/lect "Français"
@@ -66,8 +66,8 @@
          :tr/tags "Mots clés"
          :tr/badge "Insigne"
          :tr/badges "Insignes"
-         :tr/member-name "Nom de membre"
-         :tr/password "Mot de passe"}})
+         :tr/password "Mot de passe"
+         :tr/email "Email"}})
 
 
 (defn tr

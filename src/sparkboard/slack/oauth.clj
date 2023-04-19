@@ -1,7 +1,7 @@
 (ns sparkboard.slack.oauth
   (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
-            [sparkboard.firebase.tokens :as tokens]
+            [sparkboard.slack.firebase.tokens :as tokens]
             [sparkboard.server.env :as env]
             [sparkboard.slack.db :as slack.db]
             [sparkboard.slack.requests :as slack]

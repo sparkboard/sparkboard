@@ -1,8 +1,8 @@
 (ns sparkboard.client.auth
   (:require ["react" :as react]
             [applied-science.js-interop :as j]
-            [sparkboard.client.firebase :as firebase]
-            [sparkboard.promise :as p]
+            [sparkboard.slack.firebase :as firebase]
+            [promesa.core :as p]
             [sparkboard.views.ui :as ui]
             [yawn.hooks :refer [use-deref]]))
 

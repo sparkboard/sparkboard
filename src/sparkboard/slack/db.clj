@@ -2,11 +2,11 @@
   (:require [clojure.pprint :as pp]
             [clojure.set :as set]
             [clojure.string :as str]
-            [sparkboard.firebase.admin-db-api :as fire]
+            [sparkboard.slack.firebase.admin-db-api :as fire]
             [sparkboard.server.env :as env]
             [sparkboard.slack.requests :as slack]
             [taoensso.timbre :as log]
-            [sparkboard.promise :as p]))
+            [sparkboard.slack.promise :as p]))
 
 (defn join [segments]
   (->> segments (map name) (str/join "/")))

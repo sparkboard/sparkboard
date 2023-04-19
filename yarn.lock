@@ -1580,6 +1580,11 @@ cjson@^0.3.1:
   dependencies:
     json-parse-helpfulerror "^1.0.3"
 
+class-variance-authority@^0.5.2:
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/class-variance-authority/-/class-variance-authority-0.5.2.tgz#ccc437c765e86be5e62aefeb5f030520686fa9ef"
+  integrity sha512-j7Qqw3NPbs4IpO80gvdACWmVvHiLLo5MECacUBLnJG17CrLpWaQ7/4OaWX6P0IO1j2nvZ7AuSfBS/ImtEUZJGA==
+
 clean-stack@^2.0.0:
   version "2.2.0"
   resolved "https://registry.npmjs.org/clean-stack/-/clean-stack-2.2.0.tgz"
@@ -1643,6 +1648,11 @@ clone@^1.0.2:
   version "1.0.4"
   resolved "https://registry.npmjs.org/clone/-/clone-1.0.4.tgz"
   integrity sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==
+
+clsx@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/clsx/-/clsx-1.2.1.tgz#0ddc4a20a549b59c93a4116bb26f5294ca17dc12"
+  integrity sha512-EcR6r5a8bj6pu3ycsa/E/cKVGuTgZJZdsyUYHOksG/UHIiKfjxzRxYJpyVBwYaQeOvghal9fcc4PidlgzugAQg==
 
 color-convert@^1.9.3:
   version "1.9.3"
@@ -3875,6 +3885,11 @@ lru-cache@^7.7.1:
   resolved "https://registry.npmjs.org/lru-cache/-/lru-cache-7.18.3.tgz"
   integrity sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==
 
+lucide-react@^0.162.0:
+  version "0.162.0"
+  resolved "https://registry.yarnpkg.com/lucide-react/-/lucide-react-0.162.0.tgz#3e0c58e9e207b6c8a05639d127b0137f538c747b"
+  integrity sha512-bKUvG2OTerGVt2GdbYK+VE4cdZS2DNUspY1CrqFnlvOkMPHjWzbydsJVtmFjtdExsII34JpthHUml2zWP4R9iw==
+
 make-dir@^3.0.0:
   version "3.1.0"
   resolved "https://registry.npmjs.org/make-dir/-/make-dir-3.1.0.tgz"
@@ -5383,19 +5398,19 @@ shadcn-ui@^0.1.0:
     prompts "^2.4.2"
     zod "^3.20.2"
 
-shadow-cljs-jar@1.3.2:
-  version "1.3.2"
-  resolved "https://registry.npmjs.org/shadow-cljs-jar/-/shadow-cljs-jar-1.3.2.tgz"
-  integrity sha512-XmeffAZHv8z7451kzeq9oKh8fh278Ak+UIOGGrapyqrFBB773xN8vMQ3O7J7TYLnb9BUwcqadKkmgaq7q6fhZg==
+shadow-cljs-jar@1.3.4:
+  version "1.3.4"
+  resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.4.tgz#0939d91c468b4bc5eab5a958f79e7ef5696fdf62"
+  integrity sha512-cZB2pzVXBnhpJ6PQdsjO+j/MksR28mv4QD/hP/2y1fsIa9Z9RutYgh3N34FZ8Ktl4puAXaIGlct+gMCJ5BmwmA==
 
-shadow-cljs@^2.20.16:
-  version "2.20.16"
-  resolved "https://registry.npmjs.org/shadow-cljs/-/shadow-cljs-2.20.16.tgz"
-  integrity sha512-k33ssZppDkBSYIfKswiKOX/8bNTnHbHoTmwf3KBPXBQkDPptPR3FeedmWtS5vKWnucFTe9DObhM2exKocErIxw==
+shadow-cljs@^2.22.10:
+  version "2.22.10"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.22.10.tgz#0ba40dc48f403a9b0db6541f7563d5b933cc4903"
+  integrity sha512-a8d0d4HA+OPyAiy+OpeXiqvmfLcidODsJ/rnxF13D1jevGxAmFKfF3IedCtf4PRRzIRIrsvOhwZnrSFc0ykZ3w==
   dependencies:
     node-libs-browser "^2.2.1"
     readline-sync "^1.4.7"
-    shadow-cljs-jar "1.3.2"
+    shadow-cljs-jar "1.3.4"
     source-map-support "^0.4.15"
     which "^1.3.1"
     ws "^7.4.6"
@@ -5716,6 +5731,16 @@ supports-preserve-symlinks-flag@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
+
+tailwind-merge@^1.12.0:
+  version "1.12.0"
+  resolved "https://registry.yarnpkg.com/tailwind-merge/-/tailwind-merge-1.12.0.tgz#747d09d64a25a4864150e8930f8e436866066cc8"
+  integrity sha512-Y17eDp7FtN1+JJ4OY0Bqv9OA41O+MS8c1Iyr3T6JFLnOgLg3EvcyMKZAnQ8AGyvB5Nxm3t9Xb5Mhe139m8QT/g==
+
+tailwindcss-animate@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/tailwindcss-animate/-/tailwindcss-animate-1.0.5.tgz#a6720e3b0616e1ff922b32846729881c626a069d"
+  integrity sha512-UU3qrOJ4lFQABY+MVADmBm+0KW3xZyhMdRvejwtXqYOL7YjHYxmuREFAZdmVG5LPe5E9CAst846SLC4j5I3dcw==
 
 tailwindcss@^3.3.1:
   version "3.3.1"

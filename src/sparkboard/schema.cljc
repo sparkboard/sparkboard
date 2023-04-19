@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [ref])
   (:require [clojure.string :as str]
             [malli.core :as m]
-            [sparkboard.schema.impl :refer :all]
+            [sparkboard.impl.schema :refer :all]
             [malli.registry :as mr]
             [malli.util :as mu]
             [re-db.schema :as s]

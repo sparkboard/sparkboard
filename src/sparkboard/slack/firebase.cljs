@@ -1,11 +1,11 @@
-(ns sparkboard.client.firebase
+(ns sparkboard.slack.firebase
   (:require ["firebase/app" :as firebase]
             ["firebase/auth"]
             ["react" :as react]
             [applied-science.js-interop :as j]
             [re-db.api :as db]
-            [sparkboard.browser.loaders :as loaders]
-            [sparkboard.promise :as p]))
+            [sparkboard.slack.loaders :as loaders]
+            [sparkboard.slack.promise :as p]))
 
 (defonce app firebase)
 (defonce auth (delay (.auth firebase)))

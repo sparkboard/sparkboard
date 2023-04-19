@@ -8,14 +8,16 @@
    [clojure.java.io :as io])
   (:import (java.time Instant)))
 
+(defn invalidation-token [resource-path]
+  (or (-> (io/resource resource-path)
+          assets/try-slurp
+          assets/md5)
+      (.toEpochMilli (Instant/now))))
+
 (defn single-page-html [config account]
   (-> {:body (str (html/html-page {:title "Sparkboard"
                                    :styles [{:href "/sparkboard.css"}]
-                                   :scripts/body [{:src (str "/js/compiled/app.js?v="
-                                                             (or (-> (io/resource "public/js/main.js")
-                                                                     assets/try-slurp
-                                                                     assets/md5)
-                                                                 (.toEpochMilli (Instant/now))))}]
+                                   :scripts/body [{:src (str "/js/app.js?v=" (invalidation-token "public/js/main.js"))}]
                                    :body [[:script {:type "application/re-db"}
                                            (hiccup.util/raw-string
                                             (transit/write

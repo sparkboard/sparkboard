@@ -1,4 +1,4 @@
-(ns sparkboard.jwt-rs256
+(ns sparkboard.slack.jwt-rs256
   (:require [clojure.walk :as walk]
             [sparkboard.js-convert :refer [->js ->clj]]
             #?@(:cljs [["jsonwebtoken" :as jwt]]

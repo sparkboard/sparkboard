@@ -1,4 +1,4 @@
-(ns sparkboard.firebase.jvm
+(ns sparkboard.slack.firebase.jvm
   (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as io]
             [clojure.walk :as walk]

@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [lambdaisland.uri :as uri]
             [re-db.api :as db]
-            [sparkboard.client.firebase :as firebase]
+            [sparkboard.slack.firebase :as firebase]
             [yawn.hooks :as hooks :refer [use-deref]]
             [yawn.view :as v]))
 
