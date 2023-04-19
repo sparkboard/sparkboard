@@ -94,14 +94,14 @@
 (def route-handler
   (-> (fn [{:as req :keys [uri query-string]}]
         (let [uri (str uri (some->> query-string (str "?")))
-              {:as match :keys [view query mutation handler params public?]} (routes/match-path uri)
+              {:as match :keys [view query mutation handler params public]} (routes/match-path uri)
               method (:request-method req)
               html? (and (= method :get)
                          (str/includes? (get-in req [:headers "accept"]) "text/html"))
               authed? (:account req)]
           (cond
 
-            (and (not authed?) (not public?)) (buddy.auth/throw-unauthorized)
+            (and (not authed?) (not public)) (buddy.auth/throw-unauthorized)
 
             handler (handler req params)
 

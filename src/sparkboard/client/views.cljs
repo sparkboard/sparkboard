@@ -7,10 +7,10 @@
    [inside-out.forms :as forms :refer [with-form]]
    [re-db.api :as db]
    [sparkboard.client.sanitize :refer [safe-html]]
-   [sparkboard.i18n :as i18n :refer [tr use-tr]]
+   [sparkboard.i18n :as i18n :refer [tr tr]]
    [sparkboard.routes :as routes]
+   [sparkboard.views.ui :as ui]
    [sparkboard.websockets :as ws]
-   [sparkboard.macros :refer [defview]]
    [promesa.core :as p]
    [yawn.hooks :refer [use-state]]
    [yawn.view :as v]))
@@ -20,15 +20,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defview login [params]
+
+(ui/defview login [params]
   (with-form [!mbr {:member/name ?mbr-name
                     :member/password ?pwd}]
-    [:form {:id "login"} ;; shorthand hiccup not available here, TODO: why not?
-     [:h2 (use-tr [:tr/login])]
-     [:label (use-tr [:tr/member-name])]
+    [:form#login ;; shorthand hiccup not available here, TODO: why not?
+     [:h2 (tr [:tr/login])]
+     [:label (tr [:tr/member-name])]
      [:input {:type "text", :value (or @?mbr-name "")
               :on-change (forms/change-handler ?mbr-name)}]
-     [:label (use-tr [:tr/password])]
+     [:label (tr [:tr/password])]
      [:input {:type "password", :value (or @?pwd "")
               :on-change (forms/change-handler ?pwd)}]
      [:button
@@ -52,35 +53,38 @@
                     (prn :logged-in res :mbr @!mbr)
                     #_(reset! !account {:identity @?mbr-name})
                     )}
-      (use-tr [:tr/login])]]))
+      (tr [:tr/login])]]))
 
-(defview org:index [params]
-         [:div.pa3
-          [:h2 (use-tr [:tr/orgs])]
-          [:section#orgs-grid
-           (into [:div.rough-grid]
-                 (map (fn [org]
-                        [:div.rough-card {:class "pa3"}
-                         [:a {:href (routes/path-for [:org/one org])}
-                          (:org/title org)]
-                         [:div.rough-icon-button
-                          {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                                    (:org/title org) "?"))
-                                        (routes/mutate! {:route [:org/delete]} (:org/id org)))}
-                          "X"]]))
-                 (ws/use-query! [:org/index {}]))]
-          [:section#add-org
-           [(routes/use-view [:org/create])]]])
+(ui/defview org:index [params]
+  [:div.pa3
+   [:h2 (tr [:tr/orgs])]
+   [:section#orgs-grid
+    (into [:div.grid.grid-cols-4.gap-4]
+          (map (fn [org]
+                 [:div.shadow.p-3
+                  ;; use radix-ui to make a dropdown button that includes a delete button
+                  [:div.rough-icon-button
+                   {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                             (:org/title org) "?"))
+                                 (routes/mutate! {:route [:org/delete]} (:org/id org)))}
+                   "X"]
 
-(defview home []
-         (if (db/get :env/account)
-           [org:index nil]
-           (use-tr [:skeleton/nix])))
+                  [:a {:href (routes/path-for [:org/one org])}
+                   (:org/title org)]
+                  ]))
+          (ws/use-query! [:org/index {}]))]
+   [:section#add-org
+    [(routes/use-view [:org/create])]]])
 
-(defview org:create [params]
+(ui/defview home []
+  (if (db/get :env/account)
+    [org:index nil]
+    (tr [:skeleton/nix])))
+
+(ui/defview org:create [params]
   (with-form [!org {:org/title ?title}]
     [:div
-     [:h2 (use-tr [:tr/new]) " " (use-tr [:tr/org])]
+     [:h2 (tr [:tr/new]) " " (tr [:tr/org])]
      [:form
       [:label "Title"]
       [:input {:type "text"
@@ -97,12 +101,12 @@
                                                        res)}
                                        @!org)
                        (forms/clear! !org))}
-       (str (use-tr [:tr/create]) " " (use-tr [:tr/org]))]]]))
+       (str (tr [:tr/create]) " " (tr [:tr/org]))]]]))
 
-(defview board:create [{:as params :keys [route org/id]}]
+(ui/defview board:create [{:as params :keys [route org/id]}]
   (let [[n n!] (use-state "")]
     [:div
-     [:h3 (use-tr [:tr/new]) " " (use-tr [:tr/board])]
+     [:h3 (tr [:tr/new]) " " (tr [:tr/board])]
      [:input {:placeholder "Board title"
               :value n
               :on-input #(n! (-> % .-target .-value))}]
@@ -113,12 +117,12 @@
                                                             ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                                                             res))}
                                           {:board/title n})}
-      (str (use-tr [:tr/create]) " " (use-tr [:tr/board]))]]))
+      (str (tr [:tr/create]) " " (tr [:tr/board]))]]))
 
-(defview project:create [{:as params :keys [route board/id]}]
+(ui/defview project:create [{:as params :keys [route board/id]}]
   (let [[n n!] (use-state "")]
     [:div
-     [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/project]))]
+     [:h3 (str (tr [:tr/new]) " " (tr [:tr/project]))]
      [:input {:placeholder "Project title"
               :value n
               :on-input #(n! (-> % .-target .-value))}]
@@ -128,12 +132,12 @@
                                                             (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
                                           {:project/title n})}
-      (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
+      (str (tr [:tr/create]) " " (tr [:tr/project]))]]))
 
-(defview member:create [{:as params :keys [route board/id]}]
+(ui/defview member:create [{:as params :keys [route board/id]}]
   (let [new-mbr (use-state {:member/name "", :member/password ""})]
     [:div
-     [:h3 (str (use-tr [:tr/new]) " " (use-tr [:tr/member]))]
+     [:h3 (str (tr [:tr/new]) " " (tr [:tr/member]))]
      [:input {:placeholder "Member name"
               :value (:member/name @new-mbr)
               :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
@@ -147,25 +151,25 @@
                                                             (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
                                           @new-mbr)}
-      (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
+      (str (tr [:tr/create]) " " (tr [:tr/member]))]]))
 
-(defview org:one [{:as params :keys [org/id query-params]}]
+(ui/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
         [query-params set-query-params!] (use-state query-params)
         search-result (ws/use-query! [:org/search {:org/id id
                                                    :query-params query-params}])
         [pending? start-transition] (react/useTransition)]
     [:div
-     [:h1 (use-tr [:tr/org]) " " (:org/title value)]
+     [:h1 (tr [:tr/org]) " " (:org/title value)]
      [:a {:href (routes/path-for [:board/create params])}
-      (use-tr [:tr/new]) " " (use-tr [:tr/board])]
+      (tr [:tr/new]) " " (tr [:tr/board])]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
-        [:h3 (use-tr [:tr/search])]
+        [:h3 (tr [:tr/search])]
         [:input
          {:id "org-search"
-          :placeholder (use-tr [:tr/search-across-org])
+          :placeholder (tr [:tr/search-across-org])
           :type "search"
           :on-input (fn [event] (-> event .-target .-value set-q!))
           :on-key-down (j/fn [^js {:keys [key]}]
@@ -180,36 +184,36 @@
               (map (comp (partial vector :li)
                          str))
               search-result)])
-     [:section [:h3 (use-tr [:tr/boards])]
+     [:section [:h3 (tr [:tr/boards])]
       (into [:ul]
             (map (fn [board]
                    [:li [:a {:href (routes/path-for [:board/one board])} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
             (:board/_org value))]]))
 
-(defview board:one [{:as b :board/keys [id]}]
+(ui/defview board:one [{:as b :board/keys [id]}]
   (let [value (ws/use-query! [:board/one {:board/id id}])]
     [:<>
-     [:h1 (str (use-tr [:tr/board]) (:board/title value))]
+     [:h1 (str (tr [:tr/board]) (:board/title value))]
      [:p (-> value :entity/domain :domain/name)]
      [:blockquote
       [safe-html (-> value
                      :board/description
                      :text-content/string)]]
      [:div.rough-tabs {:class "w-100"}
-      [:div.rough-tab {:name (use-tr [:tr/projects])
+      [:div.rough-tab {:name (tr [:tr/projects])
                        :class "db"}
        [:a {:href (routes/path-for [:project/create b])}
-        (use-tr [:tr/new]) " " (use-tr [:tr/project])]
+        (tr [:tr/new]) " " (tr [:tr/project])]
        (into [:ul]
              (map (fn [proj]
                     [:li [:a {:href (routes/path-for [:project/one proj])}
                           (:project/title proj)]]))
              (:project/_board value))]
-      [:div.rough-tab {:name (use-tr [:tr/members])
+      [:div.rough-tab {:name (tr [:tr/members])
                        :class "db"}
        [:a {:href (routes/path-for [:member/create b])}
-        (use-tr [:tr/new]) " " (use-tr [:tr/member])]
+        (tr [:tr/new]) " " (tr [:tr/member])]
        (into [:ul]
              (map (fn [member]
                     [:li
@@ -217,7 +221,7 @@
                       (:member/name member)]]))
              (:member/_board value))]
       [:div.rough-tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
-                  :class "db"}
+                       :class "db"}
        [:ul ;; i18n stuff
         [:li "suggested locales:" (str (:i18n/suggested-locales value))]
         [:li "default locale:" (str (:i18n/default-locale value))]
@@ -239,10 +243,10 @@
  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
  )
 
-(defview project:one [{:as p :project/keys [id]}]
+(ui/defview project:one [{:as p :project/keys [id]}]
   (let [value (ws/use-query! [:project/one {:project/id id}])]
     [:div
-     [:h1 (str (use-tr [:tr/project]) " " (:project/title value))]
+     [:h1 (str (tr [:tr/project]) " " (:project/title value))]
      [:blockquote (:project/summary-text value)]
      (when-let [badges (:project/badges value)]
        [:section [:h3 (tr [:tr/badges])]
@@ -253,10 +257,10 @@
        [:section [:h3 (tr [:tr/video])]
         [video-field vid]])]))
 
-(defview member:one [{:as mbr :member/keys [id]}]
+(ui/defview member:one [{:as mbr :member/keys [id]}]
   (let [value (ws/use-query! [:member/one {:member/id id}])]
     [:div
-     [:h1 (str/join " " [(use-tr [:tr/member]) (:member/name value)])]
+     [:h1 (str/join " " [(tr [:tr/member]) (:member/name value)])]
      (when-let [tags (seq (concat (:member/tags value)
                                   (:member/tags.custom value)))]
        [:section [:h3 (tr [:tr/tags])]
@@ -272,14 +276,14 @@
 
 ;; for DEBUG only:
 
-(defview show-query [[id :as route]]
+(ui/defview show-query [[id :as route]]
   (let [value (ws/use-query! route)
         value-str (yawn.hooks/use-memo
                    (fn [] (with-out-str (pprint value)))
                    (yawn.hooks/use-deps value))]
     [:pre value-str]))
 
-(defview drawer [{:keys [initial-height]} child]
+(ui/defview drawer [{:keys [initial-height]} child]
   ;; the divider is draggable and sets the height of the drawer
   (let [!height (yawn.hooks/use-state initial-height)]
     [:Suspense {:fallback "Loading..."}
@@ -302,11 +306,11 @@
                              (.addEventListener "mousemove" on-mousemove))))}]
       child]]))
 
-(defview global-header [_]
+(ui/defview global-header [_]
   [:<>
-   [:section [:span (use-tr [:tr/user]) ":" (db/get :env/account :account/display-name)]]
+   [:section [:span (tr [:tr/user]) ":" (db/get :env/account :account/display-name)]]
    [:section
-    [:label {:for "language-selector"} (use-tr [:tr/lang])]
+    [:label {:for "language-selector"} (tr [:tr/lang])]
     (into [:select {:id "language-selector"
                     :default-value (name @i18n/!preferred-language)
                     :on-change (fn [event]
@@ -318,17 +322,17 @@
    (if (db/get :env/account)
      [:a
       {:href (routes/path-for [:auth/logout])}
-      (use-tr [:tr/logout])]
-     [:a {:href (routes/path-for [:oauth2.google/launch])}
-      (use-tr [:tr/login])])
+      (tr [:tr/logout])]
+     [:a {:href (routes/path-for [:auth/login])}
+      (tr [:tr/login])])
    [:div.rough-divider]])
 
-(defview dev-drawer [{:as match :keys [route]}]
+(ui/defview dev-drawer [{:as match :keys [route]}]
   [drawer {:initial-height 100}
    [:Suspense {:fallback (v/x "Hi")}
-    (into [:p.f5]
+    (into [:p.text-lg]
           (for [[id :as route] (routes/breadcrumb (db/get :env/location :path))]
-            [:a.mr3.rounded.bg-black.white.pa2.no-underline
+            [:a.mr-3.rounded.bg-black.text-white.px-2..no-underline.inline-block
              {:href (routes/path-for route)} (str id)]))
     (str route)
     [show-query route]]])

@@ -10,9 +10,7 @@
 
 (defn single-page-html [config account]
   (-> {:body (str (html/html-page {:title "Sparkboard"
-                                   :styles [{:href "https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"}
-                                            {:href "https://fonts.googleapis.com/css?family=Merriweather"}
-                                            ".skeleton {font-family: Merriweather, cursive;}"]
+                                   :styles [{:href "/sparkboard.css"}]
                                    :scripts/body [{:src (str "/js/compiled/app.js?v="
                                                              (or (-> (io/resource "public/js/main.js")
                                                                      assets/try-slurp

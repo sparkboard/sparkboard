@@ -10,10 +10,10 @@
             [sparkboard.transit :as transit]
             [vendor.pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
-            [sparkboard.macros :refer [defview]]
+            [sparkboard.views.ui :as ui]
             [yawn.root :as root]))
 
-(defview root [] ;; top level view wrapper
+(ui/defview root [] ;; top level view wrapper
   (let [{:as current-location :keys [path view params tag route]} (db/get :env/location)]
     [:<>
      [views/global-header current-location]

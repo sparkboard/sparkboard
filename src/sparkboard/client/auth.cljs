@@ -3,15 +3,14 @@
             [applied-science.js-interop :as j]
             [sparkboard.client.firebase :as firebase]
             [sparkboard.promise :as p]
-            [sparkboard.macros :refer [defview]]
-            [yawn.hooks :refer [use-deref]]
-            [yawn.view :as v]))
+            [sparkboard.views.ui :as ui]
+            [yawn.hooks :refer [use-deref]]))
 
 ;; TODO
 ;; https://firebase.google.com/docs/auth/web/redirect-best-practices
 ;; temporary fix was using "popup" but this has its own drawbacks
 
-(defview after-promise [{:keys [fallback promise]} element]
+(ui/defview after-promise [{:keys [fallback promise]} element]
   (let [mounted-ref (react/useRef true)
         [done? done!] (react/useState nil)]
     (react/useEffect (fn []
@@ -23,14 +22,14 @@
       element
       fallback)))
 
-(defview use-firebaseui-web []
+(ui/defview use-firebaseui-web []
   (react/useEffect
-    (fn []
-      (j/call @firebase/UI :start "#firebaseui" firebase/ui-config)
-      js/undefined))
+   (fn []
+     (j/call @firebase/UI :start "#firebaseui" firebase/ui-config)
+     js/undefined))
   [:div#firebaseui])
 
-(defview auth-header* []
+(ui/defview auth-header* []
   (let [{:keys [status id-token user]} (use-deref firebase/!auth-state)]
     (cond (nil? status) "Loading..."
           (or (= :signed-out status)

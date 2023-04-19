@@ -3,7 +3,8 @@
             [clojure.string :as str]
             [sparkboard.util :as u]
             [sparkboard.query-params :as query-params]
-            #?(:cljs [shadow.lazy :as lazy])))
+            [shadow.lazy #?(:clj :as-alias :cljs :as) lazy])
+  #?(:cljs (:require-macros sparkboard.impl.routes)))
 
 (defn map->bidi [routes]
   ["" (->> routes
@@ -54,3 +55,20 @@
   (->> (iteration #(second (re-find #"(.*)/.*$" (or % "")))
                   :initk path)
        (keep (comp :route (partial match-route routes)))))
+
+(defmacro E
+  ;; wraps :view keys with lazy/loadable (and resolves aliases, with :as-alias support)
+  [tag endpoint]
+  (let [aliases (ns-aliases *ns*)
+        resolve-sym (fn [sym]
+                      (if-let [resolved (get aliases (symbol (namespace sym)))]
+                        (symbol (str resolved) (name sym))
+                        sym))]
+    `(~'bidi.bidi/tag
+      (delay
+       ~(u/update-some endpoint (if (:ns &env)
+                                  {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
+                                  {:query (fn [s] `(requiring-resolve ~s))
+                                   :mutation (fn [s] `(requiring-resolve ~s))
+                                   :handler (fn [s] `(requiring-resolve ~s))})))
+      ~tag)))

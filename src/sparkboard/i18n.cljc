@@ -1,5 +1,6 @@
 (ns sparkboard.i18n
   (:require [sparkboard.client.common :as common]
+            [re-db.memo :as memo]
             [re-db.reactive :as r]
             [taoensso.tempura :as tempura]
             [yawn.hooks :refer [use-deref]]))
@@ -19,49 +20,56 @@
          :meta/lect "English"
          ;; Translations
          :skeleton/nix "Nothing to see here, folks." ;; keyed separately from `tr` to mark it as dev-only
-         :tr {:lang "Language"
-              ;; verbs & instructions
-              :search "Search", :search-across-org "org-wide search"
-              :new "New"
-              :create "Create"
-              :login "Log in", :logout "Log out"
-              ;; entities
-              :user "User"
-              :org "Organisation", :orgs "Organisations"
-              :board "Board" :boards "Boards"
-              :project "Project", :projects "Projects"
-              :member "Member", :members "Members"
-              :tag "Tag", :tags "Tags"
-              :badge "Badge", :badges "Badges"
-              :member-name "Member Name", :password "Password"}}
+         :tr/lang "Language"
+
+         :tr/search "Search",
+         :tr/search-across-org "org-wide search"
+         :tr/new "New"
+         :tr/create "Create"
+         :tr/login "Log in",
+         :tr/logout "Log out"
+         :tr/user "User"
+         :tr/org "Organisation"
+         :tr/orgs "Organisations"
+         :tr/board "Board"
+         :tr/boards "Boards"
+         :tr/project "Project"
+         :tr/projects "Projects"
+         :tr/member "Member"
+         :tr/members "Members"
+         :tr/tag "Tag"
+         :tr/tags "Tags"
+         :tr/badge "Badge"
+         :tr/badges "Badges"
+         :tr/member-name "Member Name"
+         :tr/password "Password"}
 
    :fra {:missing ":fra texte manquant"
          :meta/lect "Français"
          :skeleton/nix "Rien à voir ici, les amis."
-         :tr {:lang "Langue"
-              ;; verbs & instructions
-              :search "Rechercher", :search-across-org "rechercher dans toute l'organisation"
-              :new "Nouveau"
-              :login "Connexion", :logout "Se déconnecter"
-              ;; entities
-              :user "Utilisateur" ;; FIXME feminine
-              :org "Organisation", :orgs "Organisations"
-              :boards "Tableaux"
-              :project "Projet", :projects "Projets"
-              :member "Membre", :members "Membres"
-              :tag "Mot-clé", :tags "Mots clés"
-              :badge "Insigne", :badges "Insignes"
-              :member-name "Nom de membre", :password "Mot de passe"}}})
+         :tr/lang "Langue"
+         :tr/search "Rechercher"
+         :tr/search-across-org "rechercher dans toute l'organisation"
+         :tr/new "Nouveau"
+         :tr/login "Connexion"
+         :tr/logout "Se déconnecter"
+         ;tr/; entities
+         :tr/user "Utilisateur" ;; FIXME feminine
+         :tr/org "Organisation"
+         :tr/orgs "Organisations"
+         :tr/boards "Tableaux"
+         :tr/project "Projet"
+         :tr/projects "Projets"
+         :tr/member "Membre"
+         :tr/members "Membres"
+         :tr/tag "Mot-clé"
+         :tr/tags "Mots clés"
+         :tr/badge "Insigne"
+         :tr/badges "Insignes"
+         :tr/member-name "Nom de membre"
+         :tr/password "Mot de passe"}})
 
-(def dev? false)
-
-(defn use-tr
-  ;; hook: reactive, must follow rules of hooks
-  ([resource-ids] (str (when dev? resource-ids) (tempura/tr {:dict dict} (use-deref !locales) resource-ids)))
-  ([resource-ids resource-args] (str (when dev? resource-ids) (tempura/tr {:dict dict} (use-deref !locales) resource-ids resource-args))))
 
 (defn tr
-  ;; not reactive within yawn, doesn't need to follow rules of hooks
-  ;; (raises the NB question: how (far) to integrate re-db.reactive with yawn)
-  ([resource-ids] (str (when dev? resource-ids) (tempura/tr {:dict dict} @!locales resource-ids)))
-  ([resource-ids resource-args] (str (when dev? resource-ids) (tempura/tr {:dict dict} @!locales resource-ids resource-args))))
+  ([resource-ids] (tempura/tr {:dict dict} @!locales resource-ids))
+  ([resource-ids resource-args] (tempura/tr {:dict dict} @!locales resource-ids resource-args)))

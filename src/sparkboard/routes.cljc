@@ -10,11 +10,10 @@
             [sparkboard.client.auth :as-alias auth.client]
             [sparkboard.client.slack :as-alias slack.client]
             [sparkboard.client.views :as-alias views]
-            [sparkboard.macros :refer [E]]
             [sparkboard.server.db :as-alias server.db]
             [sparkboard.http :as sb.http]
             [sparkboard.util :as u]
-            [sparkboard.impl.routes :as impl])
+            [sparkboard.impl.routes :as impl :refer [E]])
   #?(:cljs (:require-macros [sparkboard.routes])))
 
 (r/redef !routes
@@ -23,24 +22,26 @@
   :query - symbol pointing to a (server) function providing data for the route
   :mutation - symbol pointing to a (server) function accepting a POST body
   :handler - symbol pointing to a (server) function accepting a request map"
-  (r/atom ["/" {"" (E :home {:public? true
+  (r/atom ["/" {"" (E :home {:public true
                              :view `views/home})
                 "slack/" {"invite-offer" (E :slack/invite-offer
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
+                "login" (E :auth/login {:view `views/login
+                                        :public true})
                 "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout
-                                          :public? true})
+                                          :public true})
                 "oauth2" {"/google" (E :oauth2.google/launch {})
                           "/google/callback" (E :oauth2.google/callback {})
                           "/google/landing" (E :oauth2.google/landing
-                                               {:public? true
+                                               {:public true
                                                 :handler 'sparkboard.server.auth/oauth2-google-landing})}
                 "v2" {"" (E :org/index
                             {:query `server.db/$org:index
                              :view `views/org:index})
                       "/login" (E :login
-                                  {:public? true
+                                  {:public true
                                    :view `views/login
                                    :mutation `server.db/login-handler})
 
