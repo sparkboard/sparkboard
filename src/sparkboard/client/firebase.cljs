@@ -38,7 +38,7 @@
 
 (defn init []
 
-  (let [firebase-config (clj->js (db/get :maria/env :firebase/app-config))]
+  (let [firebase-config (clj->js (db/get :env/config :firebase/app-config))]
     (j/call app :initializeApp firebase-config))
 
   (j/call @auth :onAuthStateChanged

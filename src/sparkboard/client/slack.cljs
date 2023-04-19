@@ -34,7 +34,7 @@
   (j/let [^:js {:keys [uid displayName photoURL email]} (:user (use-deref firebase/!auth-state))
           slack-user (use-firebase-value (when uid [:account uid :slack-team team-id :user-id]))
           team-link (str "https://" team-domain ".slack.com")
-          app-id (db/get :maria/env :slack/app-id)
+          app-id (db/get :env/config :slack/app-id)
           redirect (js/decodeURIComponent redirect-encoded)]
     (hooks/use-effect
       #(when custom-token (j/call @firebase/auth :signInWithCustomToken custom-token) nil))

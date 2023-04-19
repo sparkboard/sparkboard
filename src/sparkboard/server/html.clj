@@ -21,9 +21,9 @@
                                    :body [[:script {:type "application/re-db"}
                                            (hiccup.util/raw-string
                                             (transit/write
-                                             {:tx (cond-> [(assoc config :db/id :maria/env)]
+                                             {:tx (cond-> [(assoc config :db/id :env/config)]
                                                           account
-                                                          (conj (assoc account :db/id :maria/account)))}))]
+                                                          (conj (assoc account :db/id :env/account)))}))]
                                           [:div#web]]}))}
       (ring.response/content-type "text/html")
       (ring.response/status 200)))

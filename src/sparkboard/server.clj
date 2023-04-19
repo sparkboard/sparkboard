@@ -94,7 +94,7 @@
 (def route-handler
   (-> (fn [{:as req :keys [uri query-string]}]
         (let [uri (str uri (some->> query-string (str "?")))
-              {:as match :keys [view query mutation handler params public?]} (routes/match-route uri)
+              {:as match :keys [view query mutation handler params public?]} (routes/match-path uri)
               method (:request-method req)
               html? (and (= method :get)
                          (str/includes? (get-in req [:headers "accept"]) "text/html"))
@@ -124,7 +124,7 @@
              {:error (ex-message e)})))
 
 (defn resolve-query [path-or-route]
-  (let [{:keys [route query]} (routes/match-route path-or-route)
+  (let [{:keys [route query]} (routes/match-path path-or-route)
         [id & args] route]
     (some-> query
             deref

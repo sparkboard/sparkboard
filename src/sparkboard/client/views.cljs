@@ -43,10 +43,10 @@
                                                  ;; TODO ...or promise-style with `p/->>`
                                                  (comment
                                                   ;; transact account...
-                                                  (db/transact! [(assoc foo :db/id :maria/account)])
+                                                  (db/transact! [(assoc foo :db/id :env/account)])
                                                   )
                                                  #_(reset! !account {:identity @?mbr-name})
-                                                 (routes/set-location! [:org/index]))
+                                                 (routes/set-path! [:org/index]))
                                                res)}
                                @!mbr)]
                     (prn :logged-in res :mbr @!mbr)
@@ -73,7 +73,7 @@
            [(routes/use-view [:org/create])]]])
 
 (defview home []
-         (if (db/get :maria/account)
+         (if (db/get :env/account)
            [org:index nil]
            (use-tr [:skeleton/nix])))
 
@@ -109,7 +109,7 @@
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
-                                                            (routes/set-location! [:org/one {:org/id (:org/id params)}])
+                                                            (routes/set-path! [:org/one {:org/id (:org/id params)}])
                                                             ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                                                             res))}
                                           {:board/title n})}
@@ -125,7 +125,7 @@
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
-                                                            (routes/set-location! [:board/one {:board/id (:board/id params)}])
+                                                            (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
                                           {:project/title n})}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/project]))]]))
@@ -144,7 +144,7 @@
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
-                                                            (routes/set-location! [:board/one {:board/id (:board/id params)}])
+                                                            (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
                                           @new-mbr)}
       (str (use-tr [:tr/create]) " " (use-tr [:tr/member]))]]))
@@ -174,7 +174,7 @@
                             #(-> {:q (when (<= 3 (count q)) q)}
                                  routes/merge-query!
                                  set-query-params!))))
-          :value q}]
+          :value (or q "")}]
         (when pending? [:div "Loading..."])
         (into [:ul]
               (map (comp (partial vector :li)
@@ -304,7 +304,7 @@
 
 (defview global-header [_]
   [:<>
-   [:section [:span (use-tr [:tr/user]) ":" (db/get :maria/account :account/display-name)]]
+   [:section [:span (use-tr [:tr/user]) ":" (db/get :env/account :account/display-name)]]
    [:section
     [:label {:for "language-selector"} (use-tr [:tr/lang])]
     (into [:select {:id "language-selector"
@@ -315,7 +315,7 @@
           (map (fn [lang] [:option {:value (name lang)}
                            (get-in i18n/dict [lang :meta/lect])]))
           (keys i18n/dict))]
-   (if (db/get :maria/account)
+   (if (db/get :env/account)
      [:a
       {:href (routes/path-for [:auth/logout])}
       (use-tr [:tr/logout])]
@@ -327,7 +327,7 @@
   [drawer {:initial-height 100}
    [:Suspense {:fallback (v/x "Hi")}
     (into [:p.f5]
-          (for [[id :as route] (routes/breadcrumb (:path @routes/!current-location))]
+          (for [[id :as route] (routes/breadcrumb (db/get :env/location :path))]
             [:a.mr3.rounded.bg-black.white.pa2.no-underline
              {:href (routes/path-for route)} (str id)]))
     (str route)

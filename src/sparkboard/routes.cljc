@@ -5,12 +5,13 @@
             #?(:cljs [yawn.view :as v])
             #?(:cljs [yawn.hooks :as hooks])
             [bidi.bidi :as bidi]
+            [re-db.api :as db]
+            [re-db.reactive :as r]
             [sparkboard.client.auth :as-alias auth.client]
             [sparkboard.client.slack :as-alias slack.client]
             [sparkboard.client.views :as-alias views]
             [sparkboard.macros :refer [E]]
-            [sparkboard.server.db :as-alias db]
-            [re-db.reactive :as r]
+            [sparkboard.server.db :as-alias server.db]
             [sparkboard.http :as sb.http]
             [sparkboard.util :as u]
             [sparkboard.impl.routes :as impl])
@@ -33,88 +34,87 @@
                 "oauth2" {"/google" (E :oauth2.google/launch {})
                           "/google/callback" (E :oauth2.google/callback {})
                           "/google/landing" (E :oauth2.google/landing
-                                              {:public? true
-                                               :handler 'sparkboard.server.auth/oauth2-google-landing})}
+                                               {:public? true
+                                                :handler 'sparkboard.server.auth/oauth2-google-landing})}
                 "v2" {"" (E :org/index
-                            {:query `db/$org:index
+                            {:query `server.db/$org:index
                              :view `views/org:index})
                       "/login" (E :login
                                   {:public? true
                                    :view `views/login
-                                   :mutation `db/login-handler})
+                                   :mutation `server.db/login-handler})
 
                       "/o/create" (E :org/create
                                      {:view `views/org:create
-                                      :mutation `db/org:create})
+                                      :mutation `server.db/org:create})
                       "/o/delete" (E :org/delete
-                                     {:mutation `db/org:delete})
+                                     {:mutation `server.db/org:delete})
                       ["/o/" :org/id "/create-board"] (E :board/create
                                                          {:view `views/board:create
-                                                          :mutation `db/board:create})
+                                                          :mutation `server.db/board:create})
                       ["/o/" :org/id] (E :org/one
-                                         {:query `db/$org:one
+                                         {:query `server.db/$org:one
                                           :view `views/org:one})
                       ["/o/" :org/id "/search"] (E :org/search
-                                                   {:query `db/$search})
+                                                   {:query `server.db/$search})
 
 
                       ["/b/" :board/id "/create-project"] (E :project/create
                                                              {:view `views/project:create
-                                                              :mutation `db/project:create})
+                                                              :mutation `server.db/project:create})
                       ["/b/" :board/id "/create-member"] (E :member/create
                                                             {:view `views/member:create
-                                                             :mutation `db/member:create})
+                                                             :mutation `server.db/member:create})
                       ["/b/" :board/id] (E :board/one
-                                           {:query `db/$board:one
+                                           {:query `server.db/$board:one
                                             :view `views/board:one})
                       ["/p/" :project/id] (E :project/one
-                                             {:query `db/$project:one
+                                             {:query `server.db/$project:one
                                               :view `views/project:one})
                       ["/m/" :member/id] (E :member/one
-                                            {:query `db/$member:one
+                                            {:query `server.db/$member:one
                                              :view `views/member:one})}}]))
 
-(defn path-for [route]
-  (if (string? route)
-    route
-    (apply bidi/path-for @!routes route)))
+(defn path-for
+  "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
+  [route]
+  (cond->> route (vector? route) (apply bidi/path-for @!routes)))
 
-(defn match-route [path]
+(defn match-path
+  "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
+  [path]
   (impl/match-route @!routes (path-for path)))
 
-(comment
- (match-route [:board/one {:board/id "x"}]))
 
 #?(:cljs
    (do
-     (defonce !current-location (atom nil))
-
-     (defn as-url ^js [route]
-       (if (instance? js/URL route)
-         route
-         (new js/URL route "https://example.com")))
+     (defonce !current-location (r/atom nil))
 
      (defn ready-view [view]
        (if (instance? lazy/Loadable view)
          (when (lazy/ready? view) @view)
          view))
 
+     (defn set-location! [location]
+       (db/transact! [[:db/retractEntity :env/location]
+                      (assoc location :db/id :env/location)]))
+
      (defn handle-match [{:as match :keys [view]}]
        (if-let [view (ready-view view)]
-         (reset! !current-location (assoc match :view view))
+         (set-location! (assoc match :view view))
          (lazy/load view
-                    #(reset! !current-location (assoc match :view %)))))
+                    #(set-location! (assoc match :view %)))))
 
      (defonce history (pushy/pushy handle-match #(u/guard (#'impl/match-route @!routes %) :view)))
 
      (defn merge-query! [params]
-       (let [{:keys [path query-params]} (query-params/merge-query (:path @!current-location) params)]
+       (let [{:keys [path query-params]} (query-params/merge-query (db/get :env/location :path) params)]
          (pushy/set-token! history path)
          query-params
          #_(swap! !current-location assoc :query-params query-params)))
 
      (defn use-view [route]
-       (let [view (:view (match-route route))
+       (let [view (:view (match-path route))
              !p (hooks/use-ref nil)]
          (if-let [v (ready-view view)]
            v
@@ -125,10 +125,8 @@
                                (lazy/load view resolve))))
                  (throw @!p))))))
 
-     (defn set-location! [route]
-       (pushy/set-token! history (path-for route)))
-
-     ))
+     (defn set-path! [route]
+       (pushy/set-token! history (path-for route)))))
 
 (defn breadcrumb [path] (impl/breadcrumb @!routes path))
 
