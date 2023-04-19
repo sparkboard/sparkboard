@@ -12,15 +12,13 @@
             [sparkboard.views.ui :as ui]
             [yawn.root :as root]))
 
-(ui/defview root [] ;; top level view wrapper
+(ui/defview root []
   (let [{:as current-location :keys [path view params tag route]} (db/get :env/location)]
-    [:<>
-     [views/global-header current-location]
+    [:div.w-full.font-sans
+     [views/navbar current-location]
      [:Suspense {:fallback "ROUGH spinner"}
-      (if view
-        [view (assoc params :path path :route route)]
-        (str "No view found for " tag))]
-     [views/dev-drawer current-location]]))
+      (when view
+        [view (assoc params :path path :route route)])]]))
 
 (defonce !react-root (delay (root/create :web (root))))
 

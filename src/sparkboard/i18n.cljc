@@ -26,7 +26,7 @@
          :tr/search-across-org "org-wide search"
          :tr/new "New"
          :tr/create "Create"
-         :tr/login "Log in",
+         :tr/sign-in "Sign in",
          :tr/logout "Log out"
          :tr/user "User"
          :tr/org "Organisation"
@@ -42,7 +42,8 @@
          :tr/badge "Badge"
          :tr/badges "Badges"
          :tr/password "Password"
-         :tr/email "Email"}
+         :tr/email "Email"
+         :tr/email-example "name@example.com"}
 
    :fra {:missing ":fra texte manquant"
          :meta/lect "Français"
@@ -51,7 +52,7 @@
          :tr/search "Rechercher"
          :tr/search-across-org "rechercher dans toute l'organisation"
          :tr/new "Nouveau"
-         :tr/login "Connexion"
+         :tr/sign-in "Connexion"
          :tr/logout "Se déconnecter"
          ;tr/; entities
          :tr/user "Utilisateur" ;; FIXME feminine
@@ -67,7 +68,8 @@
          :tr/badge "Insigne"
          :tr/badges "Insignes"
          :tr/password "Mot de passe"
-         :tr/email "Email"}})
+         :tr/email "Courriel"
+         :tr/email-example "nom@exemple.com"}})
 
 
 (defn tr

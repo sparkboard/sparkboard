@@ -27,8 +27,8 @@
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
-                "login" (E :auth/login {:view `views/account:login
-                                        :public true})
+                "login" (E :auth/sign-in {:view `views/login
+                                          :public true})
                 "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout
                                           :public true})
                 "oauth2" {"/google" (E :oauth2.google/launch {})
@@ -41,7 +41,7 @@
                              :view `views/org:index})
                       "/login" (E :login
                                   {:public true
-                                   :view `views/account:login
+                                   :view `views/login
                                    :mutation `server.db/login-handler})
 
                       "/o/create" (E :org/create

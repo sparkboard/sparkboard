@@ -16,8 +16,29 @@
    [yawn.view :as v]
    [inside-out.forms :as forms]))
 
+;; TODO
+;; - make a yawn.view/classes utility to precompile class strings
+;; - /terms, /privacy
+;; - clarify Login/Register paths
+;; - radix-ui for language selector
+
+
 (defn http-ok? [rsp]
   (= 200 (.-status rsp)))
+
+(ui/defview nav:language-select []
+  [:div.flex.flex-row
+   [:label {:for "language-selector"}
+    [:svg {:class "w-6 h-6 mr-2" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
+     [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
+   (into [:select {:id "language-selector"
+                   :default-value (name @i18n/!preferred-language)
+                   :on-change (fn [event]
+                                (reset! i18n/!preferred-language
+                                        (-> event .-target .-value keyword)))}]
+         (map (fn [lang] [:option {:value (name lang)}
+                          (get-in i18n/dict [lang :meta/lect])]))
+         (keys i18n/dict))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -27,40 +48,65 @@
                       "focous-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       "disabled:cursor-not-allowed disabled:opacity-50"]}))
 
-(ui/defview account:login [params]
+(ui/defview login [params]
   (ui/with-form [!mbr {:account/email (?email :init "")
                        :account/password (?password :init "")}]
-    [:form#login.flex.flex-col
-     {:class "w-[500px]"}
-     [:label (tr [:tr/email])]
-     [input {:type "email"
-             :value @?email
-             :on-change (forms/change-handler ?email)}]
-     [:label (tr [:tr/password])]
-     [input {:type "password"
-             :value @?password
-             :on-change (forms/change-handler ?password)}]
-     [:button
-      {:on-click #(p/let [res (routes/mutate!
-                               {:route [:login]
-                                :response-fn (fn [^js/Response res _url]
-                                               (when (http-ok? res)
-                                                 ;; TODO set this based on response body
-                                                 ;; instead (I don't want to wrestle with
-                                                 ;; readablestream right now --DAL
-                                                 ;; 2023-03-15)
-                                                 ;; TODO ...or promise-style with `p/->>`
-                                                 (comment
-                                                  ;; transact account...
-                                                  (db/transact! [(assoc foo :db/id :env/account)])
-                                                  )
-                                                 #_(reset! !account {:identity @?mbr-name})
-                                                 (routes/set-path! [:org/index]))
-                                               res)}
-                               @!mbr)]
-                    (prn :logged-in res :mbr @!mbr)
-                    #_(reset! !account {:identity @?mbr-name})
-                    )}]]))
+    [:div.grid.md:grid-cols-2.gap-4
+     [:div.hidden.md:block.bg-zinc-300.text-white.p-5.text-2xl
+      "Sparkboard"]
+     #_[nav:language-select]
+     [:form#login.flex.flex-col.h-screen
+      [:div.flex.flex-grow
+       [:div.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
+        [:h1.text-3xl.font-medium.mb-4 "Welcome."]
+        [:div.flex.flex-col.gap-2
+         [input {:type "email"
+                 :value @?email
+                 :placeholder (tr [:tr/email-example])
+                 :on-change (forms/change-handler ?email)}]
+         (comment
+          ;; TODO
+          ;; show this after user clicks sign in
+          [input {:type "password"
+                  :value @?password
+                  :placeholder (tr [:tr/password])
+                  :on-change (forms/change-handler ?password)}])
+         [ui/a:dark-button
+          {:class "w-full h-10 text-sm"
+           :on-click #(p/let [res (routes/mutate!
+                                   {:route [:login]
+                                    :response-fn (fn [^js/Response res _url]
+                                                   (when (http-ok? res)
+                                                     ;; TODO set this based on response body
+                                                     ;; instead (I don't want to wrestle with
+                                                     ;; readablestream right now --DAL
+                                                     ;; 2023-03-15)
+                                                     ;; TODO ...or promise-style with `p/->>`
+                                                     (comment
+                                                      ;; transact account...
+                                                      (db/transact! [(assoc foo :db/id :env/account)])
+                                                      )
+                                                     #_(reset! !account {:identity @?mbr-name})
+                                                     (routes/set-path! [:org/index]))
+                                                   res)}
+                                   @!mbr)]
+                        (prn :logged-in res :mbr @!mbr)
+                        #_(reset! !account {:identity @?mbr-name})
+                        )}
+          "Sign in with Email"]]
+
+        [:div.relative
+         [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+         [:div.relative.flex.justify-center.text-xs.uppercase [:span.bg-background.px-2.text-muted-foreground "Or"]]]
+        [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"}
+         [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] "Sign in with Google"]
+        [:p.px-8.text-center.text-sm.text-muted-foreground "By clicking continue, you agree to our"
+         [:a.underline.underline-offset-4.hover:text-primary.px-1 {:href "/terms"} "Terms of Service"]
+         "and"
+         [:a.underline.underline-offset-4.hover:text-primary.px-1 {:href "/privacy"} "Privacy Policy"] "."]]]
+      [:div.p-4.flex
+       [:div.flex-grow]
+       [nav:language-select]]]]))
 
 (ui/defview org:index [params]
   [:div.pa3
@@ -86,7 +132,7 @@
 (ui/defview home []
   (if (db/get :env/account)
     [org:index nil]
-    [account:login nil]))
+    [login nil]))
 
 (ui/defview org:create [params]
   (with-form [!org {:org/title ?title}]
@@ -313,26 +359,25 @@
                              (.addEventListener "mousemove" on-mousemove))))}]
       child]]))
 
-(ui/defview global-header [_]
-  [:div.flex.flex-row.bg-zinc-100.w-full.items-center
-   [:section
-    [:label {:for "language-selector"} (tr [:tr/lang])]
-    (into [:select {:id "language-selector"
-                    :default-value (name @i18n/!preferred-language)
-                    :on-change (fn [event]
-                                 (reset! i18n/!preferred-language
-                                         (-> event .-target .-value keyword)))}]
-          (map (fn [lang] [:option {:value (name lang)}
-                           (get-in i18n/dict [lang :meta/lect])]))
-          (keys i18n/dict))]
-   [:div.flex-grow]
-   (if (db/get :env/account)
-     [ui/button:dark
-      {:href (routes/path-for [:auth/logout])}
-      (tr [:tr/logout])]
-     [ui/button:dark {:href (routes/path-for [:auth/login])}
-      (tr [:tr/login])])
-   [:div.rough-divider]])
+(ui/defview nav:account [{[route-id] :route}]
+  (if (db/get :env/account)
+    [ui/a:dark-button
+     {:href (routes/path-for [:auth/logout])
+      :class "text-sm m-1"}
+     (tr [:tr/logout])]
+    [ui/a:dark-button
+     {:href (routes/path-for [:auth/sign-in])
+      :class "text-sm m-1 h-8"}
+     (tr [:tr/sign-in])]))
+
+(ui/defview navbar [params]
+  (prn :par (-> params :route first))
+  (when-not (#{:home :auth/sign-in} (-> params :route first))
+    [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
+     [nav:language-select]
+     [:div.flex-grow]
+     [nav:account params]
+     [:div.rough-divider]]))
 
 (ui/defview dev-drawer [{:as match :keys [route]}]
   [drawer {:initial-height 100}
