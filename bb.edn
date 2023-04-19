@@ -9,17 +9,16 @@
                    (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
                    (def env (:env options :staging))
                    (def app (:app options (apps env))))
-         server (shell "yarn shadow-cljs -A:clerk:datalevin server")
+         server (shell "yarn shadow-cljs server")
          dev (do (shell "rm -rf ./classes")
-                 (shell "yarn shadow-cljs -A:clerk:datalevin clj-run org.sparkboard.dev/start"))
+                 (shell "yarn shadow-cljs clj-run sparkboard.build/start"))
          cljs (do (shell "yarn install")
                   (shell "yarn shadow-cljs release web"))
          clj (do (shell "mkdir -p classes")
-                 (shell "clojure -A:uberdeps:datalevin -X:aot")
-                 (shell "clojure -A:uberdeps:datalevin -X:uberjar"))
+                 (shell "clojure -A:nio -X:aot")
+                 (shell "clojure -A:nio -X:uberjar"))
          build (do (run 'cljs)
                    (run 'clj))
-
          fly:set-secrets (let [path (str "src/." (name env) ".config.edn")]
                        (if-let [secrets (slurp path)]
                          (shell {:in secrets} (str "fly -a " app " secrets set SPARKBOARD_CONFIG=-"))

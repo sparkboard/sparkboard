@@ -17,6 +17,10 @@
         "@lezer/markdown": "^1.0.0",
         "@nextjournal/lang-clojure": "1.0.0",
         "@nextjournal/lezer-clojure": "1.0.0",
+        "@radix-ui/react-progress": "^1.0.2",
+        "@tailwindcss/forms": "^0.5.3",
+        "@tailwindcss/line-clamp": "^0.4.4",
+        "@tailwindcss/typography": "^0.5.9",
         "d3-require": "^1.2.4",
         "emoji-regex": "^10.2.1",
         "firebase": "^7.15.0",
@@ -38,13 +42,11 @@
         "react-dom": "^18.2.0",
         "react-refresh": "^0.14.0",
         "shadcn-ui": "^0.1.0",
+        "tailwindcss": "^3.3.1",
+        "typescript": "^5.0.4",
         "use-sync-external-store": "1.2.0",
         "vh-sticky-table-header": "1.2.1",
-        "w3c-keyname": "^2.2.4",
-        "wired-elements": "^3.0.0-rc.6"
-    },
-    "resolutions": {
-        "roughjs": "4.4"
+        "w3c-keyname": "^2.2.4"
     },
     "devDependencies": {
         "shadow-cljs": "^2.20.16"

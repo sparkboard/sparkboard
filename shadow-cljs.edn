@@ -1,20 +1,16 @@
-{:deps {:aliases [:datalevin :clerk]}
+{:deps {:aliases [:nio :dev]}
  :builds
- {:clerk
-  {:target :esm
-   :modules {:clerk {:entries [org.sparkboard.notebooks]}}
-   :output-dir "resources/clerk"
-   :devtools {:http-port 3001
-              :http-root "resources/clerk"}}
-  :web
+ {:web
   {:target :browser
    :module-loader true
-   :modules {:app {:init-fn org.sparkboard.client/init}
-             :slack {:entries [org.sparkboard.client.slack]
+   :modules {:app {:init-fn sparkboard.client/init}
+             :slack {:entries [sparkboard.client.slack]
                      :depends-on #{:app}}}
    :output-dir "resources/public/js/compiled"
    :asset-path "/js/compiled"
-   :devtools {:preloads [yawn.view.refresh-preload]}}}}
+   :devtools {:preloads [yawn.view.refresh-preload]}
+   :dev {:build-hooks [(sparkboard.build/tailwind-dev!)]}
+   :release {:build-hooks [(sparkboard.build/tailwind-release!)]}}}}
 
 (comment
   (shadow/watch :web)

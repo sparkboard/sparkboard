@@ -1,4 +1,6 @@
-{:paths ["src" "classes" "resources"]
+{:paths ["src"
+         "classes"
+         "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
 
         ;; v2
@@ -19,7 +21,7 @@
         clj-http/clj-http {:mvn/version "3.12.3"}
         lambdaisland/uri {:mvn/version "1.13.95"}
         commons-codec/commons-codec {:mvn/version "1.15"}
-        applied-science/js-interop {:mvn/version "0.3.3"}
+        applied-science/js-interop {:mvn/version "0.4.1"}
         clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
         dev.weavejester/medley {:mvn/version "1.5.0"}
         clj-gatling/clj-gatling {:mvn/version "0.17.6"}
@@ -44,6 +46,7 @@
         metosin/reitit {:mvn/version "0.5.2"}
         mhuebert/cljs-static {:mvn/version "0.1.0"}
         metosin/muuntaja {:mvn/version "0.6.8"}
+        uberdeps/uberdeps {:mvn/version "1.1.4"}
 
 
         ;; schema
@@ -53,6 +56,8 @@
         nrepl/nrepl {:mvn/version "0.9.0"}
 
         ;; client
+
+        babashka/process {:mvn/version "0.4.16"}
         mhuebert/kitchen-async {:mvn/version "0.1.0"}
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
@@ -60,13 +65,9 @@
         thheller/shadow-cljs {:mvn/version "2.21.0"}
         net.clojars.wkok/openai-clojure {:mvn/version "0.5.0"}}
  :aliases
- {:uberdeps {:extra-deps {uberdeps/uberdeps {:mvn/version "1.1.4"}}}
-  :uberjar {:exec-fn build/uberjar}
-  :aot {:exec-fn build/aot}
-  :clerk {:extra-deps {io.github.mhuebert/clerk-cljs
-                       {#_#_:local/root "../clerk-cljs"
-                        :git/sha "ededa9e9d0508b31edce5cd33c336f204593a35b"}}
-          :extra-paths ["dev"]}
-  :datalevin {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
-                         "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}
- }
+ {:uberjar {:exec-fn sparkboard.build/uberjar}
+  :aot {:exec-fn sparkboard.build/aot}
+  :dev {:extra-paths ["dev"]}
+  ;; needed for datalevin
+  :nio {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                   "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}}

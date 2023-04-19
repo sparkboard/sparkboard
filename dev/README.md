@@ -1,1 +1,0 @@
-Run `bb dev`, then use Clerk to show notebooks in `dev/org/sparkboard`
