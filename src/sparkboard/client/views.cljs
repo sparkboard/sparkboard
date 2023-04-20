@@ -26,29 +26,34 @@
 (ui/defview menubar:lang []
   [:div.flex.flex-row
    [:el dm/Root
-    [:el.bg-zinc-100.rounded.hover:bg-zinc-200.cursor-pointer.w-10.h-10.p-2.flex.justify-center.items-center dm/Trigger
+    [:el dm/Trigger
+     {:class ["flex justify-center items-center"
+              "w-10 h-10 p-2 rounded"
+              "bg-zinc-100 hover:bg-zinc-200"
+              "cursor-pointer"]}
      [:svg {:class "h-5 w-5" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
       [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
     [:el dm/Portal
      [:el dm/Content {:sideOffset 5 :collision-padding 16}
-      (into [:el dm/RadioGroup {:value (name @i18n/!preferred-language)
-                                :on-value-change (fn [v] (reset! i18n/!preferred-language (keyword v)))
-                                :class "shadow rounded text-sm"}]
-            (map (fn [lang] [:el dm/RadioItem {:value (name lang)
-                                               :disabled (= lang @i18n/!preferred-language)
-                                               :class "text-left flex pr-4 py-2 data-[disabled]:text-gray-500 cursor-pointer hover:outline-none hover:bg-zinc-50"}
+      (into [:el.shadow.rounded.text-sm dm/RadioGroup
+             {:value (name @i18n/!preferred-language)
+              :on-value-change (fn [v] (reset! i18n/!preferred-language (keyword v)))}]
+            (map (fn [lang] [:el.text-left.flex.pr-4.py-2.cursor-pointer.hover:outline-none.hover:bg-zinc-50
+                             dm/RadioItem {:class "data-[disabled]:text-gray-500"
+                                           :value (name lang)
+                                           :disabled (= lang @i18n/!preferred-language)}
                              [:div.w-6.text-center
                               [:el dm/ItemIndicator "•"]]
                              (get-in i18n/dict [lang :meta/lect])]))
             (keys i18n/dict))]]]
    #_(into [:select {:id "language-selector"
-                   :default-value (name @i18n/!preferred-language)
-                   :on-change (fn [event]
-                                (reset! i18n/!preferred-language
-                                        (-> event .-target .-value keyword)))}]
-         (map (fn [lang] [:option {:value (name lang)}
-                          (get-in i18n/dict [lang :meta/lect])]))
-         (keys i18n/dict))])
+                     :default-value (name @i18n/!preferred-language)
+                     :on-change (fn [event]
+                                  (reset! i18n/!preferred-language
+                                          (-> event .-target .-value keyword)))}]
+           (map (fn [lang] [:option {:value (name lang)}
+                            (get-in i18n/dict [lang :meta/lect])]))
+           (keys i18n/dict))])
 
 (ui/defview menubar:account [{[route-id] :route}]
   (if (db/get :env/account)
@@ -86,8 +91,8 @@
     (into [:div.mb-3]
           (map (fn [{:keys [content type]}]
                  [:div.px-3.text-xs {:class (case type
-                                      :invalid "text-red-500"
-                                      "text-gray-500")} content]))
+                                              :invalid "text-red-500"
+                                              "text-gray-500")} content]))
           messages)))
 
 (ui/defview login-form []
