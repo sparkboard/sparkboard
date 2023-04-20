@@ -1,6 +1,5 @@
 (ns sparkboard.build
-  (:require [babashka.process :as bp]
-            [re-db.in-memory :as db]))
+  (:require [babashka.process :as bp]))
 
 (defn start
   {:shadow/requires-server true}

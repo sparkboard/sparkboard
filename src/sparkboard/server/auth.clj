@@ -15,12 +15,63 @@
             [ring.middleware.oauth2 :as oauth2]
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
-            [ring.util.response :as ring.response]))
+            [ring.util.response :as ring.response])
+  (:import [com.smartmovesystems.hashcheck FirebaseScrypt]
+           [org.apache.commons.codec.binary Base64]
+           [java.nio.charset StandardCharsets]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Password authentication using the Firebase SCRYPT hashing algorithm
+
+(def hash-config (:password-auth/hash-config env/config))
+
+(defn generate-salt
+  "Returns a base64-encoded random salt."
+  [length]
+  (-> (byte-array length)
+      (doto (->> (.nextBytes (java.security.SecureRandom.))))
+      Base64/encodeBase64
+      (String. StandardCharsets/US_ASCII)))
+
+(defn hash-password [password]
+  (let [signer-bytes
+        (-> (:base64-signer-key hash-config)
+            (.getBytes StandardCharsets/US_ASCII)
+            Base64/decodeBase64)
+        base64-salt (generate-salt 16)]
+    {:account/password-salt base64-salt
+     :account/password-hash (-> (FirebaseScrypt/hashWithSalt
+                                 password
+                                 base64-salt
+                                 (:base64-salt-separator hash-config)
+                                 (:rounds hash-config)
+                                 (:mem-cost hash-config))
+                                (->> (FirebaseScrypt/encrypt signer-bytes))
+                                Base64/encodeBase64
+                                (String. StandardCharsets/US_ASCII))}))
+
+(defn check-password [{:account/keys [password-hash password-salt]} password]
+  (FirebaseScrypt/check
+   password
+   password-hash
+   password-salt
+   (:base64-salt-separator hash-config)
+   (:base64-signer-key hash-config)
+   (:rounds hash-config)
+   (:mem-cost hash-config)))
+
+(comment
+ (check-password (hash-password "abba") "abba"))
 
 ;; todo
-;; - password sign-in screen (supporting old google accounts)
-;; - registration screen
-;; - password reset screen
+;; - registration screen (new accounts)
+;; - password reset flow
+;; - trigger the password reset flow (with message) if someone tries to sign in
+;;   and we don't have a password or google account,
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Oauth2 authentication
 
 (def oauth2-config {:google
                     {:client-id (-> env/config :oauth.google/client-id)
