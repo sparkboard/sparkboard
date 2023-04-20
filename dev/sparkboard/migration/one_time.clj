@@ -667,29 +667,29 @@
                           "domain" (& (lookup-ref :domain/name)
                                       (rename :entity/domain))]
               :account/as-map [::prepare (fn [accounts]
-                                           (->> accounts
-                                                (map (fn [{:as account [provider] :providerUserInfo}]
-                                                       (assoc-some-value {}
-                                                                         :account/email (:email account)
-                                                                         :account/email-verified? (:emailVerified account)
-                                                                         :ts/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
-                                                                         :account/display-name (:displayName account)
-                                                                         :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
-                                                                         :account/id (:localId account)
-                                                                         :account/password-hash (:passwordHash account)
-                                                                         :account/password-salt (:salt account)
-                                                                         :account/photo-url (or (:photoUrl account)
+                                             (->> accounts
+                                                  (map (fn [{:as account [provider] :providerUserInfo}]
+                                                           (assoc-some-value {}
+                                                                             :account/email (:email account)
+                                                                             :account/email-verified? (:emailVerified account)
+                                                                             :ts/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
+                                                                             :account/display-name (:displayName account)
+                                                                             :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
+                                                                             :account/id (:localId account)
+                                                                             :account/password-hash (:passwordHash account)
+                                                                             :account/password-salt (:salt account)
+                                                                             :account/photo-url (or (:photoUrl account)
                                                                                                 (:photoUrl provider))
-                                                                         :provider.google/sub (:rawId provider))))))]
+                                                                             :account.provider.google/sub (:rawId provider))))))]
               :member-vote/ballot [::prepare (fn [users]
-                                               (->> users
-                                                    (mapcat (fn [{:keys [_id boardId votesByDomain]}]
-                                                              (let [member-id (get-oid _id)]
-                                                                (for [[domain project-id] votesByDomain]
-                                                                  {:ballot/id (str boardId ":" member-id)
-                                                                   :ballot/member (lookup-ref :member/id member-id)
-                                                                   :ballot/board (lookup-ref :board/id boardId)
-                                                                   :ballot/project (lookup-ref :project/id project-id)}))))))
+                                                 (->> users
+                                                      (mapcat (fn [{:keys [_id boardId votesByDomain]}]
+                                                                  (let [member-id (get-oid _id)]
+                                                                       (for [[domain project-id] votesByDomain]
+                                                                            {:ballot/id (str boardId ":" member-id)
+                                                                             :ballot/member (lookup-ref :member/id member-id)
+                                                                             :ballot/board (lookup-ref :board/id boardId)
+                                                                             :ballot/project (lookup-ref :project/id project-id)}))))))
                                    ::always (remove-when #(some missing-ref? ((juxt :ballot/project
                                                                                     :ballot/member
                                                                                     :ballot/board)
@@ -720,11 +720,11 @@
                                                   (rename :member/account))
 
                               :emailFrequency (& (xf #(case %
-                                                        "never" :member.email-frequency/never
-                                                        "daily" :member.email-frequency/daily
-                                                        "periodic" :member.email-frequency/periodic
-                                                        "instant" :member.email-frequency/instant
-                                                        :member.email-frequency/periodic))
+                                                            "never" :member.email-frequency/never
+                                                            "daily" :member.email-frequency/daily
+                                                            "periodic" :member.email-frequency/periodic
+                                                            "instant" :member.email-frequency/instant
+                                                            :member.email-frequency/periodic))
                                                  (rename :member/email-frequency))
                               :acceptedTerms rm
                               :contact_me rm
@@ -736,29 +736,29 @@
 
                               :name (rename :member/name)
                               :roles (& (fn [m a roles]
-                                          (assoc m a (when (seq roles)
-                                                       (let [member-ref [:member/id (:member/id m)]
-                                                             entity-ref (:member/board m)]
-                                                         [{:membership/id (membership-id member-ref entity-ref)
-                                                           :membership/member member-ref
-                                                           :membership/entity entity-ref
-                                                           :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
+                                            (assoc m a (when (seq roles)
+                                                             (let [member-ref [:member/id (:member/id m)]
+                                                                   entity-ref (:member/board m)]
+                                                                  [{:membership/id (membership-id member-ref entity-ref)
+                                                                    :membership/member member-ref
+                                                                    :membership/entity entity-ref
+                                                                    :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
                                         (rename :membership/_member))
                               :tags (& (fn [m a v]
-                                         (let [tags (keep (partial resolve-tag (second (:member/board m))) v)
-                                               {tags true
-                                                custom-tags false} (group-by (comp boolean :tag/id) tags)]
-                                           (-> m
-                                               (u/assoc-seq :member/tags (mapv :tag/id tags))
-                                               (u/assoc-seq :member/tags.custom (vec custom-tags))
-                                               (dissoc :tags)))))
+                                           (let [tags (keep (partial resolve-tag (second (:member/board m))) v)
+                                                 {tags true
+                                                  custom-tags false} (group-by (comp boolean :tag/id) tags)]
+                                                (-> m
+                                                    (u/assoc-seq :member/tags (mapv :tag/id tags))
+                                                    (u/assoc-seq :member/tags.custom (vec custom-tags))
+                                                    (dissoc :tags)))))
 
                               :member/tags (lookup-ref :tag/id)
 
                               :newsletterSubscribe (rename :member/newsletter-subscription?)
                               :active (& (xf not) (rename :member/inactive?)) ;; same as deleted?
                               :picture (& (xf #(when-not (str/starts-with? % "/images/")
-                                                 %))
+                                                         %))
                                           (rename :member/image-url))
                               :votesByDomain rm
                               :feedbackRating rm
@@ -767,8 +767,8 @@
                               ::always (remove-when :suspectedFake)]
 
               :discussion/as-map [#_#_::prepare (fn [m]
-                                                  (when-not (empty? (:posts m))
-                                                    m))
+                                                    (when-not (empty? (:posts m))
+                                                              m))
                                   :_id (& (timestamp-from-id)
                                           (rename :discussion/id))
                                   :type rm
@@ -780,33 +780,33 @@
                                   ::always (remove-when (comp missing-ref? :discussion/project)) ;; prune discussions from deleted projects
                                   :posts (& (xf
                                              (partial change-keys
-                                               [:_id (& (timestamp-from-id)
-                                                        (rename :post/id))
-                                                :parent rm #_(& (lookup-ref :discussion/id)
-                                                                (rename :post/discussion))
-                                                :user (& (lookup-ref :member/id)
-                                                         (rename :ts/created-by))
-                                                ::always (remove-when (comp missing-ref? :ts/created-by))
-                                                ::always (remove-when (comp str/blank? :text))
+                                                      [:_id (& (timestamp-from-id)
+                                                               (rename :post/id))
+                                                       :parent rm #_(& (lookup-ref :discussion/id)
+                                                                       (rename :post/discussion))
+                                                       :user (& (lookup-ref :member/id)
+                                                                (rename :ts/created-by))
+                                                       ::always (remove-when (comp missing-ref? :ts/created-by))
+                                                       ::always (remove-when (comp str/blank? :text))
 
-                                                :text (& (xf html-content) (rename :post/text-content))
+                                                       :text (& (xf html-content) (rename :post/text-content))
 
-                                                :doNotFollow (& (lookup-ref :member/id)
-                                                                (xf (partial remove missing-ref?))
-                                                                (rename :post/do-not-follow))
-                                                :followers (& (lookup-ref :member/id)
-                                                              (xf (partial remove missing-ref?))
-                                                              (rename :post/followers))
-                                                :comments (& (xf (partial change-keys
-                                                                   [:_id (& (timestamp-from-id)
-                                                                            (rename :comment/id))
-                                                                    :user (& (lookup-ref :member/id)
-                                                                             (rename :ts/created-by))
-                                                                    ::always (remove-when (comp missing-ref? :ts/created-by))
-                                                                    :text (rename :comment/text)
-                                                                    ::always (remove-when (comp str/blank? :comment/text))
-                                                                    :parent rm]))
-                                                             (rename :post/comments))]))
+                                                       :doNotFollow (& (lookup-ref :member/id)
+                                                                       (xf (partial remove missing-ref?))
+                                                                       (rename :post/do-not-follow))
+                                                       :followers (& (lookup-ref :member/id)
+                                                                     (xf (partial remove missing-ref?))
+                                                                     (rename :post/followers))
+                                                       :comments (& (xf (partial change-keys
+                                                                                 [:_id (& (timestamp-from-id)
+                                                                                          (rename :comment/id))
+                                                                                  :user (& (lookup-ref :member/id)
+                                                                                           (rename :ts/created-by))
+                                                                                  ::always (remove-when (comp missing-ref? :ts/created-by))
+                                                                                  :text (rename :comment/text)
+                                                                                  ::always (remove-when (comp str/blank? :comment/text))
+                                                                                  :parent rm]))
+                                                                    (rename :post/comments))]))
                                             (rename :discussion/posts))
                                   :boardId rm
                                   ::always (remove-when (comp empty? :discussion/posts))]
@@ -831,22 +831,22 @@
                                :ready (rename :project/team-complete?)
                                :members (&
                                          (fn [m a v]
-                                           (let [project-id (:project/id m)]
-                                             (update m a (partial keep (fn [m]
-                                                                         (when (ref-exists? :member/id (:user_id m))
-                                                                           (let [role (case (:role m)
-                                                                                        "admin" :role/admin
-                                                                                        "editor" :role/collaborator
-                                                                                        (if (= (second (:ts/created-by m))
-                                                                                               (:user_id m))
-                                                                                          :role/admin
-                                                                                          :role/member))]
-                                                                             (-> m
-                                                                                 (dissoc :role :user_id)
-                                                                                 (assoc :membership/id (membership-id (:user_id m) project-id)
-                                                                                        :membership/roles #{role}
-                                                                                        :membership/entity [:project/id project-id]
-                                                                                        :membership/member [:member/id (:user_id m)])))))))))
+                                             (let [project-id (:project/id m)]
+                                                  (update m a (partial keep (fn [m]
+                                                                                (when (ref-exists? :member/id (:user_id m))
+                                                                                      (let [role (case (:role m)
+                                                                                                       "admin" :role/admin
+                                                                                                       "editor" :role/collaborator
+                                                                                                       (if (= (second (:ts/created-by m))
+                                                                                                              (:user_id m))
+                                                                                                         :role/admin
+                                                                                                         :role/member))]
+                                                                                           (-> m
+                                                                                               (dissoc :role :user_id)
+                                                                                               (assoc :membership/id (membership-id (:user_id m) project-id)
+                                                                                                      :membership/roles #{role}
+                                                                                                      :membership/entity [:project/id project-id]
+                                                                                                      :membership/member [:member/id (:user_id m)])))))))))
                                          (rename :membership/_entity))
                                :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                                (rename :project/open-requests))
@@ -863,18 +863,18 @@
                                ]
               :notification/as-map [::defaults {:notification/emailed? false}
                                     ::always (fn [m]
-                                               (-> m
-                                                   (dissoc :targetViewed :notificationViewed)
-                                                   (assoc :notification/viewed? (boolean (or (:targetViewed m)
-                                                                                             (:notificationViewed m))))))
+                                                 (-> m
+                                                     (dissoc :targetViewed :notificationViewed)
+                                                     (assoc :notification/viewed? (boolean (or (:targetViewed m)
+                                                                                               (:notificationViewed m))))))
                                     :_id (& (timestamp-from-id)
                                             (rename :notification/id))
                                     ::always (remove-when
                                               (fn notification-filter [m]
-                                                (let [day-threshold 180]
-                                                  (or (:notification/viewed? m)
-                                                      (> (-> (:ts/created-at m) date-time days-since)
-                                                         day-threshold)))))
+                                                  (let [day-threshold 180]
+                                                       (or (:notification/viewed? m)
+                                                           (> (-> (:ts/created-at m) date-time days-since)
+                                                              day-threshold)))))
 
                                     :createdAt rm
                                     :boardId (& (lookup-ref :board/id)
@@ -907,15 +907,15 @@
                                                                (missing-ref? (:notification/post %))
                                                                (missing-ref? (:notification/discussion %))))
                                     ::always (fn [m]
-                                               (let [{:keys [type targetId]} m]
-                                                 (-> m
-                                                     (dissoc :type :targetId :targetPath)
-                                                     (merge (case type
-                                                              "newMember" {:notification/type :notification.type/new-project-member}
-                                                              "newMessage" {:notification/type :notification.type/new-thread-message
-                                                                            :notification/thread [:thread/id (get-oid targetId)]}
-                                                              "newPost" {:notification/type :notification.type/new-discussion-post}
-                                                              "newComment" {:notification/type :notification.type/new-post-comment})))))
+                                                 (let [{:keys [type targetId]} m]
+                                                      (-> m
+                                                          (dissoc :type :targetId :targetPath)
+                                                          (merge (case type
+                                                                       "newMember" {:notification/type :notification.type/new-project-member}
+                                                                       "newMessage" {:notification/type :notification.type/new-thread-message
+                                                                                     :notification/thread [:thread/id (get-oid targetId)]}
+                                                                       "newPost" {:notification/type :notification.type/new-discussion-post}
+                                                                       "newComment" {:notification/type :notification.type/new-post-comment})))))
                                     :notification/board rm
 
                                     ]
@@ -954,16 +954,16 @@
                                  (rename :ts/created-by))
 
                        :htmlClasses (fn [m k v]
-                                      (let [classes (str/split v #"\s+")]
-                                        (-> m
-                                            (dissoc k)
-                                            (u/assoc-some :project/card-classes (some-> (remove #{"sticky"} classes)
-                                                                                        seq
-                                                                                        distinct
-                                                                                        vec))
-                                            (cond->
-                                             (some #{"sticky"} classes)
-                                             (assoc :project/sticky? true)))))
+                                        (let [classes (str/split v #"\s+")]
+                                             (-> m
+                                                 (dissoc k)
+                                                 (u/assoc-some :project/card-classes (some-> (remove #{"sticky"} classes)
+                                                                                             seq
+                                                                                             distinct
+                                                                                             vec))
+                                                 (cond->
+                                                  (some #{"sticky"} classes)
+                                                  (assoc :project/sticky? true)))))
 
 
                        #_#_:_id (& (xf #(:$oid % %))
@@ -979,122 +979,122 @@
 
 ;; account, :boardId, :discussion
 (defn fetch-mongodb []
-  (doseq [[coll-k mongo-coll] mongo-colls
-          :let [_ (prn :starting coll-k)
-                {:keys [out err exit]} (sh "mongoexport" ;; <-- you'll need this installed; see https://www.mongodb.com/docs/database-tools/installation/installation/
-                                           "--uri" MONGODB_URI
-                                           "--jsonArray"
-                                           "--collection" mongo-coll)
-                _ (prn :downloaded coll-k)
-                clj (->> (json/read-value out json/keyword-keys-object-mapper)
-                         #_(mapv parse-mongo-doc))
-                _ (prn :parsed coll-k)]]
-    (when-not (zero? exit)
-      (throw (Exception. err)))
-    (spit (env/db-path (str mongo-coll ".edn")) clj)))
+      (doseq [[coll-k mongo-coll] mongo-colls
+              :let [_ (prn :starting coll-k)
+                    {:keys [out err exit]} (sh "mongoexport" ;; <-- you'll need this installed; see https://www.mongodb.com/docs/database-tools/installation/installation/
+                                               "--uri" MONGODB_URI
+                                               "--jsonArray"
+                                               "--collection" mongo-coll)
+                    _ (prn :downloaded coll-k)
+                    clj (->> (json/read-value out json/keyword-keys-object-mapper)
+                             #_(mapv parse-mongo-doc))
+                    _ (prn :parsed coll-k)]]
+             (when-not (zero? exit)
+                       (throw (Exception. err)))
+             (spit (env/db-path (str mongo-coll ".edn")) clj)))
 
 
 
 (defn fetch-accounts []
-  ;; if you get a 401 despite having a valid service-account in .local.config.edn,
-  ;; try `firebase logout` first
-  (let [json-path (doto (env/db-path "accounts.json") (->> (sh "rm")))
-        {:keys [out err exit]} (try
-                                 (spit (env/db-path "service-account.json")
-                                       (-> env/config :prod :firebase/service-account json/write-value-as-string))
-                                 (sh "npx"
-                                     "firebase"
-                                     "auth:export"
-                                     json-path
-                                     "-P"
-                                     (:project_id (:firebase/service-account (:prod env/config)))
-                                     :env
-                                     (into {"GOOGLE_APPLICATION_CREDENTIALS"
-                                            (env/db-path "service-account.json")}
-                                           (System/getenv)))
-                                 (finally (sh "rm" (env/db-path "service-account.json"))))]
-    (if (seq err)
-      (prn :fetch-accounts/error {:err err :out out})
-      (do
-        (prn :downloaded-accounts out)
-        (spit (env/db-path "accounts.edn")
-              (json/read-value
-               (slurp (env/db-path "accounts.json"))
-               json/keyword-keys-object-mapper))))))
+      ;; if you get a 401 despite having a valid service-account in .local.config.edn,
+      ;; try `firebase logout` first
+      (let [json-path (doto (env/db-path "accounts.json") (->> (sh "rm")))
+            {:keys [out err exit]} (try
+                                     (spit (env/db-path "service-account.json")
+                                           (-> env/config :prod :firebase/service-account json/write-value-as-string))
+                                     (sh "npx"
+                                         "firebase"
+                                         "auth:export"
+                                         json-path
+                                         "-P"
+                                         (:project_id (:firebase/service-account (:prod env/config)))
+                                         :env
+                                         (into {"GOOGLE_APPLICATION_CREDENTIALS"
+                                                (env/db-path "service-account.json")}
+                                               (System/getenv)))
+                                     (finally (sh "rm" (env/db-path "service-account.json"))))]
+           (if (seq err)
+             (prn :fetch-accounts/error {:err err :out out})
+             (do
+               (prn :downloaded-accounts out)
+               (spit (env/db-path "accounts.edn")
+                     (json/read-value
+                      (slurp (env/db-path "accounts.json"))
+                      json/keyword-keys-object-mapper))))))
 
 (comment
  (fetch-accounts))
 
 (defn fetch-firebase []
-  (let [{token :firebase/database-secret
-         {db :databaseURL} :firebase/app-config} (:prod env/config)]
-    (->> (str db "/.json?auth=" token)
-         (slurp)
-         (json/read-value)
-         (spit (env/db-path "firebase.edn")))))
+      (let [{token :firebase/database-secret
+             {db :databaseURL} :firebase/app-config} (:prod env/config)]
+           (->> (str db "/.json?auth=" token)
+                (slurp)
+                (json/read-value)
+                (spit (env/db-path "firebase.edn")))))
 
 (comment
  (fetch-firebase)
  )
 
 (defn changes-for [k]
-  (into (changes (cond (mongo-colls k) ::mongo
-                       (firebase-colls k) ::firebase
-                       :else (throw (ex-info (str "Unknown coll: " k) {:coll k}))))
-        (changes k)))
+      (into (changes (cond (mongo-colls k) ::mongo
+                           (firebase-colls k) ::firebase
+                           :else (throw (ex-info (str "Unknown coll: " k) {:coll k}))))
+            (changes k)))
 
 (def coll-entities
   "Converts doc according to `changes`"
   (memoize
    (fn [k]
-     (->> (read-coll k)
-          (change-keys (changes-for k))))))
+       (->> (read-coll k)
+            (change-keys (changes-for k))))))
 
 (defn register-schema! []
-  (reset! sschema/!registry (merge (m/default-schemas)
-                                   (update-vals sschema/sb-schema :malli/schema))))
+      (reset! sschema/!registry (merge (m/default-schemas)
+                                       (update-vals sschema/sb-schema :malli/schema))))
 
 (defn explain-errors! []
-  (register-schema!)
-  (->> colls
-       (mapcat (fn [k]
-                 (let [entities (coll-entities k)]
-                   (:errors (m/explain [:sequential (@sschema/!registry k)] entities)))))
-       first))
+      (register-schema!)
+      (->> colls
+           (mapcat (fn [k]
+                       (let [entities (coll-entities k)]
+                            (:errors (m/explain [:sequential (@sschema/!registry k)] entities)))))
+           first))
 
 (defn read-all []
-  (into []
-        (mapcat read-coll)
-        colls))
+      (into []
+            (mapcat read-coll)
+            colls))
 
 (defn root-entities
-  "Entities representing docs from the original coll. May contain nested (inline) entities."
-  []
-  (into []
-        (mapcat coll-entities)
-        colls))
+      "Entities representing docs from the original coll. May contain nested (inline) entities."
+      []
+      (into []
+            (mapcat coll-entities)
+            colls))
 
 (def reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys sschema/sb-schema)))
 
 (defn flatten-entities
-  "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
-  [docs]
-  (into []
-        (mapcat (fn [doc]
-                  (cons (apply dissoc doc reverse-ks)
-                        (mapcat doc reverse-ks))))
-        docs))
+      "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
+      [docs]
+      (into []
+            (mapcat (fn [doc]
+                        (cons (apply dissoc doc reverse-ks)
+                              (mapcat doc reverse-ks))))
+            docs))
 
 (def all-entities
   "Flat list of all entities (no inline nesting)"
   (comp flatten-entities root-entities))
 
 (defn contains-somewhere?
-  "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
-  [v coll]
-  (let [!found (atom false)]
-    (walk/postwalk #(do (when (= v %) (reset! !found true)) %) coll)
-    @!found))
+      "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
+      [v coll]
+      (let [!found (atom false)]
+           (walk/postwalk #(do (when (= v %) (reset! !found true)) %) coll)
+           @!found))
 
 (comment
 
@@ -1127,10 +1127,10 @@
 
  ;; only for debugging when something fails to transact
  (doseq [doc (all-entities)]
-   (try (db/transact! [doc])
-        (catch Exception e
-          (prn :fail doc)
-          (throw e))))
+        (try (db/transact! [doc])
+             (catch Exception e
+               (prn :fail doc)
+               (throw e))))
 
  (explain-errors!) ;; checks against schema
 

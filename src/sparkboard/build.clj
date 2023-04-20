@@ -1,5 +1,12 @@
 (ns sparkboard.build
-  (:require [babashka.process :as bp]))
+  (:require [babashka.process :as bp]
+            [re-db.in-memory :as db]))
+
+(defn start
+  {:shadow/requires-server true}
+  []
+  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :web)
+  ((requiring-resolve 'sparkboard.server.core/-main)))
 
 (defn tailwind-dev!
   {:shadow.build/stage :flush}
@@ -56,6 +63,7 @@
 
  ;; "upsert" lookup refs
  (db/transact! (mapcat sb.schema/unique-keys entities))
+ (db/transact! entities)
 
  ;; add entities, print and stop if one fails
  (doseq [e entities]

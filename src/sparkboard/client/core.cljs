@@ -15,7 +15,6 @@
 (ui/defview root []
   (let [{:as current-location :keys [path view params tag route]} (db/get :env/location)]
     [:div.w-full.font-sans
-     [views/navbar current-location]
      [:Suspense {:fallback "ROUGH spinner"}
       (when view
         [view (assoc params :path path :route route)])]]))

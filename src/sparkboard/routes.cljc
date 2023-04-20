@@ -27,7 +27,7 @@
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
-                "login" (E :auth/sign-in {:view `views/login
+                "login" (E :auth/sign-in {:view `views/login-screen
                                           :public true})
                 "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout
                                           :public true})
@@ -38,14 +38,14 @@
                                                 :handler 'sparkboard.server.auth/oauth2-google-landing})}
                 "v2" {"" (E :org/index
                             {:query `server.db/$org:index
-                             :view `views/org:index})
+                             :view `views/org-index})
                       "/login" (E :login
                                   {:public true
-                                   :view `views/login
+                                   :view `views/login-screen
                                    :mutation `server.db/login-handler})
 
                       "/o/create" (E :org/create
-                                     {:view `views/org:create
+                                     {:view `views/org-create
                                       :mutation `server.db/org:create})
                       "/o/delete" (E :org/delete
                                      {:mutation `server.db/org:delete})
@@ -77,8 +77,11 @@
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
-  [route]
-  (cond->> route (vector? route) (apply bidi/path-for @!routes)))
+  [route & {:as options}]
+  (cond (string? route) route
+        (keyword? route) (bidi/path-for @!routes route options)
+        (vector? route) (apply bidi/path-for @!routes route)
+        :else (bidi/path-for @!routes route options)))
 
 (defn match-path
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"

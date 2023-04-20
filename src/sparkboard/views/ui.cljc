@@ -47,3 +47,5 @@
            "ring-offset-background border hover:border-primary/30 text-primary"
            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 "
            "rounded-md px-3"]}))))
+
+(defn css-url [s] (str "url(" s ")"))

@@ -11,18 +11,6 @@
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
             [org.httpkit.server :as httpkit]
-            [sparkboard.datalevin :as datalevin]
-            [sparkboard.slack.firebase.jvm :as fire-jvm]
-            [sparkboard.slack.firebase.tokens :as fire-tokens]
-            [sparkboard.log]
-            [sparkboard.routes :as routes]
-            [sparkboard.server.auth :as auth]
-            [sparkboard.server.env :as env]
-            [sparkboard.impl.server :as impl]
-            [sparkboard.server.nrepl :as nrepl]
-            [sparkboard.server.html :as server.views]
-            [sparkboard.slack.server :as slack.server]
-            [sparkboard.websockets :as ws]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [re-db.read :as read]
@@ -31,13 +19,21 @@
             [ring.middleware.defaults]
             [ring.middleware.format]
             [ring.middleware.params :as ring.params]
-            [ring.middleware.session :as ring.session]
-            [ring.middleware.cookies :as ring.cookies]
-            [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime]
             [ring.util.request]
             [ring.util.response :as ring.response]
+            [sparkboard.datalevin :as datalevin]
+            [sparkboard.impl.server :as impl]
+            [sparkboard.log]
+            [sparkboard.routes :as routes]
+            [sparkboard.server.auth :as auth]
+            [sparkboard.server.env :as env]
+            [sparkboard.server.html :as server.views]
+            [sparkboard.server.nrepl :as nrepl]
+            [sparkboard.slack.firebase.jvm :as fire-jvm]
+            [sparkboard.slack.server :as slack.server]
+            [sparkboard.websockets :as ws]
             [taoensso.timbre :as log]))
 
 (def muuntaja
@@ -93,7 +89,7 @@
 
 (def route-handler
   (-> (fn [{:as req :keys [uri query-string]}]
-        (let [uri (str uri (some->> query-string (str "?")))
+        (let [uri (str uri (some->> (not-empty query-string) (str "?")))
               {:as match :keys [view query mutation handler params public]} (routes/match-path uri)
               method (:request-method req)
               html? (and (= method :get)
@@ -131,12 +127,13 @@
             (apply (or (seq args) [{}]))
             $txs)))
 
+(def ws-options {:handlers (sync/query-handlers resolve-query)})
+
 (def handler
-  (-> (impl/join-handlers slack.server/handlers
-                          (ws/handler "/ws" {:handlers (sync/query-handlers resolve-query)})
+  (-> (impl/join-handlers #(#'ws/handle-ws-request ws-options %)
+                          slack.server/handlers
                           #'route-handler)
       auth/wrap-auth
-
       ring.params/wrap-params
       wrap-handle-errors
       wrap-static-first
@@ -165,35 +162,7 @@
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
                        3000)))
 
-(comment ;;; Intensive request debugging
- (def !requests (atom []))
-
- (defn wrap-debug-request [f id]
-   (fn [req]
-     (log/info :request req)
-     (swap! !requests conj (assoc req :debug/id id))
-     (f req)))
-
- @!requests
-
- (->> @!requests
-      (remove :websocket?)
-      (remove (comp #{"/favicon.ico"} :uri))
-      #_(map #(select-keys % [:debug/id :body-params :body :content-type
-                              :session :cookies :identity]))
-      (into []))
-
- )
-
 (comment ;;; Webserver control panel
  (-main)
 
- (let [srvr @the-server]
-   {:port (httpkit/server-port @the-server)
-    :status (httpkit/server-status @the-server)})
-
- #_(reset! the-server nil)
-
- (restart-server! 3000)
-
- )
+ (restart-server! 3000))

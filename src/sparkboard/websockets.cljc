@@ -13,32 +13,25 @@
    :path "/ws"})
 
 #?(:clj
-   (defn handle-ws-request [options
-                            {:as request :keys [uri request-method]}]
-     (let [{:as options :keys [path pack unpack handlers]} (merge default-options options)]
-       (if (and (= :get request-method)
-                (= path uri))
-         (let [!ch (atom nil)
-               channel {:!ch !ch
-                        ::sync/send (fn [message]
-                                      (if (some-> @!ch httpkit/open?)
-                                        (httpkit/send! @!ch (pack message))
-                                        (println :sending-message-before-open message)))}
-               context {:channel channel}]
-           (httpkit/as-channel request
-                               {:init (partial reset! !ch)
-                                :on-open sync/on-open
-                                :on-receive (fn [ch message]
-                                              (sync/handle-message handlers context (unpack message)))
-                                :on-close (fn [ch status]
-                                            (sync/on-close channel))}))
-         (throw (ex-info (str "Unknown request " request-method uri) request))))))
-
-#?(:clj
-   (defn handler [path options]
-     (fn [req]
-       (when (= path (:uri req))
-         (handle-ws-request options req)))))
+   (defn handle-ws-request [options req]
+     (let [{:as options :keys [pack unpack handlers]} (merge default-options options)]
+       (when (= (:uri req) (:path options))
+         (if (= :get (:request-method req))
+           (let [!ch (atom nil)
+                 channel {:!ch !ch
+                          ::sync/send (fn [message]
+                                        (if (some-> @!ch httpkit/open?)
+                                          (httpkit/send! @!ch (pack message))
+                                          (println :sending-message-before-open message)))}
+                 context {:channel channel}]
+             (httpkit/as-channel req
+                                 {:init (partial reset! !ch)
+                                  :on-open sync/on-open
+                                  :on-receive (fn [ch message]
+                                                (sync/handle-message handlers context (unpack message)))
+                                  :on-close (fn [ch status]
+                                              (sync/on-close channel))}))
+           {:status 400})))))
 
 #?(:cljs
    (defn connect
@@ -84,11 +77,14 @@
 
 #?(:cljs
    (defn use-query! [query-vec]
-     (when (:query (routes/match-path query-vec))
-       (let [{:keys [value error loading?]} @($query query-vec)]
-         (cond error (throw (ex-info error {:query query-vec}))
-               loading? (throw loading?)
-               :else value)))))
+     (let [query-vec (if (keyword? query-vec)
+                       [query-vec {}]
+                       query-vec)]
+       (when (:query (routes/match-path query-vec))
+         (let [{:keys [value error loading?]} @($query query-vec)]
+           (cond error (throw (ex-info error {:query query-vec}))
+                 loading? (throw loading?)
+                 :else value))))))
 
 #?(:cljs
    (def use-result (comp use-deref $query)))

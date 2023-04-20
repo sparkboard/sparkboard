@@ -5,10 +5,10 @@
   #?(:cljs (:require-macros [sparkboard.i18n :refer [ungroup-dict]])))
 
 (defonce !preferred-language
-  (common/$local-storage ::preferred-language :eng))
+  (common/$local-storage ::preferred-language :en))
 
 (defonce !locales
-  (r/reaction (into [] (distinct) [@!preferred-language :eng])))
+  (r/reaction (into [] (distinct) [@!preferred-language :en])))
 
 (defmacro ungroup-dict [dict]
   (->> dict
@@ -20,49 +20,46 @@
        (apply merge-with merge)))
 
 (def dict
-  "Tempura-style dictionary of internationalizations, keyed by ISO-639-3.
+  "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
 See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict ;; grouped for easy generation of multiple languages
-   {:tr/boards {:eng "Boards", :fra "Tableaux", :spa "Tableros"},
-    :tr/projects {:eng "Projects", :fra "Projets", :spa "Proyectos"},
-    :tr/tags {:eng "Tags", :fra "Mots clés", :spa "Etiquetas"},
-    :tr/sign-in {:eng "Sign in", :fra "Connexion", :spa "Iniciar sesión"},
-    :tr/email {:eng "Email", :fra "Courriel", :spa "Correo electrónico"},
-    :tr/password {:eng "Password", :fra "Mot de passe", :spa "Contraseña"},
-    :tr/new {:eng "New", :fra "Nouveau", :spa "Nuevo"},
-    :skeleton/nix {:eng "Nothing to see here, folks.", :fra "Rien à voir ici, les amis.", :spa "Nada que ver aquí, amigos."},
-    :tr/create {:eng "Create", :spa "Crear"},
-    :tr/invalid-email {:eng "Invalid email", :fra "Courriel invalide", :spa "Correo electrónico inválido"},
-    :tr/lang {:eng "Language", :fra "Langue", :spa "Idioma"},
-    :tr/member {:eng "Member", :fra "Membre", :spa "Miembro"},
-    :tr/logout {:eng "Log out", :fra "Se déconnecter", :spa "Cerrar sesión"},
-    :tr/email-example {:eng "name@example.com", :fra "nom@exemple.com", :spa "nombre@ejemplo.com"},
-    :tr/search {:eng "Search", :fra "Rechercher", :spa "Buscar"},
-    :tr/project {:eng "Project", :fra "Projet", :spa "Proyecto"},
-    :tr/orgs {:eng "Organisations", :fra "Organisations", :spa "Organizaciones"},
-    :tr/org {:eng "Organisation", :fra "Organisation", :spa "Organización"},
-    :tr/badge {:eng "Badge", :fra "Insigne", :spa "Insignia"},
-    :tr/badges {:eng "Badges", :fra "Insignes", :spa "Insignias"},
-    :tr/search-across-org {:eng "org-wide search", :fra "rechercher dans toute l'organisation", :spa "buscar en toda la organización"},
-    :missing {:eng ":eng missing text", :fra ":fra texte manquant", :spa ":spa texto faltante"},
-    :tr/user {:eng "User", :fra "Utilisateur", :spa "Usuario"},
-    :tr/members {:eng "Members", :fra "Membres", :spa "Miembros"},
-    :tr/board {:eng "Board", :spa "Tablero"},
-    :tr/tag {:eng "Tag", :fra "Mot-clé", :spa "Etiqueta"}
-    :tr/or {:eng "or", :fra "ou", :spa "o"}
-    :tr/sign-in-with-email {:eng "Sign in with email",
-                            :fra "Se connecter avec un courriel",
-                            :spa "Iniciar sesión con correo electrónico"}
-    :tr/tos {:eng "Terms of Service", :fra "Conditions d'utilisation", :spa "Términos de servicio"}
-    :tr/pp {:eng "Privacy Policy" :fra "Politique de confidentialité", :spa "Política de privacidad"}
-    :tr/and {:eng "and", :fra "et", :spa "y"}
-    :tr/by-signing-up-you-agree-to {:eng "By clicking continue, you agree to our",
-                                    :fra "En cliquant sur continuer, vous acceptez notre",
-                                    :spa "Al hacer clic en continuar, acepta nuestro"}
-    :tr/welcome {:eng "Welcome to Sparkboard" :fra "Bienvenue sur Sparkboard" :spa "Bienvenido a Sparkboard"}
+   {:tr/boards {:en "Boards", :fr "Tableaux", :es "Tableros"},
+    :tr/projects {:en "Projects", :fr "Projets", :es "Proyectos"},
+    :tr/tags {:en "Tags", :fr "Mots clés", :es "Etiquetas"},
+    :tr/sign-in {:en "Sign in", :fr "Connexion", :es "Iniciar sesión"},
+    :tr/email {:en "Email", :fr "Courriel", :es "Correo electrónico"},
+    :tr/password {:en "Password", :fr "Mot de passe", :es "Contraseña"},
+    :tr/new {:en "New", :fr "Nouveau", :es "Nuevo"},
+    :skeleton/nix {:en "Nothing to see here, folks.", :fr "Rien à voir ici, les amis.", :es "Nada que ver aquí, amigos."},
+    :tr/create {:en "Create", :es "Crear"},
+    :tr/invalid-email {:en "Invalid email", :fr "Courriel invalide", :es "Correo electrónico inválido"},
+    :tr/lang {:en "Language", :fr "Langue", :es "Idioma"},
+    :tr/member {:en "Member", :fr "Membre", :es "Miembro"},
+    :tr/logout {:en "Log out", :fr "Se déconnecter", :es "Cerrar sesión"},
+    :tr/search {:en "Search", :fr "Rechercher", :es "Buscar"},
+    :tr/project {:en "Project", :fr "Projet", :es "Proyecto"},
+    :tr/orgs {:en "Organisations", :fr "Organisations", :es "Organizaciones"},
+    :tr/org {:en "Organisation", :fr "Organisation", :es "Organización"},
+    :tr/badge {:en "Badge", :fr "Insigne", :es "Insignia"},
+    :tr/badges {:en "Badges", :fr "Insignes", :es "Insignias"},
+    :tr/search-across-org {:en "org-wide search", :fr "rechercher dans toute l'organisation", :es "buscar en toda la organización"},
+    :missing {:en ":eng missing text", :fr ":fra texte manquant", :es ":spa texto faltante"},
+    :tr/user {:en "User", :fr "Utilisateur", :es "Usuario"},
+    :tr/members {:en "Members", :fr "Membres", :es "Miembros"},
+    :tr/board {:en "Board", :es "Tablero"},
+    :tr/tag {:en "Tag", :fr "Mot-clé", :es "Etiqueta"}
+    :tr/or {:en "or", :fr "ou", :es "o"}
+    :tr/tos {:en "Terms of Service", :fr "Conditions d'utilisation", :es "Términos de servicio"}
+    :tr/pp {:en "Privacy Policy" :fr "Politique de confidentialité", :es "Política de privacidad"}
+    :tr/and {:en "and", :fr "et", :es "y"}
+    :tr/sign-in-with-google {:en "Sign in with Google", :fr "Se connecter avec Google", :es "Iniciar sesión con Google"}
+    :tr/sign-up-agree-to {:en "By clicking continue, you agree to our",
+                          :fr "En cliquant sur continuer, vous acceptez notre",
+                          :es "Al hacer clic en continuar, acepta nuestro"}
+    :tr/welcome {:en "Welcome to Sparkboard" :fr "Bienvenue sur Sparkboard" :es "Bienvenido a Sparkboard"}
     ;; A `lect` is what a language or dialect variety is called; see
     ;; https://en.m.wikipedia.org/wiki/Variety_(linguistics)
-    :meta/lect {:eng "English", :fra "Français", :spa "Español"}}))
+    :meta/lect {:en "English", :fr "Français", :es "Español"}}))
 
 
 (defn tr

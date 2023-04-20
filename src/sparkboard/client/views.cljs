@@ -1,6 +1,7 @@
 (ns sparkboard.client.views
   (:require
    ["react" :as react]
+   ["@radix-ui/react-dropdown-menu" :as dm]
    [applied-science.js-interop :as j]
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
@@ -22,16 +23,25 @@
 ;; - clarify Login/Register paths
 ;; - radix-ui for language selector
 
-
-(defn http-ok? [rsp]
-  (= 200 (.-status rsp)))
-
-(ui/defview nav:language-select []
+(ui/defview menubar:lang []
   [:div.flex.flex-row
-   [:label {:for "language-selector"}
-    [:svg {:class "w-6 h-6 mr-2" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
-     [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
-   (into [:select {:id "language-selector"
+   [:el dm/Root
+    [:el.bg-zinc-100.rounded.hover:bg-zinc-200.cursor-pointer.w-10.h-10.p-2.flex.justify-center.items-center dm/Trigger
+     [:svg {:class "h-5 w-5" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
+      [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
+    [:el dm/Portal
+     [:el dm/Content {:sideOffset 5 :collision-padding 16}
+      (into [:el dm/RadioGroup {:value (name @i18n/!preferred-language)
+                                :on-value-change (fn [v] (reset! i18n/!preferred-language (keyword v)))
+                                :class "shadow rounded text-sm"}]
+            (map (fn [lang] [:el dm/RadioItem {:value (name lang)
+                                               :disabled (= lang @i18n/!preferred-language)
+                                               :class "text-left flex pr-4 py-2 data-[disabled]:text-gray-500 cursor-pointer hover:outline-none hover:bg-zinc-50"}
+                             [:div.w-6.text-center
+                              [:el dm/ItemIndicator "•"]]
+                             (get-in i18n/dict [lang :meta/lect])]))
+            (keys i18n/dict))]]]
+   #_(into [:select {:id "language-selector"
                    :default-value (name @i18n/!preferred-language)
                    :on-change (fn [event]
                                 (reset! i18n/!preferred-language
@@ -39,6 +49,29 @@
          (map (fn [lang] [:option {:value (name lang)}
                           (get-in i18n/dict [lang :meta/lect])]))
          (keys i18n/dict))])
+
+(ui/defview menubar:account [{[route-id] :route}]
+  (if (db/get :env/account)
+    [:a
+     {:href (routes/path-for :auth/logout)
+      :class [ui/c:dark-button
+              "text-sm px-3 py-1"]}
+     (tr :tr/logout)]
+    [:a
+     {:href (routes/path-for :auth/sign-in)
+      :class [ui/c:dark-button
+              "text-sm m-1 h-8 p-3"]}
+     (tr :tr/sign-in)]))
+
+(ui/defview menubar [params]
+  [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
+   [menubar:lang]
+   [:div.flex-grow]
+   [menubar:account params]
+   [:div.rough-divider]])
+
+(defn http-ok? [rsp]
+  (= 200 (.-status rsp)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -57,120 +90,123 @@
                                       "text-gray-500")} content]))
           messages)))
 
-(ui/defview login [params]
-  [:div.grid.md:grid-cols-2.gap-4
+(ui/defview login-form []
+  (ui/with-form [!form {:account/email (?email :init "")
+                        :account/password (?password :init "")}
+                 :validators {?email (fn [v _]
+                                       (when-not (re-find #"^[^@]+@[^@]+$" v)
+                                         (tr :tr/invalid-email)))}
+                 :required [?email ?password]]
+    (let [!step (hooks/use-state :email)]
+      [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
+       {:on-submit (fn [^js e]
+                     (.preventDefault e)
+                     (case @!step
+                       :email (reset! !step :password)
+                       :password (prn :submit @!form)))}
+       [:h1.text-3xl.font-medium.mb-4.text-center (tr :tr/welcome)]
+       [:div.flex.flex-col.gap-2
+        [input {:type "email"
+                :value @?email
+                :placeholder (tr :tr/email)
+                :on-change (forms/change-handler ?email)}]
+        (show-messages ?email)
+        (when (= :password @!step)
+          [:<>
+           [input {:type "password"
+                   :id (str ::password)
+                   :value @?password
+                   :placeholder (tr :tr/password)
+                   :on-change (forms/change-handler ?password)}]
+           (str (forms/visible-messages ?password))])
+        (str (forms/visible-messages !form))
+        [:button
+         {:class ["w-full h-10 text-sm p-3"
+                  ui/c:dark-button]
+          :on-click (fn []
+                      (forms/touch! !form)
+                      (prn (forms/submittable? !form))
+                      (reset! !step :password)
+                      (js/setTimeout #(.focus (js/document.getElementById (str ::password)))
+                                     100)
+                      #_(p/let [res (routes/mutate!
+                                     {:route [:login]
+                                      :response-fn (fn [^js/Response res _url]
+                                                     (when (http-ok? res)
+                                                       ;; TODO set this based on response body
+                                                       ;; instead (I don't want to wrestle with
+                                                       ;; readablestream right now --DAL
+                                                       ;; 2023-03-15)
+                                                       ;; TODO ...or promise-style with `p/->>`
+                                                       (comment
+                                                        ;; transact account...
+                                                        (db/transact! [(assoc foo :db/id :env/account)])
+                                                        )
+                                                       #_(reset! !account {:identity @?mbr-name})
+                                                       (routes/set-path! [:org/index]))
+                                                     res)}
+                                     @!mbr)]
+                          (prn :logged-in res :mbr @!mbr)
+                          #_(reset! !account {:identity @?mbr-name})
+                          ))}
+         (tr :tr/sign-in)]]
 
+       [:div.relative
+        [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+        [:div.relative.flex.justify-center.text-xs.uppercase
+         [:span.bg-background.px-2.text-muted-foreground
+          (tr :tr/or)]]]
+       [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"
+                           :href (routes/path-for :oauth2.google/launch)}
+        [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]
+       [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/sign-up-agree-to)
+        [:a.gray-link {:href "/terms"} (tr :tr/tos)]
+        (tr :tr/and)
+        [:a.gray-link {:href "/privacy"} (tr :tr/pp)] "."]])))
+
+(ui/defview login-screen [params]
+  [:div.grid.md:grid-cols-2.gap-4.divide-x-4.divide-solid
    ;; left column
-   [:div.hidden.md:block.bg-zinc-300.text-white.p-5.text-2xl.bg-cover
-    {:style {:background-image "url(https://cdn.midjourney.com/89c9e7a8-2c95-4792-aaa8-efe08d0b6bdb/0_2.png)"}}
+   [:div.hidden.md:block.bg-zinc-300.text-white.p-5.text-2xl.bg-fit.bg-no-repeat.bg-center
+    {:style {:background-color "white"
+             :background-image (ui/css-url "https://media.discordapp.net/attachments/999411359253004318/1098565546976493588/mhuebert_creative_loft_wild_colors_computering_tinkering_contra_3e62c9fc-82dd-4c93-8bce-07efeace1a77.png?width=650&height=650")}}
     "Sparkboard"]
-   #_[nav:language-select]
-
    ;; right column
-   [:div.flex.flex-col.h-screen
+   [:div.flex.flex-col.h-screen.border-left.border-gray-200.border-8s
     [:div.flex.flex-grow
-     (ui/with-form [!form {:account/email (?email :init "")
-                           :account/password (?password :init "")}
-                    :validators {?email (fn [v _]
-                                          (when-not (re-find #"^[^@]+@[^@]+$" v)
-                                            (tr :tr/invalid-email)))}
-                    :required [?email ?password]]
-       (let [!step (hooks/use-state :email)]
-         [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
-          {:on-submit (fn [^js e]
-                        (.preventDefault e)
-                        (case @!step
-                          :email (reset! !step :password)
-                          :password (prn :submit @!form)))}
-          [:h1.text-3xl.font-medium.mb-4 (tr :tr/welcome)]
-          [:div.flex.flex-col.gap-2
-           [input {:type "email"
-                   :value @?email
-                   :placeholder (tr :tr/email-example)
-                   :on-change (forms/change-handler ?email)}]
-           (show-messages ?email)
-           (when (= :password @!step)
-             [:<>
-              [input {:type "password"
-                      :id (str ::password)
-                      :value @?password
-                      :placeholder (tr :tr/password)
-                      :on-change (forms/change-handler ?password)}]
-              (str (forms/visible-messages ?password))])
-           (str (forms/visible-messages !form))
-           [:button
-            {:class ["w-full h-10 text-sm p-3"
-                     ui/c:dark-button]
-             :on-click (fn []
-                         (forms/touch! !form)
-                         (prn (forms/submittable? !form))
-                         (reset! !step :password)
-                         (js/setTimeout #(.focus (js/document.getElementById (str ::password)))
-                                        100)
-                         #_(p/let [res (routes/mutate!
-                                        {:route [:login]
-                                         :response-fn (fn [^js/Response res _url]
-                                                        (when (http-ok? res)
-                                                          ;; TODO set this based on response body
-                                                          ;; instead (I don't want to wrestle with
-                                                          ;; readablestream right now --DAL
-                                                          ;; 2023-03-15)
-                                                          ;; TODO ...or promise-style with `p/->>`
-                                                          (comment
-                                                           ;; transact account...
-                                                           (db/transact! [(assoc foo :db/id :env/account)])
-                                                           )
-                                                          #_(reset! !account {:identity @?mbr-name})
-                                                          (routes/set-path! [:org/index]))
-                                                        res)}
-                                        @!mbr)]
-                             (prn :logged-in res :mbr @!mbr)
-                             #_(reset! !account {:identity @?mbr-name})
-                             ))}
-            (tr :tr/sign-in-with-email)]]
+     [login-form]]
+    [:div.p-4.flex.justify-end
+     [menubar:lang]]]])
 
-          [:div.relative
-           [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
-           [:div.relative.flex.justify-center.text-xs.uppercase
-            [:span.bg-background.px-2.text-muted-foreground
-             (tr :tr/or)]]]
-          [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"}
-           [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] "Google"]
-          [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/by-signing-up-you-agree-to)
-           [:a.gray-link {:href "/terms"} (tr :tr/tos)]
-           (tr :tr/and)
-           [:a.gray-link {:href "/privacy"} (tr :tr/pp)] "."]]))]
-    [:div.p-4.flex
-     [:div.flex-grow]
-     [nav:language-select]]]])
+(ui/defview org-index [params]
+  [:<>
+   [menubar params]
+   [:div.pa3
+    [:h2 (tr :tr/orgs)]
+    [:section#orgs-grid
+     (into [:div.grid.grid-cols-4.gap-4]
+           (map (fn [org]
+                  [:div.shadow.p-3
+                   ;; use radix-ui to make a dropdown button that includes a delete button
+                   [:div.rough-icon-button
+                    {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                              (:org/title org) "?"))
+                                  (routes/mutate! {:route [:org/delete]} (:org/id org)))}
+                    "X"]
 
-(ui/defview org:index [params]
-  [:div.pa3
-   [:h2 (tr :tr/orgs)]
-   [:section#orgs-grid
-    (into [:div.grid.grid-cols-4.gap-4]
-          (map (fn [org]
-                 [:div.shadow.p-3
-                  ;; use radix-ui to make a dropdown button that includes a delete button
-                  [:div.rough-icon-button
-                   {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                             (:org/title org) "?"))
-                                 (routes/mutate! {:route [:org/delete]} (:org/id org)))}
-                   "X"]
+                   [:a {:href (routes/path-for :org/one org)}
+                    (:org/title org)]
+                   ]))
+           (ws/use-query! :org/index))]
+    [:section#add-org
+     [(routes/use-view :org/create)]]]])
 
-                  [:a {:href (routes/path-for [:org/one org])}
-                   (:org/title org)]
-                  ]))
-          (ws/use-query! [:org/index {}]))]
-   [:section#add-org
-    [(routes/use-view [:org/create])]]])
-
-(ui/defview home []
+(ui/defview home [params]
   (if (db/get :env/account)
-    [org:index nil]
-    [login nil]))
+    [org-index params]
+    [login-screen params]))
 
-(ui/defview org:create [params]
+(ui/defview org-create [params]
   (with-form [!org {:org/title ?title}]
     [:div
      [:h2 (tr :tr/new) " " (tr :tr/org)]
@@ -250,7 +286,7 @@
         [pending? start-transition] (react/useTransition)]
     [:div
      [:h1 (tr :tr/org) " " (:org/title value)]
-     [:a {:href (routes/path-for [:board/create params])}
+     [:a {:href (routes/path-for :board/create params)}
       (tr :tr/new) " " (tr :tr/board)]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
@@ -276,7 +312,7 @@
      [:section [:h3 (tr :tr/boards)]
       (into [:ul]
             (map (fn [board]
-                   [:li [:a {:href (routes/path-for [:board/one board])} ;; path-for knows which key it wants (:board/id)
+                   [:li [:a {:href (routes/path-for :board/one board)} ;; path-for knows which key it wants (:board/id)
                          (:board/title board)]]))
             (:board/_org value))]]))
 
@@ -292,21 +328,21 @@
      [:div.rough-tabs {:class "w-100"}
       [:div.rough-tab {:name (tr :tr/projects)
                        :class "db"}
-       [:a {:href (routes/path-for [:project/create b])}
+       [:a {:href (routes/path-for :project/create b)}
         (tr :tr/new) " " (tr :tr/project)]
        (into [:ul]
              (map (fn [proj]
-                    [:li [:a {:href (routes/path-for [:project/one proj])}
+                    [:li [:a {:href (routes/path-for :project/one proj)}
                           (:project/title proj)]]))
              (:project/_board value))]
       [:div.rough-tab {:name (tr :tr/members)
                        :class "db"}
-       [:a {:href (routes/path-for [:member/create b])}
+       [:a {:href (routes/path-for :member/create b)}
         (tr :tr/new) " " (tr :tr/member)]
        (into [:ul]
              (map (fn [member]
                     [:li
-                     [:a {:href (routes/path-for [:member/one member])}
+                     [:a {:href (routes/path-for :member/one member)}
                       (:member/name member)]]))
              (:member/_board value))]
       [:div.rough-tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
@@ -394,27 +430,6 @@
                              (.addEventListener "mouseup" on-mouseup #js{:once true})
                              (.addEventListener "mousemove" on-mousemove))))}]
       child]]))
-
-(ui/defview nav:account [{[route-id] :route}]
-  (if (db/get :env/account)
-    [:a
-     {:href (routes/path-for [:auth/logout])
-      :class [ui/c:dark-button
-              "text-sm m-1 p-3"]}
-     (tr :tr/logout)]
-    [:a
-     {:href (routes/path-for [:auth/sign-in])
-      :class [ui/c:dark-button
-              "text-sm m-1 h-8 p-3"]}
-     (tr :tr/sign-in)]))
-
-(ui/defview navbar [params]
-  (when-not (#{:home :auth/sign-in} (-> params :route first))
-    [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
-     [nav:language-select]
-     [:div.flex-grow]
-     [nav:account params]
-     [:div.rough-divider]]))
 
 (ui/defview dev-drawer [{:as match :keys [route]}]
   [drawer {:initial-height 100}

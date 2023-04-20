@@ -1,7 +1,4 @@
 {:deps {:aliases [:nio :dev]}
- :dev-http
- {3000 {:root "resources/public"
-        :handler sparkboard.server.core/handler}}
  :builds
  {:web
   {:target :browser

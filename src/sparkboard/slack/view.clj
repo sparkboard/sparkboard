@@ -270,7 +270,7 @@
                         (:on-close x) (do (swap! options assoc :on-close (:on-close x))
                                           (dissoc x :on-close))
                         :else x))) (last body))]
-    (log/info :actions (::actions @options))
+    (log/trace :actions (::actions @options))
     `(do (def ~name-sym
            (make-view* (merge {:view-name ~view-name
                                :render-fn (fn ~name-sym ~argv ~body)}

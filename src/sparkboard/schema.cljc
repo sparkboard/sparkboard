@@ -258,22 +258,24 @@
    :account/email {s- :string}
    :account/email-verified? {s- :boolean}
    :account/display-name {s- :string}
-   :provider.google/sub unique-string-id
+   :account.provider.google/sub unique-string-id
    :account/last-sign-in {s- 'inst?}
    :account/password-hash {s- :string}
    :account/password-salt {s- :string}
    :account/photo-url {s- :http/url}
+   :account/locale {s- :i18n/language-code-639-2}
    :account/as-map {s- [:map {:closed true}
                         :account/id
                         :account/email
                         :account/email-verified?
                         :ts/created-at
+                        (? :account/locale)
                         (? :account/last-sign-in)
                         (? :account/display-name)
                         (? :account/password-hash)
                         (? :account/password-salt)
                         (? :account/photo-url)
-                        (? :provider.google/sub)]}})
+                        (? :account.provider.google/sub)]}})
 
 
 (def sb-memberships
@@ -317,11 +319,11 @@
   {:i18n/default-locale {s- :string},
    :i18n/dictionary {s- [:map-of :string :string]}
    :i18n/extra-translations {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
-                             s- [:map-of :i18n/name :i18n/dictionary]}
-   :i18n/name {:doc "2-letter locale name, eg. 'en', 'fr'"
-               s- [:re #"[a-z]{2}"]}
+                             s- [:map-of :i18n/language-code-639-2 :i18n/dictionary]}
+   :i18n/language-code-639-2 {:doc "ISO 639-2 language code (eg. 'en')"
+                              s- [:re #"[a-z]{2}"]}
    :i18n/suggested-locales {:doc "Suggested locales (set by admin, based on expected users)",
-                            s- [:vector :i18n/name]}})
+                            s- [:vector :i18n/language-code-639-2]}})
 
 (def sb-images
   {:image-urls/as-map {s- [:map-of

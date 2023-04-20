@@ -6,6 +6,7 @@
             [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.string :as str]
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
             [sparkboard.server.env :as env]
@@ -36,7 +37,7 @@
     (handler (if-let [account (try (some-> (get-in req [:cookies "account-id" :value])
                                            t/read)
                                    (catch Exception e nil))]
-               (assoc req :account (db/pull '[*] account))
+               (assoc req :account (try (db/pull '[*] account) (catch Exception e nil)))
                req))))
 
 (defn wrap-auth [f]
@@ -65,30 +66,37 @@
       (assoc-in [:cookies "account-id"] {:value (t/write nil)
                                          :expires (str (java.util.Date.))})))
 
+(defn keep-vals [m]
+  (into {} (filter (comp some? val) m)))
+
+(defn account-tx [account-id provider-info]
+  (let [existing (not-empty (db/pull '[*] account-id))
+        now (java.util.Date.)]
+    [(merge
+      ;; backfill account info (do not overwrite current data)
+      (keep-vals
+       {:ts/created-at now
+        :account.provider.google/sub (:sub provider-info)
+        :account/email (:email provider-info)
+        :account/email-verified? (:email_verified provider-info)
+        :account/photo-url (:picture provider-info)
+        :account/locale (some-> (:locale provider-info) (str/split #"-") first)})
+      existing
+      ;; last-sign-in can overwrite existing data
+      {:account/last-sign-in now})]))
+
 (defn oauth2-google-landing [{:as req :keys [oauth2/access-tokens]} params]
   (let [{:keys [token id-token]} (:google access-tokens)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
-        {:as decoded-token
-         :keys [email email_verified sub]} (jwt/unsign id-token @google-public-key {:alg :rs256
-                                                                                    :iss "accounts.google.com"})
-        {:as info :keys [given_name family_name name picture locale]} (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
-                                                                          :body
-                                                                          (json/parse-string keyword))
-        existing (db/pull '[*] [:provider.google/sub sub])
-        now (java.util.Date.)]
-    (db/transact! [(cond-> {:account/last-sign-in now}
-                           (empty? existing)
-                           (merge {:account/email email
-                                   :provider.google/sub sub
-                                   :account/email-verified? email_verified
-                                   :account/photo-url picture
-                                   :account/display-name name
-                                   :account/locale locale
-                                   :account/id (str "google-" sub)
-                                   :ts/created-at now}))])
-
+        sub (:sub (jwt/unsign id-token @google-public-key {:alg :rs256
+                                                           :iss "accounts.google.com"}))
+        account-id [:account.provider.google/sub sub]
+        provider-info (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
+                          :body
+                          (json/parse-string keyword))]
+    (db/transact! (account-tx account-id provider-info))
     (-> (ring.response/redirect (routes/path-for [:home]))
-        (assoc-in [:cookies "account-id"] {:value (t/write [:provider.google/sub sub])
+        (assoc-in [:cookies "account-id"] {:value (t/write account-id)
                                            :http-only true
                                            :path "/"
                                            :secure (= (env/config :env) "prod")}))))

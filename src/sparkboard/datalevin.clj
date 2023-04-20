@@ -16,7 +16,8 @@
  (dl/close conn)
  (dl/clear conn)
 
- (db/where [[:provider.google/sub "x"]])
+
+ (dl/schema conn)
 
 
  (->> (db/where [:org/id])
