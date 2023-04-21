@@ -1,5 +1,6 @@
 {:deps {org.babashka/cli {:mvn/version "0.3.30"}}
- :tasks {:requires ([cheshire.core :as json]
+ :tasks {:requires ([babashka.fs :as fs]
+                    [cheshire.core :as json]
                     [clojure.java.shell :refer [sh]]
                     [babashka.cli :as cli]
                     [babashka.process :refer [process]]
@@ -14,7 +15,8 @@
                  (shell "yarn shadow-cljs -A:dev:nio clj-run sparkboard.build/start"))
          cljs (do (shell "yarn install")
                   (shell "yarn shadow-cljs release web"))
-         compile-java (shell "clj -T:compile-java compile-java")
+         compile-java (when-not (fs/exists? "classes/com")
+                        (shell "clj -T:compile-java compile-java"))
          clj (do (shell "mkdir -p classes")
                  (run 'compile-java)
                  (shell "clojure -A:nio -X:aot")
@@ -22,9 +24,9 @@
          build (do (run 'cljs)
                    (run 'clj))
          fly:set-secrets (let [path (str "src/." (name env) ".config.edn")]
-                       (if-let [secrets (slurp path)]
-                         (shell {:in secrets} (str "fly -a " app " secrets set SPARKBOARD_CONFIG=-"))
-                         (prn (str "No secrets found: " path))))
+                           (if-let [secrets (slurp path)]
+                             (shell {:in secrets} (str "fly -a " app " secrets set SPARKBOARD_CONFIG=-"))
+                             (prn (str "No secrets found: " path))))
          fly:down (shell (str "fly -a " app " scale count 0"))
          fly:up (shell (str "fly -a " app " scale count 1"))
          fly:clj (do (run 'clj) (run 'fly:deploy))
