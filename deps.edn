@@ -1,12 +1,12 @@
 {:paths ["src"
          "classes"
          "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+ :deps {org.clojure/clojure {:mvn/version "1.12.0-alpha2"}
 
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.12"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "b03a76ad990f2ea045b2c48ac61f480b806b1b7b"}
+                                  :git/sha "5cd35badf9ecc7e88c37c141ac149d67f9f16784"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "37bfe646c38d7902e56c67dad346d28cc9f359f1"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
@@ -48,6 +48,7 @@
         metosin/muuntaja {:mvn/version "0.6.8"}
         uberdeps/uberdeps {:mvn/version "1.1.4"}
         com.lambdaworks/scrypt {:mvn/version "1.4.0"}
+        markdown-clj/markdown-clj {:mvn/version "1.11.4"}
 
         ;; schema
         metosin/malli {:mvn/version "0.8.4"}

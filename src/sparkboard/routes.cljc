@@ -23,6 +23,9 @@
   :handler - symbol pointing to a (server) function accepting a request map"
   (r/atom ["/" {"" (E :home {:public true
                              :view `views/home})
+                ["documents/" :file/name] (E :markdown/file
+                                             {:handler 'sparkboard.server.core/serve-markdown
+                                              :public true})
                 "slack/" {"invite-offer" (E :slack/invite-offer
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete

@@ -5,6 +5,7 @@
    * mutations over websocket"
   (:gen-class)
   (:require [clj-time.coerce]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.util]
             [muuntaja.core :as m]
@@ -26,10 +27,11 @@
             [sparkboard.datalevin :as datalevin]
             [sparkboard.impl.server :as impl]
             [sparkboard.log]
+            [markdown.core :as md]
             [sparkboard.routes :as routes]
             [sparkboard.server.auth :as auth]
             [sparkboard.server.env :as env]
-            [sparkboard.server.html :as server.views]
+            [sparkboard.server.html :as server.html]
             [sparkboard.server.nrepl :as nrepl]
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
@@ -86,6 +88,8 @@
 
 #_(memo/clear-memo! $resolve-ref)
 
+(defn serve-markdown [{:keys [file/name]}]
+  (server.html/static-html (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
 (def route-handler
   (-> (fn [{:as req :keys [uri query-string]}]
@@ -99,12 +103,14 @@
 
             (and (not authed?) (not public)) (buddy.auth/throw-unauthorized)
 
-            handler (handler req params)
+            handler (handler (merge req params))
 
             ;; mutation fns are expected to return HTTP response maps
             (and mutation (= method :post)) (apply mutation req params (:body-params req))
 
-            (and html? (or query view)) (server.views/single-page-html env/client-config (:account req))
+            (and html? (or query view)) (server.html/single-page-html
+                                         {:tx [(assoc env/client-config :db/id :env/config)
+                                               (assoc (:account req) :db/id :env/account)]})
 
             query (some-> (query params) deref ring.http/ok)
 

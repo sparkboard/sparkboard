@@ -50,7 +50,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :tr/tag {:en "Tag", :fr "Mot-clé", :es "Etiqueta"}
     :tr/or {:en "or", :fr "ou", :es "o"}
     :tr/tos {:en "Terms of Service", :fr "Conditions d'utilisation", :es "Términos de servicio"}
-    :tr/pp {:en "Privacy Policy" :fr "Politique de confidentialité", :es "Política de privacidad"}
+    :tr/privacy-policy {:en "Privacy Policy" :fr "Politique de confidentialité", :es "Política de privacidad"}
+    :tr/cookie-policy {:en "Cookie Policy", :fr "Politique relative aux cookies", :es "Política de cookies"}
     :tr/and {:en "and", :fr "et", :es "y"}
     :tr/sign-in-with-google {:en "Sign in with Google", :fr "Se connecter avec Google", :es "Iniciar sesión con Google"}
     :tr/sign-up-agree-to {:en "By clicking continue, you agree to our",

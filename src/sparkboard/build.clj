@@ -1,5 +1,6 @@
 (ns sparkboard.build
-  (:require [babashka.process :as bp]))
+  (:require [babashka.process :as bp]
+            [clojure.repl.deps :as deps]))
 
 (defn start
   {:shadow/requires-server true}
@@ -41,6 +42,8 @@
 
 
 (comment
+
+ (deps/sync-deps)
 
  (require '[sparkboard.migration.one-time :as one-time]
           '[datalevin.core :as dl]

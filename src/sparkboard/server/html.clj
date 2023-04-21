@@ -14,16 +14,22 @@
           assets/md5)
       (.toEpochMilli (Instant/now))))
 
-(defn single-page-html [config account]
+(defn static-html [content]
+  (-> {:body (str (html/html-page {:title "Sparkboard"
+                                   :styles [{:href "/sparkboard.css"}]
+                                   :body [[:div.prose.max-w-2xl.mx-auto.my-16
+                                           (hiccup.util/raw-string content)]]}))}
+      (ring.response/content-type "text/html")
+      (ring.response/status 200)))
+
+(defn single-page-html [{:as options :keys [tx schema content]}]
   (-> {:body (str (html/html-page {:title "Sparkboard"
                                    :styles [{:href "/sparkboard.css"}]
                                    :scripts/body [{:src (str "/js/app.js?v=" (invalidation-token "public/js/main.js"))}]
                                    :body [[:script {:type "application/re-db"}
-                                           (hiccup.util/raw-string
-                                            (transit/write
-                                             {:tx (cond-> [(assoc config :db/id :env/config)]
-                                                          account
-                                                          (conj (assoc account :db/id :env/account)))}))]
-                                          [:div#web]]}))}
+                                           (->> (select-keys options [:tx :schema])
+                                                transit/write
+                                                hiccup.util/raw-string)]
+                                          [:div#web content]]}))}
       (ring.response/content-type "text/html")
       (ring.response/status 200)))

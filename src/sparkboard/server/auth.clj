@@ -112,7 +112,7 @@
              :keys
              first buddy.keys/jwk->public-key)))
 
-(defn logout [_req _params]
+(defn logout [_req]
   (-> (ring.response/redirect (routes/path-for [:home]))
       (assoc-in [:cookies "account-id"] {:value (t/write nil)
                                          :expires (str (java.util.Date.))})))
@@ -136,7 +136,7 @@
       ;; last-sign-in can overwrite existing data
       {:account/last-sign-in now})]))
 
-(defn oauth2-google-landing [{:as req :keys [oauth2/access-tokens]} params]
+(defn oauth2-google-landing [{:as req :keys [oauth2/access-tokens]}]
   (let [{:keys [token id-token]} (:google access-tokens)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
         sub (:sub (jwt/unsign id-token @google-public-key {:alg :rs256

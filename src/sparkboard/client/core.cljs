@@ -31,10 +31,18 @@
   (doseq [{:keys [tx schema]} (->> (js/document.querySelectorAll (str "[type='application/re-db']"))
                                    (map (comp transit/read (j/get :innerHTML))))]
     (some-> schema db/merge-schema!)
-    (some-> tx db/transact!)))
+    (some-> tx db/transact! :db/after println)))
 
 (defn init []
   (read-env!)
   (firebase/init)
   (start-router)
   (render))
+
+(comment
+ (db/transact! [[:db/retractEntity :test]])
+ (db/transact! [#_{:db/id :a :b 1}
+                {:db/id :test3 :a :b}
+                {:db/id :test2}])
+ (:test2 (:eav @(db/conn)))
+ )

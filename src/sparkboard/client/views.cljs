@@ -18,10 +18,10 @@
    [inside-out.forms :as forms]))
 
 ;; TODO
-;; - make a yawn.view/classes utility to precompile class strings
-;; - /terms, /privacy
-;; - clarify Login/Register paths
-;; - radix-ui for language selector
+;; - separate register screen
+;; - password signin:
+;;   - new-account flow, reset-pass, verify new email, check-pass-start-session
+
 
 (ui/defview menubar:lang []
   [:div.flex.flex-row
@@ -148,7 +148,7 @@
                                                         (db/transact! [(assoc foo :db/id :env/account)])
                                                         )
                                                        #_(reset! !account {:identity @?mbr-name})
-                                                       (routes/set-path! [:org/index]))
+                                                        (routes/set-path! [:org/index]))
                                                      res)}
                                      @!mbr)]
                           (prn :logged-in res :mbr @!mbr)
@@ -165,19 +165,23 @@
                            :href (routes/path-for :oauth2.google/launch)}
         [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]
        [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/sign-up-agree-to)
-        [:a.gray-link {:href "/terms"} (tr :tr/tos)]
+        [:a.gray-link {:href "/documents/terms-of-service"} (tr :tr/tos)] ","
+        [:a.gray-link {:target "_blank"
+                       :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} (tr :tr/cookie-policy)]
         (tr :tr/and)
-        [:a.gray-link {:href "/privacy"} (tr :tr/pp)] "."]])))
+        [:a.gray-link {:target "_blank"
+                       :href "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]])))
 
 (ui/defview login-screen [params]
-  [:div.grid.md:grid-cols-2.gap-4.divide-x-4.divide-solid
+  [:div.grid.md:grid-cols-2
    ;; left column
-   [:div.hidden.md:block.bg-zinc-300.text-white.p-5.text-2xl.bg-fit.bg-no-repeat.bg-center
-    {:style {:background-color "white"
-             :background-image (ui/css-url "https://media.discordapp.net/attachments/999411359253004318/1098565546976493588/mhuebert_creative_loft_wild_colors_computering_tinkering_contra_3e62c9fc-82dd-4c93-8bce-07efeace1a77.png?width=650&height=650")}}
-    "Sparkboard"]
+   [:div.hidden.md:block.text-2xl.bg-no-repeat
+    {:class ["bg-blend-darken bg-zinc-50 bg-center"]
+     :style {:background-size "300px"
+             :background-image (ui/css-url
+                                "https://media.discordapp.net/attachments/999411359253004318/1098995368592683078/mhuebert_Serious_abstract_icon._Multiple_squares_approaching_ea_60f565a6-decb-435f-92b1-02c63a69dae6.png?width=765&height=765")}}]
    ;; right column
-   [:div.flex.flex-col.h-screen.border-left.border-gray-200.border-8s
+   [:div.flex.flex-col.h-screen.shadow-sm.relative
     [:div.flex.flex-grow
      [login-form]]
     [:div.p-4.flex.justify-end
@@ -207,6 +211,7 @@
      [(routes/use-view :org/create)]]]])
 
 (ui/defview home [params]
+  (prn :db/get (db/get :env/account))
   (if (db/get :env/account)
     [org-index params]
     [login-screen params]))
