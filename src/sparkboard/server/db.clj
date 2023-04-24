@@ -191,7 +191,7 @@
       (update :member/password #(buddy.hashers/derive % buddy-opts))
       (util/guard (partial m/validate (:member schema/proto)))))
 
-(defn member:create [ctx params mbr]
+(defn board:register [ctx params mbr]
   (try (if (empty? (db/where [[:member/name (:member/name mbr)]]))
          (if-let [mbr (make-member ctx (assoc mbr :member/board
                                               [:board/id (:board/id params)]))]

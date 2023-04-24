@@ -53,8 +53,11 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :tr/privacy-policy {:en "Privacy Policy" :fr "Politique de confidentialité", :es "Política de privacidad"}
     :tr/cookie-policy {:en "Cookie Policy", :fr "Politique relative aux cookies", :es "Política de cookies"}
     :tr/and {:en "and", :fr "et", :es "y"}
+    :tr/new-project {:en "New project", :fr "Nouveau projet", :es "Nuevo proyecto"}
+    :tr/create-board {:en "Create board", :fr "Créer un tableau", :es "Crear tablero"}
+    :tr/board-title {:en "Board title", :fr "Titre du tableau", :es "Título del tablero"}
     :tr/sign-in-with-google {:en "Sign in with Google", :fr "Se connecter avec Google", :es "Iniciar sesión con Google"}
-    :tr/sign-up-agree-to {:en "By clicking continue, you agree to our",
+    :tr/sign-in-agree-to {:en "By signing in, you agree to our",
                           :fr "En cliquant sur continuer, vous acceptez notre",
                           :es "Al hacer clic en continuar, acepta nuestro"}
     :tr/welcome {:en "Welcome to Sparkboard" :fr "Bienvenue sur Sparkboard" :es "Bienvenido a Sparkboard"}

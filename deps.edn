@@ -8,9 +8,9 @@
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "5cd35badf9ecc7e88c37c141ac149d67f9f16784"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
-                                 :git/sha "37bfe646c38d7902e56c67dad346d28cc9f359f1"}
+                                 :git/sha "a030d6e2eda8875a676cff409be8467f2d2bf46c"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
-                                       :git/sha "583b9b610e76804f537684ab961297945cf66e5e"}
+                                       :git/sha "822cd06b7bed6997c9a247d55c1402960cf2a0cd"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}

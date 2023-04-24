@@ -10,7 +10,8 @@
             [vendor.pushy.core :as pushy]
             [re-db.integrations.reagent] ;; extends `ratom` reactivity
             [sparkboard.views.ui :as ui]
-            [yawn.root :as root]))
+            [yawn.root :as root]
+            [sparkboard.client.scratch]))
 
 (ui/defview root []
   (let [{:as current-location :keys [path view params tag route]} (db/get :env/location)]

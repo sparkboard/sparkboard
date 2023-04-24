@@ -30,7 +30,7 @@
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
-                "login" (E :auth/sign-in {:view `views/login-screen
+                "login" (E :auth/sign-in {:view `views/account:sign-in
                                           :public true})
                 "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout
                                           :public true})
@@ -44,7 +44,7 @@
                              :view `views/org-index})
                       "/login" (E :login
                                   {:public true
-                                   :view `views/login-screen
+                                   :view `views/account:sign-in
                                    :mutation `server.db/login-handler})
 
                       "/o/create" (E :org/create
@@ -62,12 +62,12 @@
                                                    {:query `server.db/$search})
 
 
-                      ["/b/" :board/id "/create-project"] (E :project/create
-                                                             {:view `views/project:create
-                                                              :mutation `server.db/project:create})
-                      ["/b/" :board/id "/create-member"] (E :member/create
-                                                            {:view `views/member:create
-                                                             :mutation `server.db/member:create})
+                      ["/b/" :board/id "/projects/new"] (E :project/create
+                                                           {:view `views/project:create
+                                                            :mutation `server.db/project:create})
+                      ["/b/" :board/id "/register"] (E :board/register
+                                                       {:view `views/board:register
+                                                        :mutation `server.db/board:register})
                       ["/b/" :board/id] (E :board/one
                                            {:query `server.db/$board:one
                                             :view `views/board:one})

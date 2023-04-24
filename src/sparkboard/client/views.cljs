@@ -80,12 +80,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def input (v/from-element :input
-             {:class ["flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2"
-                      "text-sm ring-offset-background placeholder:text-muted-foreground"
-                      "focous-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      "disabled:cursor-not-allowed disabled:opacity-50"]}))
-
 (defn show-messages [field]
   (when-let [messages (forms/visible-messages field)]
     (into [:div.mb-3]
@@ -95,12 +89,23 @@
                                               "text-gray-500")} content]))
           messages)))
 
-(ui/defview login-form []
+(def account:sign-in-with-google
+  (v/x [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"
+                           :href (routes/path-for :oauth2.google/launch)}
+        [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]))
+
+(def account:sign-in-terms
+  (v/x [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/sign-in-agree-to)
+        [:a.gray-link {:href "/documents/terms-of-service"} (tr :tr/tos)] ","
+        [:a.gray-link {:target "_blank"
+                       :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} (tr :tr/cookie-policy)]
+        (tr :tr/and)
+        [:a.gray-link {:target "_blank"
+                       :href "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]))
+
+(ui/defview sign-in-form []
   (ui/with-form [!form {:account/email (?email :init "")
                         :account/password (?password :init "")}
-                 :validators {?email (fn [v _]
-                                       (when-not (re-find #"^[^@]+@[^@]+$" v)
-                                         (tr :tr/invalid-email)))}
                  :required [?email ?password]]
     (let [!step (hooks/use-state :email)]
       [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
@@ -111,26 +116,15 @@
                        :password (prn :submit @!form)))}
        [:h1.text-3xl.font-medium.mb-4.text-center (tr :tr/welcome)]
        [:div.flex.flex-col.gap-2
-        [input {:type "email"
-                :value @?email
-                :placeholder (tr :tr/email)
-                :on-change (forms/change-handler ?email)}]
-        (show-messages ?email)
+        (ui/show-field ?email)
         (when (= :password @!step)
-          [:<>
-           [input {:type "password"
-                   :id (str ::password)
-                   :value @?password
-                   :placeholder (tr :tr/password)
-                   :on-change (forms/change-handler ?password)}]
-           (str (forms/visible-messages ?password))])
+          (ui/show-field ?password))
         (str (forms/visible-messages !form))
         [:button
          {:class ["w-full h-10 text-sm p-3"
                   ui/c:dark-button]
           :on-click (fn []
                       (forms/touch! !form)
-                      (prn (forms/submittable? !form))
                       (reset! !step :password)
                       (js/setTimeout #(.focus (js/document.getElementById (str ::password)))
                                      100)
@@ -148,7 +142,7 @@
                                                         (db/transact! [(assoc foo :db/id :env/account)])
                                                         )
                                                        #_(reset! !account {:identity @?mbr-name})
-                                                        (routes/set-path! [:org/index]))
+                                                       (routes/set-path! [:org/index]))
                                                      res)}
                                      @!mbr)]
                           (prn :logged-in res :mbr @!mbr)
@@ -161,29 +155,20 @@
         [:div.relative.flex.justify-center.text-xs.uppercase
          [:span.bg-background.px-2.text-muted-foreground
           (tr :tr/or)]]]
-       [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"
-                           :href (routes/path-for :oauth2.google/launch)}
-        [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]
-       [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/sign-up-agree-to)
-        [:a.gray-link {:href "/documents/terms-of-service"} (tr :tr/tos)] ","
-        [:a.gray-link {:target "_blank"
-                       :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} (tr :tr/cookie-policy)]
-        (tr :tr/and)
-        [:a.gray-link {:target "_blank"
-                       :href "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]])))
+       account:sign-in-with-google
+       account:sign-in-terms])))
 
-(ui/defview login-screen [params]
+(ui/defview account:sign-in [params]
   [:div.grid.md:grid-cols-2
    ;; left column
    [:div.hidden.md:block.text-2xl.bg-no-repeat
     {:class ["bg-blend-darken bg-zinc-50 bg-center"]
-     :style {:background-size "300px"
-             :background-image (ui/css-url
-                                "https://media.discordapp.net/attachments/999411359253004318/1098995368592683078/mhuebert_Serious_abstract_icon._Multiple_squares_approaching_ea_60f565a6-decb-435f-92b1-02c63a69dae6.png?width=765&height=765")}}]
+     :style {:background-size "100px"
+             :background-image (ui/css-url "/images/logo-2023.png")}}]
    ;; right column
    [:div.flex.flex-col.h-screen.shadow-sm.relative
     [:div.flex.flex-grow
-     [login-form]]
+     [sign-in-form]]
     [:div.p-4.flex.justify-end
      [menubar:lang]]]])
 
@@ -211,10 +196,9 @@
      [(routes/use-view :org/create)]]]])
 
 (ui/defview home [params]
-  (prn :db/get (db/get :env/account))
   (if (db/get :env/account)
     [org-index params]
-    [login-screen params]))
+    [account:sign-in params]))
 
 (ui/defview org-create [params]
   (with-form [!org {:org/title ?title}]
@@ -222,9 +206,7 @@
      [:h2 (tr :tr/new) " " (tr :tr/org)]
      [:form
       [:label "Title"]
-      [input {:type "text"
-              :value (or @?title "")
-              :on-change (forms/change-handler ?title)}]
+      (ui/show-field ?title)
       [:button
        {:on-click #(do (routes/mutate! {:route [:org/create]
                                         :response-fn (fn [^js/Response res _url]
@@ -239,54 +221,45 @@
        (str (tr :tr/create) " " (tr :tr/org))]]]))
 
 (ui/defview board:create [{:as params :keys [route org/id]}]
-  (let [[n n!] (use-state "")]
+  (ui/with-form [!board {:board/title ?title}]
     [:div
      [:h3 (tr :tr/new) " " (tr :tr/board)]
-     [input {:placeholder "Board title"
-             :value n
-             :on-input #(n! (-> % .-target .-value))}]
+     (ui/show-field ?title)
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
                                                             (routes/set-path! [:org/one {:org/id (:org/id params)}])
                                                             ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                                                             res))}
-                                          {:board/title n})}
-      (str (tr :tr/create) " " (tr :tr/board))]]))
+                                          @!board)}
+      (tr :tr/create-board)]]))
 
 (ui/defview project:create [{:as params :keys [route board/id]}]
-  (let [[n n!] (use-state "")]
+  (ui/with-form [!project {:project/title ?title}]
     [:div
-     [:h3 (str (tr :tr/new) " " (tr :tr/project))]
-     [input {:placeholder "Project title"
-             :value n
-             :on-input #(n! (-> % .-target .-value))}]
+     [:h3 (tr :tr/new-project)]
+     (ui/show-field ?title)
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
                                                             (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
-                                          {:project/title n})}
-      (str (tr :tr/create) " " (tr :tr/project))]]))
+                                          @!project)}
+      (tr :tr/new-project)]]))
 
-(ui/defview member:create [{:as params :keys [route board/id]}]
-  (let [new-mbr (use-state {:member/name "", :member/password ""})]
+(ui/defview board:register [{:as params :keys [route board/id]}]
+  (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 (str (tr :tr/new) " " (tr :tr/member))]
-     [input {:placeholder "Member name"
-             :value (:member/name @new-mbr)
-             :on-input #(swap! new-mbr assoc :member/name (-> % .-target .-value))}]
-     [input {:placeholder "Member password"
-             :type "password"
-             :value (:member/password @new-mbr)
-             :on-input #(swap! new-mbr assoc :member/password (-> % .-target .-value))}]
+     (ui/show-field ?name)
+     (ui/show-field ?pass)
      [:button {:on-click #(routes/mutate! {:route route
                                            :response-fn (fn [^js/Response res _url]
                                                           (when (http-ok? res)
                                                             (routes/set-path! [:board/one {:board/id (:board/id params)}])
                                                             res))}
-                                          @new-mbr)}
-      (str (tr :tr/create) " " (tr :tr/member))]]))
+                                          @!member)}
+      (tr :tr/create)]]))
 
 (ui/defview org:one [{:as params :keys [org/id query-params]}]
   (let [value (ws/use-query! [:org/one {:org/id id}])
@@ -302,7 +275,7 @@
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
         [:h3 (tr :tr/search)]
-        [input
+        [:input.form-input
          {:id "org-search"
           :placeholder (tr :tr/search-across-org)
           :type "search"
@@ -347,7 +320,7 @@
              (:project/_board value))]
       [:div.rough-tab {:name (tr :tr/members)
                        :class "db"}
-       [:a {:href (routes/path-for :member/create b)}
+       [:a {:href (routes/path-for :board/register b)}
         (tr :tr/new) " " (tr :tr/member)]
        (into [:ul]
              (map (fn [member]
