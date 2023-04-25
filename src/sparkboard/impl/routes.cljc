@@ -13,7 +13,7 @@
                            (delay
                             #?(:clj  (-> result
                                          (u/update-some {:query requiring-resolve
-                                                         :mutation requiring-resolve
+                                                         :post requiring-resolve
                                                          :handler requiring-resolve}))
                                :cljs result))
                            id)])))])
@@ -69,6 +69,6 @@
        ~(u/update-some endpoint (if (:ns &env)
                                   {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
                                   {:query (fn [s] `(requiring-resolve ~s))
-                                   :mutation (fn [s] `(requiring-resolve ~s))
+                                   :post (fn [s] `(requiring-resolve ~s))
                                    :handler (fn [s] `(requiring-resolve ~s))})))
       ~tag)))

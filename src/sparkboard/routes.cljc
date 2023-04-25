@@ -19,7 +19,7 @@
   "Route definitions.
   :view  - symbol pointing to a (client) view for the single-page app
   :query - symbol pointing to a (server) function providing data for the route
-  :mutation - symbol pointing to a (server) function accepting a POST body
+  :post - symbol pointing to a (server) function accepting a POST body
   :handler - symbol pointing to a (server) function accepting a request map"
   (r/atom ["/" {"" (E :home {:public true
                              :view `views/home})
@@ -32,7 +32,7 @@
                                              {:view `slack.client/link-complete})}
                 "login" (E :auth/sign-in {:view `views/account:sign-in
                                           :public true})
-                "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout
+                "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout-handler
                                           :public true})
                 "oauth2" {"/google" (E :oauth2.google/launch {})
                           "/google/callback" (E :oauth2.google/callback {})
@@ -41,20 +41,20 @@
                                                 :handler 'sparkboard.server.auth/oauth2-google-landing})}
                 "v2" {"" (E :org/index
                             {:query `server.db/$org:index
-                             :view `views/org-index})
+                             :view `views/org:index})
                       "/login" (E :login
                                   {:public true
                                    :view `views/account:sign-in
-                                   :mutation `server.db/login-handler})
+                                   :post `server.db/login-handler})
 
                       "/o/create" (E :org/create
-                                     {:view `views/org-create
-                                      :mutation `server.db/org:create})
+                                     {:view `views/org:create
+                                      :post `server.db/org:create})
                       "/o/delete" (E :org/delete
-                                     {:mutation `server.db/org:delete})
+                                     {:post `server.db/org:delete})
                       ["/o/" :org/id "/create-board"] (E :board/create
                                                          {:view `views/board:create
-                                                          :mutation `server.db/board:create})
+                                                          :post `server.db/board:create})
                       ["/o/" :org/id] (E :org/one
                                          {:query `server.db/$org:one
                                           :view `views/org:one})
@@ -64,10 +64,10 @@
 
                       ["/b/" :board/id "/projects/new"] (E :project/create
                                                            {:view `views/project:create
-                                                            :mutation `server.db/project:create})
+                                                            :post `server.db/project:create})
                       ["/b/" :board/id "/register"] (E :board/register
                                                        {:view `views/board:register
-                                                        :mutation `server.db/board:register})
+                                                        :post `server.db/board:register})
                       ["/b/" :board/id] (E :board/one
                                            {:query `server.db/$board:one
                                             :view `views/board:one})
@@ -141,12 +141,8 @@
           (string? path)
           (->> (impl/match-route @!routes) :route)))
 
-(defn mutate! [{:keys [route response-fn] :as opts} & args]
+(defn mutate! [route body]
   (http/request (path-for route)
-                (merge {:body (vec args)
-                        :body/content-type :transit+json
-                        :method "POST"}
-                       ;; `response-fn`, if provided, should be a fn of two
-                       ;; args [response url] and returning the response
-                       ;; after doing whatever it needs to do.
-                       (dissoc opts :body :route))))
+                {:body body
+                 :body/content-type :transit+json
+                 :method "POST"}))

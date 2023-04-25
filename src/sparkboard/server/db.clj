@@ -1,19 +1,17 @@
 (ns sparkboard.server.db
   "Database queries and mutations (transactions)"
-  (:require [buddy.hashers]
-            [clojure.pprint :refer [pprint]]
-            [clojure.set :refer [rename-keys]]
+  (:require [clojure.pprint :refer [pprint]]
             [clojure.string :as str]
             [datalevin.core :as dl]
             [malli.core :as m]
-            [sparkboard.datalevin :as sb.datalevin :refer [conn]]
-            [sparkboard.schema :as schema]
             [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
-            [re-db.read :as read]
             [re-db.xform :as xf]
             [ring.util.http-response :as http-rsp]
+            [sparkboard.datalevin :as sb.datalevin :refer [conn]]
+            [sparkboard.schema :as schema]
+            [sparkboard.server.auth :as auth]
             [sparkboard.util :as util]))
 
 (defmacro defquery
@@ -70,131 +68,34 @@
                        :board/title]))))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
-(def buddy-opts
-  "Options for Buddy-hashers"
-  {;; TODO allow config of `:iterations`, perhaps per
-   ;; https://security.stackexchange.com/questions/3959/recommended-of-iterations-when-using-pbkdf2-sha256/3993#3993
-   :alg :bcrypt+blake2b-512})
-
-(defn password-ok?
-  "Internal password check fn.
-  Returns map describing whether given password attempt matches what
-  we have stored for the member of given name:
-    - `valid?` key is a Boolean describing success/failure
-    - failures/mismatches contain an `error` key (kw or map value)
-  Exists to paper over buddy-hashers' API."
-  [member-name pwd-attempt]
-  (if-let [pwd-hash (dl/q '[:find ?pwd .
-                            :in $ ?nom
-                            :where
-                            [?mbr :member/name ?nom]
-                            [?mbr :member/password ?pwd]]
-                          @conn member-name)]
-    (try (let [res (buddy.hashers/verify pwd-attempt pwd-hash)]
-           (cond-> res
-             ;; unify map representation to `valid?` versus `error`
-             (not (:valid res))
-             (assoc :error :error/invalid-password)
-             true
-             (update-keys #(get {:valid :valid?} % %))))
-         (catch java.lang.IllegalArgumentException iae
-           (cond-> {:error :error/uncategorized
-                    :member/name member-name}
-             ;; it would be cool if the exception returned data but it doesn't
-             (= "invalid arguments" (ex-message iae))
-             (assoc :error :error/no-password-provided)))
-         (catch clojure.lang.ExceptionInfo cle
-           (cond-> {:error {}
-                    :member/name member-name}
-             ;; it would be cool if the exception returned data but it doesn't
-             (= "Malformed hash" (ex-message cle))
-             (assoc :error {:error/kind :error/malformed-password-hash
-                            :error/message (ex-message cle)}))))
-    {:error :error/member-password-not-found
-     :member/name member-name}))
-
-(defn logout-handler
-  "HTTP handler. Returns 200/OK after logging the user out."
-  [_ctx _params]
-  (dissoc {:status 200, :session nil,
-           :cookies {"ring-session" {:value ""
-                                     :expires (-> (java.time.LocalDateTime/now)
-                                                  (.minusDays 1)
-                                                  .toString)
-                                     :max-age 1}}}
-          :identity))
-
 (defn login-handler
-  "HTTP handler. Returns 200/OK with result of the user/password attempt in the body.
-  Body keys:
-   - `member/name` - who tried to log in
-   - `valid?` - success/failure Boolean
-   - `error` - describes what went wrong (if anything)"
-  [_ctx _params form]
-  (cond-> {:status 200 ;; Leave HTTP error codes for the transport layer
-           :body {:success? false}}
-    ((every-pred :valid?
-                 (complement :error))
-     (password-ok? (:member/name form)
-                   (:member/password form)))
-    (assoc :body {:success? true, :session {:identity (:member/name form)}}
-           :session {:identity (:member/name form)})))
-
-(comment ;;;; Password encryption
-  ;; NB: resulting string is concatenation of algorithm, plaintext salt, and encrypted password
-  (buddy.hashers/derive "secretpassword" buddy-opts)
-  
-  (buddy.hashers/verify "secretpassword" "bcrypt+blake2b-512$dfb9ecb7a246d546e437418e6cd53b43$12$51fb8cef3a64337e0677182171786b14c14a40dc60f5f95c")
-
-  (db/where [[:member/name "dave888"]])
-
-  (:member/password (first (db/where [[:member/name " Desiree Nsanzabera"]])))
-
-  (dl/q '[:find ?pwd .
-          :in $ ?nom
-          :where
-          [?mbr :member/name ?nom]
-          [?mbr :member/password ?pwd]]
-        @conn "dave888")
-
-  (password-ok? nil nil)
-  (password-ok? "foo" nil)
-  (password-ok? nil "nil")
-  (password-ok? "dave888" nil)
-  (password-ok? "dave888" "")
-  (password-ok? " Desiree Nsanzabera" nil)
-  (password-ok? "dave888" "secretpassword")
-  (password-ok? "dave888" "wrong")
-
-  ;; Every unhappy password is unhappy in its own way (but returns the same HTTP response, for security)
-  (login-handler nil nil nil)
-  (login-handler nil nil {})
-  (login-handler nil nil {:member/name "dave888"})
-  (login-handler nil nil {:member/password "this makes no sense"})
-  (login-handler nil nil {:member/name "", :member/password "shouldn't-matter"})
-  (login-handler nil nil {:member/name "dave888", :member/password ""})
-  (login-handler nil nil {:member/name "dave888", :member/password "wrong"})
-  (login-handler nil nil {:member/name "doesnt-exist", :member/password "doesn't-matter"})
-  ;; Happy passwords are all alike  
-  (login-handler nil nil {:member/name "dave888", :member/password "secretpassword"})
-
-  )
-
-(defn make-member [_ctx m]
-  (-> m
-      (assoc :member/id (str (random-uuid))
-             ;; FIXME use context to hook this to actual current user
-             :ts/created-by {:account/id "DEV:FAKE"})
-      (update :member/password #(buddy.hashers/derive % buddy-opts))
-      (util/guard (partial m/validate (:member schema/proto)))))
+  "POST handler. Returns 200/OK with account data if successful."
+  [_ {:as account
+      :keys [account/email
+             account/password]}]
+  ;; http error code for when account is not found in database is
+  (let [_ (when-not password (throw (ex-info "Password not provided" {:status 401} account)))
+        _ (when-not email (throw (ex-info "Email not provided" {:status 401})))
+        account-entity (not-empty (db/get [:account/email email]))
+        _ (when-not account-entity (throw (ex-info (str "Account not found") {:account/email email
+                                                                              :status 401})))
+        valid-pass? (try (auth/check-password account-entity password)
+                         (catch Exception e (throw (ex-info "Error checking password"
+                                                            {:account/email email
+                                                             :status 401}))))
+        _ (when-not valid-pass? (throw (ex-info "Invalid password" {:account/email email
+                                                                    :status 401})))]
+    (auth/res:login {:status 200} [:account/email email])))
 
 (defn board:register [ctx params mbr]
-  (try (if (empty? (db/where [[:member/name (:member/name mbr)]]))
+  ;; TODO
+
+  #_(try (if (empty? (db/where [[:member/name (:member/name mbr)]]))
          (if-let [mbr (make-member ctx (assoc mbr :member/board
-                                              [:board/id (:board/id params)]))]
+                                                  [:board/id (:board/id params)]))]
            (do (tap> (db/transact! [mbr]))
                (http-rsp/ok mbr))
            (http-rsp/bad-request {:error "can't create member with given data"
@@ -215,7 +116,7 @@
 (defn project:create [ctx params project]
   (try (if (empty? (db/where [[:project/title (:project/title project)]]))
          (if-let [project (make-project ctx (assoc project :project/board
-                                                   [:board/id (:board/id params)]))]
+                                                           [:board/id (:board/id params)]))]
            (do (tap> (db/transact! [project]))
                (http-rsp/ok project))
            (http-rsp/bad-request {:error "can't create project with given data"
@@ -276,26 +177,26 @@
          (http-rsp/internal-server-error {:error (.getMessage e)}))))
 
 (comment
-  (make-org {} {:org/title "foo bar baz qux"})
+ (make-org {} {:org/title "foo bar baz qux"})
 
-  (make-org {} {:org/title "foo", :foo "bar"})
-  
-  (org:create {} nil
-              {:org/title "foo"})
+ (make-org {} {:org/title "foo", :foo "bar"})
 
-  ;; fail b/c no title and extra key
-  (org:create {} nil
-              {:foo "foo"})
+ (org:create {} nil
+             {:org/title "foo"})
 
-  ;; fail b/c exists
-  (org:create {} nil
-              {:org/title "Hacking Health"})
+ ;; fail b/c no title and extra key
+ (org:create {} nil
+             {:foo "foo"})
 
-  (org:create {} nil
-              {:foo "foo" ;; <-- should stop the gears
-               :org/title "baz"})
+ ;; fail b/c exists
+ (org:create {} nil
+             {:org/title "Hacking Health"})
 
-  )
+ (org:create {} nil
+             {:foo "foo" ;; <-- should stop the gears
+              :org/title "baz"})
+
+ )
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."

@@ -26,15 +26,11 @@
 (ui/defview menubar:lang []
   [:div.flex.flex-row
    [:el dm/Root
-    [:el dm/Trigger
-     {:class ["flex justify-center items-center"
-              "w-10 h-10 p-2 rounded"
-              "bg-zinc-100 hover:bg-zinc-200"
-              "cursor-pointer"]}
+    [:el.btn.btn-transp.h-7 dm/Trigger
      [:svg {:class "h-5 w-5" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
       [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
     [:el dm/Portal
-     [:el dm/Content {:sideOffset 5 :collision-padding 16}
+     [:el dm/Content {:sideOffset 0 :collision-padding 16}
       (into [:el.shadow.rounded.text-sm dm/RadioGroup
              {:value (name @i18n/!preferred-language)
               :on-value-change (fn [v] (reset! i18n/!preferred-language (keyword v)))}]
@@ -57,21 +53,17 @@
 
 (ui/defview menubar:account [{[route-id] :route}]
   (if (db/get :env/account)
-    [:a
-     {:href (routes/path-for :auth/logout)
-      :class [ui/c:dark-button
-              "text-sm px-3 py-1"]}
+    [:a.btn.btn-transp.text-sm.px-3.py-1.h-7
+     {:href (routes/path-for :auth/logout)}
      (tr :tr/logout)]
-    [:a
-     {:href (routes/path-for :auth/sign-in)
-      :class [ui/c:dark-button
-              "text-sm m-1 h-8 p-3"]}
+    [:a.btn.btn-transp.text-sm.px-3.py-1.h-7
+     {:href (routes/path-for :auth/sign-in)}
      (tr :tr/sign-in)]))
 
 (ui/defview menubar [params]
   [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
-   [menubar:lang]
    [:div.flex-grow]
+   [menubar:lang]
    [menubar:account params]
    [:div.rough-divider]])
 
@@ -90,8 +82,9 @@
           messages)))
 
 (def account:sign-in-with-google
-  (v/x [ui/a:light-button {:class "w-full h-10 text-zinc-500 text-sm"
-                           :href (routes/path-for :oauth2.google/launch)}
+  (v/x [:a.btn.btn-light
+        {:class "w-full h-10 text-zinc-500 text-sm"
+         :href (routes/path-for :oauth2.google/launch)}
         [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]))
 
 (def account:sign-in-terms
@@ -120,34 +113,7 @@
         (when (= :password @!step)
           (ui/show-field ?password))
         (str (forms/visible-messages !form))
-        [:button
-         {:class ["w-full h-10 text-sm p-3"
-                  ui/c:dark-button]
-          :on-click (fn []
-                      (forms/touch! !form)
-                      (reset! !step :password)
-                      (js/setTimeout #(.focus (js/document.getElementById (str ::password)))
-                                     100)
-                      #_(p/let [res (routes/mutate!
-                                     {:route [:login]
-                                      :response-fn (fn [^js/Response res _url]
-                                                     (when (http-ok? res)
-                                                       ;; TODO set this based on response body
-                                                       ;; instead (I don't want to wrestle with
-                                                       ;; readablestream right now --DAL
-                                                       ;; 2023-03-15)
-                                                       ;; TODO ...or promise-style with `p/->>`
-                                                       (comment
-                                                        ;; transact account...
-                                                        (db/transact! [(assoc foo :db/id :env/account)])
-                                                        )
-                                                       #_(reset! !account {:identity @?mbr-name})
-                                                       (routes/set-path! [:org/index]))
-                                                     res)}
-                                     @!mbr)]
-                          (prn :logged-in res :mbr @!mbr)
-                          #_(reset! !account {:identity @?mbr-name})
-                          ))}
+        [:button.btn.btn-dark.w-full.h-10.text-sm.p-3
          (tr :tr/sign-in)]]
 
        [:div.relative
@@ -172,7 +138,7 @@
     [:div.p-4.flex.justify-end
      [menubar:lang]]]])
 
-(ui/defview org-index [params]
+(ui/defview org:index [params]
   [:<>
    [menubar params]
    [:div.pa3
@@ -185,7 +151,7 @@
                    [:div.rough-icon-button
                     {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                               (:org/title org) "?"))
-                                  (routes/mutate! {:route [:org/delete]} (:org/id org)))}
+                                  (routes/mutate! :org/delete (:org/id org)))}
                     "X"]
 
                    [:a {:href (routes/path-for :org/one org)}
@@ -197,10 +163,10 @@
 
 (ui/defview home [params]
   (if (db/get :env/account)
-    [org-index params]
+    [org:index params]
     [account:sign-in params]))
 
-(ui/defview org-create [params]
+(ui/defview org:create [params]
   (with-form [!org {:org/title ?title}]
     [:div
      [:h2 (tr :tr/new) " " (tr :tr/org)]
@@ -208,16 +174,13 @@
       [:label "Title"]
       (ui/show-field ?title)
       [:button
-       {:on-click #(do (routes/mutate! {:route [:org/create]
-                                        :response-fn (fn [^js/Response res _url]
-                                                       (case (.-status res)
-                                                         200 (js/console.log "200 response")
-                                                         400 (js/console.warn "400 response" (.-body res))
-                                                         500 (js/console.error "500 response")
-                                                         (js/console.error "catch-all case"))
-                                                       res)}
-                                       @!org)
-                       (forms/clear! !org))}
+       {:on-click #(p/let [^js/Response res (routes/mutate! :org/create @!org)]
+                     (case (.-status res)
+                       200 (js/console.log "200 response")
+                       400 (js/console.warn "400 response" (.-body res))
+                       500 (js/console.error "500 response")
+                       (js/console.error "catch-all case"))
+                     (forms/clear! !org))}
        (str (tr :tr/create) " " (tr :tr/org))]]]))
 
 (ui/defview board:create [{:as params :keys [route org/id]}]
@@ -225,13 +188,11 @@
     [:div
      [:h3 (tr :tr/new) " " (tr :tr/board)]
      (ui/show-field ?title)
-     [:button {:on-click #(routes/mutate! {:route route
-                                           :response-fn (fn [^js/Response res _url]
-                                                          (when (http-ok? res)
-                                                            (routes/set-path! [:org/one {:org/id (:org/id params)}])
-                                                            ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
-                                                            res))}
-                                          @!board)}
+     [:button {:on-click #(p/let [res (routes/mutate! route @!board)]
+                            (when (http-ok? res)
+                              (routes/set-path! [:org/one {:org/id (:org/id params)}])
+                              ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
+                              ))}
       (tr :tr/create-board)]]))
 
 (ui/defview project:create [{:as params :keys [route board/id]}]
@@ -239,12 +200,9 @@
     [:div
      [:h3 (tr :tr/new-project)]
      (ui/show-field ?title)
-     [:button {:on-click #(routes/mutate! {:route route
-                                           :response-fn (fn [^js/Response res _url]
-                                                          (when (http-ok? res)
-                                                            (routes/set-path! [:board/one {:board/id (:board/id params)}])
-                                                            res))}
-                                          @!project)}
+     [:button {:on-click #(p/let [res (routes/mutate! route @!project)]
+                            (when (http-ok? res)
+                              (routes/set-path! [:board/one {:board/id (:board/id params)}])))}
       (tr :tr/new-project)]]))
 
 (ui/defview board:register [{:as params :keys [route board/id]}]
@@ -253,12 +211,10 @@
      [:h3 (str (tr :tr/new) " " (tr :tr/member))]
      (ui/show-field ?name)
      (ui/show-field ?pass)
-     [:button {:on-click #(routes/mutate! {:route route
-                                           :response-fn (fn [^js/Response res _url]
-                                                          (when (http-ok? res)
-                                                            (routes/set-path! [:board/one {:board/id (:board/id params)}])
-                                                            res))}
-                                          @!member)}
+     [:button {:on-click #(p/let [res (routes/mutate! route @!member)]
+                            (when (http-ok? res)
+                              (routes/set-path! [:board/one {:board/id (:board/id params)}])
+                              res))}
       (tr :tr/create)]]))
 
 (ui/defview org:one [{:as params :keys [org/id query-params]}]

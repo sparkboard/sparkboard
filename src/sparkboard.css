@@ -92,3 +92,23 @@
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
       disabled:cursor-not-allowed disabled:opacity-50 mb-2
 }
+
+.btn {
+    @apply
+      inline-flex items-center justify-center cursor-pointer
+      font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none
+      rounded-md px-3
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+}
+.btn-light {
+    @apply
+      ring-offset-background border hover:border-primary/30 text-primary
+}
+.btn-dark {
+    @apply
+      ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90
+}
+.btn-transp {
+    @apply
+      hover:bg-black/10
+}

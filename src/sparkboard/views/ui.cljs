@@ -3,7 +3,8 @@
             [inside-out.macros]
             [re-db.react]
             [yawn.view :as v]
-            [sparkboard.i18n :refer [tr]])
+            [sparkboard.i18n :refer [tr]]
+            [clojure.pprint :refer [pprint]])
   (:require-macros [sparkboard.views.ui :refer [defview]]))
 
 
@@ -30,7 +31,7 @@
       [:input.form-input
        (v/props (:props (meta ?field))
                 {:placeholder (:label ?field)
-                 :value @?field
+                 :value (or @?field "")
                  :on-change (forms/change-handler ?field)
                  :on-blur (forms/blur-handler ?field)
                  :on-focus (forms/focus-handler ?field)
@@ -59,38 +60,6 @@
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
-(def c:dark-button
-  (v/classes ["inline-flex items-center justify-center "
-              "font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none "
-              "ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 "
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 "
-              "rounded-md"]))
-
-(def c:light-button
-  (v/classes ["inline-flex items-center justify-center cursor-pointer"
-              "font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none "
-              "ring-offset-background border hover:border-primary/30 text-primary"
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 "
-              "rounded-md px-3"]))
-
-(def a:dark-button
-  (v/from-element :a
-    {:class
-     ["inline-flex items-center justify-center "
-      "font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none "
-      "ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 "
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 "
-      "rounded-md px-3"]}))
-
-(def a:light-button
-  (v/from-element :a
-    {:class
-     ["inline-flex items-center justify-center cursor-pointer"
-      "font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none "
-      "ring-offset-background border hover:border-primary/30 text-primary"
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 "
-      "rounded-md px-3"]}))
-
 (defn css-url [s] (str "url(" s ")"))
 
 (forms/set-global-meta!
@@ -110,3 +79,6 @@
   (let [{:keys [el props]
          :or {el input-text}} (meta ?field)]
     (el ?field (v/props props attrs))))
+
+(defn pprinted [x]
+  [:pre-wrap (with-out-str (pprint x))])

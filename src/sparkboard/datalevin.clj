@@ -3,7 +3,8 @@
             [sparkboard.server.env :as env]
             [re-db.api :as db]
             [re-db.integrations.datalevin]
-            [re-db.read]))
+            [re-db.read]
+            [re-db.schema :as sch]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
@@ -16,7 +17,10 @@
  (dl/close conn)
  (dl/clear conn)
 
- (dl/schema conn)
+ (:account/email (dl/schema conn))
+
+ (db/merge-schema! {:account/email (merge sch/unique-id
+                                          sch/string)})
 
 
  (->> (db/where [:org/id])

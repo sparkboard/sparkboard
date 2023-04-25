@@ -1,9 +1,6 @@
 (ns sparkboard.server.auth
-  (:require [buddy.auth]
-            [buddy.auth.backends]
-            [buddy.auth.middleware]
-            [buddy.core.keys :as buddy.keys]
-            [buddy.sign.jwt :as jwt]
+  (:require [buddy.core.keys :as buddy.keys]
+            [buddy.sign.jwt :as buddy.jwt]
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
@@ -69,6 +66,13 @@
 ;; - trigger the password reset flow (with message) if someone tries to sign in
 ;;   and we don't have a password or google account,
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Account lookup
+
+(def exposed-account-keys [:account/display-name
+                           :account/email
+                           :account/photo-url
+                           :account/locale])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Oauth2 authentication
@@ -85,24 +89,26 @@
 
 (defn wrap-account-lookup [handler]
   (fn [req]
-    (handler (if-let [account (try (some-> (get-in req [:cookies "account-id" :value])
-                                           t/read)
-                                   (catch Exception e nil))]
-               (assoc req :account (try (db/pull '[*] account) (catch Exception e nil)))
-               req))))
+    (handler (assoc req :account
+                        (when-let [account-id (try (some-> (get-in req [:cookies "account-id" :value])
+                                                           t/read)
+                                                   (catch Exception e nil))]
+                          (try (not-empty (db/pull exposed-account-keys account-id))
+                               (catch Exception e
+                                 (throw
+                                  (ex-info "Account not found"
+                                           {:status 401
+                                            :account-id account-id})) nil)))))))
 
 (defn wrap-auth [f]
-  (let [session-backend (buddy.auth.backends/session)]
-    (-> f
-        (wrap-account-lookup)
-        (buddy.auth.middleware/wrap-authorization session-backend)
-        (buddy.auth.middleware/wrap-authentication session-backend)
-        (oauth2/wrap-oauth2 oauth2-config)
-        (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
-                                            {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
-                                             :readers {'clj-time/date-time clj-time.coerce/from-string}})
-                                    :cookie-attrs {:http-only true :secure (= (env/config :env) "prod")}})
-        (ring.cookies/wrap-cookies))))
+  (-> f
+      (wrap-account-lookup)
+      (oauth2/wrap-oauth2 oauth2-config)
+      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
+                                          {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
+                                           :readers {'clj-time/date-time clj-time.coerce/from-string}})
+                                  :cookie-attrs {:http-only true :secure (= (env/config :env) "prod")}})
+      (ring.cookies/wrap-cookies)))
 
 (def google-public-key
   (delay (-> "https://www.googleapis.com/oauth2/v3/certs"
@@ -112,10 +118,30 @@
              :keys
              first buddy.keys/jwk->public-key)))
 
-(defn logout [_req]
-  (-> (ring.response/redirect (routes/path-for [:home]))
-      (assoc-in [:cookies "account-id"] {:value (t/write nil)
-                                         :expires (str (java.util.Date.))})))
+(defn res:logout [res]
+  (assoc-in res [:cookies "account-id"]
+            {:value (t/write nil)
+             :expires (str (-> (java.time.LocalDateTime/now)
+                               (.minusDays 1)
+                               .toString))}))
+
+(defn logout-handler [_]
+  (-> (ring.response/redirect (routes/path-for :home))
+      (res:logout)))
+
+(defn res:login [res account-id]
+  (-> res
+      (assoc-in [:cookies "account-id"]
+                {:value (t/write account-id)
+                 ;; expire in 2 weeks
+                 :expires (str (java.util.Date. (+ (System/currentTimeMillis) (* 1000 60 60 24 14))))
+                 :http-only true
+                 :path "/"
+                 :secure (= (env/config :env) "prod")})
+      ;; TODO
+      ;; - verify that this value is encoded properly somewhere,
+      ;; - in client, set this into :env/account
+      (assoc :body {:account (db/pull exposed-account-keys account-id)})))
 
 (defn keep-vals [m]
   (into {} (filter (comp some? val) m)))
@@ -128,6 +154,7 @@
       (keep-vals
        {:ts/created-at now
         :account.provider.google/sub (:sub provider-info)
+        :account/display-name (:name provider-info)
         :account/email (:email provider-info)
         :account/email-verified? (:email_verified provider-info)
         :account/photo-url (:picture provider-info)
@@ -139,7 +166,7 @@
 (defn oauth2-google-landing [{:as req :keys [oauth2/access-tokens]}]
   (let [{:keys [token id-token]} (:google access-tokens)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
-        sub (:sub (jwt/unsign id-token @google-public-key {:alg :rs256
+        sub (:sub (buddy.jwt/unsign id-token @google-public-key {:alg :rs256
                                                            :iss "accounts.google.com"}))
         account-id [:account.provider.google/sub sub]
         provider-info (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
@@ -147,7 +174,4 @@
                           (json/parse-string keyword))]
     (db/transact! (account-tx account-id provider-info))
     (-> (ring.response/redirect (routes/path-for [:home]))
-        (assoc-in [:cookies "account-id"] {:value (t/write account-id)
-                                           :http-only true
-                                           :path "/"
-                                           :secure (= (env/config :env) "prod")}))))
+        (res:login account-id))))

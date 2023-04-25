@@ -8,6 +8,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.util]
+            [markdown.core :as md]
             [muuntaja.core :as m]
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
@@ -27,7 +28,6 @@
             [sparkboard.datalevin :as datalevin]
             [sparkboard.impl.server :as impl]
             [sparkboard.log]
-            [markdown.core :as md]
             [sparkboard.routes :as routes]
             [sparkboard.server.auth :as auth]
             [sparkboard.server.env :as env]
@@ -43,38 +43,30 @@
   ;; empty String if no read format is declared for the request's content-type.
   (muu/create m/default-options))
 
-(defn wrap-handle-errors [f]
-  (fn [req]
-    (log/info :URI (:uri req))
-    (try (f req)
-         (catch Exception e
-           (tap> e)
-           (if (env/config :dev.logging/tap?)
-             (log/error (ex-message e) e)
-             (log/error (ex-message e)
-                        (ex-data e)
-                        (ex-cause e)))
-           (impl/return-text
-            (:status (ex-data e) 500)
-            (ex-message e)))
-         (catch java.lang.AssertionError e
-           (if (env/config :dev.logging/tap?)
-             (log/error (ex-message e) e)
-             (log/error (ex-message e)
-                        (ex-data e)
-                        (ex-cause e)))
-           (impl/return-text
-            (:status (ex-data e) 500)
-            (ex-message e))))))
+(defn wrap-log
+  "Log requests (log/info) and errors (log/error)"
+  [f]
+  (let [handle-e (fn [e]
+                   (if (env/config :dev.logging/tap?) ;; configured in .local.config.edn
+                     (log/error (ex-message e) e)
+                     (log/error (ex-message e)
+                                (ex-data e)
+                                (ex-cause e)))
+                   (impl/return-text
+                    (:status (ex-data e) 500)
+                    (ex-message e)))]
+    (fn [req]
+      (log/info :URI (:uri req))
+      (try (f req)
+           (catch Exception e (handle-e e))
+           (catch java.lang.AssertionError e (handle-e e))))))
 
-(defn public-resource [path]
-  (some-> (ring.response/resource-response path {:root "public"})
-          (ring.response/content-type (ring.mime/ext-mime-type path))))
-
-(defn wrap-static-first [f]
-  ;; serve static files before all the other middleware, logging, etc.
-  (fn [req]
-    (or (public-resource (:uri req))
+(defn wrap-static-first
+  "Serve files from `public-dir` with content-type derived from file extension."
+  [f public-dir]
+  (fn [{:as req :keys [uri]}]
+    (or (some-> (ring.response/resource-response uri {:root public-dir})
+                (ring.response/content-type (ring.mime/ext-mime-type uri)))
         (f req))))
 
 
@@ -94,19 +86,21 @@
 (def route-handler
   (-> (fn [{:as req :keys [uri query-string]}]
         (let [uri (str uri (some->> (not-empty query-string) (str "?")))
-              {:as match :keys [view query mutation handler params public]} (routes/match-path uri)
+              {:as match :keys [view query post handler params public]} (routes/match-path uri)
               method (:request-method req)
               html? (and (= method :get)
                          (str/includes? (get-in req [:headers "accept"]) "text/html"))
               authed? (:account req)]
           (cond
 
-            (and (not authed?) (not public)) (buddy.auth/throw-unauthorized)
+            (and (not authed?) (not public)) (throw (ex-info "Unauthorized" {:uri uri
+                                                                             :match match
+                                                                             :status 401}))
 
             handler (handler (merge req params))
 
-            ;; mutation fns are expected to return HTTP response maps
-            (and mutation (= method :post)) (apply mutation req params (:body-params req))
+            ;; post fns are expected to return HTTP response maps
+            (and post (= method :post)) (post (merge req params) (:body-params req))
 
             (and html? (or query view)) (server.html/single-page-html
                                          {:tx [(assoc env/client-config :db/id :env/config)
@@ -141,8 +135,8 @@
                           #'route-handler)
       auth/wrap-auth
       ring.params/wrap-params
-      wrap-handle-errors
-      wrap-static-first
+      wrap-log
+      (wrap-static-first "public")
       #_(wrap-debug-request :first)))
 
 (defonce the-server

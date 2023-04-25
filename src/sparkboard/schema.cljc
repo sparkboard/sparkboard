@@ -255,7 +255,7 @@
 
 (def sb-firebase-account
   {:account/id unique-string-id
-   :account/email {s- :string}
+   :account/email unique-string-id
    :account/email-verified? {s- :boolean}
    :account/display-name {s- :string}
    :account.provider.google/sub unique-string-id
