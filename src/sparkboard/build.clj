@@ -1,6 +1,7 @@
 (ns sparkboard.build
   (:require [babashka.process :as bp]
-            [clojure.repl.deps :as deps]))
+            [clojure.repl.deps :as deps]
+            [re-db.in-memory :as db]))
 
 (defn start
   {:shadow/requires-server true}

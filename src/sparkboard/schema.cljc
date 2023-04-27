@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [malli.core :as m]
             [sparkboard.impl.schema :refer :all]
+            [malli.error :refer [humanize]]
             [malli.registry :as mr]
             [malli.util :as mu]
             [re-db.schema :as s]
@@ -79,6 +80,9 @@
                      s- :string}
    :board/custom-meta-description {:doc "Custom meta description for this board"
                                    s- :string}
+   :board/locale-default {s- :i18n/locale}
+   :board/locale-suggestions {s- :i18n/locale-suggestions}
+   :board/locale-dicts {s- :i18n/locale-dicts}
    :board/as-map {s- [:map {:closed true}
                       :board/custom-css
                       :board/custom-js
@@ -105,9 +109,9 @@
                       (? :board/slack.team)
                       (? :board/sticky-color)
                       (? :entity/domain)
-                      (? :i18n/default-locale)
-                      (? :i18n/extra-translations)
-                      (? :i18n/suggested-locales)
+                      (? :board/locale-default)
+                      (? :board/locale-dicts)
+                      (? :board/locale-suggestions)
                       (? :board/images)
                       (? :board/social-feed)
                       (? :ts/deleted-at)
@@ -263,7 +267,7 @@
    :account/password-hash {s- :string}
    :account/password-salt {s- :string}
    :account/photo-url {s- :http/url}
-   :account/locale {s- :i18n/language-code-639-2}
+   :account/locale {s- :i18n/locale}
    :account/as-map {s- [:map {:closed true}
                         :account/id
                         :account/email
@@ -277,6 +281,23 @@
                         (? :account/photo-url)
                         (? :account.provider.google/sub)]}})
 
+;; validation for endpoints
+;; - annotate endpoint functions with malli schema for :in and :out
+;; - we need nice error messages
+
+;; malli validator for a string with minimum length 8
+;; malli email validator
+
+;; http error code for invalid input
+;; 400 bad request
+
+(humanize
+ (m/explain
+  [:map
+   [:x
+    [:map
+     [:y :int]]]]
+  {:x {:y "foo"}}))
 
 (def sb-memberships
   {:membership/_entity {s- [:sequential :membership/as-map]}
@@ -313,17 +334,18 @@
   {:visibility/public? {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
                         s- :boolean}
    :http/url {s- [:re #"https?://.+\..+"]},
-   :html/color {s- :string}})
+   :html/color {s- :string}
+   :email {s- [:re {:error/message "should be a valid email"} #"^[^@]+@[^@]+$"]}})
 
 (def sb-i18n
-  {:i18n/default-locale {s- :string},
-   :i18n/dictionary {s- [:map-of :string :string]}
-   :i18n/extra-translations {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
-                             s- [:map-of :i18n/language-code-639-2 :i18n/dictionary]}
-   :i18n/language-code-639-2 {:doc "ISO 639-2 language code (eg. 'en')"
-                              s- [:re #"[a-z]{2}"]}
-   :i18n/suggested-locales {:doc "Suggested locales (set by admin, based on expected users)",
-                            s- [:vector :i18n/language-code-639-2]}})
+  {:i18n/locale {:doc "ISO 639-2 language code (eg. 'en')"
+                 s- [:re #"[a-z]{2}"]}
+   :i18n/default-locale {s- :string},
+   :i18n/locale-suggestions {:doc "Suggested locales (set by admin, based on expected users)",
+                             s- [:vector :i18n/locale]}
+   :i18n/dict {s- [:map-of :string :string]}
+   :i18n/locale-dicts {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
+                       s- [:map-of :i18n/locale :i18n/dict]}})
 
 (def sb-images
   {:image-urls/as-map {s- [:map-of
@@ -440,8 +462,8 @@
                     (? :board/show-org-tab?)
                     (? :org/default-board-template)
                     (? :org/social-feed)
-                    (? :i18n/default-locale)
-                    (? :i18n/suggested-locales)
+                    (? :org/locale-default)
+                    (? :org/locale-suggestions)
                     :org/images
                     :org/title
                     :org/id

@@ -1,21 +1,28 @@
 (ns sparkboard.i18n
-  (:require [sparkboard.client.local-storage :as common]
-            [re-db.reactive :as r]
+  (:require [re-db.api :as db]
             [taoensso.tempura :as tempura])
   #?(:cljs (:require-macros [sparkboard.i18n :refer [ungroup-dict]])))
 
-(defonce !preferred-language
-  (common/$local-storage ::preferred-language :en))
+#?(:cljs
+   (def !selected-locale (delay
+                          (when-not (db/get :env/config :env)
+                            (throw (js/Error. "Reading i18n before environment is set"))
+                            #_(js-debugger))
+                          (db/get :env/account :account/locale "en"))))
 
-(defonce !locales
-  (r/reaction (into [] (distinct) [@!preferred-language :en])))
+#?(:cljs
+   (def !locales (delay
+                  (->> [@!selected-locale "en"]
+                       (into []
+                             (comp (keep identity)
+                                   (distinct)))))))
 
 (defmacro ungroup-dict [dict]
   (->> dict
        (map (fn [[key-id lang-map]]
               (->> lang-map
                    (map (fn [[lang-id value]]
-                          [lang-id {key-id value}]))
+                          [(name lang-id) {key-id value}]))
                    (into {}))))
        (apply merge-with merge)))
 
@@ -31,7 +38,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :tr/password {:en "Password", :fr "Mot de passe", :es "Contraseña"},
     :tr/new {:en "New", :fr "Nouveau", :es "Nuevo"},
     :skeleton/nix {:en "Nothing to see here, folks.", :fr "Rien à voir ici, les amis.", :es "Nada que ver aquí, amigos."},
-    :tr/create {:en "Create", :es "Crear"},
+    :tr/create {:en "Create", :fr "Créer", :es "Crear"},
     :tr/invalid-email {:en "Invalid email", :fr "Courriel invalide", :es "Correo electrónico inválido"},
     :tr/lang {:en "Language", :fr "Langue", :es "Idioma"},
     :tr/member {:en "Member", :fr "Membre", :es "Miembro"},
@@ -46,7 +53,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :missing {:en ":eng missing text", :fr ":fra texte manquant", :es ":spa texto faltante"},
     :tr/user {:en "User", :fr "Utilisateur", :es "Usuario"},
     :tr/members {:en "Members", :fr "Membres", :es "Miembros"},
-    :tr/board {:en "Board", :es "Tablero"},
+    :tr/board {:en "Board", :fr "Tableau", :es "Tablero"}
     :tr/tag {:en "Tag", :fr "Mot-clé", :es "Etiqueta"}
     :tr/or {:en "or", :fr "ou", :es "o"}
     :tr/tos {:en "Terms of Service", :fr "Conditions d'utilisation", :es "Términos de servicio"}
@@ -65,9 +72,45 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     ;; https://en.m.wikipedia.org/wiki/Variety_(linguistics)
     :meta/lect {:en "English", :fr "Français", :es "Español"}}))
 
+#?(:cljs
+   (defn tr
+     ([resource-ids] (tempura/tr {:dict dict} @!locales (cond-> resource-ids
+                                                                (keyword? resource-ids)
+                                                                vector)))
+     ([resource-ids resource-args] (tempura/tr {:dict dict} @!locales resource-ids resource-args))))
 
-(defn tr
-  ([resource-ids] (tempura/tr {:dict dict} @!locales (cond-> resource-ids
-                                                             (keyword? resource-ids)
-                                                             vector)))
-  ([resource-ids resource-args] (tempura/tr {:dict dict} @!locales resource-ids resource-args)))
+#?(:clj
+   (def supported-locales (into #{} (map name) (keys dict))))
+
+#?(:clj
+   (defn accept-language->639-2 [accept-language]
+     (->> accept-language
+          (re-find #".*[^;]?([a-z]{2})[;$]?.*")
+          (second))))
+
+#?(:clj
+   (defn get-locale [req]
+     (or (some-> (:account req) :account/locale supported-locales) ;; a known user explicitly set their language
+         (some-> (:cookies req) (get "locale") supported-locales) ;; anonymous user explicitly set their language
+         (some-> (:board req) :board/locale-default supported-locales) ;; board has a preferred language
+         (some-> (:org req) :org/locale-default supported-locales) ;; org has preferred language
+         (some-> (get-in req [:headers "accept-language"]) accept-language->639-2) ;; use the browser's language
+         "en"))) ;; fallback to english
+
+#?(:clj
+   (defn set-locale
+     {:POST :i18n/locale}
+     [req locale]
+     (if (:account req)
+       (do (re-db.api/transact! [{:db/id (:db/id (:account req))
+                                  :account/locale locale}])
+           {:status 200
+            :body {:i18n/locale locale}})
+       {:status 200
+        :body {:i18n/locale locale}
+        :cookies {"locale" {:value locale
+                            :max-age 31536000
+                            :path "/"}}})))
+;; TODO
+;; - send only the current language to the browser. when changing locale,
+;;   first set the locale to the account or cookie, then reload the page.

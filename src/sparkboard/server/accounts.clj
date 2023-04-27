@@ -1,14 +1,15 @@
-(ns sparkboard.server.auth
+(ns sparkboard.server.accounts
   (:require [buddy.core.keys :as buddy.keys]
             [buddy.sign.jwt :as buddy.jwt]
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
+            [ring.middleware.params :as ring.params]
+            [sparkboard.server.validate :as vd]
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
             [sparkboard.server.env :as env]
             [re-db.api :as db]
-            [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.oauth2 :as oauth2]
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
@@ -20,7 +21,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Password authentication using the Firebase SCRYPT hashing algorithm
 
-(def hash-config (:password-auth/hash-config env/config))
+(def hash-config (:password-auth/hash-config (cond-> env/config
+                                                     (not (= "staging" (:env env/config)))
+                                                     :prod)))
 
 (defn generate-salt
   "Returns a base64-encoded random salt."
@@ -47,18 +50,19 @@
                                 Base64/encodeBase64
                                 (String. StandardCharsets/US_ASCII))}))
 
-(defn check-password [{:account/keys [password-hash password-salt]} password]
-  (FirebaseScrypt/check
-   password
-   password-hash
-   password-salt
-   (:base64-salt-separator hash-config)
-   (:base64-signer-key hash-config)
-   (:rounds hash-config)
-   (:mem-cost hash-config)))
+(defn password-valid? [{:account/keys [password-hash password-salt]} password]
+  (try (FirebaseScrypt/check
+        password
+        password-hash
+        password-salt
+        (:base64-salt-separator hash-config)
+        (:base64-signer-key hash-config)
+        (:rounds hash-config)
+        (:mem-cost hash-config))
+       (catch Exception e (throw (ex-info "Error checking password" {:status 401} e)))))
 
 (comment
- (check-password (hash-password "abba") "abba"))
+ (password-valid? (hash-password "abba") "abba"))
 
 ;; todo
 ;; - registration screen (new accounts)
@@ -69,23 +73,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Account lookup
 
-(def exposed-account-keys [:account/display-name
+(def exposed-account-keys [:db/id
+                           :account/display-name
                            :account/email
                            :account/photo-url
                            :account/locale])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Oauth2 authentication
-
-(def oauth2-config {:google
-                    {:client-id (-> env/config :oauth.google/client-id)
-                     :client-secret (-> env/config :oauth.google/client-secret)
-                     :scopes ["profile openid email"]
-                     :authorize-uri "https://accounts.google.com/o/oauth2/v2/auth"
-                     :access-token-uri "https://accounts.google.com/o/oauth2/token"
-                     :launch-uri (routes/path-for [:oauth2.google/launch])
-                     :redirect-uri (routes/path-for [:oauth2.google/callback])
-                     :landing-uri (routes/path-for [:oauth2.google/landing])}})
 
 (defn wrap-account-lookup [handler]
   (fn [req]
@@ -100,23 +92,8 @@
                                            {:status 401
                                             :account-id account-id})) nil)))))))
 
-(defn wrap-auth [f]
-  (-> f
-      (wrap-account-lookup)
-      (oauth2/wrap-oauth2 oauth2-config)
-      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
-                                          {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
-                                           :readers {'clj-time/date-time clj-time.coerce/from-string}})
-                                  :cookie-attrs {:http-only true :secure (= (env/config :env) "prod")}})
-      (ring.cookies/wrap-cookies)))
-
-(def google-public-key
-  (delay (-> "https://www.googleapis.com/oauth2/v3/certs"
-             http/get
-             :body
-             (json/parse-string keyword)
-             :keys
-             first buddy.keys/jwk->public-key)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Session handlers
 
 (defn res:logout [res]
   (assoc-in res [:cookies "account-id"]
@@ -143,10 +120,48 @@
       ;; - in client, set this into :env/account
       (assoc :body {:account (db/pull exposed-account-keys account-id)})))
 
+(defn login-handler
+  "POST handler. Returns 200/OK with account data if successful."
+  {:POST [:map
+          [:account/password [:string {:min 8}]]
+          [:account/email [:re #"^[^@]+@[^@]+$"]]]}
+  [_ {:keys [account/email
+             account/password]}]
+  (let [account-entity (not-empty (db/get [:account/email email]))
+        _ (vd/assert-valid 401
+                           [:map {:error/message "Account not found"}
+                            [:account/password-hash [:string]]
+                            [:account/password-salt [:string]]]
+                           account-entity)
+        _ (when-not account-entity (throw (ex-info (str "Account not found") {:account/email email :status 401})))
+        _ (when (or (not (:account/password-hash account-entity))
+                    (not (:account/password-salt account-entity)))
+            ;; TODO start password-reset flow
+            (throw (ex-info "This account requires a password reset."
+                            {:account/email email
+                             :status 401})))]
+    (if (password-valid? account-entity password)
+      (res:login {:status 200} [:account/email email])
+      (throw (ex-info "Invalid password" {:account/email email
+                                          :status 401})))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Oauth2 authentication
+
+(def oauth2-config {:google
+                    {:client-id (-> env/config :oauth.google/client-id)
+                     :client-secret (-> env/config :oauth.google/client-secret)
+                     :scopes ["profile openid email"]
+                     :authorize-uri "https://accounts.google.com/o/oauth2/v2/auth"
+                     :access-token-uri "https://accounts.google.com/o/oauth2/token"
+                     :launch-uri (routes/path-for [:oauth2.google/launch])
+                     :redirect-uri (routes/path-for [:oauth2.google/callback])
+                     :landing-uri (routes/path-for [:oauth2.google/landing])}})
+
 (defn keep-vals [m]
   (into {} (filter (comp some? val) m)))
 
-(defn account-tx [account-id provider-info]
+(defn google-account-tx [account-id provider-info]
   (let [existing (not-empty (db/pull '[*] account-id))
         now (java.util.Date.)]
     [(merge
@@ -163,15 +178,38 @@
       ;; last-sign-in can overwrite existing data
       {:account/last-sign-in now})]))
 
-(defn oauth2-google-landing [{:as req :keys [oauth2/access-tokens]}]
+(def google-public-key
+  (delay (-> "https://www.googleapis.com/oauth2/v3/certs"
+             http/get
+             :body
+             (json/parse-string keyword)
+             :keys
+             first buddy.keys/jwk->public-key)))
+
+(defn google-landing [{:as req :keys [oauth2/access-tokens]}]
   (let [{:keys [token id-token]} (:google access-tokens)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
         sub (:sub (buddy.jwt/unsign id-token @google-public-key {:alg :rs256
-                                                           :iss "accounts.google.com"}))
+                                                                 :iss "accounts.google.com"}))
         account-id [:account.provider.google/sub sub]
         provider-info (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
                           :body
                           (json/parse-string keyword))]
-    (db/transact! (account-tx account-id provider-info))
+    (db/transact! (google-account-tx account-id provider-info))
     (-> (ring.response/redirect (routes/path-for [:home]))
         (res:login account-id))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Middleware
+
+(defn wrap-accounts [f]
+  (-> f
+      (wrap-account-lookup)
+      (oauth2/wrap-oauth2 oauth2-config)
+      ring.params/wrap-params
+      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
+                                          {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
+                                           :readers {'clj-time/date-time clj-time.coerce/from-string}})
+                                  :cookie-attrs {:http-only true :secure (= (env/config :env) "prod")}})))
+
+

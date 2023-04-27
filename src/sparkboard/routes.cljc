@@ -4,7 +4,9 @@
             #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs [yawn.view :as v])
             #?(:cljs [yawn.hooks :as hooks])
+            [applied-science.js-interop :as j]
             [bidi.bidi :as bidi]
+            [sparkboard.transit :as t]
             [re-db.api :as db]
             [re-db.reactive :as r]
             [sparkboard.client.slack :as-alias slack.client]
@@ -30,23 +32,20 @@
                                             {:view `slack.client/invite-offer})
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
-                "login" (E :auth/sign-in {:view `views/account:sign-in
-                                          :public true})
-                "logout" (E :auth/logout {:handler 'sparkboard.server.auth/logout-handler
-                                          :public true})
+                "login" (E :account/sign-in {:view `views/account:sign-in
+                                             :post 'sparkboard.server.accounts/login-handler
+                                             :public true})
+                "logout" (E :account/logout {:handler 'sparkboard.server.accounts/logout-handler
+                                             :public true})
+                "locale/set" (E :account/set-locale {:post 'sparkboard.i18n/set-locale})
                 "oauth2" {"/google" (E :oauth2.google/launch {})
                           "/google/callback" (E :oauth2.google/callback {})
                           "/google/landing" (E :oauth2.google/landing
                                                {:public true
-                                                :handler 'sparkboard.server.auth/oauth2-google-landing})}
+                                                :handler 'sparkboard.server.accounts/google-landing})}
                 "v2" {"" (E :org/index
                             {:query `server.db/$org:index
                              :view `views/org:index})
-                      "/login" (E :login
-                                  {:public true
-                                   :view `views/account:sign-in
-                                   :post `server.db/login-handler})
-
                       "/o/create" (E :org/create
                                      {:view `views/org:create
                                       :post `server.db/org:create})
@@ -141,8 +140,11 @@
           (string? path)
           (->> (impl/match-route @!routes) :route)))
 
-(defn mutate! [route body]
-  (http/request (path-for route)
-                {:body body
-                 :body/content-type :transit+json
-                 :method "POST"}))
+#?(:cljs
+   (defn post! [route body]
+     (.then (js/fetch (path-for route)
+                      (j/lit {:headers {"Accept" "application/transit+json"
+                                        "Content-type" "application/transit+json"}
+                              :body (t/write body)
+                              :method "POST"}))
+            http/format-response)))

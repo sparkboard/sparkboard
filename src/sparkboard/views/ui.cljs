@@ -62,19 +62,6 @@
 
 (defn css-url [s] (str "url(" s ")"))
 
-(forms/set-global-meta!
- {:account/email {:el input-text
-                  :props {:type "email"
-                          :placeholder (tr :tr/email)}
-                  :validators [(fn [v _]
-                                 (when-not (re-find #"^[^@]+@[^@]+$" v)
-                                   (tr :tr/invalid-email)))]}
-  :account/password {:el input-text
-                     :props {:type "password"
-                             :placeholder (tr :tr/password)}
-                     :validators [(forms/min-length 8)]}
-  :board/title {:props {:placeholder (tr :tr/board-title)}}})
-
 (defn show-field [?field & [attrs]]
   (let [{:keys [el props]
          :or {el input-text}} (meta ?field)]
@@ -82,3 +69,20 @@
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
+
+(def email-schema [:re #"^[^@]+@[^@]+$"])
+
+(defn ^:dev/after-load init-forms []
+  (forms/set-global-meta!
+   {:account/email {:el input-text
+                    :props {:type "email"
+                            :placeholder (tr :tr/email)}
+                    :validators [(fn [v _]
+                                   (when v
+                                     (when-not (re-find #"^[^@]+@[^@]+$" v)
+                                       (tr :tr/invalid-email))))]}
+    :account/password {:el input-text
+                       :props {:type "password"
+                               :placeholder (tr :tr/password)}
+                       :validators [(forms/min-length 8)]}
+    :board/title {:props {:placeholder (tr :tr/board-title)}}}))

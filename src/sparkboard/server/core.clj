@@ -8,8 +8,12 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.util]
+            [malli.core :as malli]
+            [malli.error :as malli.error]
             [markdown.core :as md]
             [muuntaja.core :as m]
+            [ring.middleware.cookies :as ring.cookies]
+            [sparkboard.server.validate :as vd]
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
             [org.httpkit.server :as httpkit]
@@ -29,7 +33,7 @@
             [sparkboard.impl.server :as impl]
             [sparkboard.log]
             [sparkboard.routes :as routes]
-            [sparkboard.server.auth :as auth]
+            [sparkboard.server.accounts :as auth]
             [sparkboard.server.env :as env]
             [sparkboard.server.html :as server.html]
             [sparkboard.server.nrepl :as nrepl]
@@ -56,8 +60,11 @@
                     (:status (ex-data e) 500)
                     (ex-message e)))]
     (fn [req]
+      (log/info :req req)
       (log/info :URI (:uri req))
-      (try (f req)
+      (try (let [res (f req)]
+             (log/info :res res)
+             res)
            (catch Exception e (handle-e e))
            (catch java.lang.AssertionError e (handle-e e))))))
 
@@ -83,10 +90,15 @@
 (defn serve-markdown [{:keys [file/name]}]
   (server.html/static-html (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
+(defn handle-post [post req input]
+  (when-let [schema (some-> (meta post) :POST)]
+    (vd/assert-valid schema input))
+  (post req (:body-params req)))
+
 (def route-handler
-  (-> (fn [{:as req :keys [uri query-string]}]
-        (let [uri (str uri (some->> (not-empty query-string) (str "?")))
-              {:as match :keys [view query post handler params public]} (routes/match-path uri)
+  (-> (fn [{:as req :keys [uri]}]
+        (tap> req)
+        (let [{:as match :keys [view query post handler params public]} (routes/match-path uri)
               method (:request-method req)
               html? (and (= method :get)
                          (str/includes? (get-in req [:headers "accept"]) "text/html"))
@@ -100,7 +112,7 @@
             handler (handler (merge req params))
 
             ;; post fns are expected to return HTTP response maps
-            (and post (= method :post)) (post (merge req params) (:body-params req))
+            (and post (= method :post)) (handle-post post (merge req params) (:body-params req))
 
             (and html? (or query view)) (server.html/single-page-html
                                          {:tx [(assoc env/client-config :db/id :env/config)
@@ -110,7 +122,7 @@
 
             ;; query fns return reactions which must be wrapped in HTTP response maps
             :else (ring.http/not-found "Not found"))))
-      #_(muu.middleware/wrap-format muuntaja)))
+      (muu.middleware/wrap-format muuntaja)))
 
 (memo/defn-memo $txs [ref]
   (r/catch (sync.entity/txs ref)
@@ -133,8 +145,8 @@
   (-> (impl/join-handlers #(#'ws/handle-ws-request ws-options %)
                           slack.server/handlers
                           #'route-handler)
-      auth/wrap-auth
-      ring.params/wrap-params
+      auth/wrap-accounts
+      ring.cookies/wrap-cookies
       wrap-log
       (wrap-static-first "public")
       #_(wrap-debug-request :first)))

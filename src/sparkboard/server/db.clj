@@ -1,18 +1,10 @@
 (ns sparkboard.server.db
   "Database queries and mutations (transactions)"
-  (:require [clojure.pprint :refer [pprint]]
-            [clojure.string :as str]
-            [datalevin.core :as dl]
-            [malli.core :as m]
-            [re-db.api :as db]
+  (:require [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
-            [re-db.xform :as xf]
             [ring.util.http-response :as http-rsp]
-            [sparkboard.datalevin :as sb.datalevin :refer [conn]]
-            [sparkboard.schema :as schema]
-            [sparkboard.server.auth :as auth]
-            [sparkboard.util :as util]))
+            [sparkboard.datalevin :as sb.datalevin]))
 
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
@@ -71,163 +63,36 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
-(defn login-handler
-  "POST handler. Returns 200/OK with account data if successful."
-  [_ {:as account
-      :keys [account/email
-             account/password]}]
-  ;; http error code for when account is not found in database is
-  (let [_ (when-not password (throw (ex-info "Password not provided" {:status 401} account)))
-        _ (when-not email (throw (ex-info "Email not provided" {:status 401})))
-        account-entity (not-empty (db/get [:account/email email]))
-        _ (when-not account-entity (throw (ex-info (str "Account not found") {:account/email email
-                                                                              :status 401})))
-        valid-pass? (try (auth/check-password account-entity password)
-                         (catch Exception e (throw (ex-info "Error checking password"
-                                                            {:account/email email
-                                                             :status 401}))))
-        _ (when-not valid-pass? (throw (ex-info "Invalid password" {:account/email email
-                                                                    :status 401})))]
-    (auth/res:login {:status 200} [:account/email email])))
-
 (defn board:register [ctx params mbr]
-  ;; TODO
+  ;; create membership
+  )
 
-  #_(try (if (empty? (db/where [[:member/name (:member/name mbr)]]))
-         (if-let [mbr (make-member ctx (assoc mbr :member/board
-                                                  [:board/id (:board/id params)]))]
-           (do (tap> (db/transact! [mbr]))
-               (http-rsp/ok mbr))
-           (http-rsp/bad-request {:error "can't create member with given data"
-                                  :data mbr}))
-         (http-rsp/bad-request {:error "member with that title already exists"
-                                :data mbr}))
-       (catch Exception e
-         (http-rsp/internal-server-error {:error (.getMessage e)}))))
+(defn project:create
+  {:POST [:map {:closed true} :project/title]}
+  [req project]
+  (db/transact! [(assoc project :project/board
+                                [:board/id (:board/id req)]
+                                :ts/created-by (:db/id (:account req)))]))
 
+(defn board:create
+  {:POST [:map {:closed true} :board/title]}
+  [req board]
+  (db/transact! [(assoc board
+                   :board/id (str (random-uuid))
+                   :org/id (:org/id req)
+                   :ts/created-by (:db/id (:account req)))]))
 
-(defn make-project [_ctx m]
-  (util/guard (assoc m
-                :project/id (str (random-uuid))
-                ;; FIXME use context to hook this to actual current user
-                :ts/created-by {:account/id "DEV:FAKE"})
-              (partial m/validate (:project schema/proto))))
-
-(defn project:create [ctx params project]
-  (try (if (empty? (db/where [[:project/title (:project/title project)]]))
-         (if-let [project (make-project ctx (assoc project :project/board
-                                                           [:board/id (:board/id params)]))]
-           (do (tap> (db/transact! [project]))
-               (http-rsp/ok project))
-           (http-rsp/bad-request {:error "can't create project with given data"
-                                  :data project}))
-         (http-rsp/bad-request {:error "project with that title already exists"
-                                :data project}))
-       (catch Exception e
-         (http-rsp/internal-server-error {:error (.getMessage e)}))))
-
-(defn make-board [_ctx m]
-  (util/guard (assoc m
-                :board/id (str (random-uuid))
-                ;; FIXME use context to hook this to actual current user
-                :ts/created-by {:account/id "DEV:FAKE"})
-              (partial m/validate (:board schema/proto))))
-
-(defn board:create [ctx params board]
-  (try (if (empty? (db/where [[:board/title (:board/title board)]]))
-         (if-let [board (make-board ctx (assoc board :board/org [:org/id (:org/id params)]))]
-           (do (tap> (db/transact! [board]))
-               (http-rsp/ok board))
-           (http-rsp/bad-request {:error "can't create board with given data"
-                                  :data board}))
-         (http-rsp/bad-request {:error "board with that title already exists"
-                                :data board}))
-       (catch Exception e
-         (http-rsp/internal-server-error {:error (.getMessage e)}))))
-
-(defn title->id [s]
-  (-> s
-      str/lower-case
-      (str/replace #"\s" "")))
-
-(defn make-org [_ m]
-  (util/guard (assoc m
-                ;; TODO maybe allow user to specify id?
-                :org/id (title->id (:org/title m))
-                ;; FIXME use context to hook this to actual current user
-                :ts/created-by {:account/id "DEV:FAKE"})
-              (partial m/validate (:org schema/proto))))
-
-(defn org:create [ctx _params org]
-  ;; open questions:
-  ;; - return value of a mutation goes where? (eg. errors, messages...)
-  ;; TODO
-  ;; - better way to generate UUIDs?
-  ;; - schema validation
-  ;; - error/validation messages (handle in client)
-  (try (if (empty? (db/where [[:org/title (:org/title org)]]))
-         (if-let [org (make-org ctx org)]
-           (do (tap> (db/transact! [org]))
-               (http-rsp/ok org))
-           (http-rsp/bad-request {:error "can't create org with given data"
-                                  :data org}))
-         (http-rsp/bad-request {:error "org with that title already exists"
-                                :data org}))
-       (catch Exception e
-         (http-rsp/internal-server-error {:error (.getMessage e)}))))
-
-(comment
- (make-org {} {:org/title "foo bar baz qux"})
-
- (make-org {} {:org/title "foo", :foo "bar"})
-
- (org:create {} nil
-             {:org/title "foo"})
-
- ;; fail b/c no title and extra key
- (org:create {} nil
-             {:foo "foo"})
-
- ;; fail b/c exists
- (org:create {} nil
-             {:org/title "Hacking Health"})
-
- (org:create {} nil
-             {:foo "foo" ;; <-- should stop the gears
-              :org/title "baz"})
-
- )
+(defn org:create
+  {:POST [:map {:closed true} :org/title]}
+  [req org]
+  (db/transact! [(assoc org
+                   :org/id (str (random-uuid))
+                   :ts/created-by (:db/id (:account req)))])
+  (http-rsp/ok org))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  [_ctx _params org-id]
-  ;; FIXME access control
-  (if-let [eid (dl/q '[:find ?e .
-                       :in $ ?org-id
-                       :where [?e :org/id ?org-id]]
-                     @conn org-id)]
-    (do (db/transact! [[:db.fn/retractEntity eid]])
-        (http-rsp/ok {:org/id org-id, :deleted? true}))
-    (http-rsp/bad-request {:org/id org-id, :deleted? false})))
+  {:POST :org/id}
+  [req org-id]
+  (db/transact! [[:db.fn/retractEntity [:org/id org-id]]]))
 
-
-(comment
- (r/redef !k (r/reaction 100))
- (def !kmap (xf/map inc !k))
- (add-watch !kmap :prn (fn [_ _ _ v] (prn :!kmap v)))
- (swap! !k inc)
- (r/become !k (r/reaction 10))
-
-
- (r/session
-  (let [!orgs (r/reaction
-                (prn :counting-orgs)
-                (count (db/where [:org/title])))]
-    (prn @!orgs)
-    (pprint (db/transact! [{:org/id (str (rand-int 10000))
-                            :org/title (str (rand-int 10000))}]))
-    (prn @!orgs)
-
-    ))
-
- )

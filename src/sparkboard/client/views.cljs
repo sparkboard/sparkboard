@@ -22,7 +22,6 @@
 ;; - password signin:
 ;;   - new-account flow, reset-pass, verify new email, check-pass-start-session
 
-
 (ui/defview menubar:lang []
   [:div.flex.flex-row
    [:el dm/Root
@@ -30,34 +29,29 @@
      [:svg {:class "h-5 w-5" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
       [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
     [:el dm/Portal
-     [:el dm/Content {:sideOffset 0 :collision-padding 16}
+     [:el.bg-white dm/Content {:sideOffset 0 :collision-padding 16}
       (into [:el.shadow.rounded.text-sm dm/RadioGroup
-             {:value (name @i18n/!preferred-language)
-              :on-value-change (fn [v] (reset! i18n/!preferred-language (keyword v)))}]
+             {:value @i18n/!selected-locale
+              :on-value-change (fn [v]
+                                 ;; TODO loading/error state
+                                 (p/do (routes/post! :account/set-locale v)
+                                       (js/window.location.reload)))}]
             (map (fn [lang] [:el.text-left.flex.pr-4.py-2.cursor-pointer.hover:outline-none.hover:bg-zinc-50
                              dm/RadioItem {:class "data-[disabled]:text-gray-500"
-                                           :value (name lang)
-                                           :disabled (= lang @i18n/!preferred-language)}
+                                           :value lang
+                                           :disabled (= lang @i18n/!selected-locale)}
                              [:div.w-6.text-center
                               [:el dm/ItemIndicator "•"]]
                              (get-in i18n/dict [lang :meta/lect])]))
-            (keys i18n/dict))]]]
-   #_(into [:select {:id "language-selector"
-                     :default-value (name @i18n/!preferred-language)
-                     :on-change (fn [event]
-                                  (reset! i18n/!preferred-language
-                                          (-> event .-target .-value keyword)))}]
-           (map (fn [lang] [:option {:value (name lang)}
-                            (get-in i18n/dict [lang :meta/lect])]))
-           (keys i18n/dict))])
+            (keys i18n/dict))]]]])
 
 (ui/defview menubar:account [{[route-id] :route}]
   (if (db/get :env/account)
     [:a.btn.btn-transp.text-sm.px-3.py-1.h-7
-     {:href (routes/path-for :auth/logout)}
+     {:href (routes/path-for :account/logout)}
      (tr :tr/logout)]
     [:a.btn.btn-transp.text-sm.px-3.py-1.h-7
-     {:href (routes/path-for :auth/sign-in)}
+     {:href (routes/path-for :account/sign-in)}
      (tr :tr/sign-in)]))
 
 (ui/defview menubar [params]
@@ -81,13 +75,13 @@
                                               "text-gray-500")} content]))
           messages)))
 
-(def account:sign-in-with-google
+(defn account:sign-in-with-google []
   (v/x [:a.btn.btn-light
         {:class "w-full h-10 text-zinc-500 text-sm"
          :href (routes/path-for :oauth2.google/launch)}
         [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]))
 
-(def account:sign-in-terms
+(defn account:sign-in-terms []
   (v/x [:p.px-8.text-center.text-sm.text-muted-foreground (tr :tr/sign-in-agree-to)
         [:a.gray-link {:href "/documents/terms-of-service"} (tr :tr/tos)] ","
         [:a.gray-link {:target "_blank"
@@ -96,23 +90,31 @@
         [:a.gray-link {:target "_blank"
                        :href "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]))
 
-(ui/defview sign-in-form []
-  (ui/with-form [!form {:account/email (?email :init "")
-                        :account/password (?password :init "")}
+(comment
+ (p/-> (routes/post! :account/sign-in {:account/email ""
+                                       :account/password "123123123"})
+       js/console.log))
+
+(ui/defview account:sign-in-form [{:keys [route]}]
+  (ui/with-form [!account {:account/email (?email :init "")
+                           :account/password (?password :init "")}
                  :required [?email ?password]]
     (let [!step (hooks/use-state :email)]
       [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
        {:on-submit (fn [^js e]
                      (.preventDefault e)
                      (case @!step
-                       :email (reset! !step :password)
-                       :password (prn :submit @!form)))}
+                       :email (do (reset! !step :password)
+                                  (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
+                       :password (p/let [res (routes/post! :account/sign-in @!account)]
+                                   (js/console.log "res" res)
+                                   (prn :res res))))}
        [:h1.text-3xl.font-medium.mb-4.text-center (tr :tr/welcome)]
        [:div.flex.flex-col.gap-2
         (ui/show-field ?email)
         (when (= :password @!step)
-          (ui/show-field ?password))
-        (str (forms/visible-messages !form))
+          (ui/show-field ?password {:id "account-password"}))
+        (str (forms/visible-messages !account))
         [:button.btn.btn-dark.w-full.h-10.text-sm.p-3
          (tr :tr/sign-in)]]
 
@@ -121,8 +123,8 @@
         [:div.relative.flex.justify-center.text-xs.uppercase
          [:span.bg-background.px-2.text-muted-foreground
           (tr :tr/or)]]]
-       account:sign-in-with-google
-       account:sign-in-terms])))
+       [account:sign-in-with-google]
+       [account:sign-in-terms]])))
 
 (ui/defview account:sign-in [params]
   [:div.grid.md:grid-cols-2
@@ -134,7 +136,7 @@
    ;; right column
    [:div.flex.flex-col.h-screen.shadow-sm.relative
     [:div.flex.flex-grow
-     [sign-in-form]]
+     [account:sign-in-form params]]
     [:div.p-4.flex.justify-end
      [menubar:lang]]]])
 
@@ -151,7 +153,7 @@
                    [:div.rough-icon-button
                     {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                               (:org/title org) "?"))
-                                  (routes/mutate! :org/delete (:org/id org)))}
+                                  (routes/post! :org/delete (:org/id org)))}
                     "X"]
 
                    [:a {:href (routes/path-for :org/one org)}
@@ -174,7 +176,7 @@
       [:label "Title"]
       (ui/show-field ?title)
       [:button
-       {:on-click #(p/let [^js/Response res (routes/mutate! :org/create @!org)]
+       {:on-click #(p/let [^js/Response res (routes/post! :org/create @!org)]
                      (case (.-status res)
                        200 (js/console.log "200 response")
                        400 (js/console.warn "400 response" (.-body res))
@@ -188,7 +190,7 @@
     [:div
      [:h3 (tr :tr/new) " " (tr :tr/board)]
      (ui/show-field ?title)
-     [:button {:on-click #(p/let [res (routes/mutate! route @!board)]
+     [:button {:on-click #(p/let [res (routes/post! route @!board)]
                             (when (http-ok? res)
                               (routes/set-path! [:org/one {:org/id (:org/id params)}])
                               ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
@@ -200,7 +202,7 @@
     [:div
      [:h3 (tr :tr/new-project)]
      (ui/show-field ?title)
-     [:button {:on-click #(p/let [res (routes/mutate! route @!project)]
+     [:button {:on-click #(p/let [res (routes/post! route @!project)]
                             (when (http-ok? res)
                               (routes/set-path! [:board/one {:board/id (:board/id params)}])))}
       (tr :tr/new-project)]]))
@@ -211,7 +213,7 @@
      [:h3 (str (tr :tr/new) " " (tr :tr/member))]
      (ui/show-field ?name)
      (ui/show-field ?pass)
-     [:button {:on-click #(p/let [res (routes/mutate! route @!member)]
+     [:button {:on-click #(p/let [res (routes/post! route @!member)]
                             (when (http-ok? res)
                               (routes/set-path! [:board/one {:board/id (:board/id params)}])
                               res))}
@@ -287,9 +289,9 @@
       [:div.rough-tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
                        :class "db"}
        [:ul ;; i18n stuff
-        [:li "suggested locales:" (str (:i18n/suggested-locales value))]
+        [:li "suggested locales:" (str (:i18n/locale-suggestions value))]
         [:li "default locale:" (str (:i18n/default-locale value))]
-        [:li "extra-translations:" (str (:i18n/extra-translations value))]]]]]))
+        [:li "extra-translations:" (str (:i18n/locale-dicts value))]]]]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360

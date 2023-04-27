@@ -403,103 +403,104 @@
               [::prepare (partial fire-flat :board/id)
                ::defaults {:board/registration-open? true
                            :visibility/public? true
-                           :i18n/default-locale "en"
                            :board/org [:org/id "base"]}
                "createdAt" (& (xf #(Date. %)) (rename :ts/created-at))
                "socialFeed" (rename :board/social-feed)
+               "localeSupport" (rename :board/locale-suggestions)
+               "languageDefault" (rename :board/locale-default)
                ::always (fn [m]
-                          (update m :ts/created-at #(or %
-                                                        ({"-L5DscsDGQpIBysyKoQb" #inst"2018-02-16T10:35:27.000-00:00",
-                                                          "-L2gd7dOblF0GrZ2Okez" #inst"2018-01-13T02:18:21.000-00:00",
-                                                          "-KmT1SnGHaSW9J4TphXo" #inst"2017-06-13T05:05:38.000-00:00",
-                                                          "-KPnCopeKpVUlydxO_UK" #inst"2016-08-22T23:16:35.000-00:00",
-                                                          "-KwGOaQ0X49wFd7L-8Wo" #inst"2017-10-12T16:27:28.000-00:00",
-                                                          "-L2vWuXQv-fidNtwcNf9" #inst"2018-01-16T10:12:38.000-00:00",
-                                                          "-KqjE9KGCpF5eH8H1-09" #inst"2017-08-05T07:43:13.000-00:00",
-                                                          "-L3jGJjZE1EOsQDiJB-z" #inst"2018-02-07T11:41:38.000-00:00",
-                                                          "-Klo-nbDoocsSoJexTwE" #inst"2017-06-04T19:20:54.000-00:00",
-                                                          "-KrB-vpI5B6cnz1ZSVtW" #inst"2017-08-16T07:29:56.000-00:00",
-                                                          "-KPnDC_bNqN6VvSEzxTw" #inst"2016-08-23T00:41:54.000-00:00",
-                                                          "-Kj9NR4mm-lHBd6O9Ec6" #inst"2017-05-02T22:36:58.000-00:00",
-                                                          "-L45zh6A-WR0fkTj7nIA" #inst"2018-02-06T21:02:25.000-00:00",
-                                                          "-KvlfkAntpdx0DNtMFhv" #inst"2017-10-06T12:38:28.000-00:00",
-                                                          "-KpRORRAlE8UEZP1Iu0x" #inst"2017-07-19T20:09:47.000-00:00",
-                                                          "-KmT2MkXxDSJuSdWG3-h" #inst"2017-06-13T10:50:38.000-00:00",
-                                                          "-Kmd3PhP_Ih602zdc_AA" #inst"2017-06-15T00:09:17.000-00:00",
-                                                          "-Ko4Ec8_inoz6T34_H_B" #inst"2017-09-01T13:51:51.000-00:00",
-                                                          "-Kx812HJrVCfN1CTDzQf" #inst"2017-10-23T11:49:29.000-00:00",
-                                                          "-KrlKwKx7d4GPhKLrpdc" #inst"2017-08-17T19:01:47.000-00:00",
-                                                          "-Kyrem0Z-VDYyYn5m7I8" #inst"2017-11-15T12:54:01.000-00:00",
-                                                          "-KptLeYkGMx6INLcHwzG" #inst"2017-07-25T12:48:47.000-00:00",
-                                                          "-KzsRsHIopxwuAlttgaY" #inst"2017-11-28T19:12:22.000-00:00",
-                                                          "-Kmd2M66G5kP6aIzpQ7e" #inst"2017-06-15T07:15:38.000-00:00"}
-                                                         (:board/id m))
-                                                        fallback-board-created-at)))
+                            (update m :ts/created-at #(or %
+                                                          ({"-L5DscsDGQpIBysyKoQb" #inst"2018-02-16T10:35:27.000-00:00",
+                                                            "-L2gd7dOblF0GrZ2Okez" #inst"2018-01-13T02:18:21.000-00:00",
+                                                            "-KmT1SnGHaSW9J4TphXo" #inst"2017-06-13T05:05:38.000-00:00",
+                                                            "-KPnCopeKpVUlydxO_UK" #inst"2016-08-22T23:16:35.000-00:00",
+                                                            "-KwGOaQ0X49wFd7L-8Wo" #inst"2017-10-12T16:27:28.000-00:00",
+                                                            "-L2vWuXQv-fidNtwcNf9" #inst"2018-01-16T10:12:38.000-00:00",
+                                                            "-KqjE9KGCpF5eH8H1-09" #inst"2017-08-05T07:43:13.000-00:00",
+                                                            "-L3jGJjZE1EOsQDiJB-z" #inst"2018-02-07T11:41:38.000-00:00",
+                                                            "-Klo-nbDoocsSoJexTwE" #inst"2017-06-04T19:20:54.000-00:00",
+                                                            "-KrB-vpI5B6cnz1ZSVtW" #inst"2017-08-16T07:29:56.000-00:00",
+                                                            "-KPnDC_bNqN6VvSEzxTw" #inst"2016-08-23T00:41:54.000-00:00",
+                                                            "-Kj9NR4mm-lHBd6O9Ec6" #inst"2017-05-02T22:36:58.000-00:00",
+                                                            "-L45zh6A-WR0fkTj7nIA" #inst"2018-02-06T21:02:25.000-00:00",
+                                                            "-KvlfkAntpdx0DNtMFhv" #inst"2017-10-06T12:38:28.000-00:00",
+                                                            "-KpRORRAlE8UEZP1Iu0x" #inst"2017-07-19T20:09:47.000-00:00",
+                                                            "-KmT2MkXxDSJuSdWG3-h" #inst"2017-06-13T10:50:38.000-00:00",
+                                                            "-Kmd3PhP_Ih602zdc_AA" #inst"2017-06-15T00:09:17.000-00:00",
+                                                            "-Ko4Ec8_inoz6T34_H_B" #inst"2017-09-01T13:51:51.000-00:00",
+                                                            "-Kx812HJrVCfN1CTDzQf" #inst"2017-10-23T11:49:29.000-00:00",
+                                                            "-KrlKwKx7d4GPhKLrpdc" #inst"2017-08-17T19:01:47.000-00:00",
+                                                            "-Kyrem0Z-VDYyYn5m7I8" #inst"2017-11-15T12:54:01.000-00:00",
+                                                            "-KptLeYkGMx6INLcHwzG" #inst"2017-07-25T12:48:47.000-00:00",
+                                                            "-KzsRsHIopxwuAlttgaY" #inst"2017-11-28T19:12:22.000-00:00",
+                                                            "-Kmd2M66G5kP6aIzpQ7e" #inst"2017-06-15T07:15:38.000-00:00"}
+                                                           (:board/id m))
+                                                          fallback-board-created-at)))
                "isTemplate" (rename :board/is-template?)
                "title" (rename :board/title)
                ::always (fn [m]
-                          (update m :board/title (fn [x]
-                                                   (or x
-                                                       (if
-                                                        (:board/is-template? m)
-                                                         "Board Template"
-                                                         "Untitled Board")))))
+                            (update m :board/title (fn [x]
+                                                       (or x
+                                                           (if
+                                                            (:board/is-template? m)
+                                                             "Board Template"
+                                                             "Untitled Board")))))
                (let [field-xf (fn [m a v]
-                                (let [managed-by [:board/id (:board/id m)]]
-                                  (assoc m a
-                                           (try (->> v
-                                                     (fire-flat :field-spec/id)
-                                                     (sort-by #(% "order"))
-                                                     (mapv (fn [m]
-                                                             (-> m
-                                                                 ;; field-spec ids prepend their manager,
-                                                                 ;; because field-specs have been duplicated everywhere
-                                                                 ;; and have the same IDs but represent different instances.
-                                                                 ;; unsure: how to re-use fields when searching across boards, etc.
-                                                                 (update :field-spec/id (partial str (:board/id m) ":"))
-                                                                 (dissoc "id")
-                                                                 (rename-keys {"type" :field/type
-                                                                               "showOnCard" :field-spec/show-on-card?
-                                                                               "showAtCreate" :field-spec/show-at-create?
-                                                                               "showAsFilter" :field-spec/show-as-filter?
-                                                                               "required" :field-spec/required?
-                                                                               "hint" :field-spec/hint
-                                                                               "label" :field-spec/label
-                                                                               "options" :field-spec/options
-                                                                               "order" :field-spec/order
-                                                                               "name" :field-spec/name})
-                                                                 (u/update-some {:field-spec/options (partial mapv #(update-keys % (fn [k]
-                                                                                                                                     (case k "label" :option/label
-                                                                                                                                             "value" :option/value
-                                                                                                                                             "color" :option/color
-                                                                                                                                             "default" :option/default?))))})
-                                                                 (update :field-spec/order #(or % (swap! !orders inc)))
-                                                                 (update :field/type parse-field-type)
-                                                                 (dissoc :field-spec/name)
-                                                                 (assoc :field-spec/managed-by managed-by)))))
-                                                (catch Exception e (prn a v) (throw e))))))]
-                 ["groupFields" (& field-xf (rename :board/project-fields))
-                  "userFields" (& field-xf (rename :board/member-fields))])
+                                  (let [managed-by [:board/id (:board/id m)]]
+                                       (assoc m a
+                                              (try (->> v
+                                                        (fire-flat :field-spec/id)
+                                                        (sort-by #(% "order"))
+                                                        (mapv (fn [m]
+                                                                  (-> m
+                                                                      ;; field-spec ids prepend their manager,
+                                                                      ;; because field-specs have been duplicated everywhere
+                                                                      ;; and have the same IDs but represent different instances.
+                                                                      ;; unsure: how to re-use fields when searching across boards, etc.
+                                                                      (update :field-spec/id (partial str (:board/id m) ":"))
+                                                                      (dissoc "id")
+                                                                      (rename-keys {"type" :field/type
+                                                                                    "showOnCard" :field-spec/show-on-card?
+                                                                                    "showAtCreate" :field-spec/show-at-create?
+                                                                                    "showAsFilter" :field-spec/show-as-filter?
+                                                                                    "required" :field-spec/required?
+                                                                                    "hint" :field-spec/hint
+                                                                                    "label" :field-spec/label
+                                                                                    "options" :field-spec/options
+                                                                                    "order" :field-spec/order
+                                                                                    "name" :field-spec/name})
+                                                                      (u/update-some {:field-spec/options (partial mapv #(update-keys % (fn [k]
+                                                                                                                                            (case k "label" :option/label
+                                                                                                                                                  "value" :option/value
+                                                                                                                                                  "color" :option/color
+                                                                                                                                                  "default" :option/default?))))})
+                                                                      (update :field-spec/order #(or % (swap! !orders inc)))
+                                                                      (update :field/type parse-field-type)
+                                                                      (dissoc :field-spec/name)
+                                                                      (assoc :field-spec/managed-by managed-by)))))
+                                                   (catch Exception e (prn a v) (throw e))))))]
+                    ["groupFields" (& field-xf (rename :board/project-fields))
+                     "userFields" (& field-xf (rename :board/member-fields))])
 
                "groupNumbers" (rename :board/show-project-numbers?)
                "projectNumbers" (rename :board/show-project-numbers?)
                "userMaxGroups" (& (xf #(Integer. %)) (rename :board/max-projects-per-member))
                "stickyColor" (rename :board/sticky-color)
                "tags" (& (fn [m a v]
-                           (assoc m a (->> v
-                                           (fire-flat :tag/id)
-                                           (sort-by :tag/id)
-                                           (map #(-> %
-                                                     (update :tag/id (partial str (:board/id m) ":"))
-                                                     (assoc :tag/managed-by [:board/id (:board/id m)])
-                                                     (dissoc "order")
-                                                     (rename-keys {"color" :tag/background-color
-                                                                   "name" :tag/label
-                                                                   "label" :tag/label
-                                                                   "restrict" :tag/restricted?})
-                                                     (u/update-some {:tag/restricted? (constantly true)})))
-                                           (filter :tag/label)
-                                           vec)))
+                             (assoc m a (->> v
+                                             (fire-flat :tag/id)
+                                             (sort-by :tag/id)
+                                             (map #(-> %
+                                                       (update :tag/id (partial str (:board/id m) ":"))
+                                                       (assoc :tag/managed-by [:board/id (:board/id m)])
+                                                       (dissoc "order")
+                                                       (rename-keys {"color" :tag/background-color
+                                                                     "name" :tag/label
+                                                                     "label" :tag/label
+                                                                     "restrict" :tag/restricted?})
+                                                       (u/update-some {:tag/restricted? (constantly true)})))
+                                             (filter :tag/label)
+                                             vec)))
                          (rename :board/member-tags))
                "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:social.sharing-button/facebook true]]
                                                          "twitter" [[:social.sharing-button/twitter true]]
@@ -516,8 +517,8 @@
                           (rename :board/slack.team))
                "registrationOpen" (rename :board/registration-open?)
                "registrationCode" (& (xf (fn [code]
-                                           (when-not (str/blank? code)
-                                             {code {:registration-code/active? true}})))
+                                             (when-not (str/blank? code)
+                                                       {code {:registration-code/active? true}})))
                                      (rename :board/registration-codes))
                "webHooks" (& (xf (partial change-keys ["updateMember" (& (xf (partial hash-map :webhook/url))
                                                                          (rename :event.board/update-member))
@@ -527,11 +528,11 @@
                "images" (& parse-image-urls
                            (rename :board/images))
                "userLabel" (& (fn [m a [singular plural]]
-                                (update m :board/labels merge {:label/member.one singular
-                                                               :label/member.many plural})) rm)
+                                  (update m :board/labels merge {:label/member.one singular
+                                                                 :label/member.many plural})) rm)
                "groupLabel" (& (fn [m a [singular plural]]
-                                 (update m :board/labels merge {:label/project.one singular
-                                                                :label/project.many plural})) rm)
+                                   (update m :board/labels merge {:label/project.one singular
+                                                                  :label/project.many plural})) rm)
                "publicVoteMultiple" rm
 
                "descriptionLong" rm ;;  last used in 2015
@@ -558,24 +559,26 @@
                                         (rename :board/registration-message-content))
                "defaultFilter" rm
                "defaultTag" rm
-               "locales" (rename :i18n/extra-translations)
+               "locales" (rename :board/locale-dicts)
                "filterByFieldView" rm ;; deprecated - see :field/show-as-filter?
                "permissions" (fn [m a v]
-                               (-> m
-                                   (dissoc a)
-                                   (update :board/rules assoc
-                                           :action/project.create {:policy/requires-role #{:role/admin}})))
+                                 (-> m
+                                     (dissoc a)
+                                     (update :board/rules assoc
+                                             :action/project.create {:policy/requires-role #{:role/admin}})))
 
                ;; TODO - add this to :board/policies, clarify difference between project.add vs project.approve
                ;; and how to specify :action/project.approval {:policy/requires-role #{:role/admin}}
                "projectsRequireApproval" (fn [m a v]
-                                           (-> m
-                                               (dissoc a)
-                                               (update :board/rules assoc
-                                                       :action/project.approve {:policy/requires-role #{:role/admin}})))
-               "languages" (& (xf (partial mapv #(get % "code"))) (rename :i18n/suggested-locales))]
+                                             (-> m
+                                                 (dissoc a)
+                                                 (update :board/rules assoc
+                                                         :action/project.approve {:policy/requires-role #{:role/admin}})))
+               "languages" (& (xf (partial mapv #(get % "code"))) (rename :board/locale-suggestions))]
               :org/as-map [::prepare (partial fire-flat :org/id)
                            ::defaults {:visibility/public? true}
+                           "languageDefault" (rename :org/locale-default)
+                           "localeSupport" (rename :org/locale-suggestions)
                            "title" (rename :org/title)
                            "allowPublicViewing" (rename :visibility/public?)
                            "images" (& parse-image-urls
@@ -600,10 +603,10 @@
                                   "bot-token" (rename :slack.app/bot-token)
                                   "custom-messages" (& (xf (fn [m] (rename-keys m {"welcome" :slack.team/custom-welcome-message}))) (rename :slack.team/custom-messages))
                                   "app" (& (xf (fn [app]
-                                                 (->> app (fire-flat :slack.app/id)
-                                                      (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
-                                                                    "bot-token" (rename :slack.app/bot-token)])
-                                                      first)))
+                                                   (->> app (fire-flat :slack.app/id)
+                                                        (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
+                                                                      "bot-token" (rename :slack.app/bot-token)])
+                                                        first)))
                                            (rename :slack.team/slack.app))]
 
               ;; response => destination-thread where team-responses are collected
@@ -630,8 +633,8 @@
                                      "team-id" (& (lookup-ref :slack.team/id)
                                                   (rename :slack.channel/slack.team))]
               :domain/as-map [::prepare (partial mapv (fn [[name target]]
-                                                        (merge {:domain/name (unmunge-domain name)}
-                                                               (parse-domain-target target))))]
+                                                          (merge {:domain/name (unmunge-domain name)}
+                                                                 (parse-domain-target target))))]
               :collection/as-map [::prepare (partial fire-flat :collection/id)
                                   "title" (rename :collection/title)
                                   "images" (& parse-image-urls
@@ -643,27 +646,25 @@
                                   ]
               :membership/as-map [::prepare
                                   (fn [{:strs [e-u-r]}]
-                                    (into [] (mapcat
-                                              (fn [[ent user-map]]
-                                                (for [[user role-map] user-map
-                                                      :let [entity-ref (parse-sparkboard-id ent)
-                                                            [_ user-id :as user-ref] (parse-sparkboard-id user)]]
-                                                  (merge (if (mongo-id? user-id)
-                                                           {:membership/member [:member/id user-id]}
-                                                           {:membership/account [:account/id user-id]})
-                                                         {:membership/id (membership-id user-ref entity-ref)
-                                                          :membership/entity entity-ref
-                                                          :membership/roles (into #{} (comp (filter val)
-                                                                                            (map key)
-                                                                                            (map (fn [r]
-                                                                                                   (case r "admin" :role/admin)))) role-map)}))))
-                                          e-u-r))]
-              ::firebase ["localeSupport" (rename :i18n/suggested-locales)
-                          "languageDefault" (rename :i18n/default-locale)
-                          "socialFeed" (xf (partial change-keys
-                                             ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
-                                              "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
-                                              "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
+                                      (into [] (mapcat
+                                                (fn [[ent user-map]]
+                                                    (for [[user role-map] user-map
+                                                          :let [entity-ref (parse-sparkboard-id ent)
+                                                                [_ user-id :as user-ref] (parse-sparkboard-id user)]]
+                                                         (merge (if (mongo-id? user-id)
+                                                                  {:membership/member [:member/id user-id]}
+                                                                  {:membership/account [:account/id user-id]})
+                                                                {:membership/id (membership-id user-ref entity-ref)
+                                                                 :membership/entity entity-ref
+                                                                 :membership/roles (into #{} (comp (filter val)
+                                                                                                   (map key)
+                                                                                                   (map (fn [r]
+                                                                                                            (case r "admin" :role/admin)))) role-map)}))))
+                                            e-u-r))]
+              ::firebase ["socialFeed" (xf (partial change-keys
+                                                    ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
+                                                     "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
+                                                     "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
                           "domain" (& (lookup-ref :domain/name)
                                       (rename :entity/domain))]
               :account/as-map [::prepare (fn [accounts]
@@ -679,7 +680,7 @@
                                                                              :account/password-hash (:passwordHash account)
                                                                              :account/password-salt (:salt account)
                                                                              :account/photo-url (or (:photoUrl account)
-                                                                                                (:photoUrl provider))
+                                                                                                    (:photoUrl provider))
                                                                              :account.provider.google/sub (:rawId provider))))))]
               :member-vote/ballot [::prepare (fn [users]
                                                  (->> users

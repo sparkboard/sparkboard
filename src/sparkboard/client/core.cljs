@@ -38,6 +38,7 @@
   (read-env!)
   (firebase/init)
   (start-router)
+  (ui/init-forms)
   (render))
 
 (comment

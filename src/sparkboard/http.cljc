@@ -39,6 +39,7 @@
   (let [type (content-type res)]
     (cond (str/starts-with? type "application/json") (json-body res)
           (str/starts-with? type "application/transit+json") (transit-body res)
+          #?@(:cljs [(str/starts-with? type "text/plain") (j/call res :text)])
           :else res)))
 
 (defn format-req-body [{:as opts

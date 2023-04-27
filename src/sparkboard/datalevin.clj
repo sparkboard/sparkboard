@@ -1,5 +1,6 @@
 (ns sparkboard.datalevin
-  (:require [datalevin.core :as dl]
+  (:require [clojure.string :as str]
+            [datalevin.core :as dl]
             [sparkboard.server.env :as env]
             [re-db.api :as db]
             [re-db.integrations.datalevin]
@@ -25,18 +26,18 @@
 
  (->> (db/where [:org/id])
       (map (db/pull '[*
-                     :db/id
-                     #_{:org/default-board-template [*]}
-                     {:entity/domain [*]}
-                     {:ts/created-by [*]}])))
+                      :db/id
+                      #_{:org/default-board-template [*]}
+                      {:entity/domain [*]}
+                      {:ts/created-by [*]}])))
 
  (->> (db/where [[:org/id "postcovid"]])
       (map (db/pull '[*
-                     :db/id
-                     :org/title
-                     #_{:org/default-board-template [*]}
-                     {:entity/domain [*]}
-                     {:ts/created-by [*]}])))
+                      :db/id
+                      :org/title
+                      #_{:org/default-board-template [*]}
+                      {:entity/domain [*]}
+                      {:ts/created-by [*]}])))
 
  )
 
@@ -103,31 +104,31 @@
  )
 
 (comment ;;;; how to delete?
-  ;; DAL created a bunch of dummy orgs, to test front-end reactivity &
-  ;; mutations. Now they need to go away.
+ ;; DAL created a bunch of dummy orgs, to test front-end reactivity &
+ ;; mutations. Now they need to go away.
 
-  ;; See all orgs so I can pick out the ones to delete
-  (->> (db/where [:org/id])
-       (mapv (db/pull '[*])))
+ ;; See all orgs so I can pick out the ones to delete
+ (->> (db/where [:org/id])
+      (mapv (db/pull '[*])))
 
-  ;; Get entity for an org
-  (dl/q '[:find ?e .
-          :in $ ?org-id
-          :where [?e :org/id ?org-id]]
-        (dl/db conn)
-        "30073ee5-ce10-43c8-ae1f-145d84e7a3ee")
+ ;; Get entity for an org
+ (dl/q '[:find ?e .
+         :in $ ?org-id
+         :where [?e :org/id ?org-id]]
+       (dl/db conn)
+       "30073ee5-ce10-43c8-ae1f-145d84e7a3ee")
 
-  ;; Delete it
-  (let [org {:org/id "30073ee5-ce10-43c8-ae1f-145d84e7a3ee",
-             :org/title "dave4",
-             :ts/created-by {:db/id 130077}}
-        eid (dl/q '[:find ?e .
-                    :in $ ?org-id
-                    :where [?e :org/id ?org-id]]
-                  (dl/db conn)
-                  (:org/id org))]
-    (db/transact! [[:db.fn/retractEntity eid]]))
+ ;; Delete it
+ (let [org {:org/id "30073ee5-ce10-43c8-ae1f-145d84e7a3ee",
+            :org/title "dave4",
+            :ts/created-by {:db/id 130077}}
+       eid (dl/q '[:find ?e .
+                   :in $ ?org-id
+                   :where [?e :org/id ?org-id]]
+                 (dl/db conn)
+                 (:org/id org))]
+   (db/transact! [[:db.fn/retractEntity eid]]))
 
-  ;; FIXME fails if entity does not exist / has already been deleted
-  
-  )
+ ;; FIXME fails if entity does not exist / has already been deleted
+
+ )
