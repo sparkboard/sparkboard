@@ -4,6 +4,7 @@
     <option name="enabledAliases">
       <set>
         <option value="clerk" />
+        <option value="dev" />
         <option value="test" />
         <option value="uberdeps" />
       </set>

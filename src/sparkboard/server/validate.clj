@@ -1,8 +1,12 @@
 (ns sparkboard.server.validate
+  (:refer-clojure :exclude [assert])
   (:require [clojure.string :as str]
             [malli.core :as m :refer [explain]]
             [malli.error :refer [humanize]]
             [sparkboard.schema :as s]))
+
+(defn humanized [schema value]
+  (some-> (explain schema value) humanize))
 
 (defn leaves
   "Recursively walk a tree and return a sequence of [path, leaf] for all leaves,
@@ -27,9 +31,18 @@
                                   (str ": " (str/join " > " (map segment-name path)))))) messages)))
         (leaves humanized)))
 
-(defn messages [schema value] (some-> schema (explain value) humanize flatten-messages))
+(def flat-messages (comp flatten-messages humanized))
 
-(defn message-map [schema value]
+(defn assert
+  ([value schema] (assert value schema {:code 400}))
+  ([value schema {:keys [code message]}]
+   (when-let [messages (seq (flat-messages schema value))]
+     (throw (ex-info (or message (first messages))
+                     {:status (or code 400)
+                      :messages messages
+                      :value value})))))
+
+(defn leaf-map [schema value]
   ;; returns map like
   '{:root [...]
     :leaf-key [...]}
@@ -42,25 +55,17 @@
                          (if (seq k)
                            (last k)
                            :form/root))))
-
   )
 
-(defn assert-valid
-  ([schema value] (assert-valid 400 schema value))
-  ([error-code schema value]
-   (when-let [messages (seq (messages schema value))]
-     (throw (ex-info (first messages) {:status error-code
-                                       :messages messages
-                                       :value value})))))
 
 (comment
- (= (message-map [:map [:x :email]] {:x "foo"})
+ (= (leaf-map [:map [:x :email]] {:x "foo"})
     {:x ["should be a valid email"]})
- (= (message-map :email " ")
+ (= (leaf-map :email " ")
     {:form/root ["should be a valid email"]})
- (= (message-map [:map
-                  [:x
-                   [:map
-                    [:y :int]]]]
-                 {:x {:y "foo"}})
+ (= (leaf-map [:map
+               [:x
+                [:map
+                 [:y :int]]]]
+              {:x {:y "foo"}})
     {:y ["should be an integer"]}))

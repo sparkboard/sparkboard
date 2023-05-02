@@ -409,98 +409,98 @@
                "localeSupport" (rename :board/locale-suggestions)
                "languageDefault" (rename :board/locale-default)
                ::always (fn [m]
-                            (update m :ts/created-at #(or %
-                                                          ({"-L5DscsDGQpIBysyKoQb" #inst"2018-02-16T10:35:27.000-00:00",
-                                                            "-L2gd7dOblF0GrZ2Okez" #inst"2018-01-13T02:18:21.000-00:00",
-                                                            "-KmT1SnGHaSW9J4TphXo" #inst"2017-06-13T05:05:38.000-00:00",
-                                                            "-KPnCopeKpVUlydxO_UK" #inst"2016-08-22T23:16:35.000-00:00",
-                                                            "-KwGOaQ0X49wFd7L-8Wo" #inst"2017-10-12T16:27:28.000-00:00",
-                                                            "-L2vWuXQv-fidNtwcNf9" #inst"2018-01-16T10:12:38.000-00:00",
-                                                            "-KqjE9KGCpF5eH8H1-09" #inst"2017-08-05T07:43:13.000-00:00",
-                                                            "-L3jGJjZE1EOsQDiJB-z" #inst"2018-02-07T11:41:38.000-00:00",
-                                                            "-Klo-nbDoocsSoJexTwE" #inst"2017-06-04T19:20:54.000-00:00",
-                                                            "-KrB-vpI5B6cnz1ZSVtW" #inst"2017-08-16T07:29:56.000-00:00",
-                                                            "-KPnDC_bNqN6VvSEzxTw" #inst"2016-08-23T00:41:54.000-00:00",
-                                                            "-Kj9NR4mm-lHBd6O9Ec6" #inst"2017-05-02T22:36:58.000-00:00",
-                                                            "-L45zh6A-WR0fkTj7nIA" #inst"2018-02-06T21:02:25.000-00:00",
-                                                            "-KvlfkAntpdx0DNtMFhv" #inst"2017-10-06T12:38:28.000-00:00",
-                                                            "-KpRORRAlE8UEZP1Iu0x" #inst"2017-07-19T20:09:47.000-00:00",
-                                                            "-KmT2MkXxDSJuSdWG3-h" #inst"2017-06-13T10:50:38.000-00:00",
-                                                            "-Kmd3PhP_Ih602zdc_AA" #inst"2017-06-15T00:09:17.000-00:00",
-                                                            "-Ko4Ec8_inoz6T34_H_B" #inst"2017-09-01T13:51:51.000-00:00",
-                                                            "-Kx812HJrVCfN1CTDzQf" #inst"2017-10-23T11:49:29.000-00:00",
-                                                            "-KrlKwKx7d4GPhKLrpdc" #inst"2017-08-17T19:01:47.000-00:00",
-                                                            "-Kyrem0Z-VDYyYn5m7I8" #inst"2017-11-15T12:54:01.000-00:00",
-                                                            "-KptLeYkGMx6INLcHwzG" #inst"2017-07-25T12:48:47.000-00:00",
-                                                            "-KzsRsHIopxwuAlttgaY" #inst"2017-11-28T19:12:22.000-00:00",
-                                                            "-Kmd2M66G5kP6aIzpQ7e" #inst"2017-06-15T07:15:38.000-00:00"}
-                                                           (:board/id m))
-                                                          fallback-board-created-at)))
+                          (update m :ts/created-at #(or %
+                                                        ({"-L5DscsDGQpIBysyKoQb" #inst"2018-02-16T10:35:27.000-00:00",
+                                                          "-L2gd7dOblF0GrZ2Okez" #inst"2018-01-13T02:18:21.000-00:00",
+                                                          "-KmT1SnGHaSW9J4TphXo" #inst"2017-06-13T05:05:38.000-00:00",
+                                                          "-KPnCopeKpVUlydxO_UK" #inst"2016-08-22T23:16:35.000-00:00",
+                                                          "-KwGOaQ0X49wFd7L-8Wo" #inst"2017-10-12T16:27:28.000-00:00",
+                                                          "-L2vWuXQv-fidNtwcNf9" #inst"2018-01-16T10:12:38.000-00:00",
+                                                          "-KqjE9KGCpF5eH8H1-09" #inst"2017-08-05T07:43:13.000-00:00",
+                                                          "-L3jGJjZE1EOsQDiJB-z" #inst"2018-02-07T11:41:38.000-00:00",
+                                                          "-Klo-nbDoocsSoJexTwE" #inst"2017-06-04T19:20:54.000-00:00",
+                                                          "-KrB-vpI5B6cnz1ZSVtW" #inst"2017-08-16T07:29:56.000-00:00",
+                                                          "-KPnDC_bNqN6VvSEzxTw" #inst"2016-08-23T00:41:54.000-00:00",
+                                                          "-Kj9NR4mm-lHBd6O9Ec6" #inst"2017-05-02T22:36:58.000-00:00",
+                                                          "-L45zh6A-WR0fkTj7nIA" #inst"2018-02-06T21:02:25.000-00:00",
+                                                          "-KvlfkAntpdx0DNtMFhv" #inst"2017-10-06T12:38:28.000-00:00",
+                                                          "-KpRORRAlE8UEZP1Iu0x" #inst"2017-07-19T20:09:47.000-00:00",
+                                                          "-KmT2MkXxDSJuSdWG3-h" #inst"2017-06-13T10:50:38.000-00:00",
+                                                          "-Kmd3PhP_Ih602zdc_AA" #inst"2017-06-15T00:09:17.000-00:00",
+                                                          "-Ko4Ec8_inoz6T34_H_B" #inst"2017-09-01T13:51:51.000-00:00",
+                                                          "-Kx812HJrVCfN1CTDzQf" #inst"2017-10-23T11:49:29.000-00:00",
+                                                          "-KrlKwKx7d4GPhKLrpdc" #inst"2017-08-17T19:01:47.000-00:00",
+                                                          "-Kyrem0Z-VDYyYn5m7I8" #inst"2017-11-15T12:54:01.000-00:00",
+                                                          "-KptLeYkGMx6INLcHwzG" #inst"2017-07-25T12:48:47.000-00:00",
+                                                          "-KzsRsHIopxwuAlttgaY" #inst"2017-11-28T19:12:22.000-00:00",
+                                                          "-Kmd2M66G5kP6aIzpQ7e" #inst"2017-06-15T07:15:38.000-00:00"}
+                                                         (:board/id m))
+                                                        fallback-board-created-at)))
                "isTemplate" (rename :board/is-template?)
                "title" (rename :board/title)
                ::always (fn [m]
-                            (update m :board/title (fn [x]
-                                                       (or x
-                                                           (if
-                                                            (:board/is-template? m)
-                                                             "Board Template"
-                                                             "Untitled Board")))))
+                          (update m :board/title (fn [x]
+                                                   (or x
+                                                       (if
+                                                        (:board/is-template? m)
+                                                         "Board Template"
+                                                         "Untitled Board")))))
                (let [field-xf (fn [m a v]
-                                  (let [managed-by [:board/id (:board/id m)]]
-                                       (assoc m a
-                                              (try (->> v
-                                                        (fire-flat :field-spec/id)
-                                                        (sort-by #(% "order"))
-                                                        (mapv (fn [m]
-                                                                  (-> m
-                                                                      ;; field-spec ids prepend their manager,
-                                                                      ;; because field-specs have been duplicated everywhere
-                                                                      ;; and have the same IDs but represent different instances.
-                                                                      ;; unsure: how to re-use fields when searching across boards, etc.
-                                                                      (update :field-spec/id (partial str (:board/id m) ":"))
-                                                                      (dissoc "id")
-                                                                      (rename-keys {"type" :field/type
-                                                                                    "showOnCard" :field-spec/show-on-card?
-                                                                                    "showAtCreate" :field-spec/show-at-create?
-                                                                                    "showAsFilter" :field-spec/show-as-filter?
-                                                                                    "required" :field-spec/required?
-                                                                                    "hint" :field-spec/hint
-                                                                                    "label" :field-spec/label
-                                                                                    "options" :field-spec/options
-                                                                                    "order" :field-spec/order
-                                                                                    "name" :field-spec/name})
-                                                                      (u/update-some {:field-spec/options (partial mapv #(update-keys % (fn [k]
-                                                                                                                                            (case k "label" :option/label
-                                                                                                                                                  "value" :option/value
-                                                                                                                                                  "color" :option/color
-                                                                                                                                                  "default" :option/default?))))})
-                                                                      (update :field-spec/order #(or % (swap! !orders inc)))
-                                                                      (update :field/type parse-field-type)
-                                                                      (dissoc :field-spec/name)
-                                                                      (assoc :field-spec/managed-by managed-by)))))
-                                                   (catch Exception e (prn a v) (throw e))))))]
-                    ["groupFields" (& field-xf (rename :board/project-fields))
-                     "userFields" (& field-xf (rename :board/member-fields))])
+                                (let [managed-by [:board/id (:board/id m)]]
+                                  (assoc m a
+                                           (try (->> v
+                                                     (fire-flat :field-spec/id)
+                                                     (sort-by #(% "order"))
+                                                     (mapv (fn [m]
+                                                             (-> m
+                                                                 ;; field-spec ids prepend their manager,
+                                                                 ;; because field-specs have been duplicated everywhere
+                                                                 ;; and have the same IDs but represent different instances.
+                                                                 ;; unsure: how to re-use fields when searching across boards, etc.
+                                                                 (update :field-spec/id (partial str (:board/id m) ":"))
+                                                                 (dissoc "id")
+                                                                 (rename-keys {"type" :field/type
+                                                                               "showOnCard" :field-spec/show-on-card?
+                                                                               "showAtCreate" :field-spec/show-at-create?
+                                                                               "showAsFilter" :field-spec/show-as-filter?
+                                                                               "required" :field-spec/required?
+                                                                               "hint" :field-spec/hint
+                                                                               "label" :field-spec/label
+                                                                               "options" :field-spec/options
+                                                                               "order" :field-spec/order
+                                                                               "name" :field-spec/name})
+                                                                 (u/update-some {:field-spec/options (partial mapv #(update-keys % (fn [k]
+                                                                                                                                     (case k "label" :option/label
+                                                                                                                                             "value" :option/value
+                                                                                                                                             "color" :option/color
+                                                                                                                                             "default" :option/default?))))})
+                                                                 (update :field-spec/order #(or % (swap! !orders inc)))
+                                                                 (update :field/type parse-field-type)
+                                                                 (dissoc :field-spec/name)
+                                                                 (assoc :field-spec/managed-by managed-by)))))
+                                                (catch Exception e (prn a v) (throw e))))))]
+                 ["groupFields" (& field-xf (rename :board/project-fields))
+                  "userFields" (& field-xf (rename :board/member-fields))])
 
                "groupNumbers" (rename :board/show-project-numbers?)
                "projectNumbers" (rename :board/show-project-numbers?)
                "userMaxGroups" (& (xf #(Integer. %)) (rename :board/max-projects-per-member))
                "stickyColor" (rename :board/sticky-color)
                "tags" (& (fn [m a v]
-                             (assoc m a (->> v
-                                             (fire-flat :tag/id)
-                                             (sort-by :tag/id)
-                                             (map #(-> %
-                                                       (update :tag/id (partial str (:board/id m) ":"))
-                                                       (assoc :tag/managed-by [:board/id (:board/id m)])
-                                                       (dissoc "order")
-                                                       (rename-keys {"color" :tag/background-color
-                                                                     "name" :tag/label
-                                                                     "label" :tag/label
-                                                                     "restrict" :tag/restricted?})
-                                                       (u/update-some {:tag/restricted? (constantly true)})))
-                                             (filter :tag/label)
-                                             vec)))
+                           (assoc m a (->> v
+                                           (fire-flat :tag/id)
+                                           (sort-by :tag/id)
+                                           (map #(-> %
+                                                     (update :tag/id (partial str (:board/id m) ":"))
+                                                     (assoc :tag/managed-by [:board/id (:board/id m)])
+                                                     (dissoc "order")
+                                                     (rename-keys {"color" :tag/background-color
+                                                                   "name" :tag/label
+                                                                   "label" :tag/label
+                                                                   "restrict" :tag/restricted?})
+                                                     (u/update-some {:tag/restricted? (constantly true)})))
+                                           (filter :tag/label)
+                                           vec)))
                          (rename :board/member-tags))
                "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:social.sharing-button/facebook true]]
                                                          "twitter" [[:social.sharing-button/twitter true]]
@@ -517,8 +517,8 @@
                           (rename :board/slack.team))
                "registrationOpen" (rename :board/registration-open?)
                "registrationCode" (& (xf (fn [code]
-                                             (when-not (str/blank? code)
-                                                       {code {:registration-code/active? true}})))
+                                           (when-not (str/blank? code)
+                                             {code {:registration-code/active? true}})))
                                      (rename :board/registration-codes))
                "webHooks" (& (xf (partial change-keys ["updateMember" (& (xf (partial hash-map :webhook/url))
                                                                          (rename :event.board/update-member))
@@ -528,11 +528,11 @@
                "images" (& parse-image-urls
                            (rename :board/images))
                "userLabel" (& (fn [m a [singular plural]]
-                                  (update m :board/labels merge {:label/member.one singular
-                                                                 :label/member.many plural})) rm)
+                                (update m :board/labels merge {:label/member.one singular
+                                                               :label/member.many plural})) rm)
                "groupLabel" (& (fn [m a [singular plural]]
-                                   (update m :board/labels merge {:label/project.one singular
-                                                                  :label/project.many plural})) rm)
+                                 (update m :board/labels merge {:label/project.one singular
+                                                                :label/project.many plural})) rm)
                "publicVoteMultiple" rm
 
                "descriptionLong" rm ;;  last used in 2015
@@ -562,18 +562,18 @@
                "locales" (rename :board/locale-dicts)
                "filterByFieldView" rm ;; deprecated - see :field/show-as-filter?
                "permissions" (fn [m a v]
-                                 (-> m
-                                     (dissoc a)
-                                     (update :board/rules assoc
-                                             :action/project.create {:policy/requires-role #{:role/admin}})))
+                               (-> m
+                                   (dissoc a)
+                                   (update :board/rules assoc
+                                           :action/project.create {:policy/requires-role #{:role/admin}})))
 
                ;; TODO - add this to :board/policies, clarify difference between project.add vs project.approve
                ;; and how to specify :action/project.approval {:policy/requires-role #{:role/admin}}
                "projectsRequireApproval" (fn [m a v]
-                                             (-> m
-                                                 (dissoc a)
-                                                 (update :board/rules assoc
-                                                         :action/project.approve {:policy/requires-role #{:role/admin}})))
+                                           (-> m
+                                               (dissoc a)
+                                               (update :board/rules assoc
+                                                       :action/project.approve {:policy/requires-role #{:role/admin}})))
                "languages" (& (xf (partial mapv #(get % "code"))) (rename :board/locale-suggestions))]
               :org/as-map [::prepare (partial fire-flat :org/id)
                            ::defaults {:visibility/public? true}
@@ -603,10 +603,10 @@
                                   "bot-token" (rename :slack.app/bot-token)
                                   "custom-messages" (& (xf (fn [m] (rename-keys m {"welcome" :slack.team/custom-welcome-message}))) (rename :slack.team/custom-messages))
                                   "app" (& (xf (fn [app]
-                                                   (->> app (fire-flat :slack.app/id)
-                                                        (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
-                                                                      "bot-token" (rename :slack.app/bot-token)])
-                                                        first)))
+                                                 (->> app (fire-flat :slack.app/id)
+                                                      (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
+                                                                    "bot-token" (rename :slack.app/bot-token)])
+                                                      first)))
                                            (rename :slack.team/slack.app))]
 
               ;; response => destination-thread where team-responses are collected
@@ -633,8 +633,8 @@
                                      "team-id" (& (lookup-ref :slack.team/id)
                                                   (rename :slack.channel/slack.team))]
               :domain/as-map [::prepare (partial mapv (fn [[name target]]
-                                                          (merge {:domain/name (unmunge-domain name)}
-                                                                 (parse-domain-target target))))]
+                                                        (merge {:domain/name (unmunge-domain name)}
+                                                               (parse-domain-target target))))]
               :collection/as-map [::prepare (partial fire-flat :collection/id)
                                   "title" (rename :collection/title)
                                   "images" (& parse-image-urls
@@ -646,51 +646,51 @@
                                   ]
               :membership/as-map [::prepare
                                   (fn [{:strs [e-u-r]}]
-                                      (into [] (mapcat
-                                                (fn [[ent user-map]]
-                                                    (for [[user role-map] user-map
-                                                          :let [entity-ref (parse-sparkboard-id ent)
-                                                                [_ user-id :as user-ref] (parse-sparkboard-id user)]]
-                                                         (merge (if (mongo-id? user-id)
-                                                                  {:membership/member [:member/id user-id]}
-                                                                  {:membership/account [:account/id user-id]})
-                                                                {:membership/id (membership-id user-ref entity-ref)
-                                                                 :membership/entity entity-ref
-                                                                 :membership/roles (into #{} (comp (filter val)
-                                                                                                   (map key)
-                                                                                                   (map (fn [r]
-                                                                                                            (case r "admin" :role/admin)))) role-map)}))))
-                                            e-u-r))]
+                                    (into [] (mapcat
+                                              (fn [[ent user-map]]
+                                                (for [[user role-map] user-map
+                                                      :let [entity-ref (parse-sparkboard-id ent)
+                                                            [_ user-id :as user-ref] (parse-sparkboard-id user)]]
+                                                  (merge (if (mongo-id? user-id)
+                                                           {:membership/member [:member/id user-id]}
+                                                           {:membership/account [:account/id user-id]})
+                                                         {:membership/id (membership-id user-ref entity-ref)
+                                                          :membership/entity entity-ref
+                                                          :membership/roles (into #{} (comp (filter val)
+                                                                                            (map key)
+                                                                                            (map (fn [r]
+                                                                                                   (case r "admin" :role/admin)))) role-map)}))))
+                                          e-u-r))]
               ::firebase ["socialFeed" (xf (partial change-keys
-                                                    ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
-                                                     "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
-                                                     "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
+                                             ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
+                                              "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
+                                              "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
                           "domain" (& (lookup-ref :domain/name)
                                       (rename :entity/domain))]
               :account/as-map [::prepare (fn [accounts]
-                                             (->> accounts
-                                                  (map (fn [{:as account [provider] :providerUserInfo}]
-                                                           (assoc-some-value {}
-                                                                             :account/email (:email account)
-                                                                             :account/email-verified? (:emailVerified account)
-                                                                             :ts/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
-                                                                             :account/display-name (:displayName account)
-                                                                             :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
-                                                                             :account/id (:localId account)
-                                                                             :account/password-hash (:passwordHash account)
-                                                                             :account/password-salt (:salt account)
-                                                                             :account/photo-url (or (:photoUrl account)
-                                                                                                    (:photoUrl provider))
-                                                                             :account.provider.google/sub (:rawId provider))))))]
+                                           (->> accounts
+                                                (map (fn [{:as account [provider] :providerUserInfo}]
+                                                       (assoc-some-value {}
+                                                                         :account/email (:email account)
+                                                                         :account/email-verified? (:emailVerified account)
+                                                                         :ts/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
+                                                                         :account/display-name (:displayName account)
+                                                                         :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
+                                                                         :account/id (:localId account)
+                                                                         :account/password-hash (:passwordHash account)
+                                                                         :account/password-salt (:salt account)
+                                                                         :account/photo-url (or (:photoUrl account)
+                                                                                                (:photoUrl provider))
+                                                                         :account.provider.google/sub (:rawId provider))))))]
               :member-vote/ballot [::prepare (fn [users]
-                                                 (->> users
-                                                      (mapcat (fn [{:keys [_id boardId votesByDomain]}]
-                                                                  (let [member-id (get-oid _id)]
-                                                                       (for [[domain project-id] votesByDomain]
-                                                                            {:ballot/id (str boardId ":" member-id)
-                                                                             :ballot/member (lookup-ref :member/id member-id)
-                                                                             :ballot/board (lookup-ref :board/id boardId)
-                                                                             :ballot/project (lookup-ref :project/id project-id)}))))))
+                                               (->> users
+                                                    (mapcat (fn [{:keys [_id boardId votesByDomain]}]
+                                                              (let [member-id (get-oid _id)]
+                                                                (for [[domain project-id] votesByDomain]
+                                                                  {:ballot/id (str boardId ":" member-id)
+                                                                   :ballot/member (lookup-ref :member/id member-id)
+                                                                   :ballot/board (lookup-ref :board/id boardId)
+                                                                   :ballot/project (lookup-ref :project/id project-id)}))))))
                                    ::always (remove-when #(some missing-ref? ((juxt :ballot/project
                                                                                     :ballot/member
                                                                                     :ballot/board)
@@ -721,11 +721,11 @@
                                                   (rename :member/account))
 
                               :emailFrequency (& (xf #(case %
-                                                            "never" :member.email-frequency/never
-                                                            "daily" :member.email-frequency/daily
-                                                            "periodic" :member.email-frequency/periodic
-                                                            "instant" :member.email-frequency/instant
-                                                            :member.email-frequency/periodic))
+                                                        "never" :member.email-frequency/never
+                                                        "daily" :member.email-frequency/daily
+                                                        "periodic" :member.email-frequency/periodic
+                                                        "instant" :member.email-frequency/instant
+                                                        :member.email-frequency/periodic))
                                                  (rename :member/email-frequency))
                               :acceptedTerms rm
                               :contact_me rm
@@ -737,29 +737,29 @@
 
                               :name (rename :member/name)
                               :roles (& (fn [m a roles]
-                                            (assoc m a (when (seq roles)
-                                                             (let [member-ref [:member/id (:member/id m)]
-                                                                   entity-ref (:member/board m)]
-                                                                  [{:membership/id (membership-id member-ref entity-ref)
-                                                                    :membership/member member-ref
-                                                                    :membership/entity entity-ref
-                                                                    :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
+                                          (assoc m a (when (seq roles)
+                                                       (let [member-ref [:member/id (:member/id m)]
+                                                             entity-ref (:member/board m)]
+                                                         [{:membership/id (membership-id member-ref entity-ref)
+                                                           :membership/member member-ref
+                                                           :membership/entity entity-ref
+                                                           :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
                                         (rename :membership/_member))
                               :tags (& (fn [m a v]
-                                           (let [tags (keep (partial resolve-tag (second (:member/board m))) v)
-                                                 {tags true
-                                                  custom-tags false} (group-by (comp boolean :tag/id) tags)]
-                                                (-> m
-                                                    (u/assoc-seq :member/tags (mapv :tag/id tags))
-                                                    (u/assoc-seq :member/tags.custom (vec custom-tags))
-                                                    (dissoc :tags)))))
+                                         (let [tags (keep (partial resolve-tag (second (:member/board m))) v)
+                                               {tags true
+                                                custom-tags false} (group-by (comp boolean :tag/id) tags)]
+                                           (-> m
+                                               (u/assoc-seq :member/tags (mapv :tag/id tags))
+                                               (u/assoc-seq :member/tags.custom (vec custom-tags))
+                                               (dissoc :tags)))))
 
                               :member/tags (lookup-ref :tag/id)
 
                               :newsletterSubscribe (rename :member/newsletter-subscription?)
                               :active (& (xf not) (rename :member/inactive?)) ;; same as deleted?
                               :picture (& (xf #(when-not (str/starts-with? % "/images/")
-                                                         %))
+                                                 %))
                                           (rename :member/image-url))
                               :votesByDomain rm
                               :feedbackRating rm
@@ -768,8 +768,8 @@
                               ::always (remove-when :suspectedFake)]
 
               :discussion/as-map [#_#_::prepare (fn [m]
-                                                    (when-not (empty? (:posts m))
-                                                              m))
+                                                  (when-not (empty? (:posts m))
+                                                    m))
                                   :_id (& (timestamp-from-id)
                                           (rename :discussion/id))
                                   :type rm
@@ -781,33 +781,33 @@
                                   ::always (remove-when (comp missing-ref? :discussion/project)) ;; prune discussions from deleted projects
                                   :posts (& (xf
                                              (partial change-keys
-                                                      [:_id (& (timestamp-from-id)
-                                                               (rename :post/id))
-                                                       :parent rm #_(& (lookup-ref :discussion/id)
-                                                                       (rename :post/discussion))
-                                                       :user (& (lookup-ref :member/id)
-                                                                (rename :ts/created-by))
-                                                       ::always (remove-when (comp missing-ref? :ts/created-by))
-                                                       ::always (remove-when (comp str/blank? :text))
+                                               [:_id (& (timestamp-from-id)
+                                                        (rename :post/id))
+                                                :parent rm #_(& (lookup-ref :discussion/id)
+                                                                (rename :post/discussion))
+                                                :user (& (lookup-ref :member/id)
+                                                         (rename :ts/created-by))
+                                                ::always (remove-when (comp missing-ref? :ts/created-by))
+                                                ::always (remove-when (comp str/blank? :text))
 
-                                                       :text (& (xf html-content) (rename :post/text-content))
+                                                :text (& (xf html-content) (rename :post/text-content))
 
-                                                       :doNotFollow (& (lookup-ref :member/id)
-                                                                       (xf (partial remove missing-ref?))
-                                                                       (rename :post/do-not-follow))
-                                                       :followers (& (lookup-ref :member/id)
-                                                                     (xf (partial remove missing-ref?))
-                                                                     (rename :post/followers))
-                                                       :comments (& (xf (partial change-keys
-                                                                                 [:_id (& (timestamp-from-id)
-                                                                                          (rename :comment/id))
-                                                                                  :user (& (lookup-ref :member/id)
-                                                                                           (rename :ts/created-by))
-                                                                                  ::always (remove-when (comp missing-ref? :ts/created-by))
-                                                                                  :text (rename :comment/text)
-                                                                                  ::always (remove-when (comp str/blank? :comment/text))
-                                                                                  :parent rm]))
-                                                                    (rename :post/comments))]))
+                                                :doNotFollow (& (lookup-ref :member/id)
+                                                                (xf (partial remove missing-ref?))
+                                                                (rename :post/do-not-follow))
+                                                :followers (& (lookup-ref :member/id)
+                                                              (xf (partial remove missing-ref?))
+                                                              (rename :post/followers))
+                                                :comments (& (xf (partial change-keys
+                                                                   [:_id (& (timestamp-from-id)
+                                                                            (rename :comment/id))
+                                                                    :user (& (lookup-ref :member/id)
+                                                                             (rename :ts/created-by))
+                                                                    ::always (remove-when (comp missing-ref? :ts/created-by))
+                                                                    :text (rename :comment/text)
+                                                                    ::always (remove-when (comp str/blank? :comment/text))
+                                                                    :parent rm]))
+                                                             (rename :post/comments))]))
                                             (rename :discussion/posts))
                                   :boardId rm
                                   ::always (remove-when (comp empty? :discussion/posts))]
@@ -832,22 +832,22 @@
                                :ready (rename :project/team-complete?)
                                :members (&
                                          (fn [m a v]
-                                             (let [project-id (:project/id m)]
-                                                  (update m a (partial keep (fn [m]
-                                                                                (when (ref-exists? :member/id (:user_id m))
-                                                                                      (let [role (case (:role m)
-                                                                                                       "admin" :role/admin
-                                                                                                       "editor" :role/collaborator
-                                                                                                       (if (= (second (:ts/created-by m))
-                                                                                                              (:user_id m))
-                                                                                                         :role/admin
-                                                                                                         :role/member))]
-                                                                                           (-> m
-                                                                                               (dissoc :role :user_id)
-                                                                                               (assoc :membership/id (membership-id (:user_id m) project-id)
-                                                                                                      :membership/roles #{role}
-                                                                                                      :membership/entity [:project/id project-id]
-                                                                                                      :membership/member [:member/id (:user_id m)])))))))))
+                                           (let [project-id (:project/id m)]
+                                             (update m a (partial keep (fn [m]
+                                                                         (when (ref-exists? :member/id (:user_id m))
+                                                                           (let [role (case (:role m)
+                                                                                        "admin" :role/admin
+                                                                                        "editor" :role/collaborator
+                                                                                        (if (= (second (:ts/created-by m))
+                                                                                               (:user_id m))
+                                                                                          :role/admin
+                                                                                          :role/member))]
+                                                                             (-> m
+                                                                                 (dissoc :role :user_id)
+                                                                                 (assoc :membership/id (membership-id (:user_id m) project-id)
+                                                                                        :membership/roles #{role}
+                                                                                        :membership/entity [:project/id project-id]
+                                                                                        :membership/member [:member/id (:user_id m)])))))))))
                                          (rename :membership/_entity))
                                :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                                (rename :project/open-requests))
@@ -864,18 +864,18 @@
                                ]
               :notification/as-map [::defaults {:notification/emailed? false}
                                     ::always (fn [m]
-                                                 (-> m
-                                                     (dissoc :targetViewed :notificationViewed)
-                                                     (assoc :notification/viewed? (boolean (or (:targetViewed m)
-                                                                                               (:notificationViewed m))))))
+                                               (-> m
+                                                   (dissoc :targetViewed :notificationViewed)
+                                                   (assoc :notification/viewed? (boolean (or (:targetViewed m)
+                                                                                             (:notificationViewed m))))))
                                     :_id (& (timestamp-from-id)
                                             (rename :notification/id))
                                     ::always (remove-when
                                               (fn notification-filter [m]
-                                                  (let [day-threshold 180]
-                                                       (or (:notification/viewed? m)
-                                                           (> (-> (:ts/created-at m) date-time days-since)
-                                                              day-threshold)))))
+                                                (let [day-threshold 180]
+                                                  (or (:notification/viewed? m)
+                                                      (> (-> (:ts/created-at m) date-time days-since)
+                                                         day-threshold)))))
 
                                     :createdAt rm
                                     :boardId (& (lookup-ref :board/id)
@@ -908,15 +908,15 @@
                                                                (missing-ref? (:notification/post %))
                                                                (missing-ref? (:notification/discussion %))))
                                     ::always (fn [m]
-                                                 (let [{:keys [type targetId]} m]
-                                                      (-> m
-                                                          (dissoc :type :targetId :targetPath)
-                                                          (merge (case type
-                                                                       "newMember" {:notification/type :notification.type/new-project-member}
-                                                                       "newMessage" {:notification/type :notification.type/new-thread-message
-                                                                                     :notification/thread [:thread/id (get-oid targetId)]}
-                                                                       "newPost" {:notification/type :notification.type/new-discussion-post}
-                                                                       "newComment" {:notification/type :notification.type/new-post-comment})))))
+                                               (let [{:keys [type targetId]} m]
+                                                 (-> m
+                                                     (dissoc :type :targetId :targetPath)
+                                                     (merge (case type
+                                                              "newMember" {:notification/type :notification.type/new-project-member}
+                                                              "newMessage" {:notification/type :notification.type/new-thread-message
+                                                                            :notification/thread [:thread/id (get-oid targetId)]}
+                                                              "newPost" {:notification/type :notification.type/new-discussion-post}
+                                                              "newComment" {:notification/type :notification.type/new-post-comment})))))
                                     :notification/board rm
 
                                     ]
@@ -955,16 +955,16 @@
                                  (rename :ts/created-by))
 
                        :htmlClasses (fn [m k v]
-                                        (let [classes (str/split v #"\s+")]
-                                             (-> m
-                                                 (dissoc k)
-                                                 (u/assoc-some :project/card-classes (some-> (remove #{"sticky"} classes)
-                                                                                             seq
-                                                                                             distinct
-                                                                                             vec))
-                                                 (cond->
-                                                  (some #{"sticky"} classes)
-                                                  (assoc :project/sticky? true)))))
+                                      (let [classes (str/split v #"\s+")]
+                                        (-> m
+                                            (dissoc k)
+                                            (u/assoc-some :project/card-classes (some-> (remove #{"sticky"} classes)
+                                                                                        seq
+                                                                                        distinct
+                                                                                        vec))
+                                            (cond->
+                                             (some #{"sticky"} classes)
+                                             (assoc :project/sticky? true)))))
 
 
                        #_#_:_id (& (xf #(:$oid % %))
@@ -980,127 +980,127 @@
 
 ;; account, :boardId, :discussion
 (defn fetch-mongodb []
-      (doseq [[coll-k mongo-coll] mongo-colls
-              :let [_ (prn :starting coll-k)
-                    {:keys [out err exit]} (sh "mongoexport" ;; <-- you'll need this installed; see https://www.mongodb.com/docs/database-tools/installation/installation/
-                                               "--uri" MONGODB_URI
-                                               "--jsonArray"
-                                               "--collection" mongo-coll)
-                    _ (prn :downloaded coll-k)
-                    clj (->> (json/read-value out json/keyword-keys-object-mapper)
-                             #_(mapv parse-mongo-doc))
-                    _ (prn :parsed coll-k)]]
-             (when-not (zero? exit)
-                       (throw (Exception. err)))
-             (spit (env/db-path (str mongo-coll ".edn")) clj)))
+  (doseq [[coll-k mongo-coll] mongo-colls
+          :let [_ (prn :starting coll-k)
+                {:keys [out err exit]} (sh "mongoexport" ;; <-- you'll need this installed; see https://www.mongodb.com/docs/database-tools/installation/installation/
+                                           "--uri" MONGODB_URI
+                                           "--jsonArray"
+                                           "--collection" mongo-coll)
+                _ (prn :downloaded coll-k)
+                clj (->> (json/read-value out json/keyword-keys-object-mapper)
+                         #_(mapv parse-mongo-doc))
+                _ (prn :parsed coll-k)]]
+    (when-not (zero? exit)
+      (throw (Exception. err)))
+    (spit (env/db-path (str mongo-coll ".edn")) clj)))
 
 
 
 (defn fetch-accounts []
-      ;; if you get a 401 despite having a valid service-account in .local.config.edn,
-      ;; try `firebase logout` first
-      (let [json-path (doto (env/db-path "accounts.json") (->> (sh "rm")))
-            {:keys [out err exit]} (try
-                                     (spit (env/db-path "service-account.json")
-                                           (-> env/config :prod :firebase/service-account json/write-value-as-string))
-                                     (sh "npx"
-                                         "firebase"
-                                         "auth:export"
-                                         json-path
-                                         "-P"
-                                         (:project_id (:firebase/service-account (:prod env/config)))
-                                         :env
-                                         (into {"GOOGLE_APPLICATION_CREDENTIALS"
-                                                (env/db-path "service-account.json")}
-                                               (System/getenv)))
-                                     (finally (sh "rm" (env/db-path "service-account.json"))))]
-           (if (seq err)
-             (prn :fetch-accounts/error {:err err :out out})
-             (do
-               (prn :downloaded-accounts out)
-               (spit (env/db-path "accounts.edn")
-                     (json/read-value
-                      (slurp (env/db-path "accounts.json"))
-                      json/keyword-keys-object-mapper))))))
+  ;; if you get a 401 despite having a valid service-account in .local.config.edn,
+  ;; try `firebase logout` first
+  (let [json-path (doto (env/db-path "accounts.json") (->> (sh "rm")))
+        {:keys [out err exit]} (try
+                                 (spit (env/db-path "service-account.json")
+                                       (-> env/config :prod :firebase/service-account json/write-value-as-string))
+                                 (sh "npx"
+                                     "firebase"
+                                     "auth:export"
+                                     json-path
+                                     "-P"
+                                     (:project_id (:firebase/service-account (:prod env/config)))
+                                     :env
+                                     (into {"GOOGLE_APPLICATION_CREDENTIALS"
+                                            (env/db-path "service-account.json")}
+                                           (System/getenv)))
+                                 (finally (sh "rm" (env/db-path "service-account.json"))))]
+    (if (seq err)
+      (prn :fetch-accounts/error {:err err :out out})
+      (do
+        (prn :downloaded-accounts out)
+        (spit (env/db-path "accounts.edn")
+              (json/read-value
+               (slurp (env/db-path "accounts.json"))
+               json/keyword-keys-object-mapper))))))
 
 (comment
  (fetch-accounts))
 
 (defn fetch-firebase []
-      (let [{token :firebase/database-secret
-             {db :databaseURL} :firebase/app-config} (:prod env/config)]
-           (->> (str db "/.json?auth=" token)
-                (slurp)
-                (json/read-value)
-                (spit (env/db-path "firebase.edn")))))
+  (let [{token :firebase/database-secret
+         {db :databaseURL} :firebase/app-config} (:prod env/config)]
+    (->> (str db "/.json?auth=" token)
+         (slurp)
+         (json/read-value)
+         (spit (env/db-path "firebase.edn")))))
 
 (comment
  (fetch-firebase)
  )
 
 (defn changes-for [k]
-      (into (changes (cond (mongo-colls k) ::mongo
-                           (firebase-colls k) ::firebase
-                           :else (throw (ex-info (str "Unknown coll: " k) {:coll k}))))
-            (changes k)))
+  (into (changes (cond (mongo-colls k) ::mongo
+                       (firebase-colls k) ::firebase
+                       :else (throw (ex-info (str "Unknown coll: " k) {:coll k}))))
+        (changes k)))
 
 (def coll-entities
   "Converts doc according to `changes`"
   (memoize
    (fn [k]
-       (->> (read-coll k)
-            (change-keys (changes-for k))))))
+     (->> (read-coll k)
+          (change-keys (changes-for k))))))
 
 (defn register-schema! []
-      (reset! sschema/!registry (merge (m/default-schemas)
-                                       (update-vals sschema/sb-schema :malli/schema))))
+  (reset! sschema/!registry (merge (m/default-schemas)
+                                   (update-vals sschema/sb-schema :malli/schema))))
 
 (defn explain-errors! []
-      (register-schema!)
-      (->> colls
-           (mapcat (fn [k]
-                       (let [entities (coll-entities k)]
-                            (:errors (m/explain [:sequential (@sschema/!registry k)] entities)))))
-           first))
+  (register-schema!)
+  (->> colls
+       (mapcat (fn [k]
+                 (let [entities (coll-entities k)]
+                   (:errors (m/explain [:sequential (@sschema/!registry k)] entities)))))
+       first))
 
 (defn read-all []
-      (into []
-            (mapcat read-coll)
-            colls))
+  (into []
+        (mapcat read-coll)
+        colls))
 
 (defn root-entities
-      "Entities representing docs from the original coll. May contain nested (inline) entities."
-      []
-      (into []
-            (mapcat coll-entities)
-            colls))
+  "Entities representing docs from the original coll. May contain nested (inline) entities."
+  []
+  (into []
+        (mapcat coll-entities)
+        colls))
 
 (def reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys sschema/sb-schema)))
 
-(defn flatten-entities
-      "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
-      [docs]
-      (into []
-            (mapcat (fn [doc]
-                        (cons (apply dissoc doc reverse-ks)
-                              (mapcat doc reverse-ks))))
-            docs))
+(def flatten-entities-xf
+  "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
+  (mapcat (fn [doc]
+            (cons (apply dissoc doc reverse-ks)
+                  (mapcat doc reverse-ks)))))
 
-(def all-entities
-  "Flat list of all entities (no inline nesting)"
-  (comp flatten-entities root-entities))
+(defn all-entities
+  "Flat list of all entities (no inline nesting)" []
+  (into []
+        (comp flatten-entities-xf
+              (map (fn [m] (assoc m :sb/id (dl/squuid)))))
+        (root-entities)))
 
 (defn contains-somewhere?
-      "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
-      [v coll]
-      (let [!found (atom false)]
-           (walk/postwalk #(do (when (= v %) (reset! !found true)) %) coll)
-           @!found))
+  "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
+  [v coll]
+  (let [!found (atom false)]
+    (walk/postwalk #(do (when (= v %) (reset! !found true)) %) coll)
+    @!found))
 
 (comment
 
 
-
+(take 2 (all-entities))
 
 
  ;; Steps to set up a Datalevin db
@@ -1128,10 +1128,10 @@
 
  ;; only for debugging when something fails to transact
  (doseq [doc (all-entities)]
-        (try (db/transact! [doc])
-             (catch Exception e
-               (prn :fail doc)
-               (throw e))))
+   (try (db/transact! [doc])
+        (catch Exception e
+          (prn :fail doc)
+          (throw e))))
 
  (explain-errors!) ;; checks against schema
 

@@ -56,9 +56,9 @@
                      (log/error (ex-message e)
                                 (ex-data e)
                                 (ex-cause e)))
-                   (impl/return-text
-                    (:status (ex-data e) 500)
-                    (ex-message e)))]
+                   (let [{:keys [status body]} (ex-data e)]
+                     {:status (or status 500)
+                      :body (or body (ex-message e))}))]
     (fn [req]
       (log/info :req req)
       (log/info :URI (:uri req))
@@ -90,11 +90,6 @@
 (defn serve-markdown [{:keys [file/name]}]
   (server.html/static-html (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
-(defn handle-post [post req input]
-  (when-let [schema (some-> (meta post) :POST)]
-    (vd/assert-valid schema input))
-  (post req (:body-params req)))
-
 (def route-handler
   (-> (fn [{:as req :keys [uri]}]
         (tap> req)
@@ -112,7 +107,7 @@
             handler (handler (merge req params))
 
             ;; post fns are expected to return HTTP response maps
-            (and post (= method :post)) (handle-post post (merge req params) (:body-params req))
+            (and post (= method :post)) (post (merge req params) (:body-params req))
 
             (and html? (or query view)) (server.html/single-page-html
                                          {:tx [(assoc env/client-config :db/id :env/config)

@@ -3,8 +3,9 @@
   (:require [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
+            [sparkboard.server.validate :as sv]
             [ring.util.http-response :as http-rsp]
-            [sparkboard.datalevin :as sb.datalevin]))
+            [sparkboard.datalevin :as sd]))
 
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
@@ -53,8 +54,8 @@
           :member/password))
 
 (defquery $search [{:keys [query-params org/id]}]
-  (->> (sb.datalevin/q-fulltext-in-org (:q query-params)
-                                       id)
+  (->> (sd/q-fulltext-in-org (:q query-params)
+                             id)
        ;; Can't send Entities over the wire, so:
        (map (db/pull '[:project/title
                        :board/title]))))
@@ -63,36 +64,52 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
+;; TODO ...
+
+
+;; - authorize mutations
+;; - mutation fn should return a map with :tx and :ret keys
+;; - validate newly created entities
+
 (defn board:register [ctx params mbr]
   ;; create membership
   )
 
+(defn tx-and-return! [entity schema]
+  (sv/assert entity schema)
+  (db/transact! [entity])
+  entity)
+
 (defn project:create
-  {:POST [:map {:closed true} :project/title]}
   [req project]
-  (db/transact! [(assoc project :project/board
-                                [:board/id (:board/id req)]
-                                :ts/created-by (:db/id (:account req)))]))
+  (sv/assert project [:map {:closed true} :project/title])
+  ;; auth: user is member of board & board allows members to create projects
+  (-> project
+      (assoc :project/board [:sb/id (:board/id req)])
+      (sd/new-entity :by (:db/id (:account req)))
+      (tx-and-return! :project/as-map)))
 
 (defn board:create
-  {:POST [:map {:closed true} :board/title]}
   [req board]
-  (db/transact! [(assoc board
-                   :board/id (str (random-uuid))
-                   :org/id (:org/id req)
-                   :ts/created-by (:db/id (:account req)))]))
+  (sv/assert board [:map {:closed true} :board/title])
+  ;; auth: user is admin of org
+  (-> board
+      (assoc :board/org [:sb/id (:org/id req)])
+      (sd/new-entity :by (:db/id (:account req)))
+      (tx-and-return! :board/as-map)))
 
 (defn org:create
-  {:POST [:map {:closed true} :org/title]}
   [req org]
-  (db/transact! [(assoc org
-                   :org/id (str (random-uuid))
-                   :ts/created-by (:db/id (:account req)))])
-  (http-rsp/ok org))
+  (sv/assert org [:map {:closed true} :org/title])
+  ;; auth: ?
+  (-> org
+      (sd/new-entity :by (:db/id (:account req)))
+      (tx-and-return! :org/as-map)))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  {:POST :org/id}
   [req org-id]
-  (db/transact! [[:db.fn/retractEntity [:org/id org-id]]]))
+  (sv/assert org-id :org-id)
+  ;; auth: user is admin of org
+  {:tx [[:db.fn/retractEntity [:org/id org-id]]]})
 

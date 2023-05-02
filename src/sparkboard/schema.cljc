@@ -754,7 +754,9 @@
              sb-text-content
              sb-thread
              sb-ts
-             sb-webhooks)
+             sb-webhooks
+             {:sb/id (merge s/unique-id
+                            s/uuid)})
       (update-vals infer-db-type)
       (doto (as-> schema
                   (swap! !registry merge (update-vals schema s-))))))

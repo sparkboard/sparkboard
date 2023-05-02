@@ -128,11 +128,11 @@
   [_ {:keys [account/email
              account/password]}]
   (let [account-entity (not-empty (db/get [:account/email email]))
-        _ (vd/assert-valid 401
-                           [:map {:error/message "Account not found"}
+        _ (vd/assert account-entity
+                     [:map {:error/message "Account not found"}
                             [:account/password-hash [:string]]
                             [:account/password-salt [:string]]]
-                           account-entity)
+                     {:code 401})
         _ (when-not account-entity (throw (ex-info (str "Account not found") {:account/email email :status 401})))
         _ (when (or (not (:account/password-hash account-entity))
                     (not (:account/password-salt account-entity)))

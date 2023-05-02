@@ -132,3 +132,12 @@
  ;; FIXME fails if entity does not exist / has already been deleted
 
  )
+
+(def squuid dl/squuid)
+(defn now [] (java.util.Date.))
+
+(defn new-entity [m & {:keys [by]}]
+  (-> m
+      (assoc :sb/id (squuid))
+      (assoc :ts/created-at (now))
+      (cond-> by (assoc :ts/created-by by))))
