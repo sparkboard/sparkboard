@@ -34,7 +34,7 @@
              {:value @i18n/!selected-locale
               :on-value-change (fn [v]
                                  ;; TODO loading/error state
-                                 (p/do (routes/post! :account/set-locale v)
+                                 (p/do (routes/post! :account/set-locale {:locale v})
                                        (js/window.location.reload)))}]
             (map (fn [lang] [:el.text-left.flex.pr-4.py-2.cursor-pointer.hover:outline-none.hover:bg-zinc-50
                              dm/RadioItem {:class "data-[disabled]:text-gray-500"
@@ -56,6 +56,7 @@
 
 (ui/defview menubar [params]
   [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
+   [:img.w-5.h-5 {:src ui/logo-url}]
    [:div.flex-grow]
    [menubar:lang]
    [menubar:account params]
@@ -132,7 +133,7 @@
    [:div.hidden.md:block.text-2xl.bg-no-repeat
     {:class ["bg-blend-darken bg-zinc-50 bg-center"]
      :style {:background-size "100px"
-             :background-image (ui/css-url "/images/logo-2023.png")}}]
+             :background-image (ui/css-url ui/logo-url)}}]
    ;; right column
    [:div.flex.flex-col.h-screen.shadow-sm.relative
     [:div.flex.flex-grow
@@ -153,7 +154,7 @@
                    [:div.rough-icon-button
                     {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                               (:org/title org) "?"))
-                                  (routes/post! :org/delete (:org/id org)))}
+                                  (routes/post! :org/delete {:org/id (:org/id org)}))}
                     "X"]
 
                    [:a {:href (routes/path-for :org/one org)}
@@ -170,20 +171,19 @@
 
 (ui/defview org:create [params]
   (with-form [!org {:org/title ?title}]
-    [:div
+    [:form
+     {:on-submit (fn [e]
+                   (j/call e :preventDefault)
+                   (forms/try-submit+ !org
+                     (p/let [org (routes/post! :org/create @!org)]
+                       (prn :transacted-org org)
+                       (forms/clear! !org))))}
      [:h2 (tr :tr/new) " " (tr :tr/org)]
-     [:form
-      [:label "Title"]
-      (ui/show-field ?title)
-      [:button
-       {:on-click #(p/let [^js/Response res (routes/post! :org/create @!org)]
-                     (case (.-status res)
-                       200 (js/console.log "200 response")
-                       400 (js/console.warn "400 response" (.-body res))
-                       500 (js/console.error "500 response")
-                       (js/console.error "catch-all case"))
-                     (forms/clear! !org))}
-       (str (tr :tr/create) " " (tr :tr/org))]]]))
+     [:label "Title"]
+     (ui/show-field ?title)
+     [:button
+      {:type "submit"}
+      (str (tr :tr/create) " " (tr :tr/org))]]))
 
 (ui/defview board:create [{:as params :keys [route org/id]}]
   (ui/with-form [!board {:board/title ?title}]

@@ -7,7 +7,7 @@
             [clojure.pprint :refer [pprint]])
   (:require-macros [sparkboard.views.ui :refer [defview]]))
 
-
+(def logo-url "/images/logo-2023.png")
 
 (def invalid-border-color "red")
 (def invalid-text-color "red")

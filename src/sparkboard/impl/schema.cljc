@@ -14,17 +14,23 @@
   "returns a schema entry for a ref (one or many)"
   ([cardinality] (case cardinality :one (merge s/ref
                                                s/one
-                                               {s- [:tuple :qualified-keyword :string]})
+                                               {s- [:or
+                                                    :int
+                                                    [:tuple :qualified-keyword :string]]})
                                    :many (merge s/ref
                                                 s/many
-                                                {s- [:sequential [:tuple :qualified-keyword :string]]})))
+                                                {s- [:or
+                                                     :int
+                                                     [:sequential [:tuple :qualified-keyword :string]]]})))
   ([cardinality ks]
    (let [nested? (= 1 (count ks))
-         leaf-type (if nested?
-                     [:multi {:dispatch 'map?}
-                      [true [:ref (keyword (namespace (first ks)) "as-map")]]
-                      [false (lookup-ref ks)]]
-                     (lookup-ref ks))]
+         leaf-type [:or
+                    :int
+                    (if nested?
+                      [:multi {:dispatch 'map?}
+                       [true [:ref (keyword (namespace (first ks)) "as-map")]]
+                       [false (lookup-ref ks)]]
+                      (lookup-ref ks))]]
      (case cardinality :one (merge s/ref
                                    s/one
                                    {s- leaf-type}

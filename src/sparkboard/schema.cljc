@@ -458,18 +458,23 @@
                                       (ref :one #{:board/id}))
    :org/social-feed {s- :social/feed}
    :org/images {s- :image-urls/as-map}
+   :org/locale-default {s- :i18n/locale}
+   :org/locale-suggestions {s- :i18n/locale-suggestions}
    :org/as-map {s- [:map {:closed true}
                     (? :board/show-org-tab?)
                     (? :org/default-board-template)
                     (? :org/social-feed)
                     (? :org/locale-default)
                     (? :org/locale-suggestions)
-                    :org/images
+                    (? :org/images)
+                    (? :entity/domain)
+                    (? :visibility/public?)
                     :org/title
                     :org/id
-                    :entity/domain
-                    :visibility/public?
-                    :ts/created-by]}})
+                    :ts/created-by
+
+                    (? :ts/created-at)
+                    :sb/id]}})
 
 (def sb-posts
   {:post/_discussion {s- [:sequential :post/as-map]}
@@ -756,7 +761,8 @@
              sb-ts
              sb-webhooks
              {:sb/id (merge s/unique-id
-                            s/uuid)})
+                            s/uuid
+                            {s- :uuid})})
       (update-vals infer-db-type)
       (doto (as-> schema
                   (swap! !registry merge (update-vals schema s-))))))

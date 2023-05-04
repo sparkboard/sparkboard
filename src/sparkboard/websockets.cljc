@@ -15,23 +15,22 @@
 #?(:clj
    (defn handle-ws-request [options req]
      (let [{:as options :keys [pack unpack handlers]} (merge default-options options)]
-       (when (= (:uri req) (:path options))
-         (if (= :get (:request-method req))
-           (let [!ch (atom nil)
-                 channel {:!ch !ch
-                          ::sync/send (fn [message]
-                                        (if (some-> @!ch httpkit/open?)
-                                          (httpkit/send! @!ch (pack message))
-                                          (println :sending-message-before-open message)))}
-                 context {:channel channel}]
-             (httpkit/as-channel req
-                                 {:init (partial reset! !ch)
-                                  :on-open sync/on-open
-                                  :on-receive (fn [ch message]
-                                                (sync/handle-message handlers context (unpack message)))
-                                  :on-close (fn [ch status]
-                                              (sync/on-close channel))}))
-           {:status 400})))))
+       (if (= :get (:request-method req))
+         (let [!ch (atom nil)
+               channel {:!ch !ch
+                        ::sync/send (fn [message]
+                                      (if (some-> @!ch httpkit/open?)
+                                        (httpkit/send! @!ch (pack message))
+                                        (println :sending-message-before-open message)))}
+               context {:channel channel}]
+           (httpkit/as-channel req
+                               {:init (partial reset! !ch)
+                                :on-open sync/on-open
+                                :on-receive (fn [ch message]
+                                              (sync/handle-message handlers context (unpack message)))
+                                :on-close (fn [ch status]
+                                            (sync/on-close channel))}))
+         {:status 400}))))
 
 #?(:cljs
    (defn connect

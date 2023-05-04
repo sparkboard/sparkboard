@@ -100,7 +100,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 #?(:clj
    (defn set-locale
      {:POST :i18n/locale}
-     [req locale]
+     [req {:keys [locale]}]
      (if (:account req)
        (do (re-db.api/transact! [{:db/id (:db/id (:account req))
                                   :account/locale locale}])

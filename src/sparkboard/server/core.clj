@@ -8,12 +8,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.util]
-            [malli.core :as malli]
-            [malli.error :as malli.error]
             [markdown.core :as md]
             [muuntaja.core :as m]
-            [ring.middleware.cookies :as ring.cookies]
-            [sparkboard.server.validate :as vd]
             [muuntaja.core :as muu]
             [muuntaja.middleware :as muu.middleware]
             [org.httpkit.server :as httpkit]
@@ -22,9 +18,9 @@
             [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.sync.entity-diff-1 :as sync.entity]
+            [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.defaults]
             [ring.middleware.format]
-            [ring.middleware.params :as ring.params]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime]
             [ring.util.request]
@@ -68,13 +64,12 @@
            (catch Exception e (handle-e e))
            (catch java.lang.AssertionError e (handle-e e))))))
 
-(defn wrap-static-first
+(defn serve-static
   "Serve files from `public-dir` with content-type derived from file extension."
-  [f public-dir]
+  [public-dir]
   (fn [{:as req :keys [uri]}]
-    (or (some-> (ring.response/resource-response uri {:root public-dir})
-                (ring.response/content-type (ring.mime/ext-mime-type uri)))
-        (f req))))
+    (some-> (ring.response/resource-response uri {:root public-dir})
+            (ring.response/content-type (ring.mime/ext-mime-type uri)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,37 +82,40 @@
 
 #_(memo/clear-memo! $resolve-ref)
 
-(defn serve-markdown [{:keys [file/name]}]
+(defn serve-markdown [_ {:keys [file/name]}]
   (server.html/static-html (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
 (def route-handler
-  (-> (fn [{:as req :keys [uri]}]
-        (tap> req)
-        (let [{:as match :keys [view query post handler params public]} (routes/match-path uri)
-              method (:request-method req)
-              html? (and (= method :get)
-                         (str/includes? (get-in req [:headers "accept"]) "text/html"))
-              authed? (:account req)]
-          (cond
+  (fn [{:as req :keys [uri]}]
+    (tap> req)
+    (let [{:as match :keys [view query post handler params public]} (routes/match-path uri)
+          params (let [body (:body-params req)]
+                   (if (map? body)
+                     (merge params body)
+                     (assoc params :body body)))
+          method (:request-method req)
+          html? (and (= method :get)
+                     (str/includes? (get-in req [:headers "accept"]) "text/html"))
+          authed? (:account req)]
+      (cond
 
-            (and (not authed?) (not public)) (throw (ex-info "Unauthorized" {:uri uri
-                                                                             :match match
-                                                                             :status 401}))
+        (and (not authed?) (not public)) (throw (ex-info "Unauthorized" {:uri uri
+                                                                         :match match
+                                                                         :status 401}))
 
-            handler (handler (merge req params))
+        handler (handler req params)
 
-            ;; post fns are expected to return HTTP response maps
-            (and post (= method :post)) (post (merge req params) (:body-params req))
+        ;; post fns are expected to return HTTP response maps
+        (and post (= method :post)) (post req params)
 
-            (and html? (or query view)) (server.html/single-page-html
-                                         {:tx [(assoc env/client-config :db/id :env/config)
-                                               (assoc (:account req) :db/id :env/account)]})
+        (and html? (or query view)) (server.html/single-page-html
+                                     {:tx [(assoc env/client-config :db/id :env/config)
+                                           (assoc (:account req) :db/id :env/account)]})
 
-            query (some-> (query params) deref ring.http/ok)
+        query (some-> (query params) deref ring.http/ok)
 
-            ;; query fns return reactions which must be wrapped in HTTP response maps
-            :else (ring.http/not-found "Not found"))))
-      (muu.middleware/wrap-format muuntaja)))
+        ;; query fns return reactions which must be wrapped in HTTP response maps
+        :else (ring.http/not-found "Not found")))))
 
 (memo/defn-memo $txs [ref]
   (r/catch (sync.entity/txs ref)
@@ -136,15 +134,18 @@
 
 (def ws-options {:handlers (sync/query-handlers resolve-query)})
 
+(defn ws-handler [req _]
+  (#'ws/handle-ws-request ws-options req))
+
 (def handler
-  (-> (impl/join-handlers #(#'ws/handle-ws-request ws-options %)
-                          slack.server/handlers
-                          #'route-handler)
-      auth/wrap-accounts
-      ring.cookies/wrap-cookies
-      wrap-log
-      (wrap-static-first "public")
-      #_(wrap-debug-request :first)))
+  (impl/join-handlers (serve-static "public")
+                      slack.server/handlers
+                      (-> #'route-handler
+                          auth/wrap-accounts
+                          wrap-log
+                          impl/wrap-query-params ;; required for accounts (oauth2)
+                          ring.cookies/wrap-cookies
+                          (muu.middleware/wrap-format muuntaja))))
 
 (defonce the-server
   (atom nil))

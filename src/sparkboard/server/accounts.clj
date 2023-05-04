@@ -4,7 +4,6 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
-            [ring.middleware.params :as ring.params]
             [sparkboard.server.validate :as vd]
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
@@ -102,7 +101,7 @@
                                (.minusDays 1)
                                .toString))}))
 
-(defn logout-handler [_]
+(defn logout-handler [_ _]
   (-> (ring.response/redirect (routes/path-for :home))
       (res:logout)))
 
@@ -122,16 +121,19 @@
 
 (defn login-handler
   "POST handler. Returns 200/OK with account data if successful."
-  {:POST [:map
-          [:account/password [:string {:min 8}]]
-          [:account/email [:re #"^[^@]+@[^@]+$"]]]}
-  [_ {:keys [account/email
+  [_ {:as body
+      :keys [account/email
              account/password]}]
+
+  (vd/assert body [:map
+                   [:account/password [:string {:min 8}]]
+                   [:account/email [:re #"^[^@]+@[^@]+$"]]])
+
   (let [account-entity (not-empty (db/get [:account/email email]))
         _ (vd/assert account-entity
                      [:map {:error/message "Account not found"}
-                            [:account/password-hash [:string]]
-                            [:account/password-salt [:string]]]
+                      [:account/password-hash [:string]]
+                      [:account/password-salt [:string]]]
                      {:code 401})
         _ (when-not account-entity (throw (ex-info (str "Account not found") {:account/email email :status 401})))
         _ (when (or (not (:account/password-hash account-entity))
@@ -186,7 +188,7 @@
              :keys
              first buddy.keys/jwk->public-key)))
 
-(defn google-landing [{:as req :keys [oauth2/access-tokens]}]
+(defn google-landing [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
         sub (:sub (buddy.jwt/unsign id-token @google-public-key {:alg :rs256
@@ -206,7 +208,6 @@
   (-> f
       (wrap-account-lookup)
       (oauth2/wrap-oauth2 oauth2-config)
-      ring.params/wrap-params
       (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
                                           {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
                                            :readers {'clj-time/date-time clj-time.coerce/from-string}})

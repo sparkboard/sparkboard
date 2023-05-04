@@ -25,7 +25,7 @@
 (defn single-page-html [{:as options :keys [tx schema content]}]
   (-> {:body (str (html/html-page {:title "Sparkboard"
                                    :styles [{:href "/sparkboard.css"}]
-                                   :scripts/body [{:src (str "/js/app.js?v=" (invalidation-token "public/js/main.js"))}]
+                                   :scripts/body [{:src (str "/js/app.js?v=" (invalidation-token "public/js/app.js"))}]
                                    :body [[:script {:type "application/re-db"}
                                            (->> (select-keys options [:tx :schema])
                                                 transit/write

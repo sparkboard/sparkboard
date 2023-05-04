@@ -7,6 +7,10 @@
             [ring.util.http-response :as http-rsp]
             [sparkboard.datalevin :as sd]))
 
+;; TODO
+;; defquery can specify an out-of-band authorization fn that
+;; can pass/fail the subscription based on the session without
+;; including the session in the subscription args
 (defmacro defquery
   "Defines a query function. The function will be memoized and return a {:value / :error} map."
   [name & fn-body]
@@ -71,14 +75,14 @@
 ;; - mutation fn should return a map with :tx and :ret keys
 ;; - validate newly created entities
 
-(defn board:register [ctx params mbr]
+(defn board:register [ctx registration-map]
   ;; create membership
   )
 
 (defn tx-and-return! [entity schema]
   (sv/assert entity schema)
   (db/transact! [entity])
-  entity)
+  {:body entity})
 
 (defn project:create
   [req project]
@@ -103,13 +107,14 @@
   (sv/assert org [:map {:closed true} :org/title])
   ;; auth: ?
   (-> org
-      (sd/new-entity :by (:db/id (:account req)))
+      (sd/new-entity :by (:db/id (:account req))
+                     :legacy-id-key :org/id)
       (tx-and-return! :org/as-map)))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  [req org-id]
-  (sv/assert org-id :org-id)
+  [req {:keys [org/id]}]
+  (sv/assert id :org-id)
   ;; auth: user is admin of org
-  {:tx [[:db.fn/retractEntity [:org/id org-id]]]})
+  {:tx [[:db.fn/retractEntity [:org/id id]]]})
 

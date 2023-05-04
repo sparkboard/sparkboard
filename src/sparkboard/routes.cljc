@@ -25,6 +25,8 @@
   :handler - symbol pointing to a (server) function accepting a request map"
   (r/atom ["/" {"" (E :home {:public true
                              :view `views/home})
+                "ws" (E :websocket {:public true
+                                    :handler 'sparkboard.server.core/ws-handler})
                 ["documents/" :file/name] (E :markdown/file
                                              {:handler 'sparkboard.server.core/serve-markdown
                                               :public true})
@@ -142,9 +144,9 @@
 
 #?(:cljs
    (defn post! [route body]
-     (.then (js/fetch (path-for route)
-                      (j/lit {:headers {"Accept" "application/transit+json"
-                                        "Content-type" "application/transit+json"}
-                              :body (t/write body)
-                              :method "POST"}))
-            http/format-response)))
+     (-> (js/fetch (path-for route)
+                   (j/lit {:headers {"Accept" "application/transit+json"
+                                     "Content-type" "application/transit+json"}
+                           :body (t/write body)
+                           :method "POST"}))
+         (.then http/format-response))))

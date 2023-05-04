@@ -1,5 +1,6 @@
 (ns sparkboard.impl.server
   (:require [clojure.string :as str]
+            [ring.middleware.params :as ring.params]
             [sparkboard.slack.firebase.tokens :as fire-tokens]
             [taoensso.timbre :as log]))
 
@@ -47,3 +48,9 @@
   [& handlers]
   (fn [req]
     (some (fn [handler] (handler req)) handlers)))
+
+(defn wrap-query-params [f]
+  (fn [req]
+    (f (ring.params/assoc-query-params
+        req
+        (or (ring.util.request/character-encoding req) "UTF-8")))))

@@ -36,7 +36,7 @@
      :clj  (-> res :body transit/read)))
 
 (defn format-response [res]
-  (let [type (content-type res)]
+  (let [type (or (content-type res) "")]
     (cond (str/starts-with? type "application/json") (json-body res)
           (str/starts-with? type "application/transit+json") (transit-body res)
           #?@(:cljs [(str/starts-with? type "text/plain") (j/call res :text)])
