@@ -142,9 +142,9 @@
                       slack.server/handlers
                       (-> #'route-handler
                           auth/wrap-accounts
-                          wrap-log
                           impl/wrap-query-params ;; required for accounts (oauth2)
                           ring.cookies/wrap-cookies
+                          wrap-log
                           (muu.middleware/wrap-format muuntaja))))
 
 (defonce the-server

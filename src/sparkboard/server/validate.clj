@@ -33,39 +33,40 @@
 
 (def flat-messages (comp flatten-messages humanized))
 
+(defn messages-by-path
+  "Returns a map of {<path> [...messages]}"
+  [schema value]
+  (some-> (explain schema value)
+          :errors
+          (->> (reduce (fn [errors {:as error :keys [path]}]
+                         (update errors
+                                 (remove number? path)
+                                 (fnil conj [])
+                                 (malli.error/error-message error))) {})
+           (into {}))))
+
+(comment
+ (messages-by-path [:map [:x :email]] {:x "foo"}))
+
 (defn assert
   ([value schema] (assert value schema {:code 400}))
   ([value schema {:keys [code message]}]
-   (when-let [messages (seq (flat-messages schema value))]
-     (throw (ex-info (or message (first messages))
+   (when-let [messages (messages-by-path schema value)]
+     (throw (ex-info "Validation failed"
                      {:status (or code 400)
-                      :messages messages
+                      :body {:inside-out.forms/messages-by-path messages}
                       :value value})))))
 
-(defn leaf-map [schema value]
-  ;; returns map like
-  '{:root [...]
-    :leaf-key [...]}
-  (some-> schema
-          (explain value)
-          humanize
-          leaves
-          (->> (into {}))
-          (update-keys (fn [k]
-                         (if (seq k)
-                           (last k)
-                           :form/root))))
-  )
-
-
 (comment
- (= (leaf-map [:map [:x :email]] {:x "foo"})
-    {:x ["should be a valid email"]})
- (= (leaf-map :email " ")
-    {:form/root ["should be a valid email"]})
- (= (leaf-map [:map
+ (messages-by-path [:map {:closed true} :org/title]
+                   {:org/title nil})
+ (= (messages-by-path [:map [:x :email]] {:x "foo"})
+    {[:x] ["should be a valid email"]})
+ (= (messages-by-path :email " ")
+    {[] ["should be a valid email"]})
+ (= (messages-by-path [:map
                [:x
                 [:map
                  [:y :int]]]]
-              {:x {:y "foo"}})
-    {:y ["should be an integer"]}))
+                      {:x {:y "foo"}})
+    {[:x :y] ["should be an integer"]}))

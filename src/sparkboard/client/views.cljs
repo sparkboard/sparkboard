@@ -175,12 +175,16 @@
      {:on-submit (fn [e]
                    (j/call e :preventDefault)
                    (forms/try-submit+ !org
-                     (p/let [org (routes/post! :org/create @!org)]
-                       (prn :transacted-org org)
+                     (p/let [result (routes/post! :org/create @!org)]
+                       ;; think about how to simplify this flow
+                       ;; for re-use.
+                       (when (:inside-out.forms/messages-by-path result)
+                         (throw (ex-info "Remote validation failed" result)))
                        (forms/clear! !org))))}
      [:h2 (tr :tr/new) " " (tr :tr/org)]
      [:label "Title"]
      (ui/show-field ?title)
+     (into [:<>] (map ui/view-message (forms/visible-messages !org)))
      [:button
       {:type "submit"}
       (str (tr :tr/create) " " (tr :tr/org))]]))
