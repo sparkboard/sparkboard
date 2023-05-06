@@ -4,7 +4,6 @@
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [sparkboard.server.validate :as sv]
-            [ring.util.http-response :as http-rsp]
             [sparkboard.datalevin :as sd]))
 
 ;; TODO
@@ -114,7 +113,9 @@
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
   [req {:keys [org/id]}]
-  (sv/assert id :org-id)
+  (sv/assert id :org/id)
   ;; auth: user is admin of org
-  {:tx [[:db.fn/retractEntity [:org/id id]]]})
+  ;; todo: retract org and all its boards, projects, etc.?
+  (db/transact! [[:db.fn/retractEntity [:org/id id]]])
+  {:body ""})
 

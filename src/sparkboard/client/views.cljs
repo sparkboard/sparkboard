@@ -144,13 +144,18 @@
 (ui/defview org:index [params]
   [:<>
    [menubar params]
+   ;; TODO
+   ;; New Org button
+   ;; format cards (show background image and logo)
+   ;; :org/new view
+   ;; :org/settings view
    [:div.pa3
     [:h2 (tr :tr/orgs)]
     [:section#orgs-grid
      (into [:div.grid.grid-cols-4.gap-4]
            (map (fn [org]
                   [:div.shadow.p-3
-                   ;; use radix-ui to make a dropdown button that includes a delete button
+                   ;; todo: use radix-ui to make a dropdown button that includes a delete button
                    [:div.rough-icon-button
                     {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                               (:org/title org) "?"))

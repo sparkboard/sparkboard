@@ -713,6 +713,18 @@
                                :ts/created-by
                                :ts/created-at]}})
 
+(def sb-s3
+  {:s3/object-key {s- :string}
+   :s3/bucket {s- :string}
+   :s3/upload-complete? {s- :boolean}
+   :s3/as-map {s- [:map {:closed true}
+                   :s3/object-key
+                   :s3/bucket
+                   :s3/upload-complete?
+                   :ts/created-at
+                   :ts/created-by
+                   (? :ts/deleted-at)]}})
+
 (def sb-ts
   {:ts/created-at {s- 'inst?, :doc "Date the entity was created"},
    :ts/created-by (merge (ref :one #{:member/id :account/id})
@@ -759,6 +771,7 @@
              sb-text-content
              sb-thread
              sb-ts
+             sb-s3
              sb-webhooks
              {:sb/id (merge s/unique-id
                             s/uuid
