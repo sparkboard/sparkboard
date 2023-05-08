@@ -38,6 +38,7 @@
                  :class (when (:invalid (forms/types messages))
                           "ring-2 ring-offset-2 ring-red-500 focus:ring-red-500")}
                 attrs)]
+      (when (forms/in-progress? ?field) "Loading...")
       (when (seq messages)
         (into [:div.gap-3.text-xs] (map view-message messages)))])))
 

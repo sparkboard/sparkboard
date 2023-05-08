@@ -84,9 +84,16 @@
    :board/locale-suggestions {s- :i18n/locale-suggestions}
    :board/locale-dicts {s- :i18n/locale-dicts}
    :board/as-map {s- [:map {:closed true}
-                      :board/custom-css
-                      :board/custom-js
-                      :board/custom-meta-description
+                      :sb/id
+                      :board/id
+                      :board/org
+                      :board/title
+                      :board/registration-open?
+                      :ts/created-at
+                      :visibility/public?
+                      (? :board/custom-css)
+                      (? :board/custom-js)
+                      (? :board/custom-meta-description)
                       (? :board/description)
                       (? :board/instructions)
                       (? :board/is-template?)
@@ -115,13 +122,7 @@
                       (? :board/images)
                       (? :board/social-feed)
                       (? :ts/deleted-at)
-                      (? :webhook/subscriptions)
-                      :board/id
-                      :board/org
-                      :board/title
-                      :board/registration-open?
-                      :ts/created-at
-                      :visibility/public?]}})
+                      (? :webhook/subscriptions)]}})
 
 (def sb-collections
   {:collection/id unique-string-id
@@ -129,6 +130,7 @@
    :collection/title {s- :string}
    :collection/images {s- :image-urls/as-map}
    :collection/as-map {s- [:map {:closed true}
+                           :sb/id
                            :collection/images
                            :collection/boards
                            :collection/id
@@ -142,11 +144,12 @@
                             s/component)
    :discussion/project (ref :one #{:project/id})
    :discussion/as-map {s- [:map {:closed true}
-                           (? :discussion/followers)
-                           (? :discussion/posts)
+                           :sb/id
                            :discussion/id
                            :discussion/project
-                           :ts/created-at]}})
+                           :ts/created-at
+                           (? :discussion/followers)
+                           (? :discussion/posts)]}})
 
 (def sb-domains
   {:domain/url {s- :http/url}
@@ -245,17 +248,18 @@
                               "Orgs/boards should be able to override/add field.spec options."
                               "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
                        s- [:map {:closed true}
+                           :sb/id
+                           :field-spec/id
+                           :field-spec/managed-by
+                           :field-spec/order
+                           :field/type
                            (? :field-spec/hint)
                            (? :field-spec/label)
                            (? :field-spec/options)
                            (? :field-spec/required?)
                            (? :field-spec/show-as-filter?)
                            (? :field-spec/show-at-create?)
-                           (? :field-spec/show-on-card?)
-                           :field-spec/id
-                           :field-spec/managed-by
-                           :field-spec/order
-                           :field/type]}})
+                           (? :field-spec/show-on-card?)]}})
 
 (def sb-firebase-account
   {:account/id unique-string-id
@@ -269,6 +273,7 @@
    :account/photo-url {s- :http/url}
    :account/locale {s- :i18n/locale}
    :account/as-map {s- [:map {:closed true}
+                        :sb/id
                         :account/id
                         :account/email
                         :account/email-verified?
@@ -320,11 +325,12 @@
                             s/keyword
                             s/many)
    :membership/as-map {s- [:and [:map {:closed true}
-                                 (? :membership/member)
-                                 (? :membership/account)
+                                 :sb/id
                                  :membership/id
                                  :membership/roles
-                                 :membership/entity]
+                                 :membership/entity
+                                 (? :membership/member)
+                                 (? :membership/account)]
                            [:fn {:error/message "Membership must contain :membership/member or :membership/account"}
                             '(fn [{:keys [:membership/member :membership/account]}]
                                (and (or member account)
@@ -376,14 +382,7 @@
    :member/id unique-string-id
    :member/image-url {s- :http/url},
    :member/as-map {s- [:map {:closed true}
-                       (? :membership/_member)
-                       (? :member/fields)
-                       (? :member/tags.custom)
-                       (? :member/image-url)
-                       (? :member/newsletter-subscription?)
-                       (? :member/tags)
-                       (? :ts/deleted-at)
-                       (? :ts/modified-by)
+                       :sb/id
                        :member/inactive?
                        :member/board
                        :member/email-frequency
@@ -393,7 +392,15 @@
                        :member/new?
                        :member/project-participant?
                        :ts/created-at
-                       :ts/updated-at]}})
+                       :ts/updated-at
+                       (? :membership/_member)
+                       (? :member/fields)
+                       (? :member/tags.custom)
+                       (? :member/image-url)
+                       (? :member/newsletter-subscription?)
+                       (? :member/tags)
+                       (? :ts/deleted-at)
+                       (? :ts/modified-by)]}})
 
 (def sb-member-vote
   {:ballot/board (ref :one #{:board/id})
@@ -434,19 +441,20 @@
                            :notification.type/new-discussion-post
                            :notification.type/new-post-comment]}
    :notification/as-map {s- [:map {:closed true}
+                             :sb/id
+                             :notification/emailed?
+                             :notification/id
+                             :notification/recipient
+                             :notification/type
+                             :notification/viewed?
+                             :ts/created-at
                              (? :notification/discussion)
                              (? :notification/member)
                              (? :notification/post)
                              (? :notification/post.comment)
                              (? :notification/project)
                              (? :notification/thread)
-                             (? :notification/thread.message.text)
-                             :notification/emailed?
-                             :notification/id
-                             :notification/recipient
-                             :notification/type
-                             :notification/viewed?
-                             :ts/created-at]}})
+                             (? :notification/thread.message.text)]}})
 
 (def sb-org
   {:board/show-org-tab? {:doc "When true, boards should visually link to the parent organization (in main nav)"
@@ -461,6 +469,11 @@
    :org/locale-default {s- :i18n/locale}
    :org/locale-suggestions {s- :i18n/locale-suggestions}
    :org/as-map {s- [:map {:closed true}
+                    :sb/id
+                    :org/title
+                    :org/id
+                    :ts/created-by
+                    (? :ts/created-at)
                     (? :board/show-org-tab?)
                     (? :org/default-board-template)
                     (? :org/social-feed)
@@ -468,13 +481,7 @@
                     (? :org/locale-suggestions)
                     (? :org/images)
                     (? :entity/domain)
-                    (? :visibility/public?)
-                    :org/title
-                    :org/id
-                    :ts/created-by
-
-                    (? :ts/created-at)
-                    :sb/id]}})
+                    (? :visibility/public?)]}})
 
 (def sb-posts
   {:post/_discussion {s- [:sequential :post/as-map]}
@@ -491,14 +498,16 @@
    :comment/id unique-string-id
    :comment/text {s- :string}
    :post/as-map {s- [:map {:closed true}
-                     (? :post/comments)
-                     (? :post/do-not-follow)
-                     (? :post/followers)
+                     :sb/id
                      :post/id
                      :post/text-content
                      :ts/created-by
-                     :ts/created-at]}
+                     :ts/created-at
+                     (? :post/comments)
+                     (? :post/do-not-follow)
+                     (? :post/followers)]}
    :comment/as-map {s- [:map {:closed true}
+                        :sb/id
                         :ts/created-at
                         :ts/created-by
                         :comment/id
@@ -533,6 +542,12 @@
    :project/sticky? {:doc "Show project with border at top of project list"
                      s- :boolean}
    :project/as-map {s- [:map {:closed true}
+                        :sb/id
+                        :project/id
+                        :project/board
+                        :project/title
+                        :ts/created-at
+                        :ts/updated-at
                         (? :membership/_entity)
                         (? [:project/card-classes {:doc "css classes for card"
                                                    :to-deprecate true}
@@ -550,12 +565,7 @@
                         (? :project/video)
                         (? :ts/created-by)
                         (? :ts/deleted-at)
-                        (? :ts/modified-by)
-                        :project/board
-                        :project/id
-                        :project/title
-                        :ts/created-at
-                        :ts/updated-at]}})
+                        (? :ts/modified-by)]}})
 
 (def sb-requests
   {:request/text {:doc "Free text description of the request"
@@ -672,11 +682,12 @@
    :tag.ad-hoc/label {s- :string}
    :tag/as-map {:doc "Description of a tag which may be applied to an entity."
                 s- [:map {:closed true}
-                    (? :tag/background-color)
-                    (? :tag/restricted?)
+                    :sb/id
                     :tag/label
                     :tag/id
-                    :tag/managed-by]}})
+                    :tag/managed-by
+                    (? :tag/background-color)
+                    (? :tag/restricted?)]}})
 
 (def sb-text-content
   {:text-content/format {s- [:enum
@@ -701,6 +712,7 @@
                     {:doc "Set of members who have read the most recent message.",
                      :todo "Map of {member, last-read-message} so that we can show unread messages for each member."})
    :thread/as-map {s- [:map {:closed true}
+                       :sb/id
                        :ts/created-at
                        :ts/updated-at
                        :thread/id
@@ -713,14 +725,16 @@
                                :ts/created-by
                                :ts/created-at]}})
 
-(def sb-s3
-  {:s3/object-key {s- :string}
+(def sb-assets
+  {:asset/provider [:enum :s3]
+   :s3/object-key {s- :string}
    :s3/bucket {s- :string}
    :s3/upload-complete? {s- :boolean}
    :s3/as-map {s- [:map {:closed true}
+                   :asset/provider
+                   :sb/id
                    :s3/object-key
                    :s3/bucket
-                   :s3/upload-complete?
                    :ts/created-at
                    :ts/created-by
                    (? :ts/deleted-at)]}})
@@ -771,7 +785,7 @@
              sb-text-content
              sb-thread
              sb-ts
-             sb-s3
+             sb-assets
              sb-webhooks
              {:sb/id (merge s/unique-id
                             s/uuid

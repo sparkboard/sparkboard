@@ -27,7 +27,7 @@
  (db/transact! [{:org/id (str (rand-int 10000))
                  :org/title (str (rand-int 10000))}]))
 
-(defquery $org:one [{:keys [org/id]}]
+(defquery $org:view [{:keys [org/id]}]
   (db/pull '[:org/id
              :org/title
              {:board/_org [:ts/created-at
@@ -36,7 +36,7 @@
              {:entity/domain [:domain/name]}]
            [:org/id id]))
 
-(defquery $board:one [{:keys [board/id]}]
+(defquery $board:view [{:keys [board/id]}]
   (db/pull '[*
              :board/title
              :board/registration-open?
@@ -47,10 +47,10 @@
              {:entity/domain [:domain/name]}]
            [:board/id id]))
 
-(defquery $project:one [{:keys [project/id]}]
+(defquery $project:view [{:keys [project/id]}]
   (db/pull '[*] [:project/id id]))
 
-(defquery $member:one [{:keys [member/id]}]
+(defquery $member:view [{:keys [member/id]}]
   (dissoc (db/pull '[*
                      {:member/tags [*]}]
                    [:member/id id])
@@ -64,6 +64,7 @@
                        :board/title]))))
 
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Mutations
 
@@ -74,48 +75,55 @@
 ;; - mutation fn should return a map with :tx and :ret keys
 ;; - validate newly created entities
 
-(defn board:register [ctx registration-map]
+(defn board:register [ctx _ registration-map]
   ;; create membership
   )
 
-(defn tx-and-return! [entity schema]
-  (sv/assert entity schema)
-  (db/transact! [entity])
-  {:body entity})
-
 (defn project:create
-  [req project]
+  [req params project]
   (sv/assert project [:map {:closed true} :project/title])
   ;; auth: user is member of board & board allows members to create projects
-  (-> project
-      (assoc :project/board [:sb/id (:board/id req)])
-      (sd/new-entity :by (:db/id (:account req)))
-      (tx-and-return! :project/as-map)))
+  (db/transact! [(-> project
+                     (assoc :project/board [:sb/id (:board/id params)])
+                     (sd/new-entity :by (:db/id (:account req))))]))
 
 (defn board:create
-  [req board]
+  [req params board pull]
   (sv/assert board [:map {:closed true} :board/title])
   ;; auth: user is admin of org
-  (-> board
-      (assoc :board/org [:sb/id (:org/id req)])
-      (sd/new-entity :by (:db/id (:account req)))
-      (tx-and-return! :board/as-map)))
+  (db/transact!
+   [(-> board
+        (assoc :board/org [:sb/id (:org/id params)])
+        (sd/new-entity :by (:db/id (:account req))))])
+  (db/pull pull))
 
 (defn org:create
-  [req org]
-  (sv/assert org [:map {:closed true} :org/title])
-  ;; auth: ?
-  (-> org
-      (sd/new-entity :by (:db/id (:account req))
-                     :legacy-id-key :org/id)
-      (tx-and-return! :org/as-map)))
+  [{:keys [account]} _params org pull]
+  (sv/assert org [:map {:closed true}
+                  :org/title
+                  [:entity/domain [:map {:closed true}
+                                   [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
+  (db/transact!
+   [(sd/new-entity org
+      :by (:db/id account)
+      :legacy-id :org/id)])
+  (db/pull pull))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  [req {:keys [org/id]}]
-  (sv/assert id :org/id)
+  [_req {:keys [org/id]}]
   ;; auth: user is admin of org
   ;; todo: retract org and all its boards, projects, etc.?
   (db/transact! [[:db.fn/retractEntity [:org/id id]]])
   {:body ""})
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Handlers
+
+(defn domain-availability
+  [_ {:as params :keys [domain]}]
+  {:body {:available?
+          (and (re-matches #"^[a-z0-9-.]+$" domain)
+               (nil? (db/get [:domain/name domain] :domain/name)))
+          :domain domain
+          :params params}})

@@ -136,10 +136,10 @@
 (def squuid dl/squuid)
 (defn now [] (java.util.Date.))
 
-(defn new-entity [m & {:keys [by legacy-id-key]}]
+(defn new-entity [m & {:keys [by legacy-id]}]
   (let [id (squuid)]
     (-> m
         (assoc :sb/id id)
-        (cond-> legacy-id-key (assoc legacy-id-key (str id)))
+        (cond-> legacy-id (assoc legacy-id (str id)))
         (assoc :ts/created-at (now))
         (cond-> by (assoc :ts/created-by by)))))

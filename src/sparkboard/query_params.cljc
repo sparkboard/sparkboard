@@ -59,5 +59,15 @@
                            (query-string new-query-map)
                            hash)]
        {:query-params new-query-map
+        :path new-path})
+     :clj
+     (let [new-query-map (merge (path->map path) params)
+           new-path (str (str/replace path #"\?.*$" "")
+                         (query-string new-query-map))]
+       {:query-params new-query-map
         :path new-path})))
+
+(comment
+ (path->map "/whatever?x=1")
+ (merge-query "/whatever?x=1" {:x "2"}))
 

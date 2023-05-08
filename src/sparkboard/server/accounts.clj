@@ -121,13 +121,13 @@
 
 (defn login-handler
   "POST handler. Returns 200/OK with account data if successful."
-  [_ {:as body
-      :keys [account/email
-             account/password]}]
+  [_req _params {:as account
+                 :keys [account/email
+                        account/password]}]
 
-  (vd/assert body [:map
-                   [:account/password [:string {:min 8}]]
-                   [:account/email [:re #"^[^@]+@[^@]+$"]]])
+  (vd/assert account [:map
+                      [:account/password [:string {:min 8}]]
+                      [:account/email [:re #"^[^@]+@[^@]+$"]]])
 
   (let [account-entity (not-empty (db/get [:account/email email]))
         _ (vd/assert account-entity

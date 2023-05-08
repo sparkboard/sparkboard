@@ -1,5 +1,6 @@
 (ns sparkboard.i18n
-  (:require [re-db.api :as db]
+  (:require #?(:clj [sparkboard.server.validate :as vd])
+            [re-db.api :as db]
             [taoensso.tempura :as tempura])
   #?(:cljs (:require-macros [sparkboard.i18n :refer [ungroup-dict]])))
 
@@ -47,13 +48,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :tr/project {:en "Project", :fr "Projet", :es "Proyecto"},
     :tr/orgs {:en "Organisations", :fr "Organisations", :es "Organizaciones"},
     :tr/org {:en "Organisation", :fr "Organisation", :es "Organización"},
+    :tr/new-org {:en "New organisation", :fr "Nouvelle organisation", :es "Nueva organización"},
     :tr/badge {:en "Badge", :fr "Insigne", :es "Insignia"},
     :tr/badges {:en "Badges", :fr "Insignes", :es "Insignias"},
     :tr/search-across-org {:en "org-wide search", :fr "rechercher dans toute l'organisation", :es "buscar en toda la organización"},
-    :missing {:en ":eng missing text", :fr ":fra texte manquant", :es ":spa texto faltante"},
+    ;; :missing {:en ":eng missing text", :fr ":fra texte manquant", :es ":spa texto faltante"},
     :tr/user {:en "User", :fr "Utilisateur", :es "Usuario"},
     :tr/members {:en "Members", :fr "Membres", :es "Miembros"},
     :tr/board {:en "Board", :fr "Tableau", :es "Tablero"}
+    :tr/new-board {:en "New board", :fr "Nouveau tableau", :es "Nuevo tablero"}
     :tr/tag {:en "Tag", :fr "Mot-clé", :es "Etiqueta"}
     :tr/or {:en "or", :fr "ou", :es "o"}
     :tr/tos {:en "Terms of Service", :fr "Conditions d'utilisation", :es "Términos de servicio"}
@@ -68,16 +71,27 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                           :fr "En cliquant sur continuer, vous acceptez notre",
                           :es "Al hacer clic en continuar, acepta nuestro"}
     :tr/welcome {:en "Welcome to Sparkboard" :fr "Bienvenue sur Sparkboard" :es "Bienvenido a Sparkboard"}
+    :tr/title {:en "Title" :fr "Titre" :es "Título"}
+    :tr/organization-name {:en "Organization name" :fr "Nom de l'organisation" :es "Nombre de la organización"}
+    :tr/invalid-domain {:en "Must contain only numbers, letters, and hyphens"
+                        :fr "Ne peut contenir que des chiffres, des lettres et des tirets"
+                        :es "Debe contener solo números, letras y guiones"}
+    :tr/subdomain {:en "Subdomain" :fr "Sous-domaine" :es "Subdominio"}
     ;; A `lect` is what a language or dialect variety is called; see
     ;; https://en.m.wikipedia.org/wiki/Variety_(linguistics)
-    :meta/lect {:en "English", :fr "Français", :es "Español"}}))
+    :meta/lect {:en "English", :fr "Français", :es "Español"}
+    :tr/not-available {:en "Not available" :fr "Non disponible" :es "No disponible"}
+    :tr/available {:en "Available" :fr "Disponible" :es "Disponible"}
+    }))
 
 #?(:cljs
    (defn tr
-     ([resource-ids] (tempura/tr {:dict dict} @!locales (cond-> resource-ids
-                                                                (keyword? resource-ids)
-                                                                vector)))
-     ([resource-ids resource-args] (tempura/tr {:dict dict} @!locales resource-ids resource-args))))
+     ([resource-ids] (or (tempura/tr {:dict dict} @!locales (cond-> resource-ids
+                                                                    (keyword? resource-ids)
+                                                                    vector))
+                         (doto (str "Missing" resource-ids) js/console.warn)))
+     ([resource-ids resource-args] (or (tempura/tr {:dict dict} @!locales resource-ids resource-args)
+                                       (doto (str "Missing" resource-ids) js/console.warn)))))
 
 #?(:clj
    (def supported-locales (into #{} (map name) (keys dict))))
@@ -100,7 +114,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 #?(:clj
    (defn set-locale
      {:POST :i18n/locale}
-     [req {:keys [locale]}]
+     [req _params locale]
+     (vd/assert locale :i18n/locale)
      (if (:account req)
        (do (re-db.api/transact! [{:db/id (:db/id (:account req))
                                   :account/locale locale}])

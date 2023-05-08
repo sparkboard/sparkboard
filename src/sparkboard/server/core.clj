@@ -35,6 +35,7 @@
             [sparkboard.server.nrepl :as nrepl]
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
+            [sparkboard.util :as u]
             [sparkboard.websockets :as ws]
             [taoensso.timbre :as log]))
 
@@ -89,10 +90,9 @@
   (fn [{:as req :keys [uri]}]
     (tap> req)
     (let [{:as match :keys [view query post handler params public]} (routes/match-path uri)
-          params (let [body (:body-params req)]
-                   (if (map? body)
-                     (merge params body)
-                     (assoc params :body body)))
+          params (cond->> params
+                          (:query-params req)
+                          (merge (update-keys (:query-params req) keyword)))
           method (:request-method req)
           html? (and (= method :get)
                      (str/includes? (get-in req [:headers "accept"]) "text/html"))
@@ -106,7 +106,7 @@
         handler (handler req params)
 
         ;; post fns are expected to return HTTP response maps
-        (and post (= method :post)) (post req params)
+        (and post (= method :post)) (apply post req params (:body-params req))
 
         (and html? (or query view)) (server.html/single-page-html
                                      {:tx [(assoc env/client-config :db/id :env/config)
