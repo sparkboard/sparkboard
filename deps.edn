@@ -5,10 +5,10 @@
 
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.12"}
-        io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "206f2fe16395ed814ff52e2562d485c4f3e45c1d"}
-        io.github.mhuebert/yawn {#_#_:local/root "../yawn"
-                                 :git/sha "a030d6e2eda8875a676cff409be8467f2d2bf46c"}
+        io.github.mhuebert/re-db {:local/root "../re-db"
+                                  #_#_:git/sha "f35eda54f834a35dbfbca7e1303d4b7d18e58f4a"}
+        io.github.mhuebert/yawn {:local/root "../yawn"
+                                 #_#_:git/sha "dc98fc21984ccbe91ab961f7e6ed255db7a20eae"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
                                        :git/sha "bdf9a98c4209f53d3d57ab89a905c943444ef590"}
 

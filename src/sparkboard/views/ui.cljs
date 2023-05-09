@@ -13,7 +13,6 @@
 (def invalid-text-color "red")
 (def invalid-bg-color "light-pink")
 
-
 (defview view-message [{:keys [type content]}]
   [:div
    {:style (case type

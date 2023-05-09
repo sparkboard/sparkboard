@@ -53,7 +53,7 @@
 
 (ui/defview menubar [params]
   [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
-   [:img.w-5.h-5 {:src ui/logo-url}]
+   [:a {:href "/"} [:img.w-5.h-5 {:src ui/logo-url}]]
    [:div.flex-grow]
    [menubar:lang]
    [menubar:account params]
@@ -156,15 +156,9 @@
     [:section#orgs-grid
      (into [:div.grid.grid-cols-4.gap-6]
            (map (fn [org]
-                  [:div.shadow.p-3
-                   ;; todo: use radix-ui to make a dropdown button that includes a delete button
-                   [:div.rough-icon-button
-                    {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                              (:org/title org) "?"))
-                                  (routes/POST :org/delete {:org/id (:org/id org)}))}
-                    "X"]
-
-                   [:a {:href (routes/path-for :org/view org)}
+                  [:a.shadow.p-3.block
+                   {:href (routes/path-for :org/view org)}
+                   [:h2
                     (:org/title org)]
                    ]))
            (ws/use-query! :org/index))]]])
@@ -254,14 +248,20 @@
                               res))}
       :tr/register]]))
 
-(ui/defview org:view [{:as params :keys [org/id query-params]}]
+(ui/defview org:view [{:as params :keys [org/title org/id query-params]}]
   (let [value (ws/use-query! [:org/view {:org/id id}])
         [query-params set-query-params!] (use-state query-params)
         search-result (ws/use-query! [:org/search {:org/id id
                                                    :query-params query-params}])
         [pending? start-transition] (react/useTransition)]
     [:div
-     [:h1 [:a {:href (routes/path-for :org/view {:org/id id})} (:org/title value)]]
+     [menubar params]
+     [:h1.text-xl [:a {:href (routes/path-for :org/view {:org/id id})} (:org/title value)]]
+     [:div.rough-icon-button
+      {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                title "?"))
+                    (routes/POST :org/delete {:org/id id}))}
+      "X"]
      [:a {:href (routes/path-for :board/new params)} :tr/new-board]
      [:p (-> value :entity/domain :domain/name)]
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]

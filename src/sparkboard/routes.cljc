@@ -93,10 +93,8 @@
   [path]
   (impl/match-route @!routes (path-for path)))
 
-
 #?(:cljs
    (do
-     (defonce !current-location (r/atom nil))
 
      (defn ready-view [view]
        (if (instance? lazy/Loadable view)
@@ -118,8 +116,7 @@
      (defn merge-query! [params]
        (let [{:keys [path query-params]} (query-params/merge-query (db/get :env/location :path) params)]
          (pushy/set-token! history path)
-         query-params
-         #_(swap! !current-location assoc :query-params query-params)))
+         query-params))
 
      (defn use-view [route]
        (let [view (:view (match-path route))

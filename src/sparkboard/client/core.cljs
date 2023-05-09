@@ -3,15 +3,15 @@
             ["react-dom" :as react-dom]
             [applied-science.js-interop :as j]
             [re-db.api :as db]
-            [sparkboard.slack.firebase :as firebase]
-            [sparkboard.client.views :as views]
+            [re-db.integrations.reagent]
+            [sparkboard.client.scratch]
+            [sparkboard.client.views]
             [sparkboard.routes :as routes]
-            [sparkboard.transit :as transit]
-            [vendor.pushy.core :as pushy]
-            [re-db.integrations.reagent] ;; extends `ratom` reactivity
+            [sparkboard.slack.firebase :as firebase]
+            [sparkboard.transit :as transit] ;; extends `ratom` reactivity
             [sparkboard.views.ui :as ui]
-            [yawn.root :as root]
-            [sparkboard.client.scratch]))
+            [vendor.pushy.core :as pushy]
+            [yawn.root :as root]))
 
 (ui/defview root []
   (let [{:as current-location :keys [path view params tag route]} (db/get :env/location)]
