@@ -186,7 +186,7 @@
              :body
              (json/parse-string keyword)
              :keys
-             first buddy.keys/jwk->public-key)))
+             last buddy.keys/jwk->public-key)))
 
 (defn google-landing [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)

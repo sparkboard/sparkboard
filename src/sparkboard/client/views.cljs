@@ -74,19 +74,21 @@
           messages)))
 
 (defn account:sign-in-with-google []
-  (v/x [:a.btn.btn-light
-        {:class "w-full h-10 text-zinc-500 text-sm"
-         :href (routes/path-for :oauth2.google/launch)}
-        [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
+  (ui/x
+   [:a.btn.btn-light
+    {:class "w-full h-10 text-zinc-500 text-sm"
+     :href (routes/path-for :oauth2.google/launch)}
+    [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
 
 (defn account:sign-in-terms []
-  (v/x [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
-        [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
-        [:a.gray-link {:target "_blank"
-                       :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
-        :tr/and
-        [:a.gray-link {:target "_blank"
-                       :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
+  (ui/x
+   [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
+    [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
+    [:a.gray-link {:target "_blank"
+                   :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
+    :tr/and
+    [:a.gray-link {:target "_blank"
+                   :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
 
 (comment
  (p/-> (routes/POST :account/sign-in {:account/email ""
@@ -108,6 +110,7 @@
                                    (js/console.log "res" res)
                                    (prn :res res))))}
        [:h1.text-3xl.font-medium.mb-4.text-center :tr/welcome]
+
        [:div.flex.flex-col.gap-2
         (ui/show-field ?email)
         (when (= :password @!step)
@@ -177,44 +180,45 @@
       (tr :tr/invalid-domain)
       {:visibility :always})))
 
+(defn domain-availability-validator []
+  (-> (fn [v _]
+        (when (>= (count v) 3)
+          (p/let [res (routes/GET :domain-availability :query {:domain v})]
+            (if (:available? res)
+              (forms/message :info
+                [:span.text-green-500.font-bold (tr :tr/available)])
+              (forms/message :invalid
+                (tr :tr/not-available)
+                {:visibility :always})))))
+      (forms/debounce 1000)))
+
+(comment
+ (routes/set-path! :org/new)
+ (routes/set-path! :org/index)
+ (routes/set-path! :org/view {:org/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
+
 (ui/defview org:new [params]
-  (let [qualify #(str % ".sparkboard.com")]
-    (with-form [!org {:org/title ?title
-                      :entity/domain {:domain/name (qualify ?subdomain)}}
-                :required [?title ?subdomain]
-                :validators {?subdomain [(forms/min-length 3)
-                                         domain-valid-chars
-                                         (-> (fn [v _]
-                                               (when (>= (count v) 3)
-                                                 (p/let [res (routes/GET :domain-availability :domain (qualify v))]
-                                                   (if (:available? res)
-                                                     (forms/message :info
-                                                       [:span.text-green-500.font-bold :tr/available])
-                                                     (forms/message :invalid
-                                                       :tr/not-available
-                                                       {:visibility :always})))))
-                                             (forms/debounce 1000))]}]
-      [:form.flex.flex-col.gap-3.p-6
-       {:on-submit (fn [e]
-                     (j/call e :preventDefault)
-                     (forms/try-submit+ !org
-                       (p/let [result (routes/POST :org/new
-                                                   @!org
-                                                   [:sb/id
-                                                    {:entity/domain
-                                                     [:domain/name]}])]
-                         ;; think about how to simplify this flow
-                         ;; for re-use.
-                         (when-not (:error result)
-                           (routes/set-path! :org/view {:org/id (:org/id result)})))))}
-       [:h2.font-bold :tr/new-org]
-       (ui/show-field ?title {:placeholder :tr/organization-name})
-       (ui/show-field ?subdomain {:placeholder :tr/subdomain})
-       [:div.text-gray-600.text-sm [:span.font-bold (or @?subdomain (str "< " :tr/subdomain " >"))] ".sparkboard.com"]
-       (into [:<>] (map ui/view-message (forms/visible-messages !org)))
-       [:button.btn.btn-dark.px-6.py-3.self-start {:type "submit"
-                                                   :disabled (not (forms/submittable? !org))}
-        :tr/create]])))
+  (with-form [!org {:org/title ?title
+                    :entity/domain {:domain/name ?domain}}
+              :required [?title ?domain]
+              :validators {?domain [(forms/min-length 3)
+                                    domain-valid-chars
+                                    (domain-availability-validator)]}]
+    [:form.flex.flex-col.gap-3.p-6
+     {:on-submit (fn [e]
+                   (j/call e :preventDefault)
+                   (forms/try-submit+ !org
+                     (p/let [result (routes/POST :org/new @!org)]
+                       (when-not (:error result)
+                         (routes/set-path! :org/view result)))))}
+     [:h2.font-bold :tr/new-org]
+     (ui/show-field ?title {:placeholder :tr/organization-name})
+     (ui/show-field ?domain {:placeholder :tr/subdomain})
+     [:div.text-gray-600.text-sm [:span.font-bold (or @?domain (str "< " :tr/subdomain " >"))] ".sparkboard.com"]
+     (into [:<>] (map ui/view-message (forms/visible-messages !org)))
+     [:button.btn.btn-dark.px-6.py-3.self-start {:type "submit"
+                                                 :disabled (not (forms/submittable? !org))}
+      :tr/create]]))
 
 (ui/defview board:new [{:as params :keys [route]}]
   (ui/with-form [!board {:board/title ?title}]

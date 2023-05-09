@@ -21,6 +21,7 @@
             [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.defaults]
             [ring.middleware.format]
+            [ring.middleware.params :as ring.params]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime]
             [ring.util.request]

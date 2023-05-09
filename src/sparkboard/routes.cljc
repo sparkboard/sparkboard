@@ -27,7 +27,7 @@
                              :view `views/home})
                "/ws" (E :websocket {:public true
                                     :handler 'sparkboard.server.core/ws-handler})
-               ["/domain-availability/" :domain] (E :domain-availability {:handler 'sparkboard.server.db/domain-availability})
+               "/domain-availability" (E :domain-availability {:handler 'sparkboard.server.db/domain-availability})
                ["/documents/" :file/name] (E :markdown/file
                                              {:handler 'sparkboard.server.core/serve-markdown
                                               :public true})
@@ -144,7 +144,7 @@
           (->> (impl/match-route @!routes) :route)))
 
 #?(:cljs
-   (defn POST [method route & argv]
+   (defn POST [route & argv]
      (-> (js/fetch (path-for route)
                    (j/lit {:headers {"Accept" "application/transit+json"
                                      "Content-type" "application/transit+json"}
@@ -159,4 +159,3 @@
                                      "Content-type" "application/transit+json"}
                            :method "GET"}))
          (.then http/format-response))))
-

@@ -1,10 +1,16 @@
 (ns sparkboard.server.db
   "Database queries and mutations (transactions)"
-  (:require [re-db.api :as db]
+  (:require [clojure.string :as str]
+            [re-db.api :as db]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [sparkboard.server.validate :as sv]
             [sparkboard.datalevin :as sd]))
+
+(defn qualify-domain [domain]
+  (if (str/includes? domain ".")
+    domain
+    (str domain ".sparkboard.com")))
 
 ;; TODO
 ;; defquery can specify an out-of-band authorization fn that
@@ -79,7 +85,7 @@
   ;; create membership
   )
 
-(defn project:create
+(defn project:new
   [req params project]
   (sv/assert project [:map {:closed true} :project/title])
   ;; auth: user is member of board & board allows members to create projects
@@ -87,7 +93,7 @@
                      (assoc :project/board [:sb/id (:board/id params)])
                      (sd/new-entity :by (:db/id (:account req))))]))
 
-(defn board:create
+(defn board:new
   [req params board pull]
   (sv/assert board [:map {:closed true} :board/title])
   ;; auth: user is admin of org
@@ -97,17 +103,18 @@
         (sd/new-entity :by (:db/id (:account req))))])
   (db/pull pull))
 
-(defn org:create
-  [{:keys [account]} _params org pull]
-  (sv/assert org [:map {:closed true}
-                  :org/title
-                  [:entity/domain [:map {:closed true}
-                                   [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
-  (db/transact!
-   [(sd/new-entity org
-      :by (:db/id account)
-      :legacy-id :org/id)])
-  (db/pull pull))
+(defn org:new
+  [{:keys [account]} _ org]
+  (let [org (update-in org [:entity/domain :domain/name] #(some-> % qualify-domain))
+        _ (sv/assert org [:map {:closed true}
+                          :org/title
+                          [:entity/domain [:map {:closed true}
+                                           [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
+        org (sd/new-entity org
+              :by (:db/id account)
+              :legacy-id :org/id)]
+    (db/transact! [org])
+    {:body org}))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
@@ -121,9 +128,9 @@
 ;; Handlers
 
 (defn domain-availability
-  [_ {:as params :keys [domain]}]
-  {:body {:available?
-          (and (re-matches #"^[a-z0-9-.]+$" domain)
-               (nil? (db/get [:domain/name domain] :domain/name)))
-          :domain domain
-          :params params}})
+  [_ {:keys [domain]}]
+  (let [domain (qualify-domain domain)]
+    {:body {:available?
+            (and (re-matches #"^[a-z0-9-.]+$" domain)
+                 (nil? (db/get [:domain/name domain] :domain/name)))
+            :domain domain}}))
