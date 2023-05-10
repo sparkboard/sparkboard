@@ -108,6 +108,7 @@
   (let [org (update-in org [:entity/domain :domain/name] #(some-> % qualify-domain))
         _ (sv/assert org [:map {:closed true}
                           :org/title
+                          :org/description
                           [:entity/domain [:map {:closed true}
                                            [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
         org (sd/new-entity org

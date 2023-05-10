@@ -10,7 +10,7 @@
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "366c0de1d2dd640ca985608fb3a90ca6901eebab"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
-                                       :git/sha "bdf9a98c4209f53d3d57ab89a905c943444ef590"}
+                                       :git/sha "ee33c46b63639f0513895e4a0552c800ac9ace7c"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}

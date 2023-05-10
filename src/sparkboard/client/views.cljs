@@ -1,20 +1,20 @@
 (ns sparkboard.client.views
   (:require
-   ["react" :as react]
-   ["@radix-ui/react-dropdown-menu" :as dm]
-   [applied-science.js-interop :as j]
-   [clojure.pprint :refer [pprint]]
-   [inside-out.forms :as forms :refer [with-form]]
-   [re-db.api :as db]
-   [sparkboard.client.sanitize :refer [safe-html]]
-   [sparkboard.i18n :as i18n :refer [tr]]
-   [sparkboard.routes :as routes]
-   [sparkboard.views.ui :as ui]
-   [sparkboard.websockets :as ws]
-   [promesa.core :as p]
-   [yawn.hooks :as hooks :refer [use-state]]
-   [yawn.view :as v]
-   [inside-out.forms :as forms]))
+    ["react" :as react]
+    ["@radix-ui/react-dropdown-menu" :as dm]
+    [applied-science.js-interop :as j]
+    [clojure.pprint :refer [pprint]]
+    [inside-out.forms :as forms :refer [with-form]]
+    [re-db.api :as db]
+    [sparkboard.client.sanitize :refer [safe-html]]
+    [sparkboard.i18n :as i18n :refer [tr]]
+    [sparkboard.routes :as routes]
+    [sparkboard.views.ui :as ui]
+    [sparkboard.websockets :as ws]
+    [promesa.core :as p]
+    [yawn.hooks :as hooks :refer [use-state]]
+    [yawn.view :as v]
+    [inside-out.forms :as forms]))
 
 ;; TODO
 ;; - separate register screen
@@ -75,25 +75,25 @@
 
 (defn account:sign-in-with-google []
   (ui/x
-   [:a.btn.btn-light
-    {:class "w-full h-10 text-zinc-500 text-sm"
-     :href (routes/path-for :oauth2.google/launch)}
-    [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
+    [:a.btn.btn-light
+     {:class "w-full h-10 text-zinc-500 text-sm"
+      :href (routes/path-for :oauth2.google/launch)}
+     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
 
 (defn account:sign-in-terms []
   (ui/x
-   [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
-    [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
-    [:a.gray-link {:target "_blank"
-                   :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
-    :tr/and
-    [:a.gray-link {:target "_blank"
-                   :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
+    [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
+     [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
+     [:a.gray-link {:target "_blank"
+                    :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
+     :tr/and
+     [:a.gray-link {:target "_blank"
+                    :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
 
 (comment
- (p/-> (routes/POST :account/sign-in {:account/email ""
-                                      :account/password "123123123"})
-       js/console.log))
+  (p/-> (routes/POST :account/sign-in {:account/email ""
+                                       :account/password "123123123"})
+        js/console.log))
 
 (ui/defview account:sign-in-form [{:keys [route]}]
   (ui/with-form [!account {:account/email (?email :init "")
@@ -171,8 +171,8 @@
 (defn domain-valid-chars [v _]
   (when (and v (not (re-matches #"^[a-z0-9-]+$" v)))
     (forms/message :invalid
-      (tr :tr/invalid-domain)
-      {:visibility :always})))
+                   (tr :tr/invalid-domain)
+                   {:visibility :always})))
 
 (defn domain-availability-validator []
   (-> (fn [v _]
@@ -180,18 +180,21 @@
           (p/let [res (routes/GET :domain-availability :query {:domain v})]
             (if (:available? res)
               (forms/message :info
-                [:span.text-green-500.font-bold (tr :tr/available)])
+                             [:span.text-green-500.font-bold (tr :tr/available)])
               (forms/message :invalid
-                (tr :tr/not-available)
-                {:visibility :always})))))
+                             (tr :tr/not-available)
+                             {:visibility :always})))))
       (forms/debounce 1000)))
 
 (comment
- (routes/set-path! :org/new)
- (routes/set-path! :org/index)
- (routes/set-path! :org/view {:org/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
+  (routes/set-path! :org/new)
+  (routes/set-path! :org/index)
+  (routes/set-path! :org/view {:org/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
 
 (ui/defview org:new [params]
+  ;; TODO
+  ;; page layout (narrow, centered)
+  ;; typography
   (with-form [!org {:org/title ?title
                     :org/description ?description
                     :entity/domain {:domain/name ?domain}}
@@ -199,20 +202,25 @@
               :validators {?domain [(forms/min-length 3)
                                     domain-valid-chars
                                     (domain-availability-validator)]}]
-    [:form.flex.flex-col.gap-3.p-6
+    [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto
      {:on-submit (fn [e]
                    (j/call e :preventDefault)
                    (forms/try-submit+ !org
                      (p/let [result (routes/POST :org/new @!org)]
                        (when-not (:error result)
-                         (routes/set-path! :org/view result)))))}
-     [:h2.font-bold :tr/new-org]
-     (ui/show-field ?title)
-     (ui/show-field ?domain {:placeholder :tr/subdomain})
-     [:div.text-gray-600.text-sm [:span.font-bold (or @?domain (str "< " :tr/subdomain " >"))] ".sparkboard.com"]
-     (ui/show-field ?description)
+                         (routes/set-path! :org/view result))
+                       result)))}
+
+     [:h2.text-2xl :tr/new-org]
+     (ui/show-field ?title {:label :tr/title})
+     (ui/show-field ?domain {:label :tr/domain-name
+                             :autocomplete "off"
+                             :spellcheck false
+                             :postfix (when @?domain [:span.text-sm.text-gray-500 ".sparkboard.com"])})
+     (ui/show-field ?description {:label :tr/description})
 
      (into [:<>] (map ui/view-message (forms/visible-messages !org)))
+
      [:button.btn.btn-dark.px-6.py-3.self-start {:type "submit"
                                                  :disabled (not (forms/submittable? !org))}
       :tr/create]]))
@@ -278,9 +286,9 @@
           :on-key-down (j/fn [^js {:keys [key]}]
                          (when (= key "Enter")
                            (start-transition
-                            #(-> {:q (when (<= 3 (count q)) q)}
-                                 routes/merge-query!
-                                 set-query-params!))))
+                             #(-> {:q (when (<= 3 (count q)) q)}
+                                  routes/merge-query!
+                                  set-query-params!))))
           :value (or q "")}]
         (when pending? [:div "Loading..."])
         (into [:ul]
@@ -305,14 +313,14 @@
                      :text-content/string)]]
      ;; TODO - tabs
      [:div.rough-tabs {:class "w-100"}
-      [:div.rough-tab ;; projects
+      [:div.rough-tab                                       ;; projects
        [:a {:href (routes/path-for :project/new b)} :tr/new-project]
        (into [:ul]
              (map (fn [proj]
                     [:li [:a {:href (routes/path-for :project/view proj)}
                           (:project/title proj)]]))
              (:project/_board value))]
-      [:div.rough-tab ;; members
+      [:div.rough-tab                                       ;; members
        [:a {:href (routes/path-for :board/register b)} :tr/new-member]
        (into [:ul]
              (map (fn [member]
@@ -320,9 +328,9 @@
                      [:a {:href (routes/path-for :member/view member)}
                       (:member/name member)]]))
              (:member/_board value))]
-      [:div.rough-tab {:name "I18n" ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
+      [:div.rough-tab {:name "I18n"                         ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
                        :class "db"}
-       [:ul ;; i18n stuff
+       [:ul                                                 ;; i18n stuff
         [:li "suggested locales:" (str (:i18n/locale-suggestions value))]
         [:li "default locale:" (str (:i18n/default-locale value))]
         [:li "extra-translations:" (str (:i18n/locale-dicts value))]]]]]))
@@ -340,8 +348,8 @@
     {kind v}))
 
 (comment
- (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
- )
+  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
+  )
 
 (ui/defview project:view [{:as p :project/keys [id]}]
   (let [value (ws/use-query! [:project/view {:project/id id}])]
@@ -379,8 +387,8 @@
 (ui/defview show-query [[id :as route]]
   (let [value (ws/use-query! route)
         value-str (yawn.hooks/use-memo
-                   (fn [] (with-out-str (pprint value)))
-                   (yawn.hooks/use-deps value))]
+                    (fn [] (with-out-str (pprint value)))
+                    (yawn.hooks/use-deps value))]
     [:pre value-str]))
 
 (ui/defview drawer [{:keys [initial-height]} child]

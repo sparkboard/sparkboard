@@ -3,8 +3,6 @@
   (:require [malli.generator :as mg]
             [re-db.schema :as s]))
 
-(defn gen [s] (take 3 (repeatedly #(mg/generate s))))
-
 (def s- :malli/schema)
 
 (defn lookup-ref [ks]

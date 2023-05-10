@@ -1,13 +1,15 @@
 (ns sparkboard.schema
   (:refer-clojure :exclude [ref])
-  (:require [clojure.string :as str]
-            [malli.core :as m]
-            [sparkboard.impl.schema :refer :all]
+  (:require [malli.core :as m]
+            [sparkboard.impl.schema :refer [s-
+                                            lookup-ref
+                                            unique-string-id
+                                            ref
+                                            ?
+                                            infer-db-type]]
             [malli.error :refer [humanize]]
             [malli.registry :as mr]
-            [malli.util :as mu]
             [re-db.schema :as s]
-            [re-db.api :as db]
             [sparkboard.util :as u]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -846,6 +848,7 @@
 
 (defn str-uuid? [x]
   (and (string? x)
-       (try (java.util.UUID/fromString x)
-            (catch java.lang.IllegalArgumentException _iae
-              nil))))
+       #?(:clj (try #?(:clj (java.util.UUID/fromString x))
+                    (catch java.lang.IllegalArgumentException _iae
+                      nil))
+          :cljs true)))
