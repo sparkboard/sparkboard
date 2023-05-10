@@ -70,4 +70,8 @@
                 [:map
                  [:y :int]]]]
                       {:x {:y "foo"}})
-    {[:x :y] ["should be an integer"]}))
+    {[:x :y] ["should be an integer"]})
+ (comment
+  (messages-by-path [:string {:min 3}] "")
+  )
+ )

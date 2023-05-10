@@ -193,6 +193,7 @@
 
 (ui/defview org:new [params]
   (with-form [!org {:org/title ?title
+                    :org/description ?description
                     :entity/domain {:domain/name ?domain}}
               :required [?title ?domain]
               :validators {?domain [(forms/min-length 3)
@@ -206,9 +207,11 @@
                        (when-not (:error result)
                          (routes/set-path! :org/view result)))))}
      [:h2.font-bold :tr/new-org]
-     (ui/show-field ?title {:placeholder :tr/organization-name})
+     (ui/show-field ?title)
      (ui/show-field ?domain {:placeholder :tr/subdomain})
      [:div.text-gray-600.text-sm [:span.font-bold (or @?domain (str "< " :tr/subdomain " >"))] ".sparkboard.com"]
+     (ui/show-field ?description)
+
      (into [:<>] (map ui/view-message (forms/visible-messages !org)))
      [:button.btn.btn-dark.px-6.py-3.self-start {:type "submit"
                                                  :disabled (not (forms/submittable? !org))}
@@ -267,7 +270,7 @@
      (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
        [:section
         [:h3 :tr/search]
-        [:input.form-input
+        [:input.form-text
          {:id "org-search"
           :placeholder :tr/search-across-org
           :type "search"

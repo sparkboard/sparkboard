@@ -70,7 +70,8 @@
                                              :int s/long #_s/bigint
                                              'inst? s/instant}
                               known-bases (set (keys base-mappings))
-                              malli-type (s- m)
+                              malli-type (as-> (s- m) t
+                                               (cond-> t (vector? t) first))
                               malli-base (or (known-bases malli-type)
                                              (when (vector? malli-type)
                                                (or (when (and (= :db.cardinality/many (:db/cardinality m))

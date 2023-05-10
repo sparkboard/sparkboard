@@ -461,7 +461,8 @@
                          s- :boolean}
    :org/id unique-string-id
    :org/image-urls {s- :image-urls/as-map}
-   :org/title {s- :string}
+   :org/title {s- [:string {:min 3}]}
+   :org/description {s- [:string {:min 5}]}
    :org/default-board-template (merge {:doc "Default template (a board with :board/is-template? true) for new boards created within this org"}
                                       (ref :one #{:board/id}))
    :org/social-feed {s- :social/feed}
@@ -473,6 +474,7 @@
                     :org/title
                     :org/id
                     :ts/created-by
+                    (? :org/description)
                     (? :ts/created-at)
                     (? :board/show-org-tab?)
                     (? :org/default-board-template)
@@ -847,56 +849,3 @@
        (try (java.util.UUID/fromString x)
             (catch java.lang.IllegalArgumentException _iae
               nil))))
-
-(def proto ;; FIXME this name --DAL 2023-02-22
-  "Schema for validation"
-  {:org [:map {:closed true}
-         [:org/id [:string {:min 2}]]
-         [:org/title [:string {:min 2}]]
-         [:ts/created-by any?]]
-
-   :board [:map {:closed true}
-           [:board/id [:fn str-uuid?]]
-           [:board/org [:tuple keyword? string?]]
-           [:board/title [:string {:min 2}]]
-           [:ts/created-by any?]]
-
-   :project [:map {:closed true}
-             [:project/id]
-             [:project/board [:tuple keyword? string?]]
-             [:project/title [:string {:min 2}]]
-             [:ts/created-by any?]]
-
-   :member [:map {:closed true}
-            [:member/id]
-            [:member/board [:tuple keyword? string?]]
-            [:member/name [:string {:min 2}]]
-            [:member/password [:string {:min 50}]] ;; FIXME this might belong on a separate user entity?
-            [:ts/created-by any?]]})
-
-
-(comment
- (m/validate (:org proto)
-             {:org/id (str (random-uuid))
-              :org/title "foo"
-              :ts/created-by {:account/id "DEV:FAKE"}})
-
- (m/validate (:org proto)
-             {:org/id (str (random-uuid))
-              :org/title "foo"
-              :ts/created-by {:account/id "DEV:FAKE"}
-              :foo "bar"})
-
- (m/validate (:board proto)
-             {:board/id (str (random-uuid))
-              :board/org [:org/id "opengeneva"]
-              :board/title "opengeneva board foo 123"
-              :ts/created-by {:account/id "DEV:FAKE"}})
-
- (m/validate (:project proto)
-             {:project/id (str (random-uuid))
-              :project/board [:board/id "-MtC_Yd7VGM3fs2J2ibl"]
-              :project/title "open innovation project AAAAAAAAAAAA"
-              :ts/created-by {:account/id "DEV:FAKE"}})
-
- )

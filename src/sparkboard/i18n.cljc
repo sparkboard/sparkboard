@@ -72,11 +72,11 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                           :es "Al hacer clic en continuar, acepta nuestro"}
     :tr/welcome {:en "Welcome to Sparkboard" :fr "Bienvenue sur Sparkboard" :es "Bienvenido a Sparkboard"}
     :tr/title {:en "Title" :fr "Titre" :es "Título"}
-    :tr/organization-name {:en "Organization name" :fr "Nom de l'organisation" :es "Nombre de la organización"}
     :tr/invalid-domain {:en "Must contain only numbers, letters, and hyphens"
                         :fr "Ne peut contenir que des chiffres, des lettres et des tirets"
                         :es "Debe contener solo números, letras y guiones"}
     :tr/subdomain {:en "Subdomain" :fr "Sous-domaine" :es "Subdominio"}
+    :tr/description {:en "Description" :fr "Description" :es "Descripción"}
     ;; A `lect` is what a language or dialect variety is called; see
     ;; https://en.m.wikipedia.org/wiki/Variety_(linguistics)
     :meta/lect {:en "English", :fr "Français", :es "Español"}
