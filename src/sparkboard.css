@@ -90,7 +90,6 @@
         @apply
         flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2
         text-sm ring-offset-background placeholder:text-muted-foreground
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
         disabled:cursor-not-allowed disabled:opacity-50
     }
     input.form-text {
@@ -104,20 +103,24 @@
         @apply
         inline-flex items-center justify-center cursor-pointer
         font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none
-        rounded-md px-3
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+        rounded-md px-3 focus-visible:outline-none
+        /* radix causes focus-visible styles to apply even during mouse interaction */
+        /*focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2*/
     }
     .btn-light {
         @apply
-        ring-offset-background border hover:border-primary/30 text-primary
+        ring-offset-background border
+        hover:border-primary/30 focus-visible:border-primary/30
+        text-primary
     }
     .btn-dark {
         @apply
-        ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90
+        ring-offset-background bg-primary text-primary-foreground
+        hover:bg-primary/90 focus-visible:bg-primary/90
         disabled:bg-primary/60
     }
     .btn-transp {
         @apply
-        hover:bg-black/10
+        hover:bg-black/10 focus-visible:bg-black/10
     }
 }

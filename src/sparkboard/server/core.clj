@@ -21,7 +21,6 @@
             [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.defaults]
             [ring.middleware.format]
-            [ring.middleware.params :as ring.params]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime]
             [ring.util.request]
@@ -30,13 +29,13 @@
             [sparkboard.impl.server :as impl]
             [sparkboard.log]
             [sparkboard.routes :as routes]
+            [sparkboard.schema]
             [sparkboard.server.accounts :as auth]
             [sparkboard.server.env :as env]
             [sparkboard.server.html :as server.html]
             [sparkboard.server.nrepl :as nrepl]
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
-            [sparkboard.util :as u]
             [sparkboard.websockets :as ws]
             [taoensso.timbre :as log]))
 

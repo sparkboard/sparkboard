@@ -115,6 +115,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
    (defn set-locale
      {:POST :i18n/locale}
      [req _params locale]
+     (tap> (vector :set-locale locale (some? (:account req))))
      (vd/assert locale :i18n/locale)
      (if (:account req)
        (do (re-db.api/transact! [{:db/id (:db/id (:account req))

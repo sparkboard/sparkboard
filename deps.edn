@@ -8,7 +8,7 @@
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
                                   :git/sha "bd7efb656be9c856b17df42019786803764ad443"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
-                                 :git/sha "366c0de1d2dd640ca985608fb3a90ca6901eebab"}
+                                 :git/sha "f6c565bd9e1c3e2fabf9b68532d54a4f0bf25af4"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
                                        :git/sha "ee33c46b63639f0513895e4a0552c800ac9ace7c"}
 
