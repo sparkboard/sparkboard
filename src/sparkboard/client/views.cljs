@@ -6,13 +6,14 @@
     [clojure.pprint :refer [pprint]]
     [inside-out.forms :as forms :refer [with-form]]
     [re-db.api :as db]
+    [re-db.reactive :as r]
     [sparkboard.client.sanitize :refer [safe-html]]
     [sparkboard.i18n :as i18n :refer [tr]]
     [sparkboard.routes :as routes]
     [sparkboard.views.ui :as ui]
     [sparkboard.websockets :as ws]
     [promesa.core :as p]
-    [yawn.hooks :as hooks :refer [use-state]]
+    [yawn.hooks :as h :refer [use-state]]
     [yawn.view :as v]
     [inside-out.forms :as forms]))
 
@@ -108,7 +109,7 @@
   (ui/with-form [!account {:account/email (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
-    (let [!step (hooks/use-state :email)]
+    (let [!step (h/use-state :email)]
       [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
        {:on-submit (fn [^js e]
                      (.preventDefault e)
@@ -149,28 +150,42 @@
     [:div.p-4.flex.justify-end
      [menubar:lang]]]])
 
+(defn search-icon []
+  (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
+        {:xmlns "http://www.w3.org/2000/svg"}
+        [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
+
 (ui/defview org:index [params]
-  [:<>
-   [menubar params]
-   ;; TODO
-   ;; New Org button
-   ;; format cards (show background image and logo)
-   ;; :org/new view
-   ;; :org/settings view
-   [:div.p-6
-    [:div.flex.mb-4
-     [:h2 :tr/orgs]
-     [:div.flex-grow]
-     [:div.btn.btn-light.p-2 {:on-click #(routes/set-path! :org/new)} "New"]]
-    [:section#orgs-grid
-     (into [:div.grid.grid-cols-4.gap-6]
-           (map (fn [org]
-                  [:a.shadow.p-3.block
-                   {:href (routes/path-for :org/view org)}
-                   [:h2
-                    (:org/title org)]
-                   ]))
-           (ws/use-query! :org/index))]]])
+  (ui/with-form [?pattern (str "(?i)" ?filter)]
+    [:<>
+     [menubar params]
+     [:div.border-b.border-gray-200.bg-white.px-4.py-5.sm:px-6.flex.items-center.gap-4
+      [:h3.text-lg.font-semibold.leading-6.text-gray-900 :tr/orgs]
+      [:div.flex-grow]
+      [:div.btn.btn-light.p-2 {:on-click #(routes/set-path! :org/new)} "New"]
+      (ui/show-field ?filter {:class "pr-9"
+                              :postfix (search-icon)})
+
+
+      ]
+     ;; TODO
+     ;; New Org button
+     ;; format cards (show background image and logo)
+     ;; :org/new view
+     ;; :org/settings view
+     [:div.p-6
+      [:section#orgs-grid
+       (into [:div.grid.grid-cols-4.gap-6]
+             (comp
+               (filter #(or (nil? @?filter)
+                            (re-find (re-pattern @?pattern) (:org/title %))))
+               (map (fn [org]
+                      [:a.shadow.p-3.block
+                       {:href (routes/path-for :org/view org)}
+                       [:h2
+                        (:org/title org)]
+                       ])))
+             (ws/use-query! :org/index))]]]))
 
 (ui/defview home [params]
   (if (db/get :env/account)
