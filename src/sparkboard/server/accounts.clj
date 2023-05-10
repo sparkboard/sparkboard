@@ -1,6 +1,6 @@
 (ns sparkboard.server.accounts
   (:require [buddy.core.keys :as buddy.keys]
-            [buddy.sign.jwt :as buddy.jwt]
+            [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
@@ -31,6 +31,7 @@
       (doto (->> (.nextBytes (java.security.SecureRandom.))))
       Base64/encodeBase64
       (String. StandardCharsets/US_ASCII)))
+
 
 (defn hash-password [password]
   (let [signer-bytes
@@ -180,19 +181,44 @@
       ;; last-sign-in can overwrite existing data
       {:account/last-sign-in now})]))
 
-(def google-public-key
-  (delay (-> "https://www.googleapis.com/oauth2/v3/certs"
-             http/get
-             :body
-             (json/parse-string keyword)
-             :keys
-             last buddy.keys/jwk->public-key)))
+(defn fetch-google-public-keys
+  "Returns map of {kid, java.security.PublicKey} for google's current oauth2 public certs"
+  []
+  (-> "https://www.googleapis.com/oauth2/v3/certs"
+      http/get
+      :body
+      (json/parse-string keyword)
+      :keys
+      (->>
+        (map (juxt :kid buddy.keys/jwk->public-key))
+        (into {}))))
+
+(let [!cache (atom nil)]
+  (defn google-public-key
+    "Returns google public key for given kid"
+    [kid]
+    (or (get @!cache kid)
+        (do (swap! !cache merge (fetch-google-public-keys))
+            (get @!cache kid)))))
+
+(defn id-token-header
+  "Returns map of header values from id-token."
+  [id-token]
+  (-> id-token
+      (str/split #"\.")
+      first
+      (.getBytes StandardCharsets/US_ASCII)
+      Base64/decodeBase64
+      (String. StandardCharsets/US_ASCII)
+      (json/parse-string keyword)))
 
 (defn google-landing [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)
+        _ (def google-access-tokens (:google access-tokens))
+        public-key (-> id-token id-token-header :kid google-public-key)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
-        sub (:sub (buddy.jwt/unsign id-token @google-public-key {:alg :rs256
-                                                                 :iss "accounts.google.com"}))
+        sub (:sub (jwt/unsign id-token public-key {:alg :rs256
+                                                           :iss "accounts.google.com"}))
         account-id [:account.provider.google/sub sub]
         provider-info (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
                           :body
@@ -200,6 +226,35 @@
     (db/transact! (google-account-tx account-id provider-info))
     (-> (ring.response/redirect (routes/path-for [:home]))
         (res:login account-id))))
+
+(comment
+  (-> (:id-token google-access-tokens)
+      (str/split #"\.")
+      first
+      (.getBytes StandardCharsets/US_ASCII)
+      Base64/decodeBase64
+      (String. StandardCharsets/US_ASCII)
+      (json/parse-string keyword))
+  (keys @!google-public-keys)
+  google-access-tokens
+  (-> "https://www.googleapis.com/oauth2/v3/certs"
+      http/get
+      :body
+      (json/parse-string keyword)
+      :keys
+      (->> (group-by :kid))
+      (update-vals first))
+  (jwt/unsign (:id-token google-access-tokens)
+              (-> "https://www.googleapis.com/oauth2/v3/certs"
+                  http/get
+                  :body
+                  (json/parse-string keyword)
+                  :keys
+                  first
+                  buddy.keys/jwk->public-key)
+              {:alg :rs256
+               :iss "accounts.google.com"
+               :skip-validation true}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Middleware

@@ -49,7 +49,7 @@
   "Log requests (log/info) and errors (log/error)"
   [f]
   (let [handle-e (fn [e]
-                   (if (env/config :dev.logging/tap?) ;; configured in .local.config.edn
+                   (if (env/config :dev.logging/tap?)       ;; configured in .local.config.edn
                      (log/error (ex-message e) e)
                      (log/error (ex-message e)
                                 (ex-data e)
@@ -95,8 +95,7 @@
                           (:query-params req)
                           (merge (update-keys (:query-params req) keyword)))
           method (:request-method req)
-          html? (and (= method :get)
-                     (str/includes? (get-in req [:headers "accept"]) "text/html"))
+          data-req? (some-> (get-in req [:headers "accept"]) (str/includes? "application/transit+json"))
           authed? (:account req)]
       (cond
 
@@ -109,11 +108,10 @@
         ;; post fns are expected to return HTTP response maps
         (and post (= method :post)) (apply post req params (:body-params req))
 
-        (and html? (or query view)) (server.html/single-page-html
-                                     {:tx [(assoc env/client-config :db/id :env/config)
-                                           (assoc (:account req) :db/id :env/account)]})
-
-        query (some-> (query params) deref ring.http/ok)
+        (and query data-req?) (some-> (query params) deref ring.http/ok)
+        (or query view) (server.html/single-page-html
+                          {:tx [(assoc env/client-config :db/id :env/config)
+                                (assoc (:account req) :db/id :env/account)]})
 
         ;; query fns return reactions which must be wrapped in HTTP response maps
         :else (ring.http/not-found "Not found")))))
@@ -143,13 +141,13 @@
                       slack.server/handlers
                       (-> #'route-handler
                           auth/wrap-accounts
-                          impl/wrap-query-params ;; required for accounts (oauth2)
+                          impl/wrap-query-params            ;; required for accounts (oauth2)
                           ring.cookies/wrap-cookies
                           wrap-log
                           (muu.middleware/wrap-format muuntaja))))
 
 (defonce the-server
-  (atom nil))
+         (atom nil))
 
 (defn stop-server! []
   (some-> @the-server (httpkit/server-stop!))
@@ -162,16 +160,16 @@
   (stop-server!)
   (reset! the-server (httpkit/run-server #'handler {:port port
                                                     :legacy-return-value? false}))
-  (when (not= "dev" (env/config :env)) ;; using shadow-cljs server in dev
+  (when (not= "dev" (env/config :env))                      ;; using shadow-cljs server in dev
     (nrepl/start!)))
 
 (defn -main []
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
-  (fire-jvm/sync-all) ;; cache firebase db locally
+  (fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
                        3000)))
 
-(comment ;;; Webserver control panel
- (-main)
+(comment                                                    ;;; Webserver control panel
+  (-main)
 
- (restart-server! 3000))
+  (restart-server! 3000))
