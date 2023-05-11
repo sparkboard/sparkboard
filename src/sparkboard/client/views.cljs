@@ -218,9 +218,13 @@
   ;; typography
   (with-form [!org {:org/title ?title
                     :org/description ?description
+                    :org/public? ?public
                     :entity/domain {:domain/name ?domain}}
               :required [?title ?domain]
-              :validators {?domain [(forms/min-length 3)
+              :validators {?public [(fn [v _]
+                                      (when-not v
+                                        (forms/message :invalid "Too bad")))]
+                           ?domain [(forms/min-length 3)
                                     domain-valid-chars
                                     (domain-availability-validator)]}]
     [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto
@@ -235,8 +239,8 @@
      [:h2.text-2xl :tr/new-org]
      (ui/show-field ?title {:label :tr/title})
      (ui/show-field ?domain {:label :tr/domain-name
-                             :autocomplete "off"
-                             :spellcheck false
+                             :auto-complete "off"
+                             :spell-check false
                              :postfix (when @?domain [:span.text-sm.text-gray-500 ".sparkboard.com"])})
      (ui/show-field ?description {:label :tr/description})
 

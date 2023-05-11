@@ -37,52 +37,64 @@
   [:label.block.text-sm.font-medium.leading-6.text-gray-900 (v/props props)
    content])
 
-(defn field-props [?field]
-  {:value (or @?field "")
-   :on-change (forms/change-handler ?field)
+(defn field-id [?field]
+  (str "field-" (goog/getUid ?field)))
+
+(defn pass-props [props] (dissoc props :multi-line :label :postfix :wrapper-class))
+
+(defn text-props [?field]
+  {:id (field-id ?field)
+   :value (or @?field "")
+   :on-change (fn [e]
+                (js/console.log (.. e -target -checked))
+                ((forms/change-handler ?field) e))
    :on-blur (forms/blur-handler ?field)
-   :on-focus (forms/focus-handler ?field)
-   :class (when (:invalid (forms/types (forms/visible-messages ?field)))
-            "outline-red-500")})
+   :on-focus (forms/focus-handler ?field)})
+
+(defn show-field-messages [?field]
+  (when-let [messages (seq (forms/visible-messages ?field))]
+    (v/x (into [:div.gap-3.text-sm] (map view-message messages)))))
+
+(defn show-label [?field props]
+  (when-let [label (or (:label props) (:label (meta ?field)))]
+    [input-label {:for (field-id ?field)} label]))
+
+(defn show-postfix [?field props]
+  (when-let [postfix (or (:postfix props) (:postfix (meta ?field)))]
+    [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix]))
 
 (defn input-text
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
-  (let [messages (forms/visible-messages ?field)
-        id (str "field-" (goog/getUid ?field))
-        {:as props :keys [multi-line label postfix wrapper-class]} (merge props (:props (meta ?field)))]
+  (let [{:as props :keys [multi-line wrapper-class]} (merge props (:props (meta ?field)))]
     (v/x
       [:div.gap-2.flex.flex-col.relative
        {:class wrapper-class}
-       (when label [input-label {:for id} label])
+       (show-label ?field props)
        [:div.flex.relative
         [(if multi-line
            :textarea.form-text
            :input.form-text)
-         (v/props (dissoc props :multi-line :label :postfix :wrapper-class)
-                  {:id id}
-                  (field-props ?field))]
-        (when postfix
-          [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix])]
-       (when (seq messages)
-         (into [:div.gap-3.text-sm] (map view-message messages)))])))
-
+         (v/props (text-props ?field)
+                  (pass-props props)
+                  {:class (when (:invalid (forms/types (forms/visible-messages ?field)))
+                            "outline-red-500")})]
+        (show-postfix ?field props)]
+       (show-field-messages ?field)])))
 
 (defview input-checkbox
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field attrs]
   (let [messages (forms/visible-messages ?field)]
     [:<>
-     [:input
+     [:input.h-5.w-5.rounded.border-gray-300.text-indigo-600.focus:outline-indigo-600
       (v/props {:type "checkbox"
-                :placeholder (:label ?field)
-                :checked (boolean @?field)
-                :on-change (fn [^js e] (.persist e) (js/console.log e) (reset! ?field (.. e -target -checked)))
                 :on-blur (forms/blur-handler ?field)
                 :on-focus (forms/focus-handler ?field)
+                :on-change #(reset! ?field (.. ^js % -target -checked))
+                :checked (or @?field false)
                 :class (when (:invalid (forms/types messages))
-                         "ring-2 ring-offset-2 ring-red-500 focus:ring-red-500")}
-               (dissoc attrs :label))]
+                         "outline outline-offset-2 outline-2 outline-red-500 focus:outline-red-500")})]
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
