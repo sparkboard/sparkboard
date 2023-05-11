@@ -22,7 +22,7 @@
 ;; - password signin:
 ;;   - new-account flow, reset-pass, verify new email, check-pass-start-session
 
-(ui/defview menubar:lang []
+(ui/defview header:lang []
   [:div.flex.flex-row
    [:el dm/Root
     [:el.btn.btn-transp.h-7 dm/Trigger
@@ -54,19 +54,19 @@
                               ])
                   (keys i18n/dict))))]]])
 
-(ui/defview menubar:account [{[route-id] :route}]
+(ui/defview header:account [{[route-id] :route}]
   (if (db/get :env/account)
-    [:a.btn.btn-transp.text-sm.px-3.py-1.h-7
+    [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for :account/logout)} :tr/logout]
-    [:a.btn.btn-transp.text-sm.px-3.py-1.h-7
+    [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for :account/sign-in)} :tr/sign-in]))
 
-(ui/defview menubar [params]
-  [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.px-2.z-50.relative
+(ui/defview header [params]
+  [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.z-50.relative.px-body
    [:a {:href "/"} [:img.w-5.h-5 {:src ui/logo-url}]]
    [:div.flex-grow]
-   [menubar:lang]
-   [menubar:account params]
+   [header:lang]
+   [header:account params]
    [:div.rough-divider]])
 
 (defn http-ok? [rsp]
@@ -148,7 +148,7 @@
     [:div.flex.flex-grow
      [account:sign-in-form params]]
     [:div.p-4.flex.justify-end
-     [menubar:lang]]]])
+     [header:lang]]]])
 
 (defn search-icon []
   (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
@@ -158,34 +158,31 @@
 (ui/defview org:index [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
     [:<>
-     [menubar params]
-     [:div.border-b.border-gray-200.bg-white.px-4.py-5.sm:px-6.flex.items-center.gap-4
-      [:h3.text-lg.font-semibold.leading-6.text-gray-900 :tr/orgs]
-      [:div.flex-grow]
-      [:div.btn.btn-light.p-2 {:on-click #(routes/set-path! :org/new)} "New"]
+     [:div.border-b.border-gray-200.bg-white.px-body.py-3.gap-3.flex.items-stretch
+      [:h3.text-gray-900.inline-flex.items-center.hidden.sm:inline-flex.flex-grow :tr/orgs]
+
       (ui/show-field ?filter {:class "pr-9"
+                              :wrapper-class "flex-grow sm:flex-none"
                               :postfix (search-icon)})
-
-
+      [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new]
       ]
      ;; TODO
      ;; New Org button
      ;; format cards (show background image and logo)
      ;; :org/new view
      ;; :org/settings view
-     [:div.p-6
-      [:section#orgs-grid
-       (into [:div.grid.grid-cols-4.gap-6]
-             (comp
-               (filter #(or (nil? @?filter)
-                            (re-find (re-pattern @?pattern) (:org/title %))))
-               (map (fn [org]
-                      [:a.shadow.p-3.block
-                       {:href (routes/path-for :org/view org)}
-                       [:h2
-                        (:org/title org)]
-                       ])))
-             (ws/use-query! :org/index))]]]))
+     [:div.p-body
+      (into [:div.grid.grid-cols-4.gap-body]
+            (comp
+              (filter #(or (nil? @?filter)
+                           (re-find (re-pattern @?pattern) (:org/title %))))
+              (map (fn [org]
+                     [:a.shadow.p-3.block
+                      {:href (routes/path-for :org/view org)}
+                      [:h2
+                       (:org/title org)]
+                      ])))
+            (ws/use-query! :org/index))]]))
 
 (ui/defview home [params]
   (if (db/get :env/account)
@@ -290,7 +287,6 @@
                                                    :query-params query-params}])
         [pending? start-transition] (react/useTransition)]
     [:div
-     [menubar params]
      [:h1.text-xl [:a {:href (routes/path-for :org/view {:org/id id})} (:org/title value)]]
      [:div.rough-icon-button
       {:on-click #(when (js/window.confirm (str "Really delete organization "

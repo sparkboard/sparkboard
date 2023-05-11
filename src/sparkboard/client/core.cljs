@@ -5,20 +5,23 @@
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sparkboard.client.scratch]
-            [sparkboard.client.views]
+            [sparkboard.client.views :as views]
             [sparkboard.routes :as routes]
             [sparkboard.slack.firebase :as firebase]
-            [sparkboard.transit :as transit] ;; extends `ratom` reactivity
+            [sparkboard.transit :as transit]                ;; extends `ratom` reactivity
             [sparkboard.views.ui :as ui]
             [vendor.pushy.core :as pushy]
             [yawn.root :as root]))
 
 (ui/defview root []
-  (let [{:as current-location :keys [path view params tag route]} (db/get :env/location)]
+  (let [{:keys [path view params tag route header?] :or {header? true}} (db/get :env/location)
+        params (assoc params :path path :route route)]
     [:div.w-full.font-sans
      [:Suspense {:fallback "ROUGH spinner"}
       (when view
-        [view (assoc params :path path :route route)])]]))
+        [:<>
+         (when header? [views/header params])
+         [view params]])]]))
 
 (defonce !react-root (delay (root/create :web (root))))
 
@@ -42,9 +45,9 @@
   (render))
 
 (comment
- (db/transact! [[:db/retractEntity :test]])
- (db/transact! [#_{:db/id :a :b 1}
-                {:db/id :test3 :a :b}
-                {:db/id :test2}])
- (:test2 (:eav @(db/conn)))
- )
+  (db/transact! [[:db/retractEntity :test]])
+  (db/transact! [#_{:db/id :a :b 1}
+                 {:db/id :test3 :a :b}
+                 {:db/id :test2}])
+  (:test2 (:eav @(db/conn)))
+  )

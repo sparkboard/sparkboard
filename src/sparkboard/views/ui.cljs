@@ -37,28 +37,31 @@
   [:label.block.text-sm.font-medium.leading-6.text-gray-900 (v/props props)
    content])
 
+(defn field-props [?field]
+  {:value (or @?field "")
+   :on-change (forms/change-handler ?field)
+   :on-blur (forms/blur-handler ?field)
+   :on-focus (forms/focus-handler ?field)
+   :class (when (:invalid (forms/types (forms/visible-messages ?field)))
+            "outline-red-500")})
+
 (defn input-text
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
   (let [messages (forms/visible-messages ?field)
         id (str "field-" (goog/getUid ?field))
-        {:as props :keys [multi-line label postfix]} (merge props (:props (meta ?field)))]
+        {:as props :keys [multi-line label postfix wrapper-class]} (merge props (:props (meta ?field)))]
     (v/x
-      [:div.gap-2.flex.flex-col
+      [:div.gap-2.flex.flex-col.relative
+       {:class wrapper-class}
        (when label [input-label {:for id} label])
        [:div.flex.relative
         [(if multi-line
            :textarea.form-text
            :input.form-text)
-
-         (v/props (dissoc props :multi-line :label :postfix)
-                  {:id id
-                   :value (or @?field "")
-                   :on-change (forms/change-handler ?field)
-                   :on-blur (forms/blur-handler ?field)
-                   :on-focus (forms/focus-handler ?field)
-                   :class (when (:invalid (forms/types messages))
-                            "ring-2 ring-offset-2 ring-red-500 focus:ring-red-500")})]
+         (v/props (dissoc props :multi-line :label :postfix :wrapper-class)
+                  {:id id}
+                  (field-props ?field))]
         (when postfix
           [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix])]
        (when (seq messages)
