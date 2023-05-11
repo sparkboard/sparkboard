@@ -6,6 +6,7 @@
     h3 {
         @apply text-lg font-semibold leading-6
     }
+
     :root {
         --font-sans: ui-sans-serif;
         --background: 0 0% 100%;
@@ -40,37 +41,39 @@
         --radius: 0.5rem;
     }
 
-    .dark {
-        --background: 224 71% 4%;
-        --foreground: 213 31% 91%;
+    @media (prefers-color-scheme: dark) {
+        body {
+            --background: 224 71% 4%;
+            --foreground: 213 31% 91%;
 
-        --muted: 223 47% 11%;
-        --muted-foreground: 215.4 16.3% 56.9%;
+            --muted: 223 47% 11%;
+            --muted-foreground: 215.4 16.3% 56.9%;
 
-        --popover: 224 71% 4%;
-        --popover-foreground: 215 20.2% 65.1%;
+            --popover: 224 71% 4%;
+            --popover-foreground: 215 20.2% 65.1%;
 
-        --card: 0 0% 100%;
-        --card-foreground: 222.2 47.4% 11.2%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 47.4% 11.2%;
 
-        --border: 216 34% 17%;
-        --input: 216 34% 17%;
+            --border: 216 34% 17%;
+            --input: 216 34% 17%;
 
-        --primary: 210 40% 98%;
-        --primary-foreground: 222.2 47.4% 1.2%;
+            --primary: 210 40% 98%;
+            --primary-foreground: 222.2 47.4% 1.2%;
 
-        --secondary: 222.2 47.4% 11.2%;
-        --secondary-foreground: 210 40% 98%;
+            --secondary: 222.2 47.4% 11.2%;
+            --secondary-foreground: 210 40% 98%;
 
-        --accent: 216 34% 17%;
-        --accent-foreground: 210 40% 98%;
+            --accent: 216 34% 17%;
+            --accent-foreground: 210 40% 98%;
 
-        --destructive: 0 63% 31%;
-        --destructive-foreground: 210 40% 98%;
+            --destructive: 0 63% 31%;
+            --destructive-foreground: 210 40% 98%;
 
-        --ring: 216 34% 17%;
+            --ring: 216 34% 17%;
 
-        --radius: 0.5rem;
+            --radius: 0.5rem;
+        }
     }
 }
 
@@ -78,6 +81,7 @@
     * {
         @apply border-border;
     }
+
     body {
         @apply bg-background text-foreground;
         font-feature-settings: "rlig" 1, "calt" 1;
@@ -88,15 +92,19 @@
     .px-body {
         @apply px-2 sm:px-6
     }
+
     .py-body {
         @apply py-2 sm:py-6
     }
+
     .p-body {
         @apply p-2 sm:p-6
     }
+
     .gap-body {
         @apply gap-2 sm:gap-6
     }
+
     .gray-link {
         @apply underline underline-offset-4 hover:text-black px-1
     }
@@ -107,9 +115,11 @@
         text-sm ring-offset-background placeholder:text-muted-foreground
         disabled:cursor-not-allowed disabled:opacity-50
     }
+
     input.form-text {
         @apply h-10
     }
+
     textarea.form-text {
         @apply h-20
     }
@@ -122,20 +132,40 @@
         /* radix causes focus-visible styles to apply even during mouse interaction */
         /*focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2*/
     }
+
     .btn-light {
         @apply
         ring-offset-background border
         hover:border-primary/30 focus-visible:border-primary/30
         text-primary
     }
-    .btn-dark {
+
+    .btn-primary {
         @apply
         ring-offset-background bg-primary text-primary-foreground
         hover:bg-primary/90 focus-visible:bg-primary/90
-        disabled:bg-primary/60
+        disabled:bg-primary
     }
+
     .btn-transp {
         @apply
         hover:bg-black/10 focus-visible:bg-black/10
     }
+
+    .outline-default {
+        @apply
+        focus-visible:outline-primary
+        focus-visible:outline-2
+        focus-visible:outline-offset-0
+        focus-visible:outline
+    }
+
+    .outline-invalid {
+        @apply
+        outline
+        outline-destructive
+        outline-2
+        outline-offset-0
+    }
+
 }

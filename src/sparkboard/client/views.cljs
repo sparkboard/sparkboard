@@ -36,22 +36,20 @@
                              (js/window.location.reload)))]
        (into [:el dm/Content {:sideOffset 0
                               :collision-padding 16
-                              :class ["rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
+                              :class ["rounded bg-popover text-popover-foreground "
+                                      "shadow-md ring-1 ring-foreground/10"
                                       "focus:outline-none z-50"]}]
-             (map (fn [lang] [:div {:class ["data-[disabled]:text-gray-500"
-                                            "cursor-pointer"
-                                            "bg-white hover:bg-gray-100"
-                                            "text-gray-900 hover:text-gray-700"
-                                            "block px-4 py-2 text-sm pr-8 relative"
-                                            (when (= lang current-lang)
-                                              "font-bold")]
-                                    :on-click #(on-select lang)}
-                              (get-in i18n/dict [lang :meta/lect])
-                              (when (= lang current-lang)
-                                [:span.absolute.inset-y-0.right-0.flex.items-center.pr-2.text-indigo-600
-                                 [:svg.h-5.w-5 {:viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
-                                  [:path {:fill-rule "evenodd" :d "M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" :clip-rule "evenodd"}]]])
-                              ])
+             (map (fn [lang]
+                    (let [current? (= lang current-lang)]
+                      [:div {:class ["block px-4 py-2 text-sm pr-8 relative"
+                                     (if current?
+                                       "font-bold cursor-default"
+                                       "cursor-pointer hover:bg-popover-foreground/10")]
+                             :on-click (when-not current? #(on-select lang))}
+                       (get-in i18n/dict [lang :meta/lect])
+                       (when current?
+                         [:span.absolute.inset-y-0.right-0.flex.items-center.pr-2.text-foreground
+                          [ui/checkmark]])]))
                   (keys i18n/dict))))]]])
 
 (ui/defview header:account [{[route-id] :route}]
@@ -62,8 +60,12 @@
      {:href (routes/path-for :account/sign-in)} :tr/sign-in]))
 
 (ui/defview header [params]
-  [:div.flex.flex-row.bg-zinc-100.w-full.items-center.h-10.z-50.relative.px-body
-   [:a {:href "/"} [:img.w-5.h-5 {:src ui/logo-url}]]
+  [:div.flex.flex-row.w-full.items-center.h-10.z-50.relative.px-body
+   {:class "bg-secondary text-foreground"}
+
+   [:a {:href "/"}
+    (ui/logo "w-5 h-5")
+    #_[:img.w-5.h-5 {:src ui/logo-url}]]
    [:div.flex-grow]
    [header:lang]
    [header:account params]
@@ -126,7 +128,7 @@
         (when (= :password @!step)
           (ui/show-field ?password {:id "account-password"}))
         (str (forms/visible-messages !account))
-        [:button.btn.btn-dark.w-full.h-10.text-sm.p-3
+        [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
          :tr/sign-in]]
 
        [:div.relative
@@ -158,9 +160,8 @@
 (ui/defview org:index [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
     [:<>
-     [:div.border-b.border-gray-200.bg-white.px-body.py-3.gap-3.flex.items-stretch
-      [:h3.text-gray-900.inline-flex.items-center.hidden.sm:inline-flex.flex-grow :tr/orgs]
-
+     [:div.border-b.border-secondary.px-body.py-3.gap-3.flex.items-stretch
+      [:h3.inline-flex.items-center.hidden.sm:inline-flex.flex-grow :tr/orgs]
       (ui/show-field ?filter {:class "pr-9"
                               :wrapper-class "flex-grow sm:flex-none"
                               :postfix (search-icon)})
@@ -227,7 +228,7 @@
                            ?domain [(forms/min-length 3)
                                     domain-valid-chars
                                     (domain-availability-validator)]}]
-    [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto
+    [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto.bg-background
      {:on-submit (fn [e]
                    (j/call e :preventDefault)
                    (forms/try-submit+ !org
@@ -241,12 +242,13 @@
      (ui/show-field ?domain {:label :tr/domain-name
                              :auto-complete "off"
                              :spell-check false
+                             :placeholder "XYZ.sparkboard.com"
                              :postfix (when @?domain [:span.text-sm.text-gray-500 ".sparkboard.com"])})
      (ui/show-field ?description {:label :tr/description})
 
      (into [:<>] (map ui/view-message (forms/visible-messages !org)))
 
-     [:button.btn.btn-dark.px-6.py-3.self-start {:type "submit"
+     [:button.btn.btn-primary.px-6.py-3.self-start {:type "submit"
                                                  :disabled (not (forms/submittable? !org))}
       :tr/create]]))
 
