@@ -30,7 +30,7 @@
             [sparkboard.log]
             [sparkboard.routes :as routes]
             [sparkboard.schema]
-            [sparkboard.server.accounts :as auth]
+            [sparkboard.server.accounts :as accounts]
             [sparkboard.server.env :as env]
             [sparkboard.server.html :as server.html]
             [sparkboard.server.nrepl :as nrepl]
@@ -53,9 +53,10 @@
                      (log/error (ex-message e)
                                 (ex-data e)
                                 (ex-cause e)))
-                   (let [{:keys [status body]} (ex-data e)]
-                     {:status (or status 500)
-                      :body (or body (ex-message e))}))]
+                   (let [{:keys [status body response]} (ex-data e)]
+                     (or response
+                         {:status (or status 500)
+                          :body (or body (ex-message e))})))]
     (fn [req]
       (log/info :req req)
       (log/info :URI (:uri req))
@@ -139,10 +140,10 @@
   (impl/join-handlers (serve-static "public")
                       slack.server/handlers
                       (-> #'route-handler
-                          auth/wrap-accounts
+                          accounts/wrap-accounts
                           impl/wrap-query-params            ;; required for accounts (oauth2)
-                          ring.cookies/wrap-cookies
                           wrap-log
+                          ring.cookies/wrap-cookies
                           (muu.middleware/wrap-format muuntaja))))
 
 (defonce the-server

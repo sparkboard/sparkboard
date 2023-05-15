@@ -78,6 +78,24 @@
                            :account/email
                            :account/photo-url
                            :account/locale])
+(defn account-cookie [id expires]
+  {:value (t/write id)
+   :http-only true
+   :path "/"
+   :secure (= (env/config :env) "prod")
+   :expires expires})
+
+(defn res:logout [res]
+  (assoc-in res [:cookies "account-id"]
+            (account-cookie nil (-> (java.time.LocalDateTime/now)
+                                    (.minusDays 1)
+                                    .toString))))
+
+(defn account-not-found! [account-id]
+  (throw
+   (ex-info (str "Account not found: " account-id)
+            {:response (-> (ring.response/redirect "/")
+                           res:logout)})))
 
 (defn wrap-account-lookup [handler]
   (fn [req]
@@ -87,20 +105,7 @@
                                                    (catch Exception e nil))]
                           (try (not-empty (db/pull exposed-account-keys account-id))
                                (catch Exception e
-                                 (throw
-                                  (ex-info "Account not found"
-                                           {:status 401
-                                            :account-id account-id})) nil)))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Session handlers
-
-(defn res:logout [res]
-  (assoc-in res [:cookies "account-id"]
-            {:value (t/write nil)
-             :expires (str (-> (java.time.LocalDateTime/now)
-                               (.minusDays 1)
-                               .toString))}))
+                                 (account-not-found! account-id) nil)))))))
 
 (defn logout-handler [_ _]
   (-> (ring.response/redirect (routes/path-for :home))
@@ -109,12 +114,8 @@
 (defn res:login [res account-id]
   (-> res
       (assoc-in [:cookies "account-id"]
-                {:value (t/write account-id)
-                 ;; expire in 2 weeks
-                 :expires (str (java.util.Date. (+ (System/currentTimeMillis) (* 1000 60 60 24 14))))
-                 :http-only true
-                 :path "/"
-                 :secure (= (env/config :env) "prod")})
+                (account-cookie account-id
+                                (str (java.util.Date. (+ (System/currentTimeMillis) (* 1000 60 60 24 14))))))
       ;; TODO
       ;; - verify that this value is encoded properly somewhere,
       ;; - in client, set this into :env/account
@@ -136,7 +137,7 @@
                       [:account/password-hash [:string]]
                       [:account/password-salt [:string]]]
                      {:code 401})
-        _ (when-not account-entity (throw (ex-info (str "Account not found") {:account/email email :status 401})))
+        _ (when-not account-entity (account-not-found! [:account/email email]))
         _ (when (or (not (:account/password-hash account-entity))
                     (not (:account/password-salt account-entity)))
             ;; TODO start password-reset flow
@@ -170,7 +171,7 @@
     [(merge
       ;; backfill account info (do not overwrite current data)
       (keep-vals
-       {:ts/created-at now
+       {:entity/created-at now
         :account.provider.google/sub (:sub provider-info)
         :account/display-name (:name provider-info)
         :account/email (:email provider-info)
@@ -190,8 +191,8 @@
       (json/parse-string keyword)
       :keys
       (->>
-        (map (juxt :kid buddy.keys/jwk->public-key))
-        (into {}))))
+       (map (juxt :kid buddy.keys/jwk->public-key))
+       (into {}))))
 
 (let [!cache (atom nil)]
   (defn google-public-key
@@ -218,7 +219,7 @@
         public-key (-> id-token id-token-header :kid google-public-key)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
         sub (:sub (jwt/unsign id-token public-key {:alg :rs256
-                                                           :iss "accounts.google.com"}))
+                                                   :iss "accounts.google.com"}))
         account-id [:account.provider.google/sub sub]
         provider-info (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
                           :body
@@ -226,35 +227,6 @@
     (db/transact! (google-account-tx account-id provider-info))
     (-> (ring.response/redirect (routes/path-for [:home]))
         (res:login account-id))))
-
-(comment
-  (-> (:id-token google-access-tokens)
-      (str/split #"\.")
-      first
-      (.getBytes StandardCharsets/US_ASCII)
-      Base64/decodeBase64
-      (String. StandardCharsets/US_ASCII)
-      (json/parse-string keyword))
-  (keys @!google-public-keys)
-  google-access-tokens
-  (-> "https://www.googleapis.com/oauth2/v3/certs"
-      http/get
-      :body
-      (json/parse-string keyword)
-      :keys
-      (->> (group-by :kid))
-      (update-vals first))
-  (jwt/unsign (:id-token google-access-tokens)
-              (-> "https://www.googleapis.com/oauth2/v3/certs"
-                  http/get
-                  :body
-                  (json/parse-string keyword)
-                  :keys
-                  first
-                  buddy.keys/jwk->public-key)
-              {:alg :rs256
-               :iss "accounts.google.com"
-               :skip-validation true}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Middleware
