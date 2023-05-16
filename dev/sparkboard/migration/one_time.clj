@@ -190,33 +190,45 @@
    (uuid-ref (apply to-uuid s ss)))
   ([s]
    (let [id (to-uuid s)]
-     (if (and (realized? !existing-ids)
-              (not (@!existing-ids (to-uuid id))))
-       [:MISSING_REF s]
-       [:entity/id id]))))
+     [:entity/id id])))
 
 (comment
  (uuid-ref [:entity/id #uuid "3b7f78a0-6757-3da3-ac3d-265f7c9c3d0f"]))
 
-(defn uuid-ref-as [as & {:keys [show-missing] :or {show-missing false}}]
+(defn uuid-ref-as [as]
   (fn [m k v]
-    (if show-missing
-      (-> m
-          (dissoc k)
-          (assoc as (if (sequential? v)
-                      (into [] (map uuid-ref) v)
-                      (uuid-ref v))))
-      (-> m
-          (dissoc k)
-          (u/assoc-some as
-                        (if (sequential? v)
-                          (into []
-                                (comp (keep identity)
-                                      (map uuid-ref))
-                                v)
-                          (some-> v uuid-ref)))))))
+    (-> m
+        (dissoc k)
+        (u/assoc-some as
+                      (if (sequential? v)
+                        (into []
+                              (comp (keep identity)
+                                    (map uuid-ref))
+                              v)
+                        (some-> v uuid-ref))))))
 
-(def missing-ref? (comp #{:MISSING_REF} first))
+(def unique-ids-from
+  (memoize (fn [coll-k]
+             (into #{} (comp (mapcat sschema/unique-keys)
+                             (map (comp val first))) (coll-entities coll-k)))))
+
+(defn missing-entity? [coll-k ref]
+  (let [coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)]
+    (and ref
+         (not ((unique-ids-from coll-k) (to-uuid ref))))))
+
+(defn keep-entity [coll-k]
+  (fn [m a v]
+    (cond-> m
+            (missing-entity? coll-k v)
+            (dissoc a))))
+
+;; TODO
+;; look up missing entities from cached ID indexes,
+;; because we have to delay this, as parsing entities
+;; causes deletions...
+
+
 
 (defn kw-keys [m]
   (walk/postwalk (fn [m]
@@ -313,25 +325,13 @@
           "textarea" :field.type/text-content
           :field.type/text-content))
 
-(def !all-field-types
+(def !all-field-specs
   (delay
-   (->> (read-coll :board/as-map)
-        vals
-        (mapcat (juxt #(% "groupFields") #(% "userFields")))
+   (->> (coll-entities :board/as-map)
+        (mapcat (juxt :board/member-fields :board/project-fields))
         (mapcat identity)
-        (map (fn [[id {:as f :strs [type]}]] [id (parse-field-type type)]))
-        (into {"problem" :field.type/text-content
-               "solution" :field.type/text-content
-               "intro" :field.type/text-content
-               "about_me" :field.type/text-content
-
-               ;; documented ignored fields
-               "description" nil                            ;; admin-set description is handled in parse step
-               "about" nil
-               "contact" nil                                ;; remove old 'contact' fields which often contained an email address or phone number
-               "badges" nil
-               "role" nil
-               "department" nil}))))
+        (map (juxt :field-spec/id identity))
+        (into {}))))
 
 (defn html-content [s]
   (when-not (str/blank? s)
@@ -360,7 +360,7 @@
                         field-spec-id (to-uuid managed-by-id (subs (name k) 6))
                         target-id (:entity/id m)
                         v (m k)
-                        field-type (@!all-field-types (subs (name k) 6))
+                        field-type (:field/type (@!all-field-specs field-spec-id))
                         ;; NOTE - we ignore fields that do not have a spec
                         field-value (when field-type
                                       (case field-type
@@ -413,7 +413,10 @@
       m)))
 
 (comment
- (first (read-coll :board/as-map)))
+ (first (read-coll :board/as-map))
+ (->> (read-coll :board/as-map)
+      (keep #(get (val %) "tags"))
+      first))
 
 (def !tag->id
   (delay (into {}
@@ -432,10 +435,8 @@
 (defn resolve-tag [board-id tag-string]
   (if-let [tag-id (get-in @!tag->id [(to-uuid board-id) (str/lower-case tag-string)])]
     (when-not (= :NO_TAG tag-id)
-      {:entity/id tag-id})
+      {:tag/id tag-id})
     {:tag.ad-hoc/label tag-string}))
-
-(def remove-missing-ref (xf #(u/guard % (complement missing-ref?))))
 
 (defn mongo-id? [x]
   (try (do (bson-id-timestamp x) true)
@@ -504,7 +505,7 @@
                                                                  ;; because field-specs have been duplicated everywhere
                                                                  ;; and have the same IDs but represent different instances.
                                                                  ;; unsure: how to re-use fields when searching across boards, etc.
-                                                                 (dissoc "id")
+                                                                 (dissoc "id" "name")
                                                                  (rename-keys {"type" :field/type
                                                                                "showOnCard" :field/show-on-card?
                                                                                "showAtCreate" :field/show-at-create?
@@ -513,8 +514,7 @@
                                                                                "hint" :field/hint
                                                                                "label" :field/label
                                                                                "options" :field/options
-                                                                               "order" :field/order
-                                                                               "name" :field-spec/name})
+                                                                               "order" :field/order})
                                                                  (u/update-some {:field/options
                                                                                  (partial mapv
                                                                                           #(update-keys %
@@ -524,9 +524,7 @@
                                                                                                                   "color" :option/color
                                                                                                                   "default" :option/default?))))})
                                                                  (update :field/order #(or % (swap! !orders inc)))
-                                                                 (update :field/type parse-field-type)
-                                                                 (dissoc :field-spec/name)
-                                                                 (assoc :field-spec/managed-by (uuid-ref managed-by))))))
+                                                                 (update :field/type parse-field-type)))))
                                                 (catch Exception e (prn a v) (throw e))))))]
                  ["groupFields" (& field-xf (rename :board/project-fields))
                   "userFields" (& field-xf (rename :board/member-fields))])
@@ -675,8 +673,8 @@
                                        "response-thread" (rename :slack.broadcast/response-thread-id)
                                        ]
               :slack.channel/as-map [::prepare (partial flat-map :slack.channel/id identity)
-                                     "project-id" (uuid-ref-as :slack.channel/project :show-missing true)
-                                     ::always (remove-when (comp missing-ref? :slack.channel/project))
+                                     "project-id" (uuid-ref-as :slack.channel/project)
+                                     ::always (remove-when (comp (partial missing-entity? :project/as-map) :slack.channel/project))
                                      "team-id" (& (xf (partial vector :slack.team/id))
                                                   (rename :slack.channel/slack.team))]
               :domain/as-map [::prepare (partial mapv (fn [[name target]]
@@ -736,10 +734,9 @@
                                                                    :ballot/member (uuid-ref member-id)
                                                                    :ballot/board (uuid-ref boardId)
                                                                    :ballot/project (uuid-ref project-id)}))))))
-                                   ::always (remove-when #(some missing-ref? ((juxt :ballot/project
-                                                                                    :ballot/member
-                                                                                    :ballot/board)
-                                                                              %)))]
+                                   ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
+                                                              (missing-entity? :board/as-map (:ballot/board %))
+                                                              (missing-entity? :member/as-map (:ballot/member %))))]
               :member/as-map [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                               ::always (remove-when (comp nil? :firebaseAccount))
                               ::always (remove-when :entity/deleted-at)
@@ -813,25 +810,28 @@
                                                     m))
                                   :_id id-with-timestamp
                                   :type rm
-                                  :followers (uuid-ref-as :discussion/followers)
+                                  :followers (&
+                                              (xf #(remove (partial missing-entity? :member/as-map) %))
+                                              (uuid-ref-as :discussion/followers))
                                   :parent (uuid-ref-as :discussion/project)
-                                  ::always (remove-when (comp missing-ref? :discussion/project)) ;; prune discussions from deleted projects
+                                  ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
                                   :posts (& (xf
                                              (partial change-keys
                                                       [:_id id-with-timestamp
                                                        :parent rm
                                                        :user (uuid-ref-as :entity/created-by)
-                                                       ::always (remove-when (comp missing-ref? :entity/created-by))
+                                                       ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
                                                        ::always (remove-when (comp str/blank? :text))
 
                                                        :text (& (xf html-content) (rename :post/text-content))
 
                                                        :doNotFollow (uuid-ref-as :post/do-not-follow)
-                                                       :followers (uuid-ref-as :post/followers)
+                                                       :followers (& (xf #(remove (partial missing-entity? :member/as-map) %))
+                                                                     (uuid-ref-as :post/followers))
                                                        :comments (& (xf (partial change-keys
                                                                                  [:_id id-with-timestamp
                                                                                   :user (uuid-ref-as :entity/created-by)
-                                                                                  ::always (remove-when (comp missing-ref? :entity/created-by))
+                                                                                  ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
                                                                                   :text (rename :comment/text)
                                                                                   ::always (remove-when (comp str/blank? :comment/text))
                                                                                   :parent rm]))
@@ -847,7 +847,8 @@
                                                      (rename :project/admin-description))
                                :boardId (uuid-ref-as :project/board)
                                ::always (parse-fields :project/board :entity/fields)
-                               :lastModifiedBy (uuid-ref-as :entity/modified-by)
+                               :lastModifiedBy (& (keep-entity :member/as-map)
+                                                  (uuid-ref-as :entity/modified-by))
                                :tags rm                     ;; no longer used - fields instead
                                :number (rename :project/number)
                                :badges (& (xf (partial mapv (partial hash-map :badge/label)))
@@ -860,7 +861,7 @@
                                            (let [project-id (:entity/id m)]
                                              (update m a (partial keep (fn [{:as m :keys [user_id]}]
                                                                          (let [user-uuid (to-uuid user_id)]
-                                                                           (when (@!existing-ids user-uuid)
+                                                                           (when-not (missing-entity? :member/as-map user-uuid)
                                                                              (let [role (case (:role m)
                                                                                           "admin" :role/admin
                                                                                           "editor" :role/collaborator
@@ -886,7 +887,7 @@
                                ::always (remove-when #(contains? #{"example" nil} (second (:project/board %))))
                                ::always (remove-when :entity/deleted-at)
                                ::always (remove-when (comp str/blank? :entity/title))
-                               :entity/created-by remove-missing-ref
+                               ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
                                ]
               :notification/as-map [::defaults {:notification/emailed? false}
                                     ::always (fn [m]
@@ -905,7 +906,7 @@
                                     :createdAt rm
                                     :boardId (uuid-ref-as :notification/board)
                                     :recipientId (uuid-ref-as :notification/recipient)
-                                    ::always (remove-when (comp missing-ref? :notification/recipient))
+                                    ::always (remove-when (comp (partial missing-entity? :member/as-map) :notification/recipient))
                                     :notificationEmailed (rename :notification/emailed?)
                                     :data (fn [m a v] (-> m (dissoc a) (merge v)))
                                     :project (& (xf :id)
@@ -921,10 +922,10 @@
                                              (uuid-ref-as :notification/post))
                                     :discussion (& (xf :id)
                                                    (uuid-ref-as :notification/discussion))
-                                    ::always (remove-when #(or (missing-ref? (:notification/project %))
-                                                               (missing-ref? (:notification/member %))
-                                                               (missing-ref? (:notification/post %))
-                                                               (missing-ref? (:notification/discussion %))))
+                                    ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
+                                                               (missing-entity? :member/as-map (:notification/member %))
+                                                               (missing-entity? :post/as-map (:notification/post %))
+                                                               (missing-entity? :discussion/as-map (:notification/discussion %))))
                                     ::always (fn [m]
                                                (let [{:keys [type targetId]} m]
                                                  (-> m
@@ -939,8 +940,8 @@
 
                                     ]
               :thread/as-map [:_id id-with-timestamp
-                              :participantIds (uuid-ref-as :thread/members :show-missing true)
-                              ::always (remove-when #(some missing-ref? (:thread/members %)))
+                              :participantIds (uuid-ref-as :thread/members)
+                              ::always (remove-when #(some (partial missing-entity? :member/as-map) (:thread/members %)))
                               :createdAt (& (xf parse-mongo-date)
                                             (rename :entity/created-at))
                               :readBy (& (xf keys)
@@ -1175,6 +1176,9 @@
 
  (clojure.core/time (count (root-entities)))
 
+ #_(def missing (->> (root-entities)
+                   (filter (partial contains-somewhere? #uuid "4d2b41ae-5fe2-36c9-955d-0b9b0b10770b"))
+                   first))
  )
 
 ;; Notes

@@ -86,7 +86,7 @@
    :board/sticky-color {:doc "Border color for sticky projects", s- :html/color}
    :board/member-tags (ref :many :tag/as-map)
    :board/project-fields (ref :many :field-spec/as-map)
-   :board/member-fields {s- [:sequential :field-spec/as-map]}
+   :board/member-fields (ref :many :field-spec/as-map)
    :board/registration-invitation-email-text {:doc "Body of email sent when inviting a user to a board."
                                               s- :string},
    :board/registration-newsletter-field? {:doc "During registration, request permission to send the user an email newsletter"
@@ -203,7 +203,6 @@
    :field/hint {s- :string},
    :field-spec/id unique-uuid
    :field/label {s- :string},
-   :field-spec/managed-by (ref :one),
    :field/options {s- (? [:sequential :field.spec/option])},
    :field.spec/option {s- [:map {:closed true}
                            (? :option/color)
@@ -226,7 +225,7 @@
                     :field.type/text-content
                     :field.type/text-content]}
    :field/value {s-
-                 [:multi {:dispatch first}
+                 [:multi {:dispatch 'first}
                   [:field.type/images
                    [:tuple 'any?
                     [:sequential [:map {:closed true} :image/url]]]]
@@ -282,7 +281,7 @@
                            (? :field/show-at-create?)
                            (? :field/show-on-card?)]}})
 
-(def sb-firebase-account
+(def sb-account
   {:account/email unique-string-id
    :account/email-verified? {s- :boolean}
    :account/display-name {s- :string}
@@ -468,7 +467,7 @@
 (def sb-org
   {:org/show-org-tab? {:doc "Boards should visibly link to this parent organization"
                        s- :boolean}
-   :entity/id unique-string-id
+   :entity/id unique-uuid
    :org/default-board-template (merge {:doc "Default template (a board with :board/is-template? true) for new boards created within this org"}
                                       (ref :one))
    :org/as-map {s- [:map {:closed true}
@@ -739,7 +738,7 @@
              sb-domains
              sb-entity
              sb-fields
-             sb-firebase-account
+             sb-account
              sb-memberships
              sb-util
              sb-i18n
@@ -771,9 +770,9 @@
               (map key))
         sb-schema))
 
-(def nested-ref-keys
+(def ref-keys
   (into #{}
-        (comp (filter (comp :db/nested-ref? val))
+        (comp (filter (comp #{:db.type/ref} :db/valueType val))
               (map key))
         sb-schema))
 
@@ -781,7 +780,7 @@
 
 (defn unique-keys [m]
   (cond (map? m) (concat (some-> (select-keys m id-keys) (u/guard seq) list)
-                         (->> (select-keys m nested-ref-keys)
+                         (->> (select-keys m ref-keys)
                               vals
                               (mapcat unique-keys)))
         (sequential? m) (mapcat unique-keys m)))

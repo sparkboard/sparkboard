@@ -20,6 +20,7 @@
 
  (:account/email (dl/schema conn))
 
+
  (db/merge-schema! {:account/email (merge sch/unique-id
                                           sch/string)})
 
