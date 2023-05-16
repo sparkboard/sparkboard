@@ -5,42 +5,46 @@
 
 (def s- :malli/schema)
 
-(defn lookup-ref [ks]
+(defn string-lookup-ref [ks]
   [:tuple (into [:enum] ks) :string])
 
 (defn ref
   "returns a schema entry for a ref (one or many)"
-  ([cardinality] (case cardinality :one (merge s/ref
-                                               s/one
-                                               {s- [:or
-                                                    :int
-                                                    [:tuple :qualified-keyword :string]]})
-                                   :many (merge s/ref
-                                                s/many
-                                                {s- [:or
-                                                     :int
-                                                     [:sequential [:tuple :qualified-keyword :string]]]})))
-  ([cardinality ks]
-   (let [nested? (= 1 (count ks))
-         leaf-type [:or
-                    :int
-                    (if nested?
-                      [:multi {:dispatch 'map?}
-                       [true [:ref (keyword (namespace (first ks)) "as-map")]]
-                       [false (lookup-ref ks)]]
-                      (lookup-ref ks))]]
-     (case cardinality :one (merge s/ref
-                                   s/one
-                                   {s- leaf-type}
-                                   (when nested? {:db/nested-ref? true}))
-                       :many (merge s/ref
-                                    s/many
-                                    {s- [:sequential leaf-type]}
-                                    (when nested? {:db/nested-ref? true}))))))
+  ([cardinality]
+   (case cardinality :one (merge s/ref
+                                 s/one
+                                 {s- [:or
+                                      :int
+                                      [:tuple :qualified-keyword [:or :string :uuid]]]})
+                     :many (merge s/ref
+                                  s/many
+                                  {s- [:sequential
+                                       [:or
+                                        :int
+                                        [:tuple :qualified-keyword [:or :string :uuid]]]]})))
+  ([cardinality nesting-schema]
+   {:pre [(keyword? nesting-schema)]}
+   (case cardinality :one (merge s/ref
+                                 s/one
+                                 {s- [:or
+                                      :int
+                                      [:tuple :qualified-keyword [:or :string :uuid]]
+                                      nesting-schema]})
+                     :many (merge s/ref
+                                  s/many
+                                  {s- [:sequential
+                                       [:or
+                                        :int
+                                        [:tuple :qualified-keyword [:or :string :uuid]]
+                                        nesting-schema]]}))))
 
 (def unique-string-id (merge s/unique-id
                              s/string
                              {s- :string}))
+
+(def unique-uuid (merge s/unique-id
+                        s/uuid
+                        {s- :uuid}))
 
 (defn ? [k]
   (if (keyword? k)

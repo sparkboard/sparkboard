@@ -29,15 +29,15 @@
                       :db/id
                       #_{:org/default-board-template [*]}
                       {:entity/domain [*]}
-                      {:ts/created-by [*]}])))
+                      {:entity/created-by [*]}])))
 
  (->> (db/where [[:org/id "postcovid"]])
       (map (db/pull '[*
                       :db/id
-                      :org/title
+                      :entity/title
                       #_{:org/default-board-template [*]}
                       {:entity/domain [*]}
-                      {:ts/created-by [*]}])))
+                      {:entity/created-by [*]}])))
 
  )
 
@@ -80,7 +80,7 @@
  (dl/q '[:find ?v
          :in $ ?board-title
          :where
-         [?e :board/title ?board-title]
+         [?e :entity/title ?board-title]
          [?e ?a ?v]]
        (dl/db conn)
        "Tout commence par une idée!")
@@ -120,8 +120,8 @@
 
  ;; Delete it
  (let [org {:org/id "30073ee5-ce10-43c8-ae1f-145d84e7a3ee",
-            :org/title "dave4",
-            :ts/created-by {:db/id 130077}}
+            :entity/title "dave4",
+            :entity/created-by {:db/id 130077}}
        eid (dl/q '[:find ?e .
                    :in $ ?org-id
                    :where [?e :org/id ?org-id]]
@@ -139,7 +139,7 @@
 (defn new-entity [m & {:keys [by legacy-id]}]
   (let [id (squuid)]
     (-> m
-        (assoc :sb/id id)
+        (assoc :entity/id id)
         (cond-> legacy-id (assoc legacy-id (str id)))
-        (assoc :ts/created-at (now))
-        (cond-> by (assoc :ts/created-by by)))))
+        (assoc :entity/created-at (now))
+        (cond-> by (assoc :entity/created-by by)))))

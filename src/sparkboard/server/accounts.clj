@@ -12,7 +12,8 @@
             [ring.middleware.oauth2 :as oauth2]
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
-            [ring.util.response :as ring.response])
+            [ring.util.response :as ring.response]
+            [sparkboard.i18n :as i])
   (:import [com.smartmovesystems.hashcheck FirebaseScrypt]
            [org.apache.commons.codec.binary Base64]
            [java.nio.charset StandardCharsets]))
@@ -91,11 +92,17 @@
                                     (.minusDays 1)
                                     .toString))))
 
+(defn flash! [res message]
+  ;; TODO
+  ;; include a message that will be shown temporarily to the user
+  res)
+
 (defn account-not-found! [account-id]
   (throw
    (ex-info (str "Account not found: " account-id)
             {:response (-> (ring.response/redirect "/")
-                           res:logout)})))
+                           res:logout
+                           (flash! :tr/account-not-found))})))
 
 (defn wrap-account-lookup [handler]
   (fn [req]

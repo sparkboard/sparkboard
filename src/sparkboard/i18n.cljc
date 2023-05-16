@@ -48,7 +48,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :tr/project {:en "Project", :fr "Projet", :es "Proyecto"},
     :tr/orgs {:en "Organisations", :fr "Organisations", :es "Organizaciones"},
     :tr/org {:en "Organisation", :fr "Organisation", :es "Organización"},
-    :tr/new-org {:en "New organisation", :fr "Nouvelle organisation", :es "Nueva organización"},
+    :tr/new-org {:en "New Organisation" :fr "Nouvelle Organisation" :es "Nueva Organización"},
     :tr/badge {:en "Badge", :fr "Insigne", :es "Insignia"},
     :tr/badges {:en "Badges", :fr "Insignes", :es "Insignias"},
     :tr/search-across-org {:en "org-wide search", :fr "rechercher dans toute l'organisation", :es "buscar en toda la organización"},
@@ -82,6 +82,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :meta/lect {:en "English", :fr "Français", :es "Español"}
     :tr/not-available {:en "Not available" :fr "Non disponible" :es "No disponible"}
     :tr/available {:en "Available" :fr "Disponible" :es "Disponible"}
+    :tr/account-not-found {:en "Account not found" :fr "Compte introuvable" :es "Cuenta no encontrada"}
     }))
 
 #?(:cljs
@@ -106,8 +107,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
    (defn get-locale [req]
      (or (some-> (:account req) :account/locale supported-locales) ;; a known user explicitly set their language
          (some-> (:cookies req) (get "locale") supported-locales) ;; anonymous user explicitly set their language
-         (some-> (:board req) :board/locale-default supported-locales) ;; board has a preferred language
-         (some-> (:org req) :org/locale-default supported-locales) ;; org has preferred language
+         (some-> (:board req) :entity/locale-default supported-locales) ;; board has a preferred language
+         (some-> (:org req) :entity/locale-default supported-locales) ;; org has preferred language
          (some-> (get-in req [:headers "accept-language"]) accept-language->639-2) ;; use the browser's language
          "en"))) ;; fallback to english
 

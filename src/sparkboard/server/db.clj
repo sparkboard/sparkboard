@@ -30,25 +30,25 @@
        (mapv (re-db.api/pull '[*]))))
 
 (comment
- (db/transact! [{:org/id (str (rand-int 10000))
-                 :org/title (str (rand-int 10000))}]))
+  (db/transact! [{:org/id (str (rand-int 10000))
+                 :entity/title (str (rand-int 10000))}]))
 
 (defquery $org:view [{:keys [org/id]}]
   (db/pull '[:org/id
-             :org/title
-             {:board/_org [:ts/created-at
+             :entity/title
+             {:board/_org [:entity/created-at
                            :board/id
-                           :board/title]}
+                           :entity/title]}
              {:entity/domain [:domain/name]}]
            [:org/id id]))
 
 (defquery $board:view [{:keys [board/id]}]
   (db/pull '[*
-             :board/title
+             :entity/title
              :board/registration-open?
-             :board/title
+             :entity/title
              {:project/_board [*]}
-             {:board/org [:org/title :org/id]}
+             {:board/org [:entity/title :org/id]}
              {:member/_board [*]}
              {:entity/domain [:domain/name]}]
            [:board/id id]))
@@ -66,8 +66,8 @@
   (->> (sd/q-fulltext-in-org (:q query-params)
                              id)
        ;; Can't send Entities over the wire, so:
-       (map (db/pull '[:project/title
-                       :board/title]))))
+       (map (db/pull '[:entity/title
+                       :entity/title]))))
 
 
 
@@ -87,19 +87,19 @@
 
 (defn project:new
   [req params project]
-  (sv/assert project [:map {:closed true} :project/title])
+  (sv/assert project [:map {:closed true} :entity/title])
   ;; auth: user is member of board & board allows members to create projects
   (db/transact! [(-> project
-                     (assoc :project/board [:sb/id (:board/id params)])
+                     (assoc :project/board [:entity/id (:board/id params)])
                      (sd/new-entity :by (:db/id (:account req))))]))
 
 (defn board:new
   [req params board pull]
-  (sv/assert board [:map {:closed true} :board/title])
+  (sv/assert board [:map {:closed true} :entity/title])
   ;; auth: user is admin of org
   (db/transact!
    [(-> board
-        (assoc :board/org [:sb/id (:org/id params)])
+        (assoc :board/org [:entity/id (:org/id params)])
         (sd/new-entity :by (:db/id (:account req))))])
   (db/pull pull))
 
@@ -107,8 +107,8 @@
   [{:keys [account]} _ org]
   (let [org (update-in org [:entity/domain :domain/name] #(some-> % qualify-domain))
         _ (sv/assert org [:map {:closed true}
-                          :org/title
-                          :org/description
+                          :entity/title
+                          :entity/description
                           [:entity/domain [:map {:closed true}
                                            [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
         org (sd/new-entity org

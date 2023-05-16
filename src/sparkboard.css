@@ -129,8 +129,6 @@
         inline-flex items-center justify-center cursor-pointer
         font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none
         rounded-md px-3 focus-visible:outline-none text-sm
-        /* radix causes focus-visible styles to apply even during mouse interaction */
-        /*focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2*/
     }
 
     .btn-light {

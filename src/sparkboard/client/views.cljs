@@ -157,31 +157,55 @@
         {:xmlns "http://www.w3.org/2000/svg"}
         [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
 
+(defn filter-input [?field]
+  (ui/show-field ?field {:class "pr-9"
+                         :wrapper-class "flex-grow sm:flex-none"
+                         :postfix (search-icon)}))
+
+(defn entity-path [{:entity/keys [kind id]}]
+  (routes/path-for (keyword (name kind) "view")
+                   (keyword (name kind) "id")
+                   id))
+
+(defn card [{:entity/keys [title description images kind]}]
+  (let [{:image/keys [logo-url background-url]} images]
+    [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card
+     {:href (routes/path-for :org/view org)
+      :class "pt-[100px]"}
+     [:div.absolute.inset-0.bg-cover.bg-center.h-24
+      {:style {:background-image (ui/css-url background-url)}}]
+     [:div.absolute.inset-0.m-3.h-10.w-10.bg-white.bg-center.bg-contain.rounded
+      {:style {:background-image (ui/css-url logo-url)}}]
+     [:div.font-medium.text-lg title]
+     (ui/pprinted description)
+     ]))
+
 (ui/defview org:index [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
     [:<>
      [:div.border-b.border-secondary.px-body.py-3.gap-3.flex.items-stretch
       [:h3.inline-flex.items-center.hidden.sm:inline-flex.flex-grow :tr/orgs]
-      (ui/show-field ?filter {:class "pr-9"
-                              :wrapper-class "flex-grow sm:flex-none"
-                              :postfix (search-icon)})
-      [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new]
-      ]
-     ;; TODO
+      [filter-input ?filter]
+      [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
      ;; New Org button
      ;; format cards (show background image and logo)
      ;; :org/new view
      ;; :org/settings view
-     [:div.p-body
+     [:div.p-body.text-card-foreground
       (into [:div.grid.grid-cols-4.gap-body]
             (comp
               (filter #(or (nil? @?filter)
-                           (re-find (re-pattern @?pattern) (:org/title %))))
-              (map (fn [org]
-                     [:a.shadow.p-3.block
-                      {:href (routes/path-for :org/view org)}
-                      [:h2
-                       (:org/title org)]
+                           (re-find (re-pattern @?pattern) (:entity/title %))))
+              (map (fn [{:as org {:image/keys [logo-url background-url]} :entity/images}]
+                     [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card
+                      {:href (routes/path-for :org/view org)
+                       :class "pt-[100px]"}
+                      [:div.absolute.inset-0.bg-cover.bg-center.h-24
+                       {:style {:background-image (ui/css-url background-url)}}]
+                      [:div.absolute.inset-0.m-3.h-10.w-10.bg-white.bg-center.bg-contain.rounded
+                       {:style {:background-image (ui/css-url logo-url)}}]
+                      [:div.font-medium.text-lg (:entity/title org)]
+                      (ui/pprinted org)
                       ])))
             (ws/use-query! :org/index))]]))
 
@@ -217,8 +241,8 @@
   ;; TODO
   ;; page layout (narrow, centered)
   ;; typography
-  (with-form [!org {:org/title ?title
-                    :org/description ?description
+  (with-form [!org {:entity/title ?title
+                    :entity/description ?description
                     :org/public? ?public
                     :entity/domain {:domain/name ?domain}}
               :required [?title ?domain]
@@ -249,11 +273,11 @@
      (into [:<>] (map ui/view-message (forms/visible-messages !org)))
 
      [:button.btn.btn-primary.px-6.py-3.self-start {:type "submit"
-                                                 :disabled (not (forms/submittable? !org))}
+                                                    :disabled (not (forms/submittable? !org))}
       :tr/create]]))
 
 (ui/defview board:new [{:as params :keys [route]}]
-  (ui/with-form [!board {:board/title ?title}]
+  (ui/with-form [!board {:entity/title ?title}]
     [:div
      [:h3 :tr/new-board]
      (ui/show-field ?title)
@@ -265,7 +289,7 @@
       :tr/create]]))
 
 (ui/defview project:new [{:as params :keys [route board/id]}]
-  (ui/with-form [!project {:project/title ?title}]
+  (ui/with-form [!project {:entity/title ?title}]
     [:div
      [:h3 :tr/new-project]
      (ui/show-field ?title)
@@ -286,14 +310,14 @@
                               res))}
       :tr/register]]))
 
-(ui/defview org:view [{:as params :keys [org/title org/id query-params]}]
+(ui/defview org:view [{:as params :keys [entity/title org/id query-params]}]
   (let [value (ws/use-query! [:org/view {:org/id id}])
         [query-params set-query-params!] (use-state query-params)
         search-result (ws/use-query! [:org/search {:org/id id
                                                    :query-params query-params}])
         [pending? start-transition] (react/useTransition)]
     [:div
-     [:h1.text-xl [:a {:href (routes/path-for :org/view {:org/id id})} (:org/title value)]]
+     [:h1.text-xl [:a {:href (routes/path-for :org/view {:org/id id})} (:entity/title value)]]
      [:div.rough-icon-button
       {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                 title "?"))
@@ -305,8 +329,7 @@
        [:section
         [:h3 :tr/search]
         [:input.form-text
-         {:id "org-search"
-          :placeholder :tr/search-across-org
+         {:placeholder :tr/search-across-org
           :type "search"
           :on-input (fn [event] (-> event .-target .-value set-q!))
           :on-key-down (j/fn [^js {:keys [key]}]
@@ -325,17 +348,17 @@
       (into [:ul]
             (map (fn [board]
                    [:li [:a {:href (routes/path-for :board/view board)} ;; path-for knows which key it wants (:board/id)
-                         (:board/title board)]]))
+                         (:entity/title board)]]))
             (:board/_org value))]]))
 
 (ui/defview board:view [{:as b :board/keys [id]}]
   (let [value (ws/use-query! [:board/view {:board/id id}])]
     [:<>
-     [:h1 (:board/title value)]
+     [:h1 (:entity/title value)]
      [:p (-> value :entity/domain :domain/name)]
      [:blockquote
       [safe-html (-> value
-                     :board/description
+                     :entity/description
                      :text-content/string)]]
      ;; TODO - tabs
      [:div.rough-tabs {:class "w-100"}
@@ -344,7 +367,7 @@
        (into [:ul]
              (map (fn [proj]
                     [:li [:a {:href (routes/path-for :project/view proj)}
-                          (:project/title proj)]]))
+                          (:entity/title proj)]]))
              (:project/_board value))]
       [:div.rough-tab                                       ;; members
        [:a {:href (routes/path-for :board/register b)} :tr/new-member]
@@ -357,7 +380,7 @@
       [:div.rough-tab {:name "I18n"                         ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
                        :class "db"}
        [:ul                                                 ;; i18n stuff
-        [:li "suggested locales:" (str (:i18n/locale-suggestions value))]
+        [:li "suggested locales:" (str (:entity/locale-suggestions value))]
         [:li "default locale:" (str (:i18n/default-locale value))]
         [:li "extra-translations:" (str (:i18n/locale-dicts value))]]]]]))
 
@@ -380,14 +403,14 @@
 (ui/defview project:view [{:as p :project/keys [id]}]
   (let [value (ws/use-query! [:project/view {:project/id id}])]
     [:div
-     [:h1 (:project/title value)]
-     [:blockquote (:project/summary-text value)]
+     [:h1 (:entity/title value)]
+     [:blockquote (:entity/description value)]
      (when-let [badges (:project/badges value)]
        [:section [:h3 :tr/badges]
         (into [:ul]
               (map (fn [bdg] [:li (:badge/label bdg)]))
               badges)])
-     (when-let [vid (:project/video value)]
+     (when-let [vid (:entity/video value)]
        [:section [:h3 :tr/video]
         [video-field vid]])]))
 
