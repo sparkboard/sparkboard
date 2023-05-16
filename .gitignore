@@ -28,3 +28,6 @@ resources/public/js/**
 .db
 TODO.md
 dev/scratch
+cloudflare-mailer/*.pem
+cloudflare-mailer/*.txt
+cloudflare-mailer/.dev.vars

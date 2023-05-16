@@ -43,7 +43,8 @@
         "typescript": "^5.0.4",
         "use-sync-external-store": "1.2.0",
         "vh-sticky-table-header": "1.2.1",
-        "w3c-keyname": "^2.2.4"
+        "w3c-keyname": "^2.2.4",
+        "wrangler": "^2.20.0"
     },
     "devDependencies": {
         "shadow-cljs": "^2.22.10"
