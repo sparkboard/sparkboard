@@ -14,6 +14,7 @@
     [sparkboard.websockets :as ws]
     [promesa.core :as p]
     [yawn.hooks :as h :refer [use-state]]
+    [sparkboard.views.layouts :as layouts]
     [yawn.view :as v]
     [inside-out.forms :as forms]))
 
@@ -112,7 +113,7 @@
                            :account/password (?password :init "")}
                  :required [?email ?password]]
     (let [!step (h/use-state :email)]
-      [:form.p-4.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md
+      [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md.p-4
        {:on-submit (fn [^js e]
                      (.preventDefault e)
                      (case @!step
@@ -138,19 +139,14 @@
        [account:sign-in-with-google]
        [account:sign-in-terms]])))
 
-(ui/defview account:sign-in [params]
-  [:div.grid.md:grid-cols-2
-   ;; left column
-   [:div.hidden.md:block.text-2xl.bg-no-repeat
-    {:class ["bg-blend-darken bg-zinc-50 bg-center"]
-     :style {:background-size "100px"
-             :background-image (ui/css-url ui/logo-url)}}]
-   ;; right column
-   [:div.flex.flex-col.h-screen.shadow-sm.relative
-    [:div.flex.flex-grow
-     [account:sign-in-form params]]
-    [:div.p-4.flex.justify-end
-     [header:lang]]]])
+(ui/defview ^:no-header account:sign-in [params]
+  (layouts/two-col
+   [:img.mx-auto {:class "my-6 w-1/4 md:w-1/2"
+                  :src ui/logo-url}]
+   [:div.p-4.flex.justify-end
+    [header:lang]]
+   [:div.flex.flex-grow
+    [account:sign-in-form params]]))
 
 (defn search-icon []
   (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
@@ -162,15 +158,10 @@
                          :wrapper-class "flex-grow sm:flex-none"
                          :postfix (search-icon)}))
 
-(defn entity-path [{:entity/keys [kind id]}]
-  (routes/path-for (keyword (name kind) "view")
-                   (keyword (name kind) "id")
-                   id))
-
-(defn card [{:entity/keys [title description images kind]}]
+(defn card [{:as entity :entity/keys [title description images kind]}]
   (let [{:image/keys [logo-url background-url]} images]
     [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card
-     {:href (routes/path-for :org/view org)
+     {:href (routes/entity entity :view)
       :class "pt-[100px]"}
      [:div.absolute.inset-0.bg-cover.bg-center.h-24
       {:style {:background-image (ui/css-url background-url)}}]
@@ -196,23 +187,16 @@
             (comp
               (filter #(or (nil? @?filter)
                            (re-find (re-pattern @?pattern) (:entity/title %))))
-              (map (fn [{:as org {:image/keys [logo-url background-url]} :entity/images}]
-                     [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card
-                      {:href (routes/path-for :org/view org)
-                       :class "pt-[100px]"}
-                      [:div.absolute.inset-0.bg-cover.bg-center.h-24
-                       {:style {:background-image (ui/css-url background-url)}}]
-                      [:div.absolute.inset-0.m-3.h-10.w-10.bg-white.bg-center.bg-contain.rounded
-                       {:style {:background-image (ui/css-url logo-url)}}]
-                      [:div.font-medium.text-lg (:entity/title org)]
-                      (ui/pprinted org)
-                      ])))
+              (map card))
             (ws/use-query! :org/index))]]))
+
+(ui/defview redirect [to]
+  (h/use-effect #(routes/set-path! to)))
 
 (ui/defview home [params]
   (if (db/get :env/account)
-    [org:index params]
-    [account:sign-in params]))
+     [org:index params]
+     (redirect (routes/path-for :account/sign-in params))))
 
 (defn domain-valid-chars [v _]
   (when (and v (not (re-matches #"^[a-z0-9-]+$" v)))
@@ -233,9 +217,9 @@
       (forms/debounce 1000)))
 
 (comment
-  (routes/set-path! :org/new)
-  (routes/set-path! :org/index)
-  (routes/set-path! :org/view {:org/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
+ (routes/set-path! :org/new)
+ (routes/set-path! :org/index)
+ (routes/set-path! :org/view {:entity/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
 
 (ui/defview org:new [params]
   ;; TODO
@@ -283,22 +267,22 @@
      (ui/show-field ?title)
      [:button {:on-click #(p/let [res (routes/POST route @!board '[*])]
                             (when-not (:error res)
-                              (routes/set-path! [:org/view {:org/id (:org/id params)}])
+                              (routes/set-path! [:org/view {:entity/id (:entity/id params)}])
                               ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                               ))}
       :tr/create]]))
 
-(ui/defview project:new [{:as params :keys [route board/id]}]
+(ui/defview project:new [{:as params :keys [route entity/id]}]
   (ui/with-form [!project {:entity/title ?title}]
     [:div
      [:h3 :tr/new-project]
      (ui/show-field ?title)
      [:button {:on-click #(p/let [res (routes/POST route @!project)]
                             (when-not (:error res)
-                              (routes/set-path! [:board/view {:board/id (:board/id params)}])))}
+                              (routes/set-path! [:board/view {:entity/id (:entity/id params)}])))}
       :tr/create]]))
 
-(ui/defview board:register [{:as params :keys [route board/id]}]
+(ui/defview board:register [{:as params :keys [route entity/id]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 :tr/register]
@@ -306,22 +290,22 @@
      (ui/show-field ?pass)
      [:button {:on-click #(p/let [res (routes/POST route @!member)]
                             (when (http-ok? res)
-                              (routes/set-path! [:board/view {:board/id (:board/id params)}])
+                              (routes/set-path! [:board/view {:entity/id (:entity/id params)}])
                               res))}
       :tr/register]]))
 
-(ui/defview org:view [{:as params :keys [entity/title org/id query-params]}]
-  (let [value (ws/use-query! [:org/view {:org/id id}])
+(ui/defview org:view [{:as params :keys [entity/title entity/id query-params]}]
+  (let [value (ws/use-query! [:org/view {:entity/id id}])
         [query-params set-query-params!] (use-state query-params)
-        search-result (ws/use-query! [:org/search {:org/id id
+        search-result (ws/use-query! [:org/search {:entity/id id
                                                    :query-params query-params}])
         [pending? start-transition] (react/useTransition)]
     [:div
-     [:h1.text-xl [:a {:href (routes/path-for :org/view {:org/id id})} (:entity/title value)]]
+     [:h1.text-xl [:a {:href (routes/path-for :org/view {:entity/id id})} (:entity/title value)]]
      [:div.rough-icon-button
       {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                 title "?"))
-                    (routes/POST :org/delete {:org/id id}))}
+                    (routes/POST :org/delete {:entity/id id}))}
       "X"]
      [:a {:href (routes/path-for :board/new params)} :tr/new-board]
      [:p (-> value :entity/domain :domain/name)]
@@ -351,8 +335,8 @@
                          (:entity/title board)]]))
             (:board/_org value))]]))
 
-(ui/defview board:view [{:as b :board/keys [id]}]
-  (let [value (ws/use-query! [:board/view {:board/id id}])]
+(ui/defview board:view [{:as b :keys [:entity/id]}]
+  (let [value (ws/use-query! [:board/view {:entity/id id}])]
     [:<>
      [:h1 (:entity/title value)]
      [:p (-> value :entity/domain :domain/name)]
@@ -400,8 +384,8 @@
   (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
   )
 
-(ui/defview project:view [{:as p :project/keys [id]}]
-  (let [value (ws/use-query! [:project/view {:project/id id}])]
+(ui/defview project:view [{:as p :keys [:entity/id]}]
+  (let [value (ws/use-query! [:project/view {:entity/id id}])]
     [:div
      [:h1 (:entity/title value)]
      [:blockquote (:entity/description value)]
@@ -414,8 +398,8 @@
        [:section [:h3 :tr/video]
         [video-field vid]])]))
 
-(ui/defview member:view [{:as mbr :member/keys [id]}]
-  (let [value (ws/use-query! [:member/view {:member/id id}])]
+(ui/defview member:view [{:as mbr :keys [:entity/id]}]
+  (let [value (ws/use-query! [:member/view {:entity/id id}])]
     [:div
      [:h1 (:member/name value)]
      (when-let [tags (seq (concat (:member/tags value)

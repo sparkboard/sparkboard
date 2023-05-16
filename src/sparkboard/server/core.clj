@@ -53,10 +53,9 @@
                      (log/error (ex-message e)
                                 (ex-data e)
                                 (ex-cause e)))
-                   (let [{:keys [status body response]} (ex-data e)]
-                     (or response
-                         {:status (or status 500)
-                          :body (or body (ex-message e))})))]
+                   (let [{:as data :keys [wrap-response] :or {wrap-response identity}} (ex-data e)]
+                     (-> (server.html/error e data)
+                         wrap-response)))]
     (fn [req]
       (log/info :req req)
       (log/info :URI (:uri req))
@@ -85,7 +84,7 @@
 #_(memo/clear-memo! $resolve-ref)
 
 (defn serve-markdown [_ {:keys [file/name]}]
-  (server.html/static-html (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
+  (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
 (def route-handler
   (fn [{:as req :keys [uri]}]
@@ -109,7 +108,7 @@
         (and post (= method :post)) (apply post req params (:body-params req))
 
         (and query data-req?) (some-> (query params) deref ring.http/ok)
-        (or query view) (server.html/single-page-html
+        (or query view) (server.html/app-page
                           {:tx [(assoc env/client-config :db/id :env/config)
                                 (assoc (:account req) :db/id :env/account)]})
 

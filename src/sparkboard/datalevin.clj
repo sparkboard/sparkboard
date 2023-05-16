@@ -24,14 +24,14 @@
                                           sch/string)})
 
 
- (->> (db/where [:org/id])
+ (->> (db/where [:entity/id])
       (map (db/pull '[*
                       :db/id
                       #_{:org/default-board-template [*]}
                       {:entity/domain [*]}
                       {:entity/created-by [*]}])))
 
- (->> (db/where [[:org/id "postcovid"]])
+ (->> (db/where [[:entity/id "postcovid"]])
       (map (db/pull '[*
                       :db/id
                       :entity/title
@@ -49,10 +49,10 @@
   "Predicate fn, handy for search. Truthy iff given entity `ent` is within the organization identified by ID `oid`."
   ;; FIXME this may be a dead-end approach. consider implementing with datalog rules. however, also consider design ramifications of `search` instead of `q`.
   [oid ent]
-  (or (-> ent :org/id #{oid})
-      (-> ent :board/org :org/id #{oid})
-      (-> ent :member/board :board/org :org/id #{oid})
-      (-> ent :project/board :board/org :org/id #{oid})))
+  (or (-> ent :entity/id #{oid})
+      (-> ent :board/org :entity/id #{oid})
+      (-> ent :member/board :board/org :entity/id #{oid})
+      (-> ent :project/board :board/org :entity/id #{oid})))
 
 (defn q-fulltext
   "Query using fulltext search on given String of `terms`.
@@ -108,25 +108,25 @@
  ;; mutations. Now they need to go away.
 
  ;; See all orgs so I can pick out the ones to delete
- (->> (db/where [:org/id])
+ (->> (db/where [:entity/id])
       (mapv (db/pull '[*])))
 
  ;; Get entity for an org
  (dl/q '[:find ?e .
          :in $ ?org-id
-         :where [?e :org/id ?org-id]]
+         :where [?e :entity/id ?org-id]]
        (dl/db conn)
        "30073ee5-ce10-43c8-ae1f-145d84e7a3ee")
 
  ;; Delete it
- (let [org {:org/id "30073ee5-ce10-43c8-ae1f-145d84e7a3ee",
+ (let [org {:entity/id "30073ee5-ce10-43c8-ae1f-145d84e7a3ee",
             :entity/title "dave4",
             :entity/created-by {:db/id 130077}}
        eid (dl/q '[:find ?e .
                    :in $ ?org-id
-                   :where [?e :org/id ?org-id]]
+                   :where [?e :entity/id ?org-id]]
                  (dl/db conn)
-                 (:org/id org))]
+                 (:entity/id org))]
    (db/transact! [[:db.fn/retractEntity eid]]))
 
  ;; FIXME fails if entity does not exist / has already been deleted

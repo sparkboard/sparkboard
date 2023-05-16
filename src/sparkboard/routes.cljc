@@ -4,7 +4,7 @@
             #?(:cljs [yawn.view :as v])
             #?(:cljs [yawn.hooks :as hooks])
             [applied-science.js-interop :as j]
-            [bidi.bidi :as bidi]
+            [bidi.bidi :as bidi :refer [uuid]]
             [sparkboard.transit :as t]
             [re-db.api :as db]
             [re-db.reactive :as r]
@@ -16,6 +16,8 @@
             [sparkboard.util :as u]
             [sparkboard.impl.routes :as impl :refer [E]])
   #?(:cljs (:require-macros [sparkboard.routes])))
+
+(def ENTITY-ID [bidi/uuid :entity/id])
 
 (r/redef !routes
   "Route definitions.
@@ -36,6 +38,7 @@
                           "link-complete" (E :slack/link-complete
                                              {:view `slack.client/link-complete})}
                "/login" (E :account/sign-in {:view `views/account:sign-in
+                                             :header? false
                                              :post 'sparkboard.server.accounts/login-handler
                                              :public true})
                "/logout" (E :account/logout {:handler 'sparkboard.server.accounts/logout-handler
@@ -52,17 +55,17 @@
                      "/create" (E :org/new
                                   {:view `views/org:new
                                    :post `server.db/org:new})
-                     ["/" :org/id] {"" (E :org/view
-                                          {:query `server.db/$org:view
-                                           :view `views/org:view})
-                                    "/delete" (E :org/delete
-                                                 {:post `server.db/org:delete})
-                                    "/create-board" (E :board/new
-                                                       {:view `views/board:new
-                                                        :post `server.db/board:new})
-                                    "/search" (E :org/search
-                                                 {:query `server.db/$search})}}
-               ["/b/" :board/id] {"" (E :board/view
+                     ["/" ENTITY-ID] {"" (E :org/view
+                                            {:query `server.db/$org:view
+                                             :view `views/org:view})
+                                      "/delete" (E :org/delete
+                                                   {:post `server.db/org:delete})
+                                      "/create-board" (E :board/new
+                                                         {:view `views/board:new
+                                                          :post `server.db/board:new})
+                                      "/search" (E :org/search
+                                                   {:query `server.db/$search})}}
+               ["/b/" ENTITY-ID] {"" (E :board/view
                                         {:query `server.db/$board:view
                                          :view `views/board:view})
                                   "/projects/new" (E :project/new
@@ -71,12 +74,12 @@
                                   "/register" (E :board/register
                                                  {:view `views/board:register
                                                   :post `server.db/board:register})}
-               ["/p/" :project/id] (E :project/view
-                                      {:query `server.db/$project:view
-                                       :view `views/project:view})
-               ["/m/" :member/id] (E :member/view
-                                     {:query `server.db/$member:view
-                                      :view `views/member:view})}]))
+               ["/p/" ENTITY-ID] (E :project/view
+                                    {:query `server.db/$project:view
+                                     :view `views/project:view})
+               ["/m/" ENTITY-ID] (E :member/view
+                                    {:query `server.db/$member:view
+                                     :view `views/member:view})}]))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
@@ -87,6 +90,11 @@
                 :else (bidi/path-for @!routes route options))
           (:query options)
           (-> (query-params/merge-query (:query options)) :path)))
+
+(defn entity [{:as e :entity/keys [kind id]} key]
+  (when e
+    (prn :entity e)
+    (path-for (keyword (name kind) (name key)) :entity/id id)))
 
 (defn match-path
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"

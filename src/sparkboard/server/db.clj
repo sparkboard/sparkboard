@@ -26,43 +26,43 @@
        (r/reaction ~@body))))
 
 (defquery $org:index [_]
-  (->> (db/where [:org/id])
+  (->> (db/where [:entity/id])
        (mapv (re-db.api/pull '[*]))))
 
 (comment
-  (db/transact! [{:org/id (str (rand-int 10000))
+  (db/transact! [{:entity/id (str (rand-int 10000))
                  :entity/title (str (rand-int 10000))}]))
 
-(defquery $org:view [{:keys [org/id]}]
-  (db/pull '[:org/id
+(defquery $org:view [{:keys [entity/id]}]
+  (db/pull '[:entity/id
              :entity/title
              {:board/_org [:entity/created-at
-                           :board/id
+                           :entity/id
                            :entity/title]}
              {:entity/domain [:domain/name]}]
-           [:org/id id]))
+           [:entity/id id]))
 
-(defquery $board:view [{:keys [board/id]}]
+(defquery $board:view [{:keys [entity/id]}]
   (db/pull '[*
              :entity/title
              :board/registration-open?
              :entity/title
              {:project/_board [*]}
-             {:board/org [:entity/title :org/id]}
+             {:board/org [:entity/title :entity/id]}
              {:member/_board [*]}
              {:entity/domain [:domain/name]}]
-           [:board/id id]))
+           [:entity/id id]))
 
-(defquery $project:view [{:keys [project/id]}]
-  (db/pull '[*] [:project/id id]))
+(defquery $project:view [{:keys [entity/id]}]
+  (db/pull '[*] [:entity/id id]))
 
-(defquery $member:view [{:keys [member/id]}]
+(defquery $member:view [{:keys [entity/id]}]
   (dissoc (db/pull '[*
                      {:member/tags [*]}]
-                   [:member/id id])
+                   [:entity/id id])
           :member/password))
 
-(defquery $search [{:keys [query-params org/id]}]
+(defquery $search [{:keys [query-params entity/id]}]
   (->> (sd/q-fulltext-in-org (:q query-params)
                              id)
        ;; Can't send Entities over the wire, so:
@@ -90,7 +90,7 @@
   (sv/assert project [:map {:closed true} :entity/title])
   ;; auth: user is member of board & board allows members to create projects
   (db/transact! [(-> project
-                     (assoc :project/board [:entity/id (:board/id params)])
+                     (assoc :project/board [:entity/id (:entity/id params)])
                      (sd/new-entity :by (:db/id (:account req))))]))
 
 (defn board:new
@@ -99,7 +99,7 @@
   ;; auth: user is admin of org
   (db/transact!
    [(-> board
-        (assoc :board/org [:entity/id (:org/id params)])
+        (assoc :board/org [:entity/id (:entity/id params)])
         (sd/new-entity :by (:db/id (:account req))))])
   (db/pull pull))
 
@@ -112,17 +112,17 @@
                           [:entity/domain [:map {:closed true}
                                            [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
         org (sd/new-entity org
-              :by (:db/id account)
-              :legacy-id :org/id)]
+                           :by (:db/id account)
+                           :legacy-id :entity/id)]
     (db/transact! [org])
     {:body org}))
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  [_req {:keys [org/id]}]
+  [_req {:keys [entity/id]}]
   ;; auth: user is admin of org
   ;; todo: retract org and all its boards, projects, etc.?
-  (db/transact! [[:db.fn/retractEntity [:org/id id]]])
+  (db/transact! [[:db.fn/retractEntity [:entity/id id]]])
   {:body ""})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

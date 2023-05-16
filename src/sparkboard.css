@@ -128,7 +128,7 @@
         @apply
         inline-flex items-center justify-center cursor-pointer
         font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none
-        rounded-md px-3 focus-visible:outline-none text-sm
+        rounded-md px-3 focus-visible:outline-none text-sm no-underline
     }
 
     .btn-light {

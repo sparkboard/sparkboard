@@ -468,7 +468,7 @@
 (def sb-org
   {:org/show-org-tab? {:doc "Boards should visibly link to this parent organization"
                        s- :boolean}
-   :org/id unique-string-id
+   :entity/id unique-string-id
    :org/default-board-template (merge {:doc "Default template (a board with :board/is-template? true) for new boards created within this org"}
                                       (ref :one))
    :org/as-map {s- [:map {:closed true}
@@ -790,7 +790,7 @@
   (some entity-schemas (keys m)))
 
 ;; previously used - relates to :notification/subject-viewed?
-(def notification-subjects {:notification.type/new-project-member :project/id
+(def notification-subjects {:notification.type/new-project-member :entity/id
                             :notification.type/new-thread-message :thread/id
                             :notification.type/new-discussion-post :post/id
                             :notification.type/new-post-comment :post/id})

@@ -89,7 +89,7 @@ Here are all the identifiers in our schema: " (keys schema/sb-schema) ". Here is
       (d/q (d/db conn) ?helper)))
 
 (comment
- (-> (db/where [:board/id]) first :entity/created-at get-year)
+ (-> (db/where [:entity/id]) first :entity/created-at get-year)
  (query 3 "Find all the projects in board 'X'.")
  (query 3 "List all board names and their ids.")
  (query 4 "List boards whose names contain \"Waterloo\"")

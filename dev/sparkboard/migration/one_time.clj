@@ -1134,7 +1134,7 @@
  (db/transact! (mapcat sschema/unique-keys entities))
  (db/transact! entities)
 
- (count (filter :member/id (mapcat sschema/unique-keys entities)))
+ (count (filter :entity/id (mapcat sschema/unique-keys entities)))
  ;; transact lookup refs first,
 
  ;; ;; then transact everything else

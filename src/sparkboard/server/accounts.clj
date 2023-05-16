@@ -100,9 +100,10 @@
 (defn account-not-found! [account-id]
   (throw
    (ex-info (str "Account not found: " account-id)
-            {:response (-> (ring.response/redirect "/")
-                           res:logout
-                           (flash! :tr/account-not-found))})))
+            {:status 401
+             :wrap-response res:logout
+             :title "Account not found"
+             :detail (str {:account-id account-id})})))
 
 (defn wrap-account-lookup [handler]
   (fn [req]
