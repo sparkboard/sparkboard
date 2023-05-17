@@ -1,22 +1,22 @@
 (ns sparkboard.client.views
   (:require
-   ["react" :as react]
-   ["@radix-ui/react-dropdown-menu" :as dm]
-   [applied-science.js-interop :as j]
-   [clojure.pprint :refer [pprint]]
-   [inside-out.forms :as forms :refer [with-form]]
-   [re-db.api :as db]
-   [re-db.reactive :as r]
-   [sparkboard.client.sanitize :refer [safe-html]]
-   [sparkboard.i18n :as i18n :refer [tr]]
-   [sparkboard.routes :as routes]
-   [sparkboard.views.ui :as ui]
-   [sparkboard.websockets :as ws]
-   [promesa.core :as p]
-   [yawn.hooks :as h :refer [use-state]]
-   [sparkboard.views.layouts :as layouts]
-   [yawn.view :as v]
-   [inside-out.forms :as forms]))
+    ["react" :as react]
+    ["@radix-ui/react-dropdown-menu" :as dm]
+    [applied-science.js-interop :as j]
+    [clojure.pprint :refer [pprint]]
+    [inside-out.forms :as forms :refer [with-form]]
+    [re-db.api :as db]
+    [re-db.reactive :as r]
+    [sparkboard.client.sanitize :refer [safe-html]]
+    [sparkboard.i18n :as i18n :refer [tr]]
+    [sparkboard.routes :as routes]
+    [sparkboard.views.ui :as ui]
+    [sparkboard.websockets :as ws]
+    [promesa.core :as p]
+    [yawn.hooks :as h :refer [use-state]]
+    [sparkboard.views.layouts :as layouts]
+    [yawn.view :as v]
+    [inside-out.forms :as forms]))
 
 ;; TODO
 ;; - separate register screen
@@ -88,25 +88,25 @@
 
 (defn account:sign-in-with-google []
   (ui/x
-   [:a.btn.btn-light
-    {:class "w-full h-10 text-zinc-500 text-sm"
-     :href (routes/path-for :oauth2.google/launch)}
-    [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
+    [:a.btn.btn-light
+     {:class "w-full h-10 text-zinc-500 text-sm"
+      :href (routes/path-for :oauth2.google/launch)}
+     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
 
 (defn account:sign-in-terms []
   (ui/x
-   [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
-    [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
-    [:a.gray-link {:target "_blank"
-                   :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
-    :tr/and
-    [:a.gray-link {:target "_blank"
-                   :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
+    [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
+     [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
+     [:a.gray-link {:target "_blank"
+                    :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
+     :tr/and
+     [:a.gray-link {:target "_blank"
+                    :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
 
 (comment
- (p/-> (routes/POST :account/sign-in {:account/email ""
-                                      :account/password "123123123"})
-       js/console.log))
+  (p/-> (routes/POST :account/sign-in {:account/email ""
+                                       :account/password "123123123"})
+        js/console.log))
 
 (ui/defview account:sign-in-form [{:keys [route]}]
   (ui/with-form [!account {:account/email (?email :init "")
@@ -141,22 +141,29 @@
 
 (ui/defview ^:no-header account:sign-in [params]
   (layouts/two-col
-   [:img.mx-auto {:class "my-6 w-1/4 md:w-1/2"
-                  :src ui/logo-url}]
-   [:div.p-4.flex.justify-end
-    [header:lang]]
-   [:div.flex.flex-grow
-    [account:sign-in-form params]]))
+    [:img.mx-auto {:class "my-6 w-1/4 md:w-1/2"
+                   :src ui/logo-url}]
+    [:div.p-4.flex.justify-end
+     [header:lang]]
+    [:div.flex.flex-grow
+     [account:sign-in-form params]]))
 
 (defn search-icon []
   (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
         {:xmlns "http://www.w3.org/2000/svg"}
         [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
 
-(defn filter-input [?field]
-  (ui/show-field ?field {:class "pr-9"
-                         :wrapper-class "flex-grow sm:flex-none"
-                         :postfix (search-icon)}))
+(defn loading-icon []
+  ;; todo
+  "L")
+
+(defn filter-input [?field & [attrs]]
+  (ui/show-field ?field (merge {:class "pr-9"
+                                :wrapper-class "flex-grow sm:flex-none"
+                                :postfix (if (:loading? attrs)
+                                           (loading-icon)
+                                           (search-icon))}
+                               (dissoc attrs :loading? :error))))
 
 (defn title-card [{:as entity :entity/keys [title description images kind]}]
   (let [{:image/keys [logo-url background-url]} images]
@@ -174,22 +181,17 @@
 (ui/defview org:index [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
     [:<>
-     [:div.border-b.border-secondary.px-body.py-3.gap-3.flex.items-stretch
-      [:h3.inline-flex.items-center.hidden.sm:inline-flex.flex-grow :tr/orgs]
+     [:div.entity-header
+      [:h3.header-title :tr/orgs]
       [filter-input ?filter]
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
-     ;; New Org button
-     ;; format cards (show background image and logo)
-     ;; :org/new view
-     ;; :org/settings view
-     [:div.p-body.text-card-foreground
-      (into [:div.grid.grid-cols-4.gap-body]
-            (comp
+     (into [:div.card-grid]
+           (comp
              (filter (if @?filter
                        #(re-find (re-pattern @?pattern) (:entity/title %))
                        identity))
              (map title-card))
-            (ws/use-query! :org/index))]]))
+           (ws/use-query! :org/index))]))
 
 (ui/defview redirect [to]
   (h/use-effect #(routes/set-path! to)))
@@ -218,9 +220,9 @@
       (forms/debounce 1000)))
 
 (comment
- (routes/set-path! :org/new)
- (routes/set-path! :org/index)
- (routes/set-path! :org/view {:entity/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
+  (routes/set-path! :org/new)
+  (routes/set-path! :org/index)
+  (routes/set-path! :org/view {:entity/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
 
 (ui/defview org:new [params]
   ;; TODO
@@ -243,7 +245,7 @@
                    (forms/try-submit+ !org
                      (p/let [result (routes/POST :org/new @!org)]
                        (when-not (:error result)
-                         (routes/set-path! :org/view result))
+                         (routes/set-path! :org/view {:org (:entity/id result)}))
                        result)))}
 
      [:h2.text-2xl :tr/new-org]
@@ -268,22 +270,22 @@
      (ui/show-field ?title)
      [:button {:on-click #(p/let [res (routes/POST route @!board '[*])]
                             (when-not (:error res)
-                              (routes/set-path! [:org/view {:entity/id (:entity/id params)}])
+                              (routes/set-path! :org/view params)
                               ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                               ))}
       :tr/create]]))
 
-(ui/defview project:new [{:as params :keys [route entity/id]}]
+(ui/defview project:new [{:as params :keys [route]}]
   (ui/with-form [!project {:entity/title ?title}]
     [:div
      [:h3 :tr/new-project]
      (ui/show-field ?title)
      [:button {:on-click #(p/let [res (routes/POST route @!project)]
                             (when-not (:error res)
-                              (routes/set-path! [:board/view {:entity/id (:entity/id params)}])))}
+                              (routes/set-path! [:board/view params])))}
       :tr/create]]))
 
-(ui/defview board:register [{:as params :keys [route entity/id]}]
+(ui/defview board:register [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 :tr/register]
@@ -291,53 +293,92 @@
      (ui/show-field ?pass)
      [:button {:on-click #(p/let [res (routes/POST route @!member)]
                             (when (http-ok? res)
-                              (routes/set-path! [:board/view {:entity/id (:entity/id params)}])
+                              (routes/set-path! [:board/view params])
                               res))}
       :tr/register]]))
 
-(ui/defview org:view [{:as params :keys [entity/title entity/id query-params]}]
-  (let [value (ws/use-query! [:org/view {:entity/id id}])
-        [query-params set-query-params!] (use-state query-params)
-        search-result (ws/use-query! [:org/search {:entity/id id
-                                                   :query-params query-params}])
-        [pending? start-transition] (react/useTransition)]
-    [:div
-     [:h1.text-xl [:a {:href (routes/path-for :org/view {:entity/id id})} (:entity/title value)]]
-     [:div.rough-icon-button
-      {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                title "?"))
-                    (routes/POST :org/delete {:entity/id id}))}
-      "X"]
-     [:a {:href (routes/path-for :board/new params)} :tr/new-board]
-     [:p (-> value :entity/domain :domain/name)]
-     (let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
-       [:section
-        [:h3 :tr/search]
-        [:input.form-text
-         {:placeholder :tr/search-across-org
-          :type "search"
-          :on-input (fn [event] (-> event .-target .-value set-q!))
-          :on-key-down (j/fn [^js {:keys [key]}]
-                         (when (= key "Enter")
-                           (start-transition
-                            #(-> {:q (when (<= 3 (count q)) q)}
-                                 routes/merge-query!
-                                 set-query-params!))))
-          :value (or q "")}]
-        (when pending? [:div "Loading..."])
-        (into [:ul]
-              (map (comp (partial vector :li)
-                         str))
-              search-result)])
-     [:section [:h3 :tr/boards]
-      (into [:ul]
-            (map (fn [board]
-                   [:li [:a {:href (routes/path-for :board/view board)} ;; path-for knows which key it wants (:board/id)
-                         (:entity/title board)]]))
-            (:board/_org value))]]))
+(defn use-debounced-value [value wait]
+  (let [!state (h/use-state value)
+        !mounted (h/use-ref false)
+        !timeout (h/use-ref nil)
+        !cooldown (h/use-ref false)
+        cancel #(some->  @!timeout js/clearTimeout)]
+    (h/use-effect
+      (fn []
+        (when @!mounted
+          (if @!cooldown
+            (do (cancel)
+                (reset! !timeout
+                        (js/setTimeout
+                          #(do (reset! !cooldown false)
+                               (reset! !state value))
+                          wait)))
+            (do
+              (reset! !cooldown true)
+              (reset! !state value)))))
+      [value wait])
+    (h/use-effect
+      (fn []
+        (reset! !mounted true)
+        cancel))
+    @!state))
 
-(ui/defview board:view [{:as b :keys [:entity/id]}]
-  (let [value (ws/use-query! [:board/view {:entity/id id}])]
+(ui/defview org:view [params]
+  (ui/with-form [?pattern (when (> (count ?filter) 2)
+                            ?filter)]
+    (let [{:keys [entity/title]} (ws/use-query! [:org/view params])
+          {search-result :value :keys [error loading?]} (-> @(ws/$query [:org/search (assoc params :q @?pattern)])
+                                                            (use-debounced-value 300))]
+      [:div
+       [:div.entity-header
+        [:h3.header-title title]
+        [:div
+         ;; TODO settings icon
+         {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                   title "?"))
+                       (routes/POST :org/delete params))}
+         "X"]
+        [filter-input ?filter {:loading? loading? :error error
+                               :on-change (fn [^js e]
+                                            (reset! ?filter (.. e -target -value)))}]
+        [:a.btn.btn-light {:href (routes/path-for :board/new params)} :tr/new-board]]
+       [:div.p-body.whitespace-pre
+        (ui/pprinted search-result)]
+       #_(into [:div.card-grid]
+               (comp
+                 (filter (if @?filter
+                           #(re-find (re-pattern @?pattern) (:entity/title %))
+                           identity))
+                 (map title-card))
+               (ws/use-query! :org/index))
+
+       #_(let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
+           [:section
+            [:h3 :tr/search]
+            [:input.form-text
+             {:placeholder :tr/search-across-org
+              :type "search"
+              :on-input (fn [event] (-> event .-target .-value set-q!))
+              :on-key-down (j/fn [^js {:keys [key]}]
+                             (when (= key "Enter")
+                               (start-transition
+                                 #(when (<= 3 (count q))
+                                    (reset! ?filter q)))))
+              :value (or q "")}]
+            (when pending? [:div "Loading..."])
+            (into [:ul]
+                  (map (comp (partial vector :li)
+                             str))
+                  search-result)])
+       #_[:section [:h3 :tr/boards]
+          (into [:ul]
+                (map (fn [board]
+                       [:li [:a {:href (routes/entity board :view)} ;; path-for knows which key it wants (:board/id)
+                             (:entity/title board)]]))
+                (:board/_org value))]])))
+
+(ui/defview board:view [params]
+  (let [value (ws/use-query! [:board/view params])]
     [:<>
      [:h1 (:entity/title value)]
      [:p (-> value :entity/domain :domain/name)]
@@ -348,18 +389,18 @@
      ;; TODO - tabs
      [:div.rough-tabs {:class "w-100"}
       [:div.rough-tab                                       ;; projects
-       [:a {:href (routes/path-for :project/new b)} :tr/new-project]
+       [:a {:href (routes/path-for :project/new params)} :tr/new-project]
        (into [:ul]
              (map (fn [proj]
-                    [:li [:a {:href (routes/path-for :project/view proj)}
+                    [:li [:a {:href (routes/path-for :project/view {:project (:entity/id proj)})}
                           (:entity/title proj)]]))
              (:project/_board value))]
       [:div.rough-tab                                       ;; members
-       [:a {:href (routes/path-for :board/register b)} :tr/new-member]
+       [:a {:href (routes/path-for :board/register params)} :tr/new-member]
        (into [:ul]
              (map (fn [member]
                     [:li
-                     [:a {:href (routes/path-for :member/view member)}
+                     [:a {:href (routes/path-for :member/view {:member (:entity/id member)})}
                       (:member/name member)]]))
              (:member/_board value))]
       [:div.rough-tab {:name "I18n"                         ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
@@ -382,11 +423,11 @@
     {kind v}))
 
 (comment
- (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
- )
+  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
+  )
 
-(ui/defview project:view [{:as p :keys [:entity/id]}]
-  (let [value (ws/use-query! [:project/view {:entity/id id}])]
+(ui/defview project:view [params]
+  (let [value (ws/use-query! [:project/view params])]
     [:div
      [:h1 (:entity/title value)]
      [:blockquote (:entity/description value)]
@@ -399,8 +440,8 @@
        [:section [:h3 :tr/video]
         [video-field vid]])]))
 
-(ui/defview member:view [{:as mbr :keys [:entity/id]}]
-  (let [value (ws/use-query! [:member/view {:entity/id id}])]
+(ui/defview member:view [params]
+  (let [value (ws/use-query! [:member/view params])]
     [:div
      [:h1 (:member/name value)]
      (when-let [tags (seq (concat (:member/tags value)
@@ -421,8 +462,8 @@
 (ui/defview show-query [[id :as route]]
   (let [value (ws/use-query! route)
         value-str (yawn.hooks/use-memo
-                   (fn [] (with-out-str (pprint value)))
-                   (yawn.hooks/use-deps value))]
+                    (fn [] (with-out-str (pprint value)))
+                    (yawn.hooks/use-deps value))]
     [:pre value-str]))
 
 (ui/defview drawer [{:keys [initial-height]} child]

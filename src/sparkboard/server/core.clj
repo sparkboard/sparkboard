@@ -122,13 +122,10 @@
              (println e)
              {:error (ex-message e)})))
 
-(defn resolve-query [path-or-route]
-  (let [{:keys [route query]} (routes/match-path path-or-route)
-        [id & args] route]
-    (some-> query
-            deref
-            (apply (or (seq args) [{}]))
-            $txs)))
+(defn resolve-query [[_ params :as route]]
+  (let [{[_ matched-params] :route :keys [query]} (routes/match-path route)]
+    (when query
+      ($txs (@query (merge {} params matched-params))))))
 
 (def ws-options {:handlers (sync/query-handlers resolve-query)})
 

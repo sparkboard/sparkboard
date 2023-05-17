@@ -87,8 +87,7 @@
         font-feature-settings: "rlig" 1, "calt" 1;
     }
 }
-
-@layer components {
+@layer utilities {
     .px-body {
         @apply px-2 sm:px-6
     }
@@ -100,6 +99,8 @@
     .p-body {
         @apply p-2 sm:p-6
     }
+}
+@layer components {
 
     .gap-body {
         @apply gap-2 sm:gap-6
@@ -165,5 +166,14 @@
         outline-2
         outline-offset-0
     }
-
+    .entity-header {
+        @apply
+         border-b border-secondary px-body py-3 gap-3 flex items-stretch
+    }
+    .header-title {
+        @apply items-center hidden sm:inline-flex flex-grow
+    }
+    .card-grid {
+        @apply grid grid-cols-4 gap-body text-card-foreground p-body
+    }
 }

@@ -55,31 +55,31 @@
                      "/create" (E :org/new
                                   {:view `views/org:new
                                    :post `server.db/org:new})
-                     ["/" ENTITY-ID] {"" (E :org/view
-                                            {:query `server.db/$org:view
-                                             :view `views/org:view})
-                                      "/delete" (E :org/delete
-                                                   {:post `server.db/org:delete})
-                                      "/create-board" (E :board/new
-                                                         {:view `views/board:new
-                                                          :post `server.db/board:new})
-                                      "/search" (E :org/search
-                                                   {:query `server.db/$search})}}
-               ["/b/" ENTITY-ID] {"" (E :board/view
-                                        {:query `server.db/$board:view
-                                         :view `views/board:view})
-                                  "/projects/new" (E :project/new
-                                                     {:view `views/project:new
-                                                      :post `server.db/project:new})
-                                  "/register" (E :board/register
-                                                 {:view `views/board:register
-                                                  :post `server.db/board:register})}
-               ["/p/" ENTITY-ID] (E :project/view
-                                    {:query `server.db/$project:view
-                                     :view `views/project:view})
-               ["/m/" ENTITY-ID] (E :member/view
-                                    {:query `server.db/$member:view
-                                     :view `views/member:view})}]))
+                     ["/" [bidi/uuid :org]] {"" (E :org/view
+                                                   {:query `server.db/$org:view
+                                                    :view `views/org:view})
+                                             "/delete" (E :org/delete
+                                                          {:post `server.db/org:delete})
+                                             "/boards/new" (E :board/new
+                                                             {:view `views/board:new
+                                                              :post `server.db/board:new})
+                                             "/search" (E :org/search
+                                                          {:query `server.db/$org:search})}}
+               ["/b/" [bidi/uuid :board]] {"" (E :board/view
+                                                 {:query `server.db/$board:view
+                                                  :view `views/board:view})
+                                           "/projects/new" (E :project/new
+                                                              {:view `views/project:new
+                                                               :post `server.db/project:new})
+                                           "/register" (E :board/register
+                                                          {:view `views/board:register
+                                                           :post `server.db/board:register})}
+               ["/p/" [bidi/uuid :project]] (E :project/view
+                                               {:query `server.db/$project:view
+                                                :view `views/project:view})
+               ["/m/" [bidi/uuid :member]] (E :member/view
+                                              {:query `server.db/$member:view
+                                               :view `views/member:view})}]))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
@@ -93,10 +93,11 @@
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
-    (let [tag (keyword (name kind) (name key))]
-      (path-for tag :entity/id id))))
 
- (path-for :org/view :entity/id #uuid "5e36941b-3d85-3737-a815-16acd45edc50")
+    (let [tag (keyword (name kind) (name key))]
+      (path-for tag kind id))))
+
+
 (defn match-path
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
   [path]
@@ -135,8 +136,8 @@
            (if-let [p @!p]
              (throw p)
              (do (reset! !p (js/Promise.
-                             (fn [resolve reject]
-                               (lazy/load view resolve))))
+                              (fn [resolve reject]
+                                (lazy/load view resolve))))
                  (throw @!p))))))
 
      (defn set-path! [& args]

@@ -5,7 +5,8 @@
             [re-db.memo :as memo]
             [re-db.reactive :as r]
             [sparkboard.server.validate :as sv]
-            [sparkboard.datalevin :as sd]))
+            [sparkboard.datalevin :as sd]
+            [datalevin.core :as dl]))
 
 (defn qualify-domain [domain]
   (if (str/includes? domain ".")
@@ -31,43 +32,91 @@
 
 (comment
   (db/transact! [{:entity/id (str (rand-int 10000))
-                 :entity/title (str (rand-int 10000))}]))
+                  :entity/title (str (rand-int 10000))}]))
 
-(defquery $org:view [{:keys [entity/id]}]
+(defquery $org:view [params]
   (db/pull '[:entity/id
+             :entity/kind
              :entity/title
              {:board/_org [:entity/created-at
                            :entity/id
+                           :entity/kind
                            :entity/title]}
              {:entity/domain [:domain/name]}]
-           [:entity/id id]))
+           [:entity/id (:org params)]))
 
-(defquery $board:view [{:keys [entity/id]}]
-  (db/pull '[*
+(defquery $board:view [params]
+  (db/pull '[:entity/id
+             :entity/kind
              :entity/title
              :board/registration-open?
-             :entity/title
              {:project/_board [*]}
-             {:board/org [:entity/title :entity/id]}
+             {:board/org [:entity/id
+                          :entity/kind
+                          :entity/title]}
              {:member/_board [*]}
              {:entity/domain [:domain/name]}]
-           [:entity/id id]))
+           [:entity/id (:board params)]))
 
-(defquery $project:view [{:keys [entity/id]}]
-  (db/pull '[*] [:entity/id id]))
+(defquery $project:view [params]
+  (db/pull '[*] [:entity/id (:project params)]))
 
-(defquery $member:view [{:keys [entity/id]}]
+(defquery $member:view [params]
   (dissoc (db/pull '[*
                      {:member/tags [*]}]
-                   [:entity/id id])
+                   [:entity/id (:member params)])
           :member/password))
 
-(defquery $search [{:keys [query-params entity/id]}]
-  (->> (sd/q-fulltext-in-org (:q query-params)
-                             id)
-       ;; Can't send Entities over the wire, so:
-       (map (db/pull '[:entity/title]))))
+(defn org-search [{:keys [org q]}]
+  {:q q
+   :boards (dl/q '[:find (pull ?board [:entity/id
+                                       :entity/title
+                                       :entity/kind
+                                       {:entity/domain [:domain/name]}])
+                   :in $ ?terms ?org
+                   :where
+                   [?board :board/org ?org]
+                   [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]]
+                 @sd/conn
+                 q
+                 [:entity/id org])
+   :projects (dl/q '[:find (pull ?project [:entity/id
+                                           :entity/title
+                                           :entity/kind
+                                           {:project/board [:entity/id]}])
+                     :in $ ?terms ?org
+                     :where
+                     [?board :board/org ?org]
+                     [?project :project/board ?board]
+                     [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]]
+                   @sd/conn
+                   q
+                   [:entity/id org])})
 
+(memo/defn-memo $org:search [params] (r/reaction (org-search params)))
+
+(comment
+  ;; find boards in org by title
+  (->> (dl/q '[:find [?result ...] #_#_#_?board ?a ?v
+               :in $ ?terms ?o
+               :where
+               [?board :board/org ?o]
+               [(fulltext $ ?terms {:top 3}) [?result ...] #_[[?board ?a ?v]]]]
+             @sd/conn
+             "Hacking"
+             [:entity/id #uuid "5e36941b-3d85-3737-a815-16acd45edc50"]))
+
+  ;; projects in org by title
+  (time (->> (dl/q '[:find (pull ?project [:entity/title :entity/kind])
+                     :in $ ?terms ?org
+                     :where
+                     [?board :board/org ?org]
+                     [?project :project/board ?board]
+                     [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]]
+                   @sd/conn
+                   "diabetes"
+                   [:entity/id #uuid "5e36941b-3d85-3737-a815-16acd45edc50"])
+             #_(map (db/pull '[:entity/title :board/org])))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -97,9 +146,9 @@
   (sv/assert board [:map {:closed true} :entity/title])
   ;; auth: user is admin of org
   (db/transact!
-   [(-> board
-        (assoc :board/org [:entity/id (:entity/id params)])
-        (sd/new-entity :by (:db/id (:account req))))])
+    [(-> board
+         (assoc :board/org [:entity/id (:entity/id params)])
+         (sd/new-entity :by (:db/id (:account req))))])
   (db/pull pull))
 
 (defn org:new
