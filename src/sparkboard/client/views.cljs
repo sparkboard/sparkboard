@@ -302,7 +302,7 @@
         !mounted (h/use-ref false)
         !timeout (h/use-ref nil)
         !cooldown (h/use-ref false)
-        cancel #(some->  @!timeout js/clearTimeout)]
+        cancel #(some-> @!timeout js/clearTimeout)]
     (h/use-effect
       (fn []
         (when @!mounted
@@ -323,12 +323,16 @@
         cancel))
     @!state))
 
+(defn error-view [error]
+  (when error
+    [:div.text-destructive.p-body (str error)]))
+
 (ui/defview org:view [params]
   (ui/with-form [?pattern (when (> (count ?filter) 2)
                             ?filter)]
     (let [{:keys [entity/title]} (ws/use-query! [:org/view params])
-          {search-result :value :keys [error loading?]} (-> @(ws/$query [:org/search (assoc params :q @?pattern)])
-                                                            (use-debounced-value 300))]
+          result (when-let [pattern (use-debounced-value @?pattern 300)]
+                   @(ws/$query [:org/search (assoc params :q pattern)]))]
       [:div
        [:div.entity-header
         [:h3.header-title title]
@@ -338,12 +342,11 @@
                                                    title "?"))
                        (routes/POST :org/delete params))}
          "X"]
-        [filter-input ?filter {:loading? loading? :error error
-                               :on-change (fn [^js e]
-                                            (reset! ?filter (.. e -target -value)))}]
+        [filter-input ?filter {:loading? (:loading? result)}]
         [:a.btn.btn-light {:href (routes/path-for :board/new params)} :tr/new-board]]
+       [error-view (:error result)]
        [:div.p-body.whitespace-pre
-        (ui/pprinted search-result)]
+        (ui/pprinted (:value result))]
        #_(into [:div.card-grid]
                (comp
                  (filter (if @?filter

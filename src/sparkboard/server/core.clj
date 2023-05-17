@@ -115,14 +115,19 @@
         ;; query fns return reactions which must be wrapped in HTTP response maps
         :else (ring.http/not-found "Not found")))))
 
+
 (memo/defn-memo $txs [ref]
-  (r/catch (sync.entity/txs ref)
-           (fn [e]
-             (println "Error in $resolve-query")
-             (println e)
-             {:error (ex-message e)})))
+  (if (sync/watchable? ref)
+    (r/catch
+      (sync.entity/txs ref)
+      (fn [e]
+        (println "Error in $resolve-query")
+        (println e)
+        {:error (ex-message e)}))
+    ref))
 
 (defn resolve-query [[_ params :as route]]
+  (tap> [:resolve-query route])
   (let [{[_ matched-params] :route :keys [query]} (routes/match-path route)]
     (when query
       ($txs (@query (merge {} params matched-params))))))
