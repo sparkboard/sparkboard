@@ -93,9 +93,10 @@
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
-    (prn :entity e)
-    (path-for (keyword (name kind) (name key)) :entity/id id)))
+    (let [tag (keyword (name kind) (name key))]
+      (path-for tag :entity/id id))))
 
+ (path-for :org/view :entity/id #uuid "5e36941b-3d85-3737-a815-16acd45edc50")
 (defn match-path
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
   [path]

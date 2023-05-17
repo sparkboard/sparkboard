@@ -26,7 +26,7 @@
        (r/reaction ~@body))))
 
 (defquery $org:index [_]
-  (->> (db/where [:entity/id])
+  (->> (db/where [[:entity/kind :org]])
        (mapv (re-db.api/pull '[*]))))
 
 (comment
@@ -66,8 +66,7 @@
   (->> (sd/q-fulltext-in-org (:q query-params)
                              id)
        ;; Can't send Entities over the wire, so:
-       (map (db/pull '[:entity/title
-                       :entity/title]))))
+       (map (db/pull '[:entity/title]))))
 
 
 

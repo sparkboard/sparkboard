@@ -6,7 +6,7 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.12"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "bd7efb656be9c856b17df42019786803764ad443"}
+                                  :git/sha "33d1754c4c07ee2ffcb39976370deb19dff42e2a"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "f6c565bd9e1c3e2fabf9b68532d54a4f0bf25af4"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"

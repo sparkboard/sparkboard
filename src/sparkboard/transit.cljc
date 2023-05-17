@@ -5,7 +5,7 @@
   #?(:clj (:import [java.io ByteArrayInputStream ByteArrayOutputStream])))
 
 #?(:cljs
-   (def reader (transit/reader :json)))
+   (def reader (transit/reader :json {:handlers {"u" cljs.core/uuid}})))
 
 (defn read [x]
   #?(:cljs
@@ -30,6 +30,6 @@
        ret)))
 
 (comment
-  (read
-    (write
-      {:hello "there"})))
+ (read
+  (write
+   {:hello "there"})))

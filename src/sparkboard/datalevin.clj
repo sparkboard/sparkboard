@@ -49,11 +49,13 @@
 (defn entity-in-org?
   "Predicate fn, handy for search. Truthy iff given entity `ent` is within the organization identified by ID `oid`."
   ;; FIXME this may be a dead-end approach. consider implementing with datalog rules. however, also consider design ramifications of `search` instead of `q`.
-  [oid ent]
-  (or (-> ent :entity/id #{oid})
-      (-> ent :board/org :entity/id #{oid})
-      (-> ent :member/board :board/org :entity/id #{oid})
-      (-> ent :project/board :board/org :entity/id #{oid})))
+  [org-id ent]
+  (case (:entity/kind ent)
+    :org (= org-id (:entity/id ent))
+    :board (= org-id (:board/org ent))
+    :member (= org-id (-> ent :member/board :board/org))
+    :project (= org-id (:project/board ent))
+    false))
 
 (defn q-fulltext
   "Query using fulltext search on given String of `terms`.
