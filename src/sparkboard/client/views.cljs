@@ -1,22 +1,22 @@
 (ns sparkboard.client.views
   (:require
-    ["react" :as react]
-    ["@radix-ui/react-dropdown-menu" :as dm]
-    [applied-science.js-interop :as j]
-    [clojure.pprint :refer [pprint]]
-    [inside-out.forms :as forms :refer [with-form]]
-    [re-db.api :as db]
-    [re-db.reactive :as r]
-    [sparkboard.client.sanitize :refer [safe-html]]
-    [sparkboard.i18n :as i18n :refer [tr]]
-    [sparkboard.routes :as routes]
-    [sparkboard.views.ui :as ui]
-    [sparkboard.websockets :as ws]
-    [promesa.core :as p]
-    [yawn.hooks :as h :refer [use-state]]
-    [sparkboard.views.layouts :as layouts]
-    [yawn.view :as v]
-    [inside-out.forms :as forms]))
+   ["react" :as react]
+   ["@radix-ui/react-dropdown-menu" :as dm]
+   [applied-science.js-interop :as j]
+   [clojure.pprint :refer [pprint]]
+   [inside-out.forms :as forms :refer [with-form]]
+   [re-db.api :as db]
+   [re-db.reactive :as r]
+   [sparkboard.client.sanitize :refer [safe-html]]
+   [sparkboard.i18n :as i18n :refer [tr]]
+   [sparkboard.routes :as routes]
+   [sparkboard.views.ui :as ui]
+   [sparkboard.websockets :as ws]
+   [promesa.core :as p]
+   [yawn.hooks :as h :refer [use-state]]
+   [sparkboard.views.layouts :as layouts]
+   [yawn.view :as v]
+   [inside-out.forms :as forms]))
 
 ;; TODO
 ;; - separate register screen
@@ -88,25 +88,25 @@
 
 (defn account:sign-in-with-google []
   (ui/x
-    [:a.btn.btn-light
-     {:class "w-full h-10 text-zinc-500 text-sm"
-      :href (routes/path-for :oauth2.google/launch)}
-     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
+   [:a.btn.btn-light
+    {:class "w-full h-10 text-zinc-500 text-sm"
+     :href (routes/path-for :oauth2.google/launch)}
+    [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] :tr/sign-in-with-google]))
 
 (defn account:sign-in-terms []
   (ui/x
-    [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
-     [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
-     [:a.gray-link {:target "_blank"
-                    :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
-     :tr/and
-     [:a.gray-link {:target "_blank"
-                    :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
+   [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
+    [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
+    [:a.gray-link {:target "_blank"
+                   :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
+    :tr/and
+    [:a.gray-link {:target "_blank"
+                   :href "https://www.iubenda.com/privacy-policy/7930385"} :tr/privacy-policy] "."]))
 
 (comment
-  (p/-> (routes/POST :account/sign-in {:account/email ""
-                                       :account/password "123123123"})
-        js/console.log))
+ (p/-> (routes/POST :account/sign-in {:account/email ""
+                                      :account/password "123123123"})
+       js/console.log))
 
 (ui/defview account:sign-in-form [{:keys [route]}]
   (ui/with-form [!account {:account/email (?email :init "")
@@ -158,18 +158,18 @@
                          :wrapper-class "flex-grow sm:flex-none"
                          :postfix (search-icon)}))
 
-(defn card [{:as entity :entity/keys [title description images kind]}]
+(defn title-card [{:as entity :entity/keys [title description images kind]}]
   (let [{:image/keys [logo-url background-url]} images]
-    [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card
-     {:href (routes/entity entity :view)
-      :class "pt-[100px]"}
+    [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
+     {:href (routes/entity entity :view)}
      [:div.absolute.inset-0.bg-cover.bg-center.h-24
-      {:style {:background-image (ui/css-url background-url)}}]
-     [:div.absolute.inset-0.m-3.h-10.w-10.bg-white.bg-center.bg-contain.rounded
-      {:style {:background-image (ui/css-url logo-url)}}]
-     [:div.font-medium.text-lg title]
-     (ui/pprinted description)
-     ]))
+      {:class "bg-muted-foreground/10"
+       :style {:background-image (ui/css-url background-url)}}]
+     (when logo-url
+       [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
+        {:class "border-foreground/50"
+         :style {:background-image (ui/css-url logo-url)}}])
+     [:div.font-medium.text-lg.mt-3 title]]))
 
 (ui/defview org:index [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
@@ -185,9 +185,10 @@
      [:div.p-body.text-card-foreground
       (into [:div.grid.grid-cols-4.gap-body]
             (comp
-              (filter #(or (nil? @?filter)
-                           (re-find (re-pattern @?pattern) (:entity/title %))))
-              (map card))
+             (filter (if @?filter
+                       #(re-find (re-pattern @?pattern) (:entity/title %))
+                       identity))
+             (map title-card))
             (ws/use-query! :org/index))]]))
 
 (ui/defview redirect [to]
@@ -195,8 +196,8 @@
 
 (ui/defview home [params]
   (if (db/get :env/account)
-     [org:index params]
-     (redirect (routes/path-for :account/sign-in params))))
+    [org:index params]
+    (redirect (routes/path-for :account/sign-in params))))
 
 (defn domain-valid-chars [v _]
   (when (and v (not (re-matches #"^[a-z0-9-]+$" v)))
@@ -319,9 +320,9 @@
           :on-key-down (j/fn [^js {:keys [key]}]
                          (when (= key "Enter")
                            (start-transition
-                             #(-> {:q (when (<= 3 (count q)) q)}
-                                  routes/merge-query!
-                                  set-query-params!))))
+                            #(-> {:q (when (<= 3 (count q)) q)}
+                                 routes/merge-query!
+                                 set-query-params!))))
           :value (or q "")}]
         (when pending? [:div "Loading..."])
         (into [:ul]
@@ -381,8 +382,8 @@
     {kind v}))
 
 (comment
-  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
-  )
+ (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
+ )
 
 (ui/defview project:view [{:as p :keys [:entity/id]}]
   (let [value (ws/use-query! [:project/view {:entity/id id}])]
@@ -420,8 +421,8 @@
 (ui/defview show-query [[id :as route]]
   (let [value (ws/use-query! route)
         value-str (yawn.hooks/use-memo
-                    (fn [] (with-out-str (pprint value)))
-                    (yawn.hooks/use-deps value))]
+                   (fn [] (with-out-str (pprint value)))
+                   (yawn.hooks/use-deps value))]
     [:pre value-str]))
 
 (ui/defview drawer [{:keys [initial-height]} child]
