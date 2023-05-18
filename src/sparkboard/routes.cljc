@@ -1,5 +1,6 @@
 (ns sparkboard.routes
-  (:require #?(:cljs [shadow.lazy :as lazy])
+  (:require #?(:cljs ["react" :as react])
+            #?(:cljs [shadow.lazy :as lazy])
             #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs [yawn.view :as v])
             #?(:cljs [yawn.hooks :as hooks])

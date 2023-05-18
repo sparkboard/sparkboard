@@ -4,12 +4,14 @@
     ["@radix-ui/react-dropdown-menu" :as dm]
     [applied-science.js-interop :as j]
     [clojure.pprint :refer [pprint]]
+    [clojure.string :as str]
     [inside-out.forms :as forms :refer [with-form]]
     [re-db.api :as db]
     [re-db.reactive :as r]
     [sparkboard.client.sanitize :refer [safe-html]]
     [sparkboard.i18n :as i18n :refer [tr]]
     [sparkboard.routes :as routes]
+    [sparkboard.util :as u]
     [sparkboard.views.ui :as ui]
     [sparkboard.websockets :as ws]
     [promesa.core :as p]
@@ -17,6 +19,18 @@
     [sparkboard.views.layouts :as layouts]
     [yawn.view :as v]
     [inside-out.forms :as forms]))
+
+(defn error-view [{:keys [error]}]
+  (when error
+    [:div.text-destructive.p-body (str error)]))
+
+(defn loading-bar [{:keys [loading?]}]
+  (when loading? "Loading..."))
+
+(defn async-status [result]
+  [:<>
+   [loading-bar result]
+   [error-view result]])
 
 ;; TODO
 ;; - separate register screen
@@ -165,7 +179,9 @@
                                            (search-icon))}
                                (dissoc attrs :loading? :error))))
 
-(defn title-card [{:as entity :entity/keys [title description images kind]}]
+(ui/defview entity-card
+  {:key :entity/id}
+  [{:as entity :entity/keys [title description images kind]}]
   (let [{:image/keys [logo-url background-url]} images]
     [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
      {:href (routes/entity entity :view)}
@@ -185,13 +201,16 @@
       [:h3.header-title :tr/orgs]
       [filter-input ?filter]
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
-     (into [:div.card-grid]
-           (comp
-             (filter (if @?filter
-                       #(re-find (re-pattern @?pattern) (:entity/title %))
-                       identity))
-             (map title-card))
-           (ws/use-query! :org/index))]))
+     (let [result (ws/use-query [:org/index])]
+       [:...
+        [async-status result]
+        (into [:div.card-grid]
+              (comp
+                (filter (if @?filter
+                          #(re-find (re-pattern @?pattern) (:entity/title %))
+                          identity))
+                (map entity-card))
+              (:value result))])]))
 
 (ui/defview redirect [to]
   (h/use-effect #(routes/set-path! to)))
@@ -323,16 +342,15 @@
         cancel))
     @!state))
 
-(defn error-view [error]
-  (when error
-    [:div.text-destructive.p-body (str error)]))
+(defn show-content [{:text-content/keys [format string]}]
+  (case format
+    :text.format/html [safe-html string]))
 
 (ui/defview org:view [params]
-  (ui/with-form [?pattern (when (> (count ?filter) 2)
-                            ?filter)]
-    (let [{:keys [entity/title]} (ws/use-query! [:org/view params])
-          result (when-let [pattern (use-debounced-value @?pattern 300)]
-                   @(ws/$query [:org/search (assoc params :q pattern)]))]
+  (forms/with-form [_ ?q]
+    (let [{:keys [entity/title]} (:value @(ws/$query [:org/view params]))
+          pattern (use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
+          result (when pattern @(ws/$query [:org/search (assoc params :q pattern)]))]
       [:div
        [:div.entity-header
         [:h3.header-title title]
@@ -342,43 +360,15 @@
                                                    title "?"))
                        (routes/POST :org/delete params))}
          "X"]
-        [filter-input ?filter {:loading? (:loading? result)}]
+        [filter-input ?q {:loading? (:loading? result)}]
         [:a.btn.btn-light {:href (routes/path-for :board/new params)} :tr/new-board]]
-       [error-view (:error result)]
-       [:div.p-body.whitespace-pre
-        (ui/pprinted (:value result))]
-       #_(into [:div.card-grid]
-               (comp
-                 (filter (if @?filter
-                           #(re-find (re-pattern @?pattern) (:entity/title %))
-                           identity))
-                 (map title-card))
-               (ws/use-query! :org/index))
+       [error-view result]
 
-       #_(let [[q set-q!] (yawn.hooks/use-state-with-deps (:q query-params) (:q query-params))]
-           [:section
-            [:h3 :tr/search]
-            [:input.form-text
-             {:placeholder :tr/search-across-org
-              :type "search"
-              :on-input (fn [event] (-> event .-target .-value set-q!))
-              :on-key-down (j/fn [^js {:keys [key]}]
-                             (when (= key "Enter")
-                               (start-transition
-                                 #(when (<= 3 (count q))
-                                    (reset! ?filter q)))))
-              :value (or q "")}]
-            (when pending? [:div "Loading..."])
-            (into [:ul]
-                  (map (comp (partial vector :li)
-                             str))
-                  search-result)])
-       #_[:section [:h3 :tr/boards]
-          (into [:ul]
-                (map (fn [board]
-                       [:li [:a {:href (routes/entity board :view)} ;; path-for knows which key it wants (:board/id)
-                             (:entity/title board)]]))
-                (:board/_org value))]])))
+       (for [[kind results] (dissoc (:value result) :q)
+             :when (seq results)]
+         [:<>
+          [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
+          [:div.card-grid (map entity-card results)]])])))
 
 (ui/defview board:view [params]
   (let [value (ws/use-query! [:board/view params])]

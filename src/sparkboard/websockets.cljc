@@ -1,6 +1,6 @@
 (ns sparkboard.websockets
   (:require #?(:clj [org.httpkit.server :as httpkit])
-            #?(:cljs [yawn.hooks :refer [use-deref]])
+            #?(:cljs [yawn.hooks :as h :refer [use-deref]])
             [applied-science.js-interop :as j]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
@@ -72,21 +72,32 @@
 
 #?(:cljs
    (defn $query [query-vec]
-     (sync/$query @channel query-vec)))
-
-#?(:cljs
-   (defn use-query! [query-vec]
      (let [query-vec (if (keyword? query-vec)
                        [query-vec {}]
                        query-vec)]
-       (when (:query (routes/match-path query-vec))
-         (let [{:keys [value error loading?]} @($query query-vec)]
-           (cond error (throw (ex-info error {:query query-vec}))
-                 loading? (throw loading?)
-                 :else value))))))
+       (if (:query (routes/match-path query-vec))
+         (sync/$query @channel query-vec)
+         (delay {:error "Query not found"})))))
 
 #?(:cljs
-   (def use-result (comp use-deref $query)))
+   (defn use-result [{:as result :keys [loading? value]}]
+     (let [!last-value (h/use-state value)]
+       (h/use-effect
+         (fn []
+           (when (or (not loading?) (some? value))
+             (reset! !last-value value)))
+         [value loading?])
+       (assoc result :value @!last-value))))
+
+#?(:cljs
+   (def use-query (comp use-result deref $query)))
+
+#?(:cljs
+   (defn use-query! [query-vec]
+     (let [{:keys [value error loading?]} @($query query-vec)]
+       (cond error (throw (ex-info error {:query query-vec}))
+             loading? (throw loading?)
+             :else value))))
 
 #?(:cljs
    (defn send [message]

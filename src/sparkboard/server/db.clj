@@ -67,12 +67,14 @@
                    [:entity/id (:member params)])
           :member/password))
 
+
 (defn org-search [{:keys [org q]}]
   {:q q
-   :boards (dl/q '[:find (pull ?board [:entity/id
-                                       :entity/title
-                                       :entity/kind
-                                       {:entity/domain [:domain/name]}])
+   :boards (dl/q '[:find [(pull ?board [:entity/id
+                                        :entity/title
+                                        :entity/kind
+                                        :entity/images
+                                        {:entity/domain [:domain/name]}]) ...]
                    :in $ ?terms ?org
                    :where
                    [?board :board/org ?org]
@@ -80,10 +82,12 @@
                  @sd/conn
                  q
                  [:entity/id org])
-   :projects (dl/q '[:find (pull ?project [:entity/id
-                                           :entity/title
-                                           :entity/kind
-                                           {:project/board [:entity/id]}])
+   :projects (dl/q '[:find [(pull ?project [:entity/id
+                                            :entity/title
+                                            :entity/kind
+                                            :entity/description
+                                            :entity/images
+                                            {:project/board [:entity/id]}]) ...]
                      :in $ ?terms ?org
                      :where
                      [?board :board/org ?org]
@@ -93,6 +97,11 @@
                    q
                    [:entity/id org])})
 
+(comment
+  (org-search {:org #uuid "2d5f7dd9-e406-3af9-8316-bc220572ae68"
+               :q "robo"})
+
+  )
 (memo/defn-memo $org:search [params] (r/reaction (org-search params)))
 
 (comment
