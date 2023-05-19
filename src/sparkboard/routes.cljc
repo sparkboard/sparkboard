@@ -6,6 +6,7 @@
             #?(:cljs [yawn.hooks :as hooks])
             [applied-science.js-interop :as j]
             [bidi.bidi :as bidi :refer [uuid]]
+            [promesa.core :as p]
             [sparkboard.transit :as t]
             [re-db.api :as db]
             [re-db.reactive :as r]
@@ -53,25 +54,29 @@
                "/o" {"/index" (E :org/index
                                  {:query `server.db/$org:index
                                   :view `views/org:index})
-                     "/create" (E :org/new
-                                  {:view `views/org:new
-                                   :post `server.db/org:new})
+                     "/new" (E :org/new
+                               {:view `views/org:new
+                                :post `server.db/org:new})
                      ["/" [bidi/uuid :org]] {"" (E :org/view
                                                    {:query `server.db/$org:view
                                                     :view `views/org:view})
+                                             "/settings" (E :org/settings
+                                                            {:view `views/org:settings
+                                                             :query `server.db/$org:settings
+                                                             :post `server.db/org:settings})
                                              "/delete" (E :org/delete
                                                           {:post `server.db/org:delete})
                                              "/boards/new" (E :board/new
-                                                             {:view `views/board:new
-                                                              :post `server.db/board:new})
+                                                              {:view `views/board:new
+                                                               :post `server.db/board:new})
                                              "/search" (E :org/search
                                                           {:query `server.db/$org:search})}}
                ["/b/" [bidi/uuid :board]] {"" (E :board/view
                                                  {:query `server.db/$board:view
                                                   :view `views/board:view})
-                                           "/projects/new" (E :project/new
-                                                              {:view `views/project:new
-                                                               :post `server.db/project:new})
+                                           "/new-project" (E :project/new
+                                                             {:view `views/project:new
+                                                              :post `server.db/project:new})
                                            "/register" (E :board/register
                                                           {:view `views/board:register
                                                            :post `server.db/board:register})}
@@ -107,39 +112,16 @@
 #?(:cljs
    (do
 
-     (defn ready-view [view]
-       (if (instance? lazy/Loadable view)
-         (when (lazy/ready? view) @view)
-         view))
-
      (defn set-location! [location]
        (db/transact! [[:db/retractEntity :env/location]
                       (assoc location :db/id :env/location)]))
 
-     (defn handle-match [{:as match :keys [view]}]
-       (if-let [view (ready-view view)]
-         (set-location! (assoc match :view view))
-         (lazy/load view
-                    #(set-location! (assoc match :view %)))))
-
-     (defonce history (pushy/pushy handle-match #(u/guard (#'impl/match-route @!routes %) :view)))
+     (defonce history (pushy/pushy set-location! #(u/guard (#'impl/match-route @!routes %) :view)))
 
      (defn merge-query! [params]
        (let [{:keys [path query-params]} (query-params/merge-query (db/get :env/location :path) params)]
          (pushy/set-token! history path)
          query-params))
-
-     (defn use-view [route]
-       (let [view (:view (match-path route))
-             !p (hooks/use-ref nil)]
-         (if-let [v (ready-view view)]
-           v
-           (if-let [p @!p]
-             (throw p)
-             (do (reset! !p (js/Promise.
-                              (fn [resolve reject]
-                                (lazy/load view resolve))))
-                 (throw @!p))))))
 
      (defn set-path! [& args]
        (pushy/set-token! history (apply path-for args)))))

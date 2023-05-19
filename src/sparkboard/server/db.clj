@@ -153,7 +153,7 @@
 (defn board:new
   [req params board pull]
   (sv/assert board [:map {:closed true} :entity/title])
-  ;; auth: user is admin of org
+  ;; auth: user is admin of :board/org
   (db/transact!
     [(-> board
          (assoc :board/org [:entity/id (:entity/id params)])
@@ -176,11 +176,22 @@
 
 (defn org:delete
   "Mutation fn. Retracts organization by given org-id."
-  [_req {:keys [entity/id]}]
+  [_req {:keys [org]}]
   ;; auth: user is admin of org
   ;; todo: retract org and all its boards, projects, etc.?
-  (db/transact! [[:db.fn/retractEntity [:entity/id id]]])
+  (db/transact! [[:db.fn/retractEntity [:entity/id org]]])
   {:body ""})
+
+(defquery $org:settings [params]
+  ;; all the settings that can be changed
+  (db/pull '[*
+             {:entity/domain [:domain/name]}] [:entity/id (:org params)]))
+
+(defn org:settings [{:keys [account]} {:keys [org]} _payload]
+  ;; merge payload with org, validate, transact
+  )
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Handlers

@@ -80,24 +80,18 @@
          (delay {:error "Query not found"})))))
 
 #?(:cljs
-   (defn use-result [{:as result :keys [loading? value]}]
+   (defn use-cached-result [{:as result :keys [loading? value]}]
      (let [!last-value (h/use-state value)]
        (h/use-effect
          (fn []
-           (when (or (not loading?) (some? value))
+           (when (and (not loading?)
+                      (not= value @!last-value))
              (reset! !last-value value)))
          [value loading?])
        (assoc result :value @!last-value))))
 
 #?(:cljs
-   (def use-query (comp use-result deref $query)))
-
-#?(:cljs
-   (defn use-query! [query-vec]
-     (let [{:keys [value error loading?]} @($query query-vec)]
-       (cond error (throw (ex-info error {:query query-vec}))
-             loading? (throw loading?)
-             :else value))))
+   (def use-query (comp use-cached-result deref $query)))
 
 #?(:cljs
    (defn send [message]

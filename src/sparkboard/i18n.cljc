@@ -33,6 +33,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict ;; grouped for easy generation of multiple languages
    {:tr/boards {:en "Boards", :fr "Tableaux", :es "Tableros"},
     :tr/projects {:en "Projects", :fr "Projets", :es "Proyectos"},
+    :tr/new-member {:en "New member", :fr "Nouveau membre", :es "Nuevo miembro"},
     :tr/tags {:en "Tags", :fr "Mots clés", :es "Etiquetas"},
     :tr/sign-in {:en "Sign in", :fr "Connexion", :es "Iniciar sesión"},
     :tr/email {:en "Email", :fr "Courriel", :es "Correo electrónico"},

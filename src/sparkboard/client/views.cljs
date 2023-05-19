@@ -20,18 +20,6 @@
     [yawn.view :as v]
     [inside-out.forms :as forms]))
 
-(defn error-view [{:keys [error]}]
-  (when error
-    [:div.text-destructive.p-body (str error)]))
-
-(defn loading-bar [{:keys [loading?]}]
-  (when loading? "Loading..."))
-
-(defn async-status [result]
-  [:<>
-   [loading-bar result]
-   [error-view result]])
-
 ;; TODO
 ;; - separate register screen
 ;; - password signin:
@@ -64,7 +52,7 @@
                        (get-in i18n/dict [lang :meta/lect])
                        (when current?
                          [:span.absolute.inset-y-0.right-0.flex.items-center.pr-2.text-foreground
-                          [ui/checkmark]])]))
+                          [ui/icon:checkmark]])]))
                   (keys i18n/dict))))]]])
 
 (ui/defview header:account [{[route-id] :route}]
@@ -162,21 +150,26 @@
     [:div.flex.flex-grow
      [account:sign-in-form params]]))
 
-(defn search-icon []
+(defn icon:search []
   (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
         {:xmlns "http://www.w3.org/2000/svg"}
         [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
 
-(defn loading-icon []
+(defn icon:loading []
   ;; todo
   "L")
+
+(defn icon:settings [& [class-name]]
+  (v/x
+    [:svg {:class (or class-name "w-6 h-6") :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 24 24" :fill "currentColor"}
+     [:path {:fillRule "evenodd" :d "M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 01-.517.608 7.45 7.45 0 00-.478.198.798.798 0 01-.796-.064l-.453-.324a1.875 1.875 0 00-2.416.2l-.243.243a1.875 1.875 0 00-.2 2.416l.324.453a.798.798 0 01.064.796 7.448 7.448 0 00-.198.478.798.798 0 01-.608.517l-.55.092a1.875 1.875 0 00-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 01-.064.796l-.324.453a1.875 1.875 0 00.2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 01.796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 01.517-.608 7.52 7.52 0 00.478-.198.798.798 0 01.796.064l.453.324a1.875 1.875 0 002.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 01-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 001.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 01-.608-.517 7.507 7.507 0 00-.198-.478.798.798 0 01.064-.796l.324-.453a1.875 1.875 0 00-.2-2.416l-.243-.243a1.875 1.875 0 00-2.416-.2l-.453.324a.798.798 0 01-.796.064 7.462 7.462 0 00-.478-.198.798.798 0 01-.517-.608l-.091-.55a1.875 1.875 0 00-1.85-1.566h-.344zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" :clipRule "evenodd"}]]))
 
 (defn filter-input [?field & [attrs]]
   (ui/show-field ?field (merge {:class "pr-9"
                                 :wrapper-class "flex-grow sm:flex-none"
                                 :postfix (if (:loading? attrs)
-                                           (loading-icon)
-                                           (search-icon))}
+                                           (icon:loading)
+                                           (icon:search))}
                                (dissoc attrs :loading? :error))))
 
 (ui/defview entity-card
@@ -192,7 +185,7 @@
        [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
         {:class "border-foreground/50"
          :style {:background-image (ui/css-url logo-url)}}])
-     [:div.font-medium.text-lg.mt-3 title]]))
+     [:div.font-medium.leading-snug.text-md.mt-3 title]]))
 
 (ui/defview org:index [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
@@ -201,23 +194,20 @@
       [:h3.header-title :tr/orgs]
       [filter-input ?filter]
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
-     (let [result (ws/use-query [:org/index])]
-       [:...
-        [async-status result]
-        (into [:div.card-grid]
-              (comp
-                (filter (if @?filter
-                          #(re-find (re-pattern @?pattern) (:entity/title %))
-                          identity))
-                (map entity-card))
-              (:value result))])]))
+     (into [:div.card-grid]
+           (comp
+             (filter (if @?filter
+                       #(re-find (re-pattern @?pattern) (:entity/title %))
+                       identity))
+             (map entity-card))
+           (:data params))]))
 
 (ui/defview redirect [to]
   (h/use-effect #(routes/set-path! to)))
 
 (ui/defview home [params]
   (if (db/get :env/account)
-    [org:index params]
+    [:a.btn.btn-primary.m-10.p-10 {:href (routes/path-for :org/index)} "Org/Index"]
     (redirect (routes/path-for :account/sign-in params))))
 
 (defn domain-valid-chars [v _]
@@ -316,53 +306,34 @@
                               res))}
       :tr/register]]))
 
-(defn use-debounced-value [value wait]
-  (let [!state (h/use-state value)
-        !mounted (h/use-ref false)
-        !timeout (h/use-ref nil)
-        !cooldown (h/use-ref false)
-        cancel #(some-> @!timeout js/clearTimeout)]
-    (h/use-effect
-      (fn []
-        (when @!mounted
-          (if @!cooldown
-            (do (cancel)
-                (reset! !timeout
-                        (js/setTimeout
-                          #(do (reset! !cooldown false)
-                               (reset! !state value))
-                          wait)))
-            (do
-              (reset! !cooldown true)
-              (reset! !state value)))))
-      [value wait])
-    (h/use-effect
-      (fn []
-        (reset! !mounted true)
-        cancel))
-    @!state))
-
 (defn show-content [{:text-content/keys [format string]}]
   (case format
     :text.format/html [safe-html string]))
 
+(ui/defview org:settings [params]
+
+  )
+
 (ui/defview org:view [params]
   (forms/with-form [_ ?q]
-    (let [{:keys [entity/title]} (:value @(ws/$query [:org/view params]))
-          pattern (use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
-          result (when pattern @(ws/$query [:org/search (assoc params :q pattern)]))]
+    (let [{:as org :keys [entity/title]} (:value @(ws/$query [:org/view params]))
+          q (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
+          result (when q @(ws/$query [:org/search (assoc params :q q)]))]
       [:div
        [:div.entity-header
         [:h3.header-title title]
-        [:div
-         ;; TODO settings icon
+        [:a.inline-flex.items-center {:class "hover:text-muted-foreground"
+                                      :href (routes/entity org :settings)}
+         [icon:settings]]
+        #_[:div
+
          {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                    title "?"))
                        (routes/POST :org/delete params))}
-         "X"]
+         ]
         [filter-input ?q {:loading? (:loading? result)}]
         [:a.btn.btn-light {:href (routes/path-for :board/new params)} :tr/new-board]]
-       [error-view result]
+       [ui/error-view result]
 
        (for [[kind results] (dissoc (:value result) :q)
              :when (seq results)]
@@ -370,38 +341,37 @@
           [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
           [:div.card-grid (map entity-card results)]])])))
 
-(ui/defview board:view [params]
-  (let [value (ws/use-query! [:board/view params])]
-    [:<>
-     [:h1 (:entity/title value)]
-     [:p (-> value :entity/domain :domain/name)]
-     [:blockquote
-      [safe-html (-> value
-                     :entity/description
-                     :text-content/string)]]
-     ;; TODO - tabs
-     [:div.rough-tabs {:class "w-100"}
-      [:div.rough-tab                                       ;; projects
-       [:a {:href (routes/path-for :project/new params)} :tr/new-project]
-       (into [:ul]
-             (map (fn [proj]
-                    [:li [:a {:href (routes/path-for :project/view {:project (:entity/id proj)})}
-                          (:entity/title proj)]]))
-             (:project/_board value))]
-      [:div.rough-tab                                       ;; members
-       [:a {:href (routes/path-for :board/register params)} :tr/new-member]
-       (into [:ul]
-             (map (fn [member]
-                    [:li
-                     [:a {:href (routes/path-for :member/view {:member (:entity/id member)})}
-                      (:member/name member)]]))
-             (:member/_board value))]
-      [:div.rough-tab {:name "I18n"                         ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
-                       :class "db"}
-       [:ul                                                 ;; i18n stuff
-        [:li "suggested locales:" (str (:entity/locale-suggestions value))]
-        [:li "default locale:" (str (:i18n/default-locale value))]
-        [:li "extra-translations:" (str (:i18n/locale-dicts value))]]]]]))
+(ui/defview board:view [{:as params board :data}]
+  [:<>
+   [:h1 (:entity/title board)]
+   [:p (-> board :entity/domain :domain/name)]
+   [:blockquote
+    [safe-html (-> board
+                   :entity/description
+                   :text-content/string)]]
+   ;; TODO - tabs
+   [:div.rough-tabs {:class "w-100"}
+    [:div.rough-tab                                         ;; projects
+     [:a {:href (routes/path-for :project/new params)} :tr/new-project]
+     (into [:ul]
+           (map (fn [proj]
+                  [:li [:a {:href (routes/path-for :project/view {:project (:entity/id proj)})}
+                        (:entity/title proj)]]))
+           (:project/_board board))]
+    [:div.rough-tab                                         ;; members
+     [:a {:href (routes/path-for :board/register params)} :tr/new-member]
+     (into [:ul]
+           (map (fn [member]
+                  [:li
+                   [:a {:href (routes/path-for :member/view {:member (:entity/id member)})}
+                    (:member/name member)]]))
+           (:member/_board board))]
+    [:div.rough-tab {:name "I18n"                           ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
+                     :class "db"}
+     [:ul                                                   ;; i18n stuff
+      [:li "suggested locales:" (str (:entity/locale-suggestions board))]
+      [:li "default locale:" (str (:i18n/default-locale board))]
+      [:li "extra-translations:" (str (:i18n/locale-dicts board))]]]]])
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type "text/html" :width 640 :height 360
@@ -419,75 +389,31 @@
   (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
   )
 
-(ui/defview project:view [params]
-  (let [value (ws/use-query! [:project/view params])]
-    [:div
-     [:h1 (:entity/title value)]
-     [:blockquote (:entity/description value)]
-     (when-let [badges (:project/badges value)]
-       [:section [:h3 :tr/badges]
-        (into [:ul]
-              (map (fn [bdg] [:li (:badge/label bdg)]))
-              badges)])
-     (when-let [vid (:entity/video value)]
-       [:section [:h3 :tr/video]
-        [video-field vid]])]))
+(ui/defview project:view [{project :data}]
+  [:div
+   [:h1 (:entity/title project)]
+   [:blockquote (:entity/description project)]
+   (when-let [badges (:project/badges project)]
+     [:section [:h3 :tr/badges]
+      (into [:ul]
+            (map (fn [bdg] [:li (:badge/label bdg)]))
+            badges)])
+   (when-let [vid (:entity/video project)]
+     [:section [:h3 :tr/video]
+      [video-field vid]])])
 
-(ui/defview member:view [params]
-  (let [value (ws/use-query! [:member/view params])]
-    [:div
-     [:h1 (:member/name value)]
-     (when-let [tags (seq (concat (:member/tags value)
-                                  (:member/tags.custom value)))]
-       [:section [:h3 :tr/tags]
-        (into [:ul]
-              (map (fn [tag]
-                     (if (:tag.ad-hoc/label tag)
-                       [:li (:tag.ad-hoc/label tag)]
-                       [:li [:span (when-let [bg (:tag/background-color tag)]
-                                     {:style {:background-color bg}})
-                             (:tag/label tag)]])))
-              tags)])
-     [:img {:src (:member/image-url value)}]]))
-
-;; for DEBUG only:
-
-(ui/defview show-query [[id :as route]]
-  (let [value (ws/use-query! route)
-        value-str (yawn.hooks/use-memo
-                    (fn [] (with-out-str (pprint value)))
-                    (yawn.hooks/use-deps value))]
-    [:pre value-str]))
-
-(ui/defview drawer [{:keys [initial-height]} child]
-  ;; the divider is draggable and sets the height of the drawer
-  (let [!height (yawn.hooks/use-state initial-height)]
-    [:Suspense {:fallback "Loading..."}
-     [:div {:style {:height @!height}}]
-     [:div.ph3.code.fixed.bottom-0.left-0.right-0.bg-white.overflow-y-scroll
-      {:style {:height @!height}}
-      [:div.bg-black
-       {:class "bg-black absolute top-0 left-0 right-0"
-        :style {:height 5
-                :cursor "ns-resize"}
-        :on-mouse-down (j/fn [^js {:as e starting-y :clientY}]
-                         (.preventDefault e)
-                         (let [on-mousemove (j/fn [^js {new-y :clientY}]
-                                              (let [diff (- new-y starting-y)]
-                                                (reset! !height (max 5 (- @!height diff)))))
-                               on-mouseup (fn []
-                                            (.removeEventListener js/window "mousemove" on-mousemove))]
-                           (doto js/window
-                             (.addEventListener "mouseup" on-mouseup #js{:once true})
-                             (.addEventListener "mousemove" on-mousemove))))}]
-      child]]))
-
-(ui/defview dev-drawer [{:as match :keys [route]}]
-  [drawer {:initial-height 100}
-   [:Suspense {:fallback (v/x "Hi")}
-    (into [:p.text-lg]
-          (for [[id :as route] (routes/breadcrumb (db/get :env/location :path))]
-            [:a.mr-3.rounded.bg-black.text-white.px-2..no-underline.inline-block
-             {:href (routes/path-for route)} (str id)]))
-    (str route)
-    [show-query route]]])
+(ui/defview member:view [{member :data}]
+  [:div
+   [:h1 (:member/name member)]
+   (when-let [tags (seq (concat (:member/tags member)
+                                (:member/tags.custom member)))]
+     [:section [:h3 :tr/tags]
+      (into [:ul]
+            (map (fn [tag]
+                   (if (:tag.ad-hoc/label tag)
+                     [:li (:tag.ad-hoc/label tag)]
+                     [:li [:span (when-let [bg (:tag/background-color tag)]
+                                   {:style {:background-color bg}})
+                           (:tag/label tag)]])))
+            tags)])
+   [:img {:src (:member/image-url member)}]])

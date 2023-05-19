@@ -14,14 +14,13 @@
             [yawn.root :as root]))
 
 (ui/defview root []
-  (let [{:keys [path view params tag route header?] :or {header? true}} (db/get :env/location)
-        params (assoc params :path path :route route)]
+  (let [{:as match :keys [view params header?] :or {header? true}} (db/get :env/location)]
     [:div.w-full.font-sans
      [:Suspense {:fallback "ROUGH spinner"}
       (when view
         [:<>
          (when header? [views/header params])
-         [view params]])]]))
+         (ui/show-match match)])]]))
 
 (defonce !react-root (delay (root/create :web (root))))
 

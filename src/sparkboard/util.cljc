@@ -27,3 +27,6 @@
     (str prefix s)))
 
 (defn some-str [s] (guard s (complement str/blank?)))
+
+(defn find-first [coll pred]
+  (reduce (fn [_ x] (if (pred x) (reduced x) _)) nil coll))

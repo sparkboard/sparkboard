@@ -10,13 +10,13 @@
   ["" (->> routes
            (mapv (fn [[id {:as result :keys [route view query]}]]
                    [route (bidi/tag
-                           (delay
-                            #?(:clj  (-> result
-                                         (u/update-some {:query requiring-resolve
-                                                         :post requiring-resolve
-                                                         :handler requiring-resolve}))
-                               :cljs result))
-                           id)])))])
+                            (delay
+                              #?(:clj  (-> result
+                                           (u/update-some {:query requiring-resolve
+                                                           :post requiring-resolve
+                                                           :handler requiring-resolve}))
+                                 :cljs result))
+                            id)])))])
 
 (defn normalize-slashes [path]
   ;; remove trailing /'s, but ensure path starts with /
@@ -27,17 +27,16 @@
 
 (defn match-route [routes path]
   (let [path (normalize-slashes path)]
-    (let [{:as m :keys [view tag route-params]} (bidi/match-route routes path)]
+    (let [{:as m :keys [tag route-params]} (bidi/match-route routes path)]
       (if m
-        (let [params (u/assoc-some (or route-params {})
-                       :query-params (not-empty (query-params/path->map path)))
-              match @(:handler m)]
-          (merge
-           match
-           {:tag tag
-            :path path
-            :route [tag params]
-            :params params}))
+        (let [params (or route-params {})
+              route [tag params]]
+          (assoc @(:handler m)
+            :tag tag
+            :params (assoc params
+                      :query-params (not-empty (query-params/path->map path))
+                      :path path
+                      :route route)))
         (prn :no-match! path)))))
 
 #?(:cljs
@@ -65,10 +64,10 @@
                         (symbol (str resolved) (name sym))
                         sym))]
     `(~'bidi.bidi/tag
-      (delay
-       ~(u/update-some endpoint (if (:ns &env)
-                                  {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
-                                  {:query (fn [s] `(requiring-resolve ~s))
-                                   :post (fn [s] `(requiring-resolve ~s))
-                                   :handler (fn [s] `(requiring-resolve ~s))})))
-      ~tag)))
+       (delay
+         ~(u/update-some endpoint (if (:ns &env)
+                                    {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
+                                    {:query (fn [s] `(requiring-resolve ~s))
+                                     :post (fn [s] `(requiring-resolve ~s))
+                                     :handler (fn [s] `(requiring-resolve ~s))})))
+       ~tag)))
