@@ -4,7 +4,7 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
-            [sparkboard.server.validate :as vd]
+            [sparkboard.validate :as vd]
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
             [sparkboard.server.env :as env]

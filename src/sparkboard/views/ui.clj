@@ -14,10 +14,12 @@
   (wrap-tr expr))
 
 (defmacro defview [name & args]
-  (v/defview:impl
-   {:wrap-expr (fn [expr] `(~'re-db.react/use-derefs (tr ~expr)))}
-   name
-   args))
+  (if (:ns &env)
+    (v/defview:impl
+      {:wrap-expr (fn [expr] `(~'re-db.react/use-derefs (tr ~expr)))}
+      name
+      args)
+    ``~name))
 
 (defmacro x [& args]
   (let [args (wrap-tr args)]

@@ -1,22 +1,26 @@
 (ns sparkboard.i18n
-  (:require #?(:clj [sparkboard.server.validate :as vd])
+  (:require #?(:clj [sparkboard.validate :as vd])
             [re-db.api :as db]
             [taoensso.tempura :as tempura])
   #?(:cljs (:require-macros [sparkboard.i18n :refer [ungroup-dict]])))
 
-#?(:cljs
-   (def !selected-locale (delay
-                          (when-not (db/get :env/config :env)
-                            (throw (js/Error. "Reading i18n before environment is set"))
-                            #_(js-debugger))
-                          (db/get :env/account :account/locale "en"))))
 
-#?(:cljs
-   (def !locales (delay
-                  (->> [@!selected-locale "en"]
-                       (into []
-                             (comp (keep identity)
-                                   (distinct)))))))
+(def !selected-locale
+  #?(:cljs (delay
+             (when-not (db/get :env/config :env)
+               (throw (js/Error. "Reading i18n before environment is set"))
+               #_(js-debugger))
+             (db/get :env/account :account/locale "en"))
+     :clj  (delay "en")))
+
+
+(def !locales
+  #?(:cljs (delay
+             (->> [@!selected-locale "en"]
+                  (into []
+                        (comp (keep identity)
+                              (distinct)))))
+     :clj ["en"]))
 
 (defmacro ungroup-dict [dict]
   (->> dict
@@ -86,26 +90,23 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     :tr/account-not-found {:en "Account not found" :fr "Compte introuvable" :es "Cuenta no encontrada"}
     }))
 
-#?(:cljs
-   (defn tr
-     ([resource-ids] (or (tempura/tr {:dict dict} @!locales (cond-> resource-ids
-                                                                    (keyword? resource-ids)
-                                                                    vector))
-                         (doto (str "Missing" resource-ids) js/console.warn)))
-     ([resource-ids resource-args] (or (tempura/tr {:dict dict} @!locales resource-ids resource-args)
-                                       (doto (str "Missing" resource-ids) js/console.warn)))))
+(defn tr
+  ([resource-ids] (or (tempura/tr {:dict dict} @!locales (cond-> resource-ids
+                                                                 (keyword? resource-ids)
+                                                                 vector))
+                      (doto (str "Missing" resource-ids) js/console.warn)))
+  ([resource-ids resource-args] (or (tempura/tr {:dict dict} @!locales resource-ids resource-args)
+                                    (doto (str "Missing" resource-ids) js/console.warn))))
+
+(def supported-locales (into #{} (map name) (keys dict)))
+
+(defn accept-language->639-2 [accept-language]
+  (->> accept-language
+       (re-find #".*[^;]?([a-z]{2})[;$]?.*")
+       (second)))
 
 #?(:clj
-   (def supported-locales (into #{} (map name) (keys dict))))
-
-#?(:clj
-   (defn accept-language->639-2 [accept-language]
-     (->> accept-language
-          (re-find #".*[^;]?([a-z]{2})[;$]?.*")
-          (second))))
-
-#?(:clj
-   (defn get-locale [req]
+   (defn req-locale [req]
      (or (some-> (:account req) :account/locale supported-locales) ;; a known user explicitly set their language
          (some-> (:cookies req) (get "locale") supported-locales) ;; anonymous user explicitly set their language
          (some-> (:board req) :entity/locale-default supported-locales) ;; board has a preferred language
@@ -114,7 +115,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
          "en"))) ;; fallback to english
 
 #?(:clj
-   (defn set-locale
+   (defn set-locale-response
      {:POST :i18n/locale}
      [req _params locale]
      (tap> (vector :set-locale locale (some? (:account req))))
@@ -129,6 +130,3 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
         :cookies {"locale" {:value locale
                             :max-age 31536000
                             :path "/"}}})))
-;; TODO
-;; - send only the current language to the browser. when changing locale,
-;;   first set the locale to the account or cookie, then reload the page.

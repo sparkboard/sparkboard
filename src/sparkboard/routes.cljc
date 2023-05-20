@@ -5,15 +5,18 @@
             #?(:cljs [yawn.view :as v])
             #?(:cljs [yawn.hooks :as hooks])
             [applied-science.js-interop :as j]
-            [bidi.bidi :as bidi :refer [uuid]]
-            [promesa.core :as p]
+            [bidi.bidi :as bidi]
             [sparkboard.transit :as t]
             [re-db.api :as db]
             [re-db.reactive :as r]
             [sparkboard.client.slack :as-alias slack.client]
             [sparkboard.client.views :as-alias views]
             [sparkboard.query-params :as query-params]
-            [sparkboard.server.db :as-alias server.db]
+            [sparkboard.entities.board :as-alias board]
+            [sparkboard.entities.domain :as-alias domain]
+            [sparkboard.entities.member :as-alias member]
+            [sparkboard.entities.org :as-alias org]
+            [sparkboard.entities.project :as-alias project]
             [sparkboard.http :as http]
             [sparkboard.util :as u]
             [sparkboard.impl.routes :as impl :refer [E]])
@@ -27,65 +30,69 @@
   :query - symbol pointing to a (server) function providing data for the route
   :post - symbol pointing to a (server) function accepting a POST body
   :handler - symbol pointing to a (server) function accepting a request map"
-  (r/atom ["" {"/" (E :home {:public true
-                             :view `views/home})
-               "/ws" (E :websocket {:public true
-                                    :handler 'sparkboard.server.core/ws-handler})
-               "/domain-availability" (E :domain-availability {:handler 'sparkboard.server.db/domain-availability})
-               ["/documents/" :file/name] (E :markdown/file
-                                             {:handler 'sparkboard.server.core/serve-markdown
-                                              :public true})
-               "/slack/" {"invite-offer" (E :slack/invite-offer
-                                            {:view `slack.client/invite-offer})
-                          "link-complete" (E :slack/link-complete
-                                             {:view `slack.client/link-complete})}
-               "/login" (E :account/sign-in {:view `views/account:sign-in
-                                             :header? false
-                                             :post 'sparkboard.server.accounts/login-handler
-                                             :public true})
-               "/logout" (E :account/logout {:handler 'sparkboard.server.accounts/logout-handler
-                                             :public true})
-               "/locale/set" (E :account/set-locale {:post 'sparkboard.i18n/set-locale})
-               "/oauth2" {"/google" {"/launch" (E :oauth2.google/launch {})
-                                     "/callback" (E :oauth2.google/callback {})
-                                     "/landing" (E :oauth2.google/landing
-                                                   {:public true
-                                                    :handler 'sparkboard.server.accounts/google-landing})}}
-               "/o" {"/index" (E :org/index
-                                 {:query `server.db/$org:index
-                                  :view `views/org:index})
-                     "/new" (E :org/new
-                               {:view `views/org:new
-                                :post `server.db/org:new})
-                     ["/" [bidi/uuid :org]] {"" (E :org/view
-                                                   {:query `server.db/$org:view
-                                                    :view `views/org:view})
-                                             "/settings" (E :org/settings
-                                                            {:view `views/org:settings
-                                                             :query `server.db/$org:settings
-                                                             :post `server.db/org:settings})
-                                             "/delete" (E :org/delete
-                                                          {:post `server.db/org:delete})
-                                             "/boards/new" (E :board/new
-                                                              {:view `views/board:new
-                                                               :post `server.db/board:new})
-                                             "/search" (E :org/search
-                                                          {:query `server.db/$org:search})}}
-               ["/b/" [bidi/uuid :board]] {"" (E :board/view
-                                                 {:query `server.db/$board:view
-                                                  :view `views/board:view})
-                                           "/new-project" (E :project/new
-                                                             {:view `views/project:new
-                                                              :post `server.db/project:new})
-                                           "/register" (E :board/register
-                                                          {:view `views/board:register
-                                                           :post `server.db/board:register})}
-               ["/p/" [bidi/uuid :project]] (E :project/view
-                                               {:query `server.db/$project:view
-                                                :view `views/project:view})
-               ["/m/" [bidi/uuid :member]] (E :member/view
-                                              {:query `server.db/$member:view
-                                               :view `views/member:view})}]))
+  (r/reaction
+    ["" {"/" (E :home {:public true
+                       :view `views/home})
+         "/ws" (E :websocket {:public true
+                              :handler 'sparkboard.server.core/ws-handler})
+
+         ["/documents/" :file/name] (E :markdown/file
+                                       {:handler 'sparkboard.server.core/serve-markdown
+                                        :public true})
+         "/slack/" {"invite-offer" (E :slack/invite-offer
+                                      {:view `slack.client/invite-offer})
+                    "link-complete" (E :slack/link-complete
+                                       {:view `slack.client/link-complete})}
+         "/login" (E :account/sign-in {:view `views/account:sign-in
+                                       :header? false
+                                       :post 'sparkboard.server.accounts/login-handler
+                                       :public true})
+         "/logout" (E :account/logout {:handler 'sparkboard.server.accounts/logout-handler
+                                       :public true})
+         "/locale/set" (E :account/set-locale {:post 'sparkboard.i18n/set-locale-response})
+         "/oauth2" {"/google" {"/launch" (E :oauth2.google/launch {})
+                               "/callback" (E :oauth2.google/callback {})
+                               "/landing" (E :oauth2.google/landing
+                                             {:public true
+                                              :handler 'sparkboard.server.accounts/google-landing})}}
+
+         "/domain-availability" (E :domain/availability
+                                   {:handler `domain/availability})
+         "/o" {"/index" (E :org/index
+                           {:query `org/$index$query
+                            :view `org/index$view})
+               "/new" (E :org/new
+                         {:view `org/new$view
+                          :post `org/new$post})
+               ["/" [bidi/uuid :org]] {"" (E :org/read
+                                             {:query `org/$read:query
+                                              :view `org/read:view})
+                                       "/settings" (E :org/settings
+                                                      {:view `org/settings:view
+                                                       :query `org/$settings:query
+                                                       :post `org/settings:post})
+                                       "/delete" (E :org/delete
+                                                    {:post `org/delete:post})
+                                       "/new-board" (E :org/new-board
+                                                       {:view `board/new:view
+                                                        :post `board/new:post})
+                                       "/search" (E :org/search
+                                                    {:query `org/search:query})}}
+         ["/b/" [bidi/uuid :board]] {"" (E :board/read
+                                           {:query `board/$read:query
+                                            :view `board/read:view})
+                                     "/new-project" (E :project/new
+                                                       {:view `project/new:view
+                                                        :post `project/new:post})
+                                     "/register" (E :board/register
+                                                    {:view `board/register:view
+                                                     :post `board/register:post})}
+         ["/p/" [bidi/uuid :project]] {"" (E :project/read
+                                             {:query `project/$read:query
+                                              :view `project/read:view})}
+         ["/m/" [bidi/uuid :member]] {"" (E :member/read
+                                            {:query `member/$read:query
+                                             :view `member/read:view})}}]))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
@@ -149,3 +156,6 @@
                                      "Content-type" "application/transit+json"}
                            :method "GET"}))
          (.then http/format-response))))
+
+(defn tag [tag endpoint]
+  (bidi/tag (delay endpoint) tag))

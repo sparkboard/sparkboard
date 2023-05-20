@@ -2,7 +2,7 @@
   (:require [clj-http.client :as http]
             [sparkboard.server.env :as env]
             [sparkboard.js-convert :refer [clj->json json->clj]]
-            [sparkboard.server.validate :as vd]
+            [sparkboard.validate :as vd]
             [malli.experimental.lite :as l]))
 
 

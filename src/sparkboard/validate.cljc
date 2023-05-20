@@ -1,4 +1,4 @@
-(ns sparkboard.server.validate
+(ns sparkboard.validate
   (:refer-clojure :exclude [assert])
   (:require [clojure.string :as str]
             [malli.core :as m :refer [explain]]

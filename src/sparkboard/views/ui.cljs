@@ -1,15 +1,54 @@
 (ns sparkboard.views.ui
-  (:require [inside-out.forms :as forms]
+  (:require [clojure.pprint :refer [pprint]]
+            [inside-out.forms :as forms]
             [inside-out.macros]
             [promesa.core :as p]
             [re-db.react]
             [shadow.lazy :as lazy]
+            [sparkboard.client.sanitize :as sanitize]
+            [sparkboard.schema :as schema]
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [clojure.pprint :refer [pprint]]
-            [sparkboard.schema :as schema])
+            [sparkboard.routes :as routes])
   (:require-macros [sparkboard.views.ui :refer [defview tr]]))
+
+(def safe-html sanitize/safe-html)
+
+(defn icon:settings [& [class-name]]
+  (v/x
+    [:svg {:class (or class-name "w-6 h-6") :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 24 24" :fill "currentColor"}
+     [:path {:fillRule "evenodd" :d "M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 01-.517.608 7.45 7.45 0 00-.478.198.798.798 0 01-.796-.064l-.453-.324a1.875 1.875 0 00-2.416.2l-.243.243a1.875 1.875 0 00-.2 2.416l.324.453a.798.798 0 01.064.796 7.448 7.448 0 00-.198.478.798.798 0 01-.608.517l-.55.092a1.875 1.875 0 00-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 01-.064.796l-.324.453a1.875 1.875 0 00.2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 01.796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 01.517-.608 7.52 7.52 0 00.478-.198.798.798 0 01.796.064l.453.324a1.875 1.875 0 002.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 01-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 001.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 01-.608-.517 7.507 7.507 0 00-.198-.478.798.798 0 01.064-.796l.324-.453a1.875 1.875 0 00-.2-2.416l-.243-.243a1.875 1.875 0 00-2.416-.2l-.453.324a.798.798 0 01-.796.064 7.462 7.462 0 00-.478-.198.798.798 0 01-.517-.608l-.091-.55a1.875 1.875 0 00-1.85-1.566h-.344zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" :clipRule "evenodd"}]]))
+
+(defn icon:loading []
+  ;; todo
+  "L")
+
+(defn icon:search []
+  (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
+        {:xmlns "http://www.w3.org/2000/svg"}
+        [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
+
+(defn show-content [{:text-content/keys [format string]}]
+  (case format
+    :text.format/html [sanitize/safe-html string]))
+
+(defn css-url [s] (str "url(" s ")"))
+
+(defview entity-card
+  {:key :entity/id}
+  [{:as entity :entity/keys [title description images kind]}]
+  (let [{:image/keys [logo-url background-url]} images]
+    [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
+     {:href (routes/entity entity :read)}
+     [:div.absolute.inset-0.bg-cover.bg-center.h-24
+      {:class "bg-muted-foreground/10"
+       :style {:background-image (css-url background-url)}}]
+     (when logo-url
+       [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
+        {:class "border-foreground/50"
+         :style {:background-image (css-url logo-url)}}])
+     [:div.font-medium.leading-snug.text-md.mt-3 title]]))
 
 (def logo-url "/images/logo-2023.png")
 
@@ -130,12 +169,18 @@
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
-(defn css-url [s] (str "url(" s ")"))
-
 (defn show-field [?field & [attrs]]
   (let [{:keys [el props]
          :or {el input-text}} (meta ?field)]
     (el ?field (v/merge-props props attrs))))
+
+(defn filter-input [?field & [attrs]]
+  (show-field ?field (merge {:class "pr-9"
+                             :wrapper-class "flex-grow sm:flex-none"
+                             :postfix (if (:loading? attrs)
+                                        (icon:loading)
+                                        (icon:search))}
+                            (dissoc attrs :loading? :error))))
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
