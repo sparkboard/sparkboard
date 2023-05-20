@@ -78,7 +78,7 @@
       [:li "default locale:" (str (:i18n/default-locale board))]
       [:li "extra-translations:" (str (:i18n/locale-dicts board))]]]]])
 
-(query/reactive $read:query [params]
+(defn read:query [params]
   (db/pull '[:entity/id
              :entity/kind
              :entity/title

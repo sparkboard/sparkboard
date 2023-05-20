@@ -47,7 +47,7 @@
      [:section [:h3 :tr/video]
       [video-field vid]])])
 
-(query/reactive $read:query [params]
+(defn read:query [params]
   (db/pull '[*] [:entity/id (:project params)]))
 
 

@@ -71,13 +71,22 @@
                       :handlers (sync/result-handlers)}))))
 
 #?(:cljs
-   (defn $query [query-vec]
+   (defn watch [query-vec]
      (let [query-vec (if (keyword? query-vec)
                        [query-vec {}]
                        query-vec)]
        (if (:query (routes/match-path query-vec))
-         (sync/$query @channel query-vec)
-         (delay {:error "Query not found"})))))
+         @(sync/$query @channel query-vec)
+         {:error "Query not found"}))))
+
+#?(:cljs
+   (defn once [qvec]
+     (if (:query (routes/match-path qvec))
+       (or (sync/read-result qvec)
+           (do (sync/start-loading! qvec)
+               (sync/send @channel [::sync/once qvec])
+               (sync/read-result qvec)))
+       (delay {:error "Query not found"}))))
 
 #?(:cljs
    (defn use-cached-result [{:as result :keys [loading? value]}]
@@ -91,7 +100,7 @@
        (assoc result :value @!last-value))))
 
 #?(:cljs
-   (def use-query (comp use-cached-result deref $query)))
+   (def use-query (comp use-cached-result watch)))
 
 #?(:cljs
    (defn send [message]

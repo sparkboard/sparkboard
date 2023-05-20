@@ -268,7 +268,7 @@
                                          :else (lazy/load view))
                                   [view]))
         query-result (when query
-                       @(ws/$query (:route params)))
+                       (ws/watch (:route params)))
         {:as result
          [view query params] :value} (-> [view-result query-result {:value params}]
                                          merge-async

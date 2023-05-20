@@ -13,10 +13,12 @@
             [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]
             [sparkboard.websockets :as ws]
-            [sparkboard.util :as u]))
+            [sparkboard.util :as u]
+            [re-db.memo :as memo]
+            [re-db.reactive :as r]))
 
 #?(:clj
-   (defn new$post
+   (defn new:post
      [{:keys [account]} _ org]
      (let [org (update-in org [:entity/domain :domain/name] #(some-> % domain/qualify-domain))
            _ (validate/assert org [:map {:closed true}
@@ -38,30 +40,29 @@
   (db/transact! [[:db.fn/retractEntity [:entity/id org]]])
   {:body ""})
 
-
-(query/reactive $settings:query [params]
-                ;; all the settings that can be changed
-                (db/pull '[*
-                           {:entity/domain [:domain/name]}] [:entity/id (:org params)]))
+(defn settings:query [params]
+  ;; all the settings that can be changed
+  (db/pull '[*
+             {:entity/domain [:domain/name]}] [:entity/id (:org params)]))
 
 (defn settings:post [{:keys [account]} {:keys [org]} _payload]
   ;; merge payload with org, validate, transact
   )
 
-(query/reactive $index$query [_]
-                (->> (db/where [[:entity/kind :org]])
-                     (mapv (re-db.api/pull '[*]))))
+(defn index:query [_]
+  (->> (db/where [[:entity/kind :org]])
+       (mapv (re-db.api/pull '[*]))))
 
-(query/reactive $read:query [params]
-                (db/pull '[:entity/id
+(defn read:query [params]
+  (db/pull '[:entity/id
+             :entity/kind
+             :entity/title
+             {:board/_org [:entity/created-at
+                           :entity/id
                            :entity/kind
-                           :entity/title
-                           {:board/_org [:entity/created-at
-                                         :entity/id
-                                         :entity/kind
-                                         :entity/title]}
-                           {:entity/domain [:domain/name]}]
-                         [:entity/id (:org params)]))
+                           :entity/title]}
+             {:entity/domain [:domain/name]}]
+           [:entity/id (:org params)]))
 
 #?(:clj
    (defn search:query [{:keys [org q]}]
@@ -93,7 +94,7 @@
                       q
                       [:entity/id org])}))
 
-(ui/defview index$view [params]
+(ui/defview index:view [params]
   (ui/with-form [?pattern (str "(?i)" ?filter)]
     [:<>
      [:div.entity-header
@@ -110,9 +111,9 @@
 
 (ui/defview read:view [params]
   (forms/with-form [_ ?q]
-    (let [{:as org :keys [entity/title]} (:value @(ws/$query [:org/read params]))
+    (let [{:as org :keys [entity/title]} (:value (ws/watch [:org/read params]))
           q (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
-          result (when q @(ws/$query [:org/search (assoc params :q q)]))]
+          result (when q (ws/once [:org/search (assoc params :q q)]))]
       [:div
        [:div.entity-header
         [:h3.header-title title]
@@ -139,7 +140,7 @@
 
   )
 
-(ui/defview new$view [params]
+(ui/defview new:view [params]
   ;; TODO
   ;; page layout (narrow, centered)
   ;; typography

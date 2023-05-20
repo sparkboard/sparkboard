@@ -20,7 +20,7 @@
             tags)])
    [:img {:src (:member/image-url member)}]])
 
-(query/reactive $read:query [params]
+(defn read:query [params]
   (dissoc (db/pull '[*
                      {:member/tags [*]}]
                    [:entity/id (:member params)])

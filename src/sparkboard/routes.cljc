@@ -9,6 +9,7 @@
             [sparkboard.transit :as t]
             [re-db.api :as db]
             [re-db.reactive :as r]
+            [re-db.hooks :as rh]
             [sparkboard.client.slack :as-alias slack.client]
             [sparkboard.client.views :as-alias views]
             [sparkboard.query-params :as query-params]
@@ -59,17 +60,17 @@
          "/domain-availability" (E :domain/availability
                                    {:handler `domain/availability})
          "/o" {"/index" (E :org/index
-                           {:query `org/$index$query
-                            :view `org/index$view})
+                           {:query `org/index:query
+                            :view `org/index:view})
                "/new" (E :org/new
-                         {:view `org/new$view
-                          :post `org/new$post})
+                         {:view `org/new:view
+                          :post `org/new:post})
                ["/" [bidi/uuid :org]] {"" (E :org/read
-                                             {:query `org/$read:query
+                                             {:query `org/read:query
                                               :view `org/read:view})
                                        "/settings" (E :org/settings
                                                       {:view `org/settings:view
-                                                       :query `org/$settings:query
+                                                       :query `org/settings:query
                                                        :post `org/settings:post})
                                        "/delete" (E :org/delete
                                                     {:post `org/delete:post})
@@ -79,7 +80,7 @@
                                        "/search" (E :org/search
                                                     {:query `org/search:query})}}
          ["/b/" [bidi/uuid :board]] {"" (E :board/read
-                                           {:query `board/$read:query
+                                           {:query `board/read:query
                                             :view `board/read:view})
                                      "/new-project" (E :project/new
                                                        {:view `project/new:view
@@ -88,15 +89,16 @@
                                                     {:view `board/register:view
                                                      :post `board/register:post})}
          ["/p/" [bidi/uuid :project]] {"" (E :project/read
-                                             {:query `project/$read:query
+                                             {:query `project/read:query
                                               :view `project/read:view})}
          ["/m/" [bidi/uuid :member]] {"" (E :member/read
-                                            {:query `member/$read:query
+                                            {:query `member/read:query
                                              :view `member/read:view})}}]))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
+  (let [routes ()])
   (cond-> (cond (string? route) route
                 (keyword? route) (bidi/path-for @!routes route options)
                 (vector? route) (apply bidi/path-for @!routes route)
@@ -115,6 +117,13 @@
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
   [path]
   (impl/match-route @!routes (path-for path)))
+
+(comment
+  (sparkboard.impl.routes/resolve-endpoint
+     {:query `org/index:query
+      :view `org/index:view
+      })
+  (match-path "/o/index"))
 
 #?(:cljs
    (do

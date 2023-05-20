@@ -2,21 +2,11 @@
   (:require [bidi.bidi :as bidi]
             [clojure.string :as str]
             [sparkboard.util :as u]
+            [re-db.memo :as memo]
+            [re-db.reactive :as r]
             [sparkboard.query-params :as query-params]
             [shadow.lazy #?(:clj :as-alias :cljs :as) lazy])
   #?(:cljs (:require-macros sparkboard.impl.routes)))
-
-(defn map->bidi [routes]
-  ["" (->> routes
-           (mapv (fn [[id {:as result :keys [route view query]}]]
-                   [route (bidi/tag
-                            (delay
-                              #?(:clj  (-> result
-                                           (u/update-some {:query requiring-resolve
-                                                           :post requiring-resolve
-                                                           :handler requiring-resolve}))
-                                 :cljs result))
-                            id)])))])
 
 (defn normalize-slashes [path]
   ;; remove trailing /'s, but ensure path starts with /
@@ -55,19 +45,46 @@
                   :initk path)
        (keep (comp :route (partial match-route routes)))))
 
-(defmacro E
-  ;; wraps :view keys with lazy/loadable (and resolves aliases, with :as-alias support)
-  [tag endpoint]
+#?(:clj
+   (defn memo-fn-var [query-var]
+     (or (::memo (meta query-var))
+         (do
+           (alter-meta! query-var assoc ::memo
+                        (let [f @query-var
+                              fmemo (memo/memoize
+                                      (fn [& args#]
+                                        (r/reaction (apply f args#))))]
+                          (add-watch query-var ::query-fn
+                                     (fn [_ _ _ f]
+                                       (memo/reset-fn! fmemo
+                                                       (fn [& args]
+                                                         (r/reaction (apply f args))))))
+                          fmemo))
+           (::memo (meta query-var))))))
+
+(defn dequote [form]
+  (if (and (seq? form) (= 'quote (first form)))
+    (second form)
+    form))
+
+(defmacro resolve-endpoint [endpoint]
   (let [aliases (ns-aliases *ns*)
         resolve-sym (fn [sym]
                       (if-let [resolved (get aliases (symbol (namespace sym)))]
                         (symbol (str resolved) (name sym))
                         sym))]
-    `(~'bidi.bidi/tag
-       (delay
-         ~(u/update-some endpoint (if (:ns &env)
-                                    {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))}
-                                    {:query (fn [s] `(requiring-resolve ~s))
-                                     :post (fn [s] `(requiring-resolve ~s))
-                                     :handler (fn [s] `(requiring-resolve ~s))})))
-       ~tag)))
+    (if (:ns &env)
+      (u/update-some endpoint {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))})
+      (-> endpoint
+          (u/update-some {:query (fn [s] `@(requiring-resolve ~s))
+                          :post (fn [s] `@(requiring-resolve ~s))
+                          :handler (fn [s] `@(requiring-resolve ~s))})
+          (cond-> (:query endpoint)
+                  (assoc :$query `(memo-fn-var (requiring-resolve ~(:query endpoint)))))))))
+
+(defmacro E
+  ;; wraps :view keys with lazy/loadable (and resolves aliases, with :as-alias support)
+  [tag endpoint]
+  `(~'bidi.bidi/tag
+     (delay (resolve-endpoint ~endpoint))
+     ~tag))

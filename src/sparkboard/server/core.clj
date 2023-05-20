@@ -117,22 +117,26 @@
 
 
 (memo/defn-memo $txs [ref]
-  (if (sync/watchable? ref)
-    (r/catch
-      (sync.entity/txs ref)
-      (fn [e]
-        (println "Error in $resolve-query")
-        (println e)
-        {:error (ex-message e)}))
-    ref))
+  (r/catch
+    (sync.entity/txs ref)
+    (fn [e]
+      (println "Error in $resolve-query")
+      (println e)
+      {:error (ex-message e)})))
 
 (defn resolve-query [[_ params :as route]]
   (tap> [:resolve-query route])
-  (let [{[_ matched-params] :route :keys [query]} (routes/match-path route)]
-    (when query
-      ($txs (@query (merge {} params matched-params))))))
+  (let [{[_ matched-params] :route :keys [$query] :as match} (routes/match-path route)]
+    (tap> [:match match])
+    (when $query
+      ($txs ($query (merge {} params matched-params))))))
 
-(def ws-options {:handlers (sync/query-handlers resolve-query)})
+(def ws-options {:handlers (merge (sync/query-handlers resolve-query)
+                                  {::sync/once
+                                   (fn [{:keys [channel]} qvec]
+                                     (let [{:keys [query]} (routes/match-path qvec)]
+                                       (sync/send channel
+                                                  (sync/wrap-result qvec {:value (apply query (rest qvec))}))))})})
 
 (defn ws-handler [req _]
   (#'ws/handle-ws-request ws-options req))

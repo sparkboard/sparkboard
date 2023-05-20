@@ -28,21 +28,6 @@
                                                              :token token})
           (return-text 401 "Invalid token"))))))
 
-;; function to check if x satisfies clojure.lang.IRef
-(defn watchable? [x]
-  (and (some? x) (instance? clojure.lang.IRef x)))
-
-
-(defn wrap-reaction [f]
-  (fn [req]
-    (let [res (f req)]
-      (if (watchable? res)
-        (try (let [body @res]
-               {:status 200 :body body})
-             (catch Exception e
-               {:status 500 :body (str "Error: " (.getMessage e))}))
-        res))))
-
 (defn join-handlers
   "Join a sequence of handlers into a single handler, returning the first non-nil response."
   [& handlers]

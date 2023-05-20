@@ -27,14 +27,15 @@
                    (tr :tr/invalid-domain)
                    {:visibility :always})))
 
-(defn domain-availability-validator []
-  (-> (fn [v _]
-        (when (>= (count v) 3)
-          (p/let [res (routes/GET :domain/availability :query {:domain v})]
-                 (if (:available? res)
-                   (forms/message :info
-                                  [:span.text-green-500.font-bold (tr :tr/available)])
-                   (forms/message :invalid
-                                  (tr :tr/not-available)
-                                  {:visibility :always})))))
-      (forms/debounce 1000)))
+#?(:cljs
+   (defn domain-availability-validator []
+     (-> (fn [v _]
+           (when (>= (count v) 3)
+             (p/let [res (routes/GET :domain/availability :query {:domain v})]
+               (if (:available? res)
+                 (forms/message :info
+                                [:span.text-green-500.font-bold (tr :tr/available)])
+                 (forms/message :invalid
+                                (tr :tr/not-available)
+                                {:visibility :always})))))
+         (forms/debounce 1000))))
