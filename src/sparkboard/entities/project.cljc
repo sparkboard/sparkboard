@@ -1,12 +1,10 @@
 (ns sparkboard.entities.project
-  (:require #?(:clj [sparkboard.datalevin :as sd])
+  (:require [sparkboard.datalevin :as dl]
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.routes :as routes]
-            [sparkboard.server.query :as query]
             [sparkboard.validate :as validate]
-            [sparkboard.views.ui :as ui]
-            ))
+            [sparkboard.views.ui :as ui]))
 
 (ui/defview new:view [{:as params :keys [route]}]
   (ui/with-form [!project {:entity/title ?title}]
@@ -51,13 +49,12 @@
   (db/pull '[*] [:entity/id (:project params)]))
 
 
-(query/static new:post
-  [req params project]
+(defn new! [req params project]
   (validate/assert project [:map {:closed true} :entity/title])
   ;; auth: user is member of board & board allows members to create projects
   (db/transact! [(-> project
                      (assoc :project/board [:entity/id (:entity/id params)])
-                     (sd/new-entity :by (:db/id (:account req))))])
+                     (dl/new-entity :project :by (:db/id (:account req))))])
   ;; what to return?
   {:status 201}
   )

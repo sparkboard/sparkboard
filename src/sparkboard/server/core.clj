@@ -1,8 +1,7 @@
 (ns sparkboard.server.core
   "HTTP server handling all requests
    * slack integration
-   * synced queries over websocket
-   * mutations over websocket"
+   * synced queries over websocket"
   (:gen-class)
   (:require [clj-time.coerce]
             [clojure.java.io :as io]
@@ -27,6 +26,7 @@
             [ring.util.response :as ring.response]
             [sparkboard.datalevin :as datalevin]
             [sparkboard.impl.server :as impl]
+            [sparkboard.i18n :as i18n]
             [sparkboard.log]
             [sparkboard.routes :as routes]
             [sparkboard.schema]
@@ -89,25 +89,29 @@
 (def route-handler
   (fn [{:as req :keys [uri]}]
     (tap> req)
-    (let [{:as match :keys [view query post handler params public]} (routes/match-path uri)
+    (let [{:as match :keys [view
+                            query
+                            params
+                            public
+                            GET
+                            POST]} (routes/match-path uri)
           params (cond->> params
                           (:query-params req)
                           (merge (update-keys (:query-params req) keyword)))
           method (:request-method req)
           data-req? (some-> (get-in req [:headers "accept"]) (str/includes? "application/transit+json"))
           authed? (:account req)]
+      (tap> [:method method])
       (cond
 
         (and (not authed?) (not public)) (throw (ex-info "Unauthorized" {:uri uri
                                                                          :match match
                                                                          :status 401}))
 
-        handler (handler req params)
+        (and GET (= method :get)) (GET req params)
+        (and POST (= method :post)) (apply POST req params (:body-params req))
 
-        ;; post fns are expected to return HTTP response maps
-        (and post (= method :post)) (apply post req params (:body-params req))
-
-        (and query data-req?) (some-> (query params) deref ring.http/ok)
+        (and query data-req?) (some-> (query params) ring.http/ok)
         (or query view) (server.html/app-page
                           {:tx [(assoc env/client-config :db/id :env/config)
                                 (assoc (:account req) :db/id :env/account)]})
@@ -145,6 +149,7 @@
   (impl/join-handlers (serve-static "public")
                       slack.server/handlers
                       (-> #'route-handler
+                          i18n/wrap-i18n
                           accounts/wrap-accounts
                           impl/wrap-query-params            ;; required for accounts (oauth2)
                           wrap-log

@@ -215,10 +215,14 @@
 
 (defn error-view [{:keys [error]}]
   (when error
-    [:div.text-destructive.p-body (str error)]))
+    [:div.px-body.my-4
+     [:div.text-destructive.border-2.border-destructive.rounded.shadow.p-4
+      (str error)]]))
 
 (defn loading-bar [{:keys [loading?]}]
-  (when loading? "Loading..."))
+  (when loading?
+    [:div.relative.bg-blue-100
+     [:div.loading-bar]]))
 
 (defn merge-async
   "Accepts a collection of {:loading?, :error, :value} maps, returns a single map:

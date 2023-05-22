@@ -27,18 +27,18 @@
 
 (r/redef !routes
   "Route definitions.
-  :view  - symbol pointing to a (client) view for the single-page app
-  :query - symbol pointing to a (server) function providing data for the route
-  :post - symbol pointing to a (server) function accepting a POST body
-  :handler - symbol pointing to a (server) function accepting a request map"
+  :view     - symbol pointing to a (client) view for the single-page app
+  :query    - symbol pointing to a (server) function providing data for the route
+  :POST     - symbol pointing to a (server) function accepting [req, params & body]
+  :GET      - symbol pointing to a (server) function accepting a request map"
   (r/reaction
     ["" {"/" (E :home {:public true
                        :view `views/home})
          "/ws" (E :websocket {:public true
-                              :handler 'sparkboard.server.core/ws-handler})
+                              :GET 'sparkboard.server.core/ws-handler})
 
          ["/documents/" :file/name] (E :markdown/file
-                                       {:handler 'sparkboard.server.core/serve-markdown
+                                       {:GET 'sparkboard.server.core/serve-markdown
                                         :public true})
          "/slack/" {"invite-offer" (E :slack/invite-offer
                                       {:view `slack.client/invite-offer})
@@ -46,37 +46,37 @@
                                        {:view `slack.client/link-complete})}
          "/login" (E :account/sign-in {:view `views/account:sign-in
                                        :header? false
-                                       :post 'sparkboard.server.accounts/login-handler
+                                       :POST 'sparkboard.server.accounts/login!
                                        :public true})
-         "/logout" (E :account/logout {:handler 'sparkboard.server.accounts/logout-handler
+         "/logout" (E :account/logout {:GET 'sparkboard.server.accounts/logout
                                        :public true})
-         "/locale/set" (E :account/set-locale {:post 'sparkboard.i18n/set-locale-response})
+         "/locale/set" (E :account/set-locale {:POST 'sparkboard.i18n/set-locale!})
          "/oauth2" {"/google" {"/launch" (E :oauth2.google/launch {})
                                "/callback" (E :oauth2.google/callback {})
                                "/landing" (E :oauth2.google/landing
                                              {:public true
-                                              :handler 'sparkboard.server.accounts/google-landing})}}
+                                              :GET 'sparkboard.server.accounts/google-landing})}}
 
          "/domain-availability" (E :domain/availability
-                                   {:handler `domain/availability})
+                                   {:GET `domain/availability})
          "/o" {"/index" (E :org/index
                            {:query `org/index:query
                             :view `org/index:view})
                "/new" (E :org/new
                          {:view `org/new:view
-                          :post `org/new:post})
+                          :POST `org/new!})
                ["/" [bidi/uuid :org]] {"" (E :org/read
                                              {:query `org/read:query
                                               :view `org/read:view})
                                        "/settings" (E :org/settings
-                                                      {:view `org/settings:view
+                                                      {:view `org/settings-view
                                                        :query `org/settings:query
-                                                       :post `org/settings:post})
+                                                       :POST `org/settings!})
                                        "/delete" (E :org/delete
-                                                    {:post `org/delete:post})
+                                                    {:POST `org/delete!})
                                        "/new-board" (E :org/new-board
                                                        {:view `board/new:view
-                                                        :post `board/new:post})
+                                                        :POST `board/new!})
                                        "/search" (E :org/search
                                                     {:query `org/search:query})}}
          ["/b/" [bidi/uuid :board]] {"" (E :board/read
@@ -84,10 +84,10 @@
                                             :view `board/read:view})
                                      "/new-project" (E :project/new
                                                        {:view `project/new:view
-                                                        :post `project/new:post})
+                                                        :POST `project/new!})
                                      "/register" (E :board/register
                                                     {:view `board/register:view
-                                                     :post `board/register:post})}
+                                                     :POST `board/register!})}
          ["/p/" [bidi/uuid :project]] {"" (E :project/read
                                              {:query `project/read:query
                                               :view `project/read:view})}
@@ -120,9 +120,9 @@
 
 (comment
   (sparkboard.impl.routes/resolve-endpoint
-     {:query `org/index:query
-      :view `org/index:view
-      })
+    {:query `org/index:query
+     :view `org/index:view
+     })
   (match-path "/o/index"))
 
 #?(:cljs

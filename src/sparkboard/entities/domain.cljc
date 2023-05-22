@@ -1,19 +1,17 @@
 (ns sparkboard.entities.domain
-  (:require [inside-out.forms :as forms]
-            [sparkboard.i18n :refer [tr]]
+  (:require [clojure.string :as str]
+            [inside-out.forms :as forms]
             [promesa.core :as p]
-            [clojure.string :as str]
-            [sparkboard.routes :as routes]
-            [sparkboard.server.query :as query]
-            [re-db.api :as db]))
+            [re-db.api :as db]
+            [sparkboard.i18n :refer [tr]]
+            [sparkboard.routes :as routes]))
 
 (defn qualify-domain [domain]
   (if (str/includes? domain ".")
     domain
     (str domain ".sparkboard.com")))
 
-(query/static availability
-  [_ {:keys [domain]}]
+(defn availability [req {:keys [domain]}]
   (let [domain (qualify-domain domain)]
     {:body {:available?
             (and (re-matches #"^[a-z0-9-.]+$" domain)

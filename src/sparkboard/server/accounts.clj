@@ -13,7 +13,7 @@
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.response :as ring.response]
-            [sparkboard.i18n :as i])
+            [sparkboard.i18n :refer [tr]])
   (:import [com.smartmovesystems.hashcheck FirebaseScrypt]
            [org.apache.commons.codec.binary Base64]
            [java.nio.charset StandardCharsets]))
@@ -102,7 +102,7 @@
    (ex-info (str "Account not found: " account-id)
             {:status 401
              :wrap-response res:logout
-             :title "Account not found"
+             :title (tr :tr/account-not-found)
              :detail (str {:account-id account-id})})))
 
 (defn wrap-account-lookup [handler]
@@ -115,7 +115,7 @@
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))
 
-(defn logout-handler [_ _]
+(defn logout [_ _]
   (-> (ring.response/redirect (routes/path-for :home))
       (res:logout)))
 
@@ -129,7 +129,7 @@
       ;; - in client, set this into :env/account
       (assoc :body {:account (db/pull exposed-account-keys account-id)})))
 
-(defn login-handler
+(defn login!
   "POST handler. Returns 200/OK with account data if successful."
   [_req _params {:as account
                  :keys [account/email
@@ -141,7 +141,7 @@
 
   (let [account-entity (not-empty (db/get [:account/email email]))
         _ (vd/assert account-entity
-                     [:map {:error/message "Account not found"}
+                     [:map {:error/message (tr :tr/account-not-found)}
                       [:account/password-hash [:string]]
                       [:account/password-salt [:string]]]
                      {:code 401})
@@ -149,7 +149,7 @@
         _ (when (or (not (:account/password-hash account-entity))
                     (not (:account/password-salt account-entity)))
             ;; TODO start password-reset flow
-            (throw (ex-info "This account requires a password reset."
+            (throw (ex-info (tr :tr/account-requires-password-reset)
                             {:account/email email
                              :status 401})))]
     (if (password-valid? account-entity password)
@@ -223,7 +223,6 @@
 
 (defn google-landing [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)
-        _ (def google-access-tokens (:google access-tokens))
         public-key (-> id-token id-token-header :kid google-public-key)
         url "https://www.googleapis.com/oauth2/v3/userinfo"
         sub (:sub (jwt/unsign id-token public-key {:alg :rs256

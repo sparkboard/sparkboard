@@ -1,7 +1,5 @@
 (ns sparkboard.entities.member
-  (:require [sparkboard.server.query :as query]
-            [re-db.api :as db]
-            [sparkboard.routes :as routes]
+  (:require [re-db.api :as db]
             [sparkboard.views.ui :as ui]))
 
 (ui/defview read:view [{member :data}]

@@ -77,8 +77,8 @@
       (u/update-some endpoint {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))})
       (-> endpoint
           (u/update-some {:query (fn [s] `@(requiring-resolve ~s))
-                          :post (fn [s] `@(requiring-resolve ~s))
-                          :handler (fn [s] `@(requiring-resolve ~s))})
+                          :GET (fn [s] `@(requiring-resolve ~s))
+                          :POST (fn [s] `@(requiring-resolve ~s))})
           (cond-> (:query endpoint)
                   (assoc :$query `(memo-fn-var (requiring-resolve ~(:query endpoint)))))))))
 

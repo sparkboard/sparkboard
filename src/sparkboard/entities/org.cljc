@@ -1,9 +1,6 @@
 (ns sparkboard.entities.org
-  (:require #?(:clj [datalevin.core :as dl])
-            #?(:clj [sparkboard.datalevin :as sd])
-            [sparkboard.server.query :as query]
+  (:require [sparkboard.datalevin :as dl]
             [applied-science.js-interop :as j]
-            [bidi.bidi :as bidi]
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
@@ -13,12 +10,10 @@
             [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]
             [sparkboard.websockets :as ws]
-            [sparkboard.util :as u]
-            [re-db.memo :as memo]
-            [re-db.reactive :as r]))
+            [sparkboard.util :as u]))
 
 #?(:clj
-   (defn new:post
+   (defn new!
      [{:keys [account]} _ org]
      (let [org (update-in org [:entity/domain :domain/name] #(some-> % domain/qualify-domain))
            _ (validate/assert org [:map {:closed true}
@@ -26,13 +21,11 @@
                                    :entity/description
                                    [:entity/domain [:map {:closed true}
                                                     [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
-           org (sd/new-entity org
-                              :by (:db/id account)
-                              :legacy-id :entity/id)]
+           org (dl/new-entity org :org :by (:db/id account))]
        (db/transact! [org])
        {:body org})))
 
-(defn delete:post
+(defn delete!
   "Mutation fn. Retracts organization by given org-id."
   [_req {:keys [org]}]
   ;; auth: user is admin of org
@@ -45,7 +38,7 @@
   (db/pull '[*
              {:entity/domain [:domain/name]}] [:entity/id (:org params)]))
 
-(defn settings:post [{:keys [account]} {:keys [org]} _payload]
+(defn settings! [{:keys [account]} {:keys [org]} _payload]
   ;; merge payload with org, validate, transact
   )
 
@@ -76,7 +69,7 @@
                       :where
                       [?board :board/org ?org]
                       [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]]
-                    @sd/conn
+                    @dl/conn
                     q
                     [:entity/id org])
       :projects (dl/q '[:find [(pull ?project [:entity/id
@@ -90,7 +83,7 @@
                         [?board :board/org ?org]
                         [?project :project/board ?board]
                         [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]]
-                      @sd/conn
+                      @dl/conn
                       q
                       [:entity/id org])}))
 
@@ -136,8 +129,8 @@
           [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
           [:div.card-grid (map ui/entity-card results)]])])))
 
-(ui/defview settings:view [params]
-
+(ui/defview settings-view [params]
+  [:div.p-body.prose :tr/settings]
   )
 
 (ui/defview new:view [params]

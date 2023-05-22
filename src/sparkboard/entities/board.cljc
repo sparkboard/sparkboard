@@ -1,9 +1,8 @@
 (ns sparkboard.entities.board
-  (:require #?(:clj [sparkboard.datalevin :as sd])
-            [promesa.core :as p]
+  (:require [promesa.core :as p]
             [re-db.api :as db]
+            [sparkboard.datalevin :as sd]
             [sparkboard.routes :as routes]
-            [sparkboard.server.query :as query]
             [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]))
 
@@ -19,14 +18,13 @@
                               ))}
       :tr/create]]))
 
-(query/static new:post
-  [req params board pull]
+(defn new! [req params board pull]
   (validate/assert board [:map {:closed true} :entity/title])
   ;; auth: user is admin of :board/org
   (db/transact!
     [(-> board
          (assoc :board/org [:entity/id (:entity/id params)])
-         (sd/new-entity :by (:db/id (:account req))))])
+         (sd/new-entity :board :by (:db/id (:account req))))])
   (db/pull pull))
 
 (ui/defview register:view [{:as params :keys [route]}]
@@ -42,7 +40,7 @@
                                 res))}
       :tr/register]]))
 
-(query/static register:post [ctx _ registration-map]
+(defn register! [req params registration-data]
   ;; create membership
   )
 
