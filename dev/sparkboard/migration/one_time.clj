@@ -33,26 +33,58 @@
 
 (defn get-oid [x] (str (:$oid x x)))
 
+(defn uuid-prefix [kind]
+  (case kind
+    :org "a0"
+    :board "a1"
+    :collection "a2"
+    :member "a3"
+    :project "a4"
+    :field "a5"
+    :field-spec "a6"
+    :discussion "a7"
+    :post "a8"
+    :comment "a9"
+    :notification "aa"
+    :tag "ab"
+    :tag-spec "ac"
+    :thread "ad"
+    :message "ae"
+    :membership "af"
+    (throw (ex-info "Invalid kind" {:kind kind}))
+    #_"af"))
+
 (def to-uuid
   (memoize
-   (fn
-     ([s]
+    (fn [kind s]
       (let [s (:$oid s s)]
         (cond (uuid? s) s
               (and (vector? s) (= :entity/id (first s))) (second s)
-              (string? s) (java.util.UUID/nameUUIDFromBytes (.getBytes s))
-              :else (throw (ex-info "Invalid UUID" {:s s})))))
-     ([s & ss]
-      (->> (cons s ss)
-           (map to-uuid)
-           sort
-           (str/join ":")
-           to-uuid)))))
+              (string? s) (java.util.UUID/fromString (str (uuid-prefix kind) (subs (java.util.UUID/nameUUIDFromBytes (.getBytes s)) 2)))
+              :else (throw (ex-info "Invalid UUID" {:s s})))))))
 
-(defn id-with-timestamp [m a v]
+(defn composite-uuid [kind & ss]
+  (to-uuid kind (->> ss
+                     (map (partial to-uuid :INVALID))
+                     (map str)
+                     sort
+                     (str/join ":"))))
+
+(defn uuid-ref [kind s]
+  (let [id (to-uuid kind s)]
+    [:entity/id id]))
+
+(defn composite-uuid-ref [kind & ss]
+  (uuid-ref kind (apply (partial composite-uuid kind) ss)))
+
+(comment
+  (uuid-ref [:entity/id #uuid "3b7f78a0-6757-3da3-ac3d-265f7c9c3d0f"]))
+
+
+(defn id-with-timestamp [kind m a v]
   (-> m
       (assoc :entity/created-at (bson-id-timestamp (get-oid v))
-             :entity/id (to-uuid (get-oid v)))
+             :entity/id (to-uuid kind (get-oid v)))
       (dissoc a)))
 
 (defn days-between
@@ -73,7 +105,7 @@
 
 (def mongo-colls {:member/as-map "users"
                   :account/as-map "users"
-                  :member-vote/ballot "users"
+                  :ballot/as-map "users"
                   :notification/as-map "notificationschemas"
                   :project/as-map "projectschemas"
                   :discussion/as-map "discussionschemas"
@@ -95,11 +127,11 @@
 
 (def !accounts
   (delay
-   (->> (json/read-value
-         (slurp (env/db-path "accounts.json"))
-         json/keyword-keys-object-mapper)
-        :users
-        (remove :disabled))))
+    (->> (json/read-value
+           (slurp (env/db-path "accounts.json"))
+           json/keyword-keys-object-mapper)
+         :users
+         (remove :disabled))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Data Transformation
@@ -126,9 +158,9 @@
      (dissoc m a)))
   ([m a v & kvs]
    (reduce
-    (fn [m [a v]] (assoc-some-value m a v))
-    (assoc-some-value m a v)
-    (partition 2 kvs))))
+     (fn [m [a v]] (assoc-some-value m a v))
+     (assoc-some-value m a v)
+     (partition 2 kvs))))
 
 (defn xf [f & args]
   (fn [m a v] (assoc-some-value m a (apply f v args))))
@@ -144,19 +176,20 @@
 
 (def read-firebase
   (memoize                                                  ;; you'll need to eval & run `fetch-firebase` below for this to work
-   (fn [] (->> (slurp (env/db-path "firebase.edn")) (read-string)))))
+    (fn [] (->> (slurp (env/db-path "firebase.edn")) (read-string)))))
 
 (def read-coll
   (memoize
-   (fn [k]
-     (cond (#{:account/as-map} k) @!accounts
-           (mongo-colls k)
-           (read-string (slurp (env/db-path (str (mongo-colls k) ".edn"))))
-           (firebase-colls k) (-> ((read-firebase) (firebase-colls k))
-                                  (cond->>
-                                   (= k :board/as-map) (merge-with merge ((read-firebase) "privateSettings")))
-                                  #_(#(apply dissoc % delete-boards)))
-           :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
+    (fn [k]
+      (cond (#{:account/as-map} k) @!accounts
+            (mongo-colls k)
+            (read-string (slurp (env/db-path (str (mongo-colls k) ".edn"))))
+            (firebase-colls k) (->> (-> ((read-firebase) (firebase-colls k))
+                                        (cond->>
+                                          (= k :board/as-map) (merge-with merge ((read-firebase) "privateSettings")))
+                                        #_(#(apply dissoc % delete-boards)))
+                                    #_(mapv (fn [[k m]] (assoc m :firebase/id k))))
+            :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
 (defn unmunge-domain [s] (str/replace s "_" "."))
 
@@ -164,38 +197,32 @@
 
 (def !existing-ids
   (delay
-   (-> #{}
-       ;; domain names
-       (into (map :domain/name (coll-entities :domain/as-map)))
+    (-> #{}
+        ;; domain names
+        (into (map :domain/name (coll-entities :domain/as-map)))
 
-       (into (comp
-              (mapcat read-coll)
-              (map #(try (to-uuid (:_id %))
-                         (catch Exception e
-                           (clojure.pprint/pprint :failed %)
-                           (throw e)))))
-             (keys (dissoc mongo-colls :account/as-map)))
-       (into (map (comp to-uuid :localId) (read-coll :account/as-map)))
-       (into (comp (mapcat :posts)
-                   (map (fn [{:as post :keys [comments]}]
-                          (cons (to-uuid (:_id post))
-                                (map (comp to-uuid :_id) comments)))))
-             (read-coll :discussion/as-map))
-       (into (comp (mapcat read-coll)
-                   (map (comp to-uuid key)))
-             (keys firebase-colls)))))
+        (into (mapcat #(for [:let [kind (keyword (name %))]
+                             m (read-coll %)]
+                         (try (to-uuid kind (:_id m))
+                              (catch Exception e
+                                (clojure.pprint/pprint :failed %)
+                                (throw e)))))
+              (keys (dissoc mongo-colls :account/as-map)))
 
-(defn uuid-ref
-  ([s & ss]
-   (uuid-ref (apply to-uuid s ss)))
-  ([s]
-   (let [id (to-uuid s)]
-     [:entity/id id])))
+        (into (map #(to-uuid :account (:localId %)) (read-coll :account/as-map)))
 
-(comment
- (uuid-ref [:entity/id #uuid "3b7f78a0-6757-3da3-ac3d-265f7c9c3d0f"]))
+        (into (comp (mapcat :posts)
+                    (mapcat (fn [{:as post :keys [comments]}]
+                              (cons (to-uuid :post (:_id post))
+                                    (map (comp (partial :comment to-uuid) :_id) comments)))))
+              (read-coll :discussion/as-map))
 
-(defn uuid-ref-as [as]
+        (into (mapcat #(for [:let [kind (keyword (name %))
+                                   [k _] (read-coll %)]]
+                         (to-uuid kind k)))
+              (keys firebase-colls)))))
+
+(defn uuid-ref-as [kind as]
   (fn [m k v]
     (-> m
         (dissoc k)
@@ -205,7 +232,7 @@
                               (comp (keep identity)
                                     (map uuid-ref))
                               v)
-                        (some-> v uuid-ref))))))
+                        (some->> v (uuid-ref kind)))))))
 
 (def unique-ids-from
   (memoize (fn [coll-k]
@@ -213,9 +240,10 @@
                              (map (comp val first))) (coll-entities coll-k)))))
 
 (defn missing-entity? [coll-k ref]
-  (let [coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)]
+  (let [coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)
+        kind (keyword (name coll-k))]
     (and ref
-         (not ((unique-ids-from coll-k) (to-uuid ref))))))
+         (not ((unique-ids-from coll-k) (to-uuid kind ref))))))
 
 (defn keep-entity [coll-k]
   (fn [m a v]
@@ -282,11 +310,13 @@
          (apply-changes doc))))))
 
 (defn parse-sparkboard-id [s]
-  (let [[_ etype eid] (re-find #"sparkboard[._]([^:]+):(.*)" s)]
-    {:kind (keyword etype)
-     :uid (to-uuid eid)
+  (let [[_ etype eid] (re-find #"sparkboard[._]([^:]+):(.*)" s)
+        kind (keyword etype)
+        kind ({:user :member} kind kind)]
+    {:kind kind
+     :uid (to-uuid kind eid)
      :id eid
-     :ref (uuid-ref eid)}))
+     :ref (uuid-ref kind eid)}))
 
 (defn parse-domain-target [s]
   (if (str/starts-with? s "redirect:")
@@ -327,11 +357,11 @@
 
 (def !all-field-specs
   (delay
-   (->> (coll-entities :board/as-map)
-        (mapcat (juxt :board/member-fields :board/project-fields))
-        (mapcat identity)
-        (map (juxt :field-spec/id identity))
-        (into {}))))
+    (->> (coll-entities :board/as-map)
+         (mapcat (juxt :board/member-fields :board/project-fields))
+         (mapcat identity)
+         (map (juxt :field-spec/id identity))
+         (into {}))))
 
 (defn html-content [s]
   (when-not (str/blank? s)
@@ -357,7 +387,9 @@
       (try
         (reduce (fn [m k]
                   (let [[managed-by-type managed-by-id] (managed-by-k m)
-                        field-spec-id (to-uuid managed-by-id (subs (name k) 6))
+                        field-spec-id (composite-uuid :field-spec
+                                                      (to-uuid :board managed-by-id)
+                                                      (to-uuid :field (subs (name k) 6)))
                         target-id (:entity/id m)
                         v (m k)
                         field-type (:field/type (@!all-field-specs field-spec-id))
@@ -379,28 +411,23 @@
                     (-> (dissoc m k)
                         (cond-> field-value
                                 (update
-                                 to-k
-                                 ;; question, how to have uniqueness
-                                 ;; based on tuple of [field-spec/id, field/target]
-                                 (fnil conj [])
-                                 {:field/id (to-uuid target-id field-spec-id)
-                                  :field/value [field-type field-value]
-                                  :field/spec [:field-spec/id field-spec-id]})))))
+                                  to-k
+                                  ;; question, how to have uniqueness
+                                  ;; based on tuple of [field-spec/id, field/target]
+                                  (fnil conj [])
+                                  {:field/id (composite-uuid :field target-id field-spec-id)
+                                   :field/value [field-type field-value]
+                                   :field/spec [:field-spec/id field-spec-id]})))))
                 m
                 field-ks)
         (catch Exception e
           (clojure.pprint/pprint
-           {:managed-by [managed-by-k (managed-by-k m)]
-            :m m})
+            {:managed-by [managed-by-k (managed-by-k m)]
+             :m m})
           (throw e)))
       m)))
 
 (defonce !orders (atom 0))
-
-(defn membership-id [member-id entity-id]
-  (str (cond-> member-id (vector? member-id) second)
-       ":"
-       (cond-> entity-id (vector? entity-id) second)))
 
 (def fallback-board-created-at #inst"2017-06-15T00:09:17.000-00:00")
 (def deletion-time #inst"2022-07-24T18:37:05.097392000-00:00")
@@ -413,27 +440,27 @@
       m)))
 
 (comment
- (first (read-coll :board/as-map))
- (->> (read-coll :board/as-map)
-      (keep #(get (val %) "tags"))
-      first))
+  (first (read-coll :board/as-map))
+  (->> (read-coll :board/as-map)
+       (keep #(get (val %) "tags"))
+       first))
 
 (def !tag->id
   (delay (into {}
                (for [[board-id {:strs [tags]}] (read-coll :board/as-map)
-                     :let [board-id (to-uuid board-id)
+                     :let [board-id (to-uuid :board board-id)
                            tags (update-vals tags #(update % "label" (fn [l] (or l (get % "name") :NO_TAG))))]]
                  [board-id (-> (merge (zipmap (map #(str/lower-case (get % "label")) (vals tags))
                                               (keys tags))
                                       (zipmap (map str/lower-case (keys tags))
                                               (keys tags)))
-                               (update-vals (partial to-uuid board-id)))]))))
+                               (update-vals #(composite-uuid board-id (to-uuid :tag %))))]))))
 
 (comment
- (first @!tag->id))
+  (first @!tag->id))
 
 (defn resolve-tag [board-id tag-string]
-  (if-let [tag-id (get-in @!tag->id [(to-uuid board-id) (str/lower-case tag-string)])]
+  (if-let [tag-id (get-in @!tag->id [(to-uuid :board board-id) (str/lower-case tag-string)])]
     (when-not (= :NO_TAG tag-id)
       {:tag/id tag-id})
     {:tag.ad-hoc/label tag-string}))
@@ -446,10 +473,10 @@
   #(assoc % :entity/kind kind))
 
 (def changes {:board/as-map
-              [::prepare (partial flat-map :entity/id to-uuid)
+              [::prepare (partial flat-map :entity/id (partial to-uuid :board))
                ::defaults {:board/registration-open? true
                            :entity/public? true
-                           :board/org (uuid-ref "base")}
+                           :board/org (uuid-ref :org "base")}
                "createdAt" (& (xf #(Date. %)) (rename :entity/created-at))
                "socialFeed" (rename :entity/social-feed)
                "localeSupport" (rename :entity/locale-suggestions)
@@ -478,7 +505,7 @@
                                                  "-KptLeYkGMx6INLcHwzG" #inst"2017-07-25T12:48:47.000-00:00",
                                                  "-KzsRsHIopxwuAlttgaY" #inst"2017-11-28T19:12:22.000-00:00",
                                                  "-Kmd2M66G5kP6aIzpQ7e" #inst"2017-06-15T07:15:38.000-00:00"}
-                                                (update-keys to-uuid))]
+                                                (update-keys (partial to-uuid :board)))]
                           (fn [m]
                             (update m :entity/created-at #(or %
                                                               (created-times (:entity/id m))
@@ -490,14 +517,17 @@
                           (update m :entity/title (fn [x]
                                                     (or x
                                                         (if
-                                                         (:board/is-template? m)
+                                                          (:board/is-template? m)
                                                           "Board Template"
                                                           "Untitled Board")))))
                (let [field-xf (fn [m a v]
                                 (let [managed-by (:entity/id m)]
                                   (assoc m a
                                            (try (->> v
-                                                     (flat-map :field-spec/id (partial to-uuid managed-by))
+                                                     (flat-map :field-spec/id
+                                                               #(composite-uuid :field-spec
+                                                                                managed-by
+                                                                                (to-uuid :field-spec %)))
                                                      (sort-by #(% "order"))
                                                      (mapv (fn [m]
                                                              (-> m
@@ -534,10 +564,10 @@
                "userMaxGroups" (& (xf #(Integer. %)) (rename :board/max-projects-per-member))
                "stickyColor" (rename :board/sticky-color)
                "tags" (& (fn [m a v]
-                           (let [board-ref (uuid-ref (:entity/id m))]
+                           (let [board-ref (uuid-ref :board (:entity/id m))]
                              (assoc m a (->> v
                                              (sort-by first)
-                                             (flat-map :tag/id (partial to-uuid board-ref))
+                                             (flat-map :tag/id #(composite-uuid :tag board-ref (to-uuid :tag %)))
                                              (map #(-> %
                                                        (assoc :tag/managed-by board-ref)
                                                        (dissoc "order")
@@ -560,7 +590,7 @@
                "groupSettings" rm
                "registrationLink" (rename :board/registration-url-override)
                "slack" (& (xf
-                           (fn [{:strs [team-id]}] [:slack.team/id team-id]))
+                            (fn [{:strs [team-id]}] [:slack.team/id team-id]))
                           (rename :board/slack.team))
                "registrationOpen" (rename :board/registration-open?)
                "registrationCode" (& (xf (fn [code]
@@ -622,7 +652,7 @@
                                                (update :board/rules assoc
                                                        :action/project.approve {:policy/requires-role #{:role/admin}})))
                "languages" (& (xf (partial mapv #(get % "code"))) (rename :entity/locale-suggestions))]
-              :org/as-map [::prepare (partial flat-map :entity/id to-uuid)
+              :org/as-map [::prepare (partial flat-map :entity/id (partial to-uuid :org))
                            ::defaults {:entity/public? true}
                            ::always (add-kind :org)
                            "languageDefault" (rename :entity/locale-default)
@@ -632,15 +662,15 @@
                            "images" (& parse-image-urls
                                        (rename :entity/images))
                            "showOrgTab" (rename :org/show-org-tab?)
-                           "creator" (uuid-ref-as :entity/created-by)
-                           "boardTemplate" (uuid-ref-as :org/default-board-template)
+                           "creator" (uuid-ref-as :member :entity/created-by)
+                           "boardTemplate" (uuid-ref-as :board :org/default-board-template)
                            "socialFeed" (rename :entity/social-feed)]
               :slack.user/as-map [::prepare (partial flat-map :slack.user/id identity)
                                   "account-id" (rename :slack.user/firebase-account-id)
                                   "team-id" (& (xf (partial vector :slack.team/id))
                                                (rename :slack.user/slack.team))]
               :slack.team/as-map [::prepare (partial flat-map :slack.team/id identity)
-                                  "board-id" (uuid-ref-as :slack.team/board)
+                                  "board-id" (uuid-ref-as :board :slack.team/board)
                                   "team-id" (rename :slack.team/id)
                                   "team-name" (rename :slack.team/name)
                                   "invite-link" (rename :slack.team/invite-link)
@@ -673,14 +703,14 @@
                                        "response-thread" (rename :slack.broadcast/response-thread-id)
                                        ]
               :slack.channel/as-map [::prepare (partial flat-map :slack.channel/id identity)
-                                     "project-id" (uuid-ref-as :slack.channel/project)
+                                     "project-id" (uuid-ref-as :project :slack.channel/project)
                                      ::always (remove-when (comp (partial missing-entity? :project/as-map) :slack.channel/project))
                                      "team-id" (& (xf (partial vector :slack.team/id))
                                                   (rename :slack.channel/slack.team))]
               :domain/as-map [::prepare (partial mapv (fn [[name target]]
                                                         (merge {:domain/name (unmunge-domain name)}
                                                                (parse-domain-target target))))]
-              :collection/as-map [::prepare (partial flat-map :entity/id to-uuid)
+              :collection/as-map [::prepare (partial flat-map :entity/id (partial to-uuid :collection))
                                   ::always (add-kind :collection)
                                   "title" (rename :entity/title)
                                   "images" (& parse-image-urls
@@ -692,17 +722,17 @@
               :membership/as-map [::prepare
                                   (fn [{:strs [e-u-r]}]
                                     (into [] (mapcat
-                                              (fn [[ent user-map]]
-                                                (for [[user role-map] user-map
-                                                      :let [entity (parse-sparkboard-id ent)
-                                                            user (parse-sparkboard-id user)]]
-                                                  {:membership/id (to-uuid (:uid user) (:uid entity))
-                                                   :membership/member (:ref user)
-                                                   :membership/entity (:ref entity)
-                                                   :membership/roles (into #{} (comp (filter val)
-                                                                                     (map key)
-                                                                                     (map (fn [r]
-                                                                                            (case r "admin" :role/admin)))) role-map)})))
+                                               (fn [[ent user-map]]
+                                                 (for [[user role-map] user-map
+                                                       :let [entity (parse-sparkboard-id ent)
+                                                             user (parse-sparkboard-id user)]]
+                                                   {:membership/id (composite-uuid :membership (:uid user) (:uid entity))
+                                                    :membership/member (:ref user)
+                                                    :membership/entity (:ref entity)
+                                                    :membership/roles (into #{} (comp (filter val)
+                                                                                      (map key)
+                                                                                      (map (fn [r]
+                                                                                             (case r "admin" :role/admin)))) role-map)})))
                                           e-u-r))]
               ::firebase ["socialFeed" (xf (partial change-keys
                                                     ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
@@ -719,24 +749,26 @@
                                                                          :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
                                                                          :account/display-name (:displayName account)
                                                                          :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
-                                                                         :entity/id (to-uuid (:localId account))
+                                                                         :entity/id (to-uuid :account (:localId account))
                                                                          :account/password-hash (:passwordHash account)
                                                                          :account/password-salt (:salt account)
                                                                          :account/photo-url (or (:photoUrl account)
                                                                                                 (:photoUrl provider))
                                                                          :account.provider.google/sub (:rawId provider))))))]
-              :member-vote/ballot [::prepare (fn [users]
-                                               (->> users
-                                                    (mapcat (fn [{:keys [_id boardId votesByDomain]}]
-                                                              (let [member-id (get-oid _id)]
-                                                                (for [[domain project-id] votesByDomain]
-                                                                  {:ballot/id (to-uuid boardId member-id project-id)
-                                                                   :ballot/member (uuid-ref member-id)
-                                                                   :ballot/board (uuid-ref boardId)
-                                                                   :ballot/project (uuid-ref project-id)}))))))
-                                   ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
-                                                              (missing-entity? :board/as-map (:ballot/board %))
-                                                              (missing-entity? :member/as-map (:ballot/member %))))]
+              :ballot/as-map [::prepare (fn [users]
+                                          (->> users
+                                               (mapcat (fn [{:keys [_id boardId votesByDomain]}]
+                                                         (let [member-id (to-uuid :member (get-oid _id))]
+                                                           (for [[domain project-id] votesByDomain
+                                                                 :let [project-id (to-uuid :project project-id)
+                                                                       board-id (to-uuid :board boardId)]]
+                                                             {:ballot/id (composite-uuid :ballot board-id member-id project-id)
+                                                              :ballot/member (uuid-ref :member member-id)
+                                                              :ballot/board (uuid-ref :board board-id)
+                                                              :ballot/project (uuid-ref :project project-id)}))))))
+                              ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
+                                                         (missing-entity? :board/as-map (:ballot/board %))
+                                                         (missing-entity? :member/as-map (:ballot/member %))))]
               :member/as-map [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                               ::always (remove-when (comp nil? :firebaseAccount))
                               ::always (remove-when :entity/deleted-at)
@@ -752,13 +784,13 @@
                               :passwordResetToken rm
                               :email rm                     ;; in account
                               :account rm
-                              :_id id-with-timestamp
-                              :boardId (uuid-ref-as :member/board)
+                              :_id (partial id-with-timestamp :member)
+                              :boardId (uuid-ref-as :board :member/board)
 
                               ::always (parse-fields :member/board :member/fields)
                               :account rm
 
-                              :firebaseAccount (uuid-ref-as :member/account)
+                              :firebaseAccount (uuid-ref-as :account :member/account)
 
                               :emailFrequency (& (xf #(case %
                                                         "never" :member.email-frequency/never
@@ -778,9 +810,9 @@
                               :name (rename :member/name)
                               :roles (& (fn [m a roles]
                                           (assoc m a (when (seq roles)
-                                                       (let [member-ref (uuid-ref (:entity/id m))
-                                                             entity-ref (uuid-ref (:member/board m))]
-                                                         [{:membership/id (to-uuid member-ref entity-ref)
+                                                       (let [member-ref (uuid-ref :member (:entity/id m))
+                                                             entity-ref (uuid-ref :board (:member/board m))]
+                                                         [{:membership/id (composite-uuid :membership member-ref entity-ref)
                                                            :membership/member member-ref
                                                            :membership/entity entity-ref
                                                            :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
@@ -808,47 +840,47 @@
               :discussion/as-map [#_#_::prepare (fn [m]
                                                   (when-not (empty? (:posts m))
                                                     m))
-                                  :_id id-with-timestamp
+                                  :_id (partial id-with-timestamp :discussion)
                                   :type rm
                                   :followers (&
-                                              (xf #(remove (partial missing-entity? :member/as-map) %))
-                                              (uuid-ref-as :discussion/followers))
-                                  :parent (uuid-ref-as :discussion/project)
+                                               (xf #(remove (partial missing-entity? :member/as-map) %))
+                                               (uuid-ref-as :member :discussion/followers))
+                                  :parent (uuid-ref-as :project :discussion/project)
                                   ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
                                   :posts (& (xf
-                                             (partial change-keys
-                                                      [:_id id-with-timestamp
-                                                       :parent rm
-                                                       :user (uuid-ref-as :entity/created-by)
-                                                       ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
-                                                       ::always (remove-when (comp str/blank? :text))
+                                              (partial change-keys
+                                                       [:_id (partial id-with-timestamp :post)
+                                                        :parent rm
+                                                        :user (uuid-ref-as :member :entity/created-by)
+                                                        ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
+                                                        ::always (remove-when (comp str/blank? :text))
 
-                                                       :text (& (xf html-content) (rename :post/text-content))
+                                                        :text (& (xf html-content) (rename :post/text-content))
 
-                                                       :doNotFollow (uuid-ref-as :post/do-not-follow)
-                                                       :followers (& (xf #(remove (partial missing-entity? :member/as-map) %))
-                                                                     (uuid-ref-as :post/followers))
-                                                       :comments (& (xf (partial change-keys
-                                                                                 [:_id id-with-timestamp
-                                                                                  :user (uuid-ref-as :entity/created-by)
-                                                                                  ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
-                                                                                  :text (rename :comment/text)
-                                                                                  ::always (remove-when (comp str/blank? :comment/text))
-                                                                                  :parent rm]))
-                                                                    (rename :post/comments))]))
+                                                        :doNotFollow (uuid-ref-as :member :post/do-not-follow)
+                                                        :followers (& (xf #(remove (partial missing-entity? :member/as-map) %))
+                                                                      (uuid-ref-as :member :post/followers))
+                                                        :comments (& (xf (partial change-keys
+                                                                                  [:_id (partial id-with-timestamp :comment)
+                                                                                   :user (uuid-ref-as :member :entity/created-by)
+                                                                                   ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
+                                                                                   :text (rename :comment/text)
+                                                                                   ::always (remove-when (comp str/blank? :comment/text))
+                                                                                   :parent rm]))
+                                                                     (rename :post/comments))]))
                                             (rename :discussion/posts))
                                   :boardId rm
                                   ::always (remove-when (comp empty? :discussion/posts))]
               :project/as-map [::defaults {:project/inactive? false}
                                ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                ::always (add-kind :project)
-                               :_id id-with-timestamp
+                               :_id (partial id-with-timestamp :project)
                                :field_description (& (xf html-content)
                                                      (rename :project/admin-description))
-                               :boardId (uuid-ref-as :project/board)
+                               :boardId (uuid-ref-as :board :project/board)
                                ::always (parse-fields :project/board :entity/fields)
                                :lastModifiedBy (& (keep-entity :member/as-map)
-                                                  (uuid-ref-as :entity/modified-by))
+                                                  (uuid-ref-as :member :entity/modified-by))
                                :tags rm                     ;; no longer used - fields instead
                                :number (rename :project/number)
                                :badges (& (xf (partial mapv (partial hash-map :badge/label)))
@@ -857,25 +889,27 @@
                                :approved (rename :project/admin-approved?)
                                :ready (rename :project/team-complete?)
                                :members (&
-                                         (fn [m a v]
-                                           (let [project-id (:entity/id m)]
-                                             (update m a (partial keep (fn [{:as m :keys [user_id]}]
-                                                                         (let [user-uuid (to-uuid user_id)]
-                                                                           (when-not (missing-entity? :member/as-map user-uuid)
-                                                                             (let [role (case (:role m)
-                                                                                          "admin" :role/admin
-                                                                                          "editor" :role/collaborator
-                                                                                          (if (= (:entity/created-by m)
-                                                                                                 (uuid-ref user-uuid))
-                                                                                            :role/admin
-                                                                                            :role/member))]
-                                                                               (-> m
-                                                                                   (dissoc :role :user_id)
-                                                                                   (assoc :membership/id (to-uuid user_id project-id)
-                                                                                          :membership/roles #{role}
-                                                                                          :membership/entity (uuid-ref project-id)
-                                                                                          :membership/member (uuid-ref user_id)))))))))))
-                                         (rename :membership/_entity))
+                                          (fn [m a v]
+                                            (let [project-id (:entity/id m)]
+                                              (update m a (partial keep (fn [{:as m :keys [user_id]}]
+                                                                          (let [member-id (to-uuid :member user_id)]
+                                                                            (when-not (missing-entity? :member/as-map member-id)
+                                                                              (let [role (case (:role m)
+                                                                                           "admin" :role/admin
+                                                                                           "editor" :role/collaborator
+                                                                                           (if (= (:entity/created-by m)
+                                                                                                  (uuid-ref :member member-id))
+                                                                                             :role/admin
+                                                                                             :role/member))]
+                                                                                (-> m
+                                                                                    (dissoc :role :user_id)
+                                                                                    (assoc :membership/id (composite-uuid :membership
+                                                                                                                          member-id
+                                                                                                                          project-id)
+                                                                                           :membership/roles #{role}
+                                                                                           :membership/entity (uuid-ref :project project-id)
+                                                                                           :membership/member (uuid-ref :member member-id)))))))))))
+                                          (rename :membership/_entity))
                                :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                                (rename :project/open-requests))
                                :sticky (rename :project/sticky?)
@@ -895,33 +929,33 @@
                                                    (dissoc :targetViewed :notificationViewed)
                                                    (assoc :notification/viewed? (boolean (or (:targetViewed m)
                                                                                              (:notificationViewed m))))))
-                                    :_id id-with-timestamp
+                                    :_id (partial id-with-timestamp :notification)
                                     ::always (remove-when
-                                              (fn notification-filter [m]
-                                                (let [day-threshold 180]
-                                                  (or (:notification/viewed? m)
-                                                      (> (-> (:entity/created-at m) date-time days-since)
-                                                         day-threshold)))))
+                                               (fn notification-filter [m]
+                                                 (let [day-threshold 180]
+                                                   (or (:notification/viewed? m)
+                                                       (> (-> (:entity/created-at m) date-time days-since)
+                                                          day-threshold)))))
 
                                     :createdAt rm
-                                    :boardId (uuid-ref-as :notification/board)
-                                    :recipientId (uuid-ref-as :notification/recipient)
+                                    :boardId (uuid-ref-as :board :notification/board)
+                                    :recipientId (uuid-ref-as :member :notification/recipient)
                                     ::always (remove-when (comp (partial missing-entity? :member/as-map) :notification/recipient))
                                     :notificationEmailed (rename :notification/emailed?)
                                     :data (fn [m a v] (-> m (dissoc a) (merge v)))
                                     :project (& (xf :id)
-                                                (uuid-ref-as :notification/project))
+                                                (uuid-ref-as :project :notification/project))
                                     :user (& (xf :id)
-                                             (uuid-ref-as :notification/member))
+                                             (uuid-ref-as :member :notification/member))
                                     :message (& (xf :body)
                                                 (rename :notification/thread.message.text)
                                                 )
                                     :comment (& (xf :id)
-                                                (uuid-ref-as :notification/post.comment))
+                                                (uuid-ref-as :comment :notification/post.comment))
                                     :post (& (xf :id)
-                                             (uuid-ref-as :notification/post))
+                                             (uuid-ref-as :post :notification/post))
                                     :discussion (& (xf :id)
-                                                   (uuid-ref-as :notification/discussion))
+                                                   (uuid-ref-as :discussion :notification/discussion))
                                     ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
                                                                (missing-entity? :member/as-map (:notification/member %))
                                                                (missing-entity? :post/as-map (:notification/post %))
@@ -939,8 +973,8 @@
                                     :notification/board rm
 
                                     ]
-              :thread/as-map [:_id id-with-timestamp
-                              :participantIds (uuid-ref-as :thread/members)
+              :thread/as-map [:_id (partial id-with-timestamp :thread)
+                              :participantIds (uuid-ref-as :member :thread/members)
                               ::always (remove-when #(some (partial missing-entity? :member/as-map) (:thread/members %)))
                               :createdAt (& (xf parse-mongo-date)
                                             (rename :entity/created-at))
@@ -950,10 +984,10 @@
                               :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
 
                               ;; TODO - :messages
-                              :messages (& (xf (partial change-keys [:_id id-with-timestamp
+                              :messages (& (xf (partial change-keys [:_id (partial id-with-timestamp :message)
                                                                      :createdAt rm
                                                                      :body (rename :thread.message/text)
-                                                                     :senderId (uuid-ref-as :entity/created-by)
+                                                                     :senderId (uuid-ref-as :member :entity/created-by)
                                                                      :senderData rm
                                                                      ::always (remove-when (comp str/blank?
                                                                                                  :thread.message/text))]))
@@ -966,7 +1000,7 @@
                        :updatedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
                        :intro (& (xf html-content)
                                  (rename :entity/description))
-                       :owner (uuid-ref-as :entity/created-by)
+                       :owner (uuid-ref-as :member :entity/created-by)
 
                        :htmlClasses (fn [m k v]
                                       (let [classes (str/split v #"\s+")]
@@ -977,8 +1011,8 @@
                                                                                         distinct
                                                                                         vec))
                                             (cond->
-                                             (some #{"sticky"} classes)
-                                             (assoc :project/sticky? true)))))
+                                              (some #{"sticky"} classes)
+                                              (assoc :project/sticky? true)))))
 
 
                        #_#_:_id (& (xf #(:$oid % %))
@@ -1034,11 +1068,11 @@
         (prn :downloaded-accounts out)
         (spit (env/db-path "accounts.edn")
               (json/read-value
-               (slurp (env/db-path "accounts.json"))
-               json/keyword-keys-object-mapper))))))
+                (slurp (env/db-path "accounts.json"))
+                json/keyword-keys-object-mapper))))))
 
 (comment
- (fetch-accounts))
+  (fetch-accounts))
 
 (defn fetch-firebase []
   (let [{token :firebase/database-secret
@@ -1049,8 +1083,8 @@
          (spit (env/db-path "firebase.edn")))))
 
 (comment
- (fetch-firebase)
- )
+  (fetch-firebase)
+  )
 
 (defn changes-for [k]
   (into (changes (cond (mongo-colls k) ::mongo
@@ -1061,9 +1095,9 @@
 (def coll-entities
   "Converts doc according to `changes`"
   (memoize
-   (fn [k]
-     (->> (read-coll k)
-          (change-keys (changes-for k))))))
+    (fn [k]
+      (->> (read-coll k)
+           (change-keys (changes-for k))))))
 
 (defn register-schema! []
   (reset! sschema/!registry (merge (m/default-schemas)
@@ -1114,72 +1148,72 @@
     @!found))
 
 (comment
- (coll? {})
+  (coll? {})
 
- (take 2 (all-entities))
-
-
- ;; Steps to set up a Datalevin db
- (dl/clear conn)                                            ;; delete all (if exists)
-
- ;; XXX delete `./.db/datalevin` dir
-
- ;; (on my machine, the next line fails if I don't re-eval `sparkboard.datalevin` here)
+  (take 2 (all-entities))
 
 
- ;; transact schema
+  ;; Steps to set up a Datalevin db
+  (dl/clear conn)                                           ;; delete all (if exists)
 
- (def entities (all-entities))
- (db/merge-schema! sschema/sb-schema)
- ;; "upsert" lookup refs
- (db/transact! (mapcat sschema/unique-keys entities))
- (db/transact! entities)
+  ;; XXX delete `./.db/datalevin` dir
 
- (count (filter :entity/id (mapcat sschema/unique-keys entities)))
- ;; transact lookup refs first,
-
- ;; ;; then transact everything else
- ;; (d/transact! (all-entities))
+  ;; (on my machine, the next line fails if I don't re-eval `sparkboard.datalevin` here)
 
 
- ;; only for debugging when something fails to transact
- (doseq [doc (all-entities)]
-   (try (db/transact! [doc])
-        (catch Exception e
-          (prn :fail doc)
-          (throw e))))
+  ;; transact schema
 
- (explain-errors!)                                          ;; checks against schema
+  (def entities (all-entities))
+  (db/merge-schema! sschema/sb-schema)
+  ;; "upsert" lookup refs
+  (db/transact! (mapcat sschema/unique-keys entities))
+  (db/transact! entities)
 
- ;; for investigations: look up any entity by id
- (def all-ids (->> (mapcat sschema/unique-keys (all-entities))
-                   (mapcat vals)
-                   (into #{})))
+  (count (filter :entity/id (mapcat sschema/unique-keys entities)))
+  ;; transact lookup refs first,
 
- ;; example of looking for any project that contains a particular id
- (->> (coll-entities :project/as-map)
-      (filter (partial contains-somewhere? "527a76956fe44c0200000005"))
-      distinct)
+  ;; ;; then transact everything else
+  ;; (d/transact! (all-entities))
 
 
- ;; misc
- (explain-errors!)
- (:out (sh "ls" "-lh" (env/db-path)))
- (map parse-domain-target (vals (read-coll :domain/as-map)))
+  ;; only for debugging when something fails to transact
+  (doseq [doc (all-entities)]
+    (try (db/transact! [doc])
+         (catch Exception e
+           (prn :fail doc)
+           (throw e))))
 
- ;; try validating generated docs
- (check-docs
-  (mapv mg/generate (vals sschema/entity-schemas)))
+  (explain-errors!)                                         ;; checks against schema
 
- ;; generate examples for every schema entry
- (mapv (juxt identity mg/generate) (vals sschema/entity-schemas))
+  ;; for investigations: look up any entity by id
+  (def all-ids (->> (mapcat sschema/unique-keys (all-entities))
+                    (mapcat vals)
+                    (into #{})))
 
- (clojure.core/time (count (root-entities)))
+  ;; example of looking for any project that contains a particular id
+  (->> (coll-entities :project/as-map)
+       (filter (partial contains-somewhere? "527a76956fe44c0200000005"))
+       distinct)
 
- #_(def missing (->> (root-entities)
-                   (filter (partial contains-somewhere? #uuid "4d2b41ae-5fe2-36c9-955d-0b9b0b10770b"))
-                   first))
- )
+
+  ;; misc
+  (explain-errors!)
+  (:out (sh "ls" "-lh" (env/db-path)))
+  (map parse-domain-target (vals (read-coll :domain/as-map)))
+
+  ;; try validating generated docs
+  (check-docs
+    (mapv mg/generate (vals sschema/entity-schemas)))
+
+  ;; generate examples for every schema entry
+  (mapv (juxt identity mg/generate) (vals sschema/entity-schemas))
+
+  (clojure.core/time (count (root-entities)))
+
+  #_(def missing (->> (root-entities)
+                      (filter (partial contains-somewhere? #uuid "4d2b41ae-5fe2-36c9-955d-0b9b0b10770b"))
+                      first))
+  )
 
 ;; Notes
 
@@ -1199,4 +1233,4 @@
 
 (comment
 
- )
+  )

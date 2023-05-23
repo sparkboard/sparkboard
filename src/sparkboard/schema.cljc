@@ -412,11 +412,11 @@
 (def sb-member-vote
   {:member-vote/open? {:doc "Opens a community vote (shown as a tab on the board)"
                        s- :boolean}
-   :member-vote/ballot {s- [:map {:closed true}
-                            :ballot/id
-                            :ballot/board
-                            :ballot/member
-                            :ballot/project]}
+   :ballot/as-map {s- [:map {:closed true}
+                       :ballot/id
+                       :ballot/board
+                       :ballot/member
+                       :ballot/project]}
    :ballot/board (ref :one)
    :ballot/id (merge unique-uuid
                      {:derived-from [:ballot/board
