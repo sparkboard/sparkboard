@@ -33,8 +33,8 @@
    :entity/description {:doc "Description of an entity (for card/header display)"
                         s- :text-content/block
                         :db/fulltext true}
-   :entity/fields (merge (ref :many :field/as-map)
-                         s/component)
+   :entity/field-entries (merge (ref :many :field-entry/as-map)
+                                s/component)
    :entity/video {:doc "Primary video for project (distinct from fields)"
                   s- :video/value}
    :entity/public? {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
@@ -85,8 +85,8 @@
                                    s- :int}
    :board/sticky-color {:doc "Border color for sticky projects", s- :html/color}
    :board/member-tags (ref :many :tag/as-map)
-   :board/project-fields (ref :many :field-spec/as-map)
-   :board/member-fields (ref :many :field-spec/as-map)
+   :board/project-fields (ref :many :field/as-map)
+   :board/member-fields (ref :many :field/as-map)
    :board/registration-invitation-email-text {:doc "Body of email sent when inviting a user to a board."
                                               s- :string},
    :board/registration-newsletter-field? {:doc "During registration, request permission to send the user an email newsletter"
@@ -198,17 +198,16 @@
 
 (def sb-fields
   {:image/url {s- :http/url}
-   :field/parent (ref :one),
-   :field/spec (ref :one),
+
    :field/hint {s- :string},
-   :field-spec/id unique-uuid
+   :field/id unique-uuid
    :field/label {s- :string},
-   :field/options {s- (? [:sequential :field.spec/option])},
-   :field.spec/option {s- [:map {:closed true}
-                           (? :option/color)
-                           (? :option/default?)
-                           (? :option/value)
-                           :option/label]}
+   :field/default-value {s- :string}
+   :field/options {s- (? [:sequential :field/option])},
+   :field/option {s- [:map {:closed true}
+                      (? :field-option/color)
+                      (? :field-option/value)
+                      :field-option/label]}
    :field/order {s- :int},
    :field/required? {s- :boolean},
    :field/show-as-filter? {:doc "Use this field as a filtering option"
@@ -224,31 +223,34 @@
                     :field.type/link-list
                     :field.type/text-content
                     :field.type/text-content]}
-   :field/value {s-
-                 [:multi {:dispatch 'first}
-                  [:field.type/images
-                   [:tuple 'any?
-                    [:sequential [:map {:closed true} :image/url]]]]
-                  [:field.type/link-list
-                   [:tuple 'any?
-                    [:map {:closed true}
-                     [:link-list/items
-                      [:sequential :link-list/link]]]]]
-                  [:field.type/select
-                   [:tuple 'any?
-                    [:map {:closed true}
-                     [:select/value :string]]]]
-                  [:field.type/text-content
-                   [:tuple 'any?
-                    :text-content/block]]
-                  [:field.type/video
-                   [:tuple 'any?
-                    [:map {:closed true}
-                     :video/value]]]]}
-   :field/as-map {s- [:map {:closed true}
-                      :field/spec
-                      :field/id
-                      :field/value]}
+
+   :field-entry/id unique-uuid
+   :field-entry/field (ref :one)
+   :field-entry/value {s-
+                       [:multi {:dispatch 'first}
+                        [:field.type/images
+                         [:tuple 'any?
+                          [:sequential [:map {:closed true} :image/url]]]]
+                        [:field.type/link-list
+                         [:tuple 'any?
+                          [:map {:closed true}
+                           [:link-list/items
+                            [:sequential :link-list/link]]]]]
+                        [:field.type/select
+                         [:tuple 'any?
+                          [:map {:closed true}
+                           [:select/value :string]]]]
+                        [:field.type/text-content
+                         [:tuple 'any?
+                          :text-content/block]]
+                        [:field.type/video
+                         [:tuple 'any?
+                          [:map {:closed true}
+                           :video/value]]]]}
+   :field-entry/as-map {s- [:map {:closed true}
+                            :field-entry/id
+                            :field-entry/field
+                            :field-entry/value]}
    :link-list/link {:todo "Tighten validation after cleaning up db"
                     s- [:map {:closed true}
                         (? [:text :string])
@@ -257,29 +259,29 @@
                      [:video/vimeo-url [:tuple [:= :video/vimeo-url] :http/url]]
                      [:video/youtube-url [:tuple [:= :video/youtube-url] :http/url]]
                      [:video/youtube-id [:tuple [:= :video/youtube-id] :string]]]}
-   :option/color {s- :html/color},
-   :option/default? {s- :boolean},
-   :option/label {s- :string},
-   :option/value {s- :string},
+   :field-option/color {s- :html/color},
+   :field-option/default {s- :string},
+   :field-option/label {s- :string},
+   :field-option/value {s- :string},
    :video/youtube-id {s- :string}
-   :field/id unique-uuid
 
-   :field-spec/as-map {:doc "Description of a field."
-                       :todo ["Field specs should be definable at a global, org or board level."
-                              "Orgs/boards should be able to override/add field.spec options."
-                              "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
-                       s- [:map {:closed true}
-                           :field-spec/id
-                           :field-spec/managed-by
-                           :field/order
-                           :field/type
-                           (? :field/hint)
-                           (? :field/label)
-                           (? :field/options)
-                           (? :field/required?)
-                           (? :field/show-as-filter?)
-                           (? :field/show-at-create?)
-                           (? :field/show-on-card?)]}})
+   :field/managed-by (ref :one)
+   :field/as-map {:doc "Description of a field."
+                  :todo ["Field specs should be definable at a global, org or board level."
+                         "Orgs/boards should be able to override/add field.spec options."
+                         "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
+                  s- [:map {:closed true}
+                      :field/id
+                      :field/managed-by
+                      :field/order
+                      :field/type
+                      (? :field/hint)
+                      (? :field/label)
+                      (? :field/options)
+                      (? :field/required?)
+                      (? :field/show-as-filter?)
+                      (? :field/show-at-create?)
+                      (? :field/show-on-card?)]}})
 
 (def sb-account
   {:account/email unique-string-id
@@ -315,12 +317,12 @@
 ;; 400 bad request
 
 (humanize
- (m/explain
-  [:map
-   [:x
+  (m/explain
     [:map
-     [:y :int]]]]
-  {:x {:y "foo"}}))
+     [:x
+      [:map
+       [:y :int]]]]
+    {:x {:y "foo"}}))
 
 (def sb-memberships
   {:membership/_entity {s- [:sequential :membership/as-map]}
@@ -367,9 +369,7 @@
                        s- [:map-of :i18n/locale :i18n/dict]}})
 
 (def sb-member
-  {:member/fields (merge (ref :many :field/as-map)
-                         s/component)
-   :member/name {s- :string},
+  {:member/name {s- :string},
    :member/new? {s- :boolean},
    :member/newsletter-subscription? {s- :boolean},
    :member/project-participant? {:doc "Member has the intention of participating in a project"
@@ -401,7 +401,7 @@
                        :entity/created-at
                        :entity/updated-at
                        (? :membership/_member)
-                       (? :member/fields)
+                       (? :entity/field-entries)
                        (? :member/tags.custom)
                        (? :member/image-url)
                        (? :member/newsletter-subscription?)
@@ -437,8 +437,8 @@
    :notification/project (ref :one)
    :notification/recipient (ref :one),
    :notification/subject (merge
-                          (ref :one)
-                          {:doc "The primary entity referred to in the notification (when viewed"}),
+                           (ref :one)
+                           {:doc "The primary entity referred to in the notification (when viewed"}),
    :notification/thread (ref :one)
    :notification/viewed? {:doc "The notification is considered 'viewed' (can occur by viewing the notification or subject)",
                           :unsure "Log log {:notifications/viewed-subject-at _} per [member, subject] pair, and {:notifications/viewed-notifications-at _}, instead?"
@@ -493,8 +493,8 @@
    :post/text-content {s- :text-content/block
                        :db/fulltext true}
    :post/do-not-follow (merge
-                        {:doc "Members who should not auto-follow this post after replying to it"}
-                        (ref :many))
+                         {:doc "Members who should not auto-follow this post after replying to it"}
+                         (ref :many))
    :post/followers (merge {:doc "Members who should be notified upon new replies to this post"}
                           (ref :many))
    :comment/text {s- :string}
@@ -535,7 +535,7 @@
                         :entity/id
                         :entity/kind
                         :project/board
-                        (? :entity/fields)
+                        (? :entity/field-entries)
                         (? :entity/video)
                         (? :entity/created-by)
                         (? :entity/deleted-at)
@@ -692,9 +692,9 @@
                      :order-by :entity/created-at
                      s- [:sequential :thread.message/as-map]},
    :thread/read-by (merge
-                    (ref :many)
-                    {:doc "Set of members who have read the most recent message.",
-                     :todo "Map of {member, last-read-message} so that we can show unread messages for each member."})
+                     (ref :many)
+                     {:doc "Set of members who have read the most recent message.",
+                      :todo "Map of {member, last-read-message} so that we can show unread messages for each member."})
    :thread/as-map {s- [:map {:closed true}
                        :entity/id
                        :entity/created-at
@@ -762,7 +762,7 @@
                   (swap! !registry merge (update-vals schema s-))))))
 
 (comment
- (->> sb-schema (remove (comp :malli/schema val))))
+  (->> sb-schema (remove (comp :malli/schema val))))
 
 (def id-keys
   (into #{}
@@ -806,7 +806,7 @@
           :cljs true)))
 
 (comment
- ())
+  ())
 
 (-> (ref :one)
     s-

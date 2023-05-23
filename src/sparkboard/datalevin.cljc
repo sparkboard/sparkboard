@@ -14,7 +14,11 @@
 
 (comment
  (dl/close conn)
- (dl/clear conn))
+
+ (do
+   (dl/clear conn)
+   (def conn (dl/get-conn (env/db-path "datalevin") {}))
+   (alter-var-root #'db/*conn* (constantly conn))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Fulltext search

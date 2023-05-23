@@ -1,8 +1,7 @@
 (ns sparkboard.build
   (:require [babashka.process :as bp]
             [clojure.repl.deps :as deps]
-            [clojure.pprint :refer [pprint]]
-            [re-db.in-memory :as db]))
+            [clojure.pprint :refer [pprint]]))
 
 (defn start
   {:shadow/requires-server true}
@@ -73,12 +72,13 @@
          (pprint [:failed tx])
          (throw e)))))
 
- ;; transact schema
- (db/merge-schema! sb.schema/sb-schema)
- ;; upsert lookup refs
- (db/transact! (mapcat sb.schema/unique-keys entities))
- ;; transact entities
- (db/transact! (one-time/all-entities))
+ (do
+   ;; transact schema
+   (db/merge-schema! sb.schema/sb-schema)
+   ;; upsert lookup refs
+   (db/transact! (mapcat sb.schema/unique-keys entities))
+   ;; transact entities
+   (db/transact! (one-time/all-entities)))
 
  ;; add entities, print and stop if one fails
  (doseq [e entities]

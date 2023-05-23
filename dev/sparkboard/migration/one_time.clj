@@ -41,7 +41,7 @@
     :member "a3"
     :project "a4"
     :field "a5"
-    :field-spec "a6"
+    :entry "a6"
     :discussion "a7"
     :post "a8"
     :comment "a9"
@@ -51,7 +51,10 @@
     :thread "ad"
     :message "ae"
     :membership "af"
-    (throw (ex-info "Invalid kind" {:kind kind}))
+    :account "b0"
+    :ballot "b1"
+    :site "b2"
+    (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))
     #_"af"))
 
 (def to-uuid
@@ -60,7 +63,7 @@
       (let [s (:$oid s s)]
         (cond (uuid? s) s
               (and (vector? s) (= :entity/id (first s))) (second s)
-              (string? s) (java.util.UUID/fromString (str (uuid-prefix kind) (subs (java.util.UUID/nameUUIDFromBytes (.getBytes s)) 2)))
+              (string? s) (java.util.UUID/fromString (str (uuid-prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))
               :else (throw (ex-info "Invalid UUID" {:s s})))))))
 
 (defn composite-uuid [kind & ss]
@@ -201,12 +204,12 @@
         ;; domain names
         (into (map :domain/name (coll-entities :domain/as-map)))
 
-        (into (mapcat #(for [:let [kind (keyword (name %))]
-                             m (read-coll %)]
-                         (try (to-uuid kind (:_id m))
-                              (catch Exception e
-                                (clojure.pprint/pprint :failed %)
-                                (throw e)))))
+        (into (mapcat #(let [kind (keyword (name %))]
+                         (for [m (read-coll %)]
+                           (try (to-uuid kind (:_id m))
+                                (catch Exception e
+                                  (clojure.pprint/pprint :failed %)
+                                  (throw e))))))
               (keys (dissoc mongo-colls :account/as-map)))
 
         (into (map #(to-uuid :account (:localId %)) (read-coll :account/as-map)))
@@ -217,9 +220,9 @@
                                     (map (comp (partial :comment to-uuid) :_id) comments)))))
               (read-coll :discussion/as-map))
 
-        (into (mapcat #(for [:let [kind (keyword (name %))
-                                   [k _] (read-coll %)]]
-                         (to-uuid kind k)))
+        (into (mapcat #(let [kind (keyword (name %))]
+                         (for [[k _] (read-coll %)]
+                           (to-uuid kind k))))
               (keys firebase-colls)))))
 
 (defn uuid-ref-as [kind as]
@@ -230,7 +233,7 @@
                       (if (sequential? v)
                         (into []
                               (comp (keep identity)
-                                    (map uuid-ref))
+                                    (map (partial uuid-ref kind)))
                               v)
                         (some->> v (uuid-ref kind)))))))
 
@@ -241,7 +244,7 @@
 
 (defn missing-entity? [coll-k ref]
   (let [coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)
-        kind (keyword (name coll-k))]
+        kind (keyword (namespace coll-k))]
     (and ref
          (not ((unique-ids-from coll-k) (to-uuid kind ref))))))
 
@@ -310,13 +313,13 @@
          (apply-changes doc))))))
 
 (defn parse-sparkboard-id [s]
-  (let [[_ etype eid] (re-find #"sparkboard[._]([^:]+):(.*)" s)
+  (let [[_ etype id-string] (re-find #"sparkboard[._]([^:]+):(.*)" s)
         kind (keyword etype)
-        kind ({:user :member} kind kind)]
+        kind ({:user :account} kind kind)]
     {:kind kind
-     :uid (to-uuid kind eid)
-     :id eid
-     :ref (uuid-ref kind eid)}))
+     :uuid (to-uuid kind id-string)
+     :id-string id-string
+     :ref (uuid-ref kind id-string)}))
 
 (defn parse-domain-target [s]
   (if (str/starts-with? s "redirect:")
@@ -324,8 +327,8 @@
      :domain.kind/url (-> (subs s 9)
                           (str/replace "%3A" ":")
                           (str/replace "%2F" "/"))}
-    (let [{:keys [kind uid id ref]} (parse-sparkboard-id s)]
-      (if (= [kind id] [:site "account"])
+    (let [{:keys [kind id-string ref]} (parse-sparkboard-id s)]
+      (if (= [kind id-string] [:site "account"])
         {:domain/kind :domain.kind/url
          :domain.kind/url "https://account.sparkboard.com"}
         {:domain/kind :domain.kind/entity
@@ -355,12 +358,12 @@
           "textarea" :field.type/text-content
           :field.type/text-content))
 
-(def !all-field-specs
+(def !all-fields
   (delay
     (->> (coll-entities :board/as-map)
          (mapcat (juxt :board/member-fields :board/project-fields))
          (mapcat identity)
-         (map (juxt :field-spec/id identity))
+         (map (juxt :field/id identity))
          (into {}))))
 
 (defn html-content [s]
@@ -384,47 +387,47 @@
     (if-some [field-ks (->> (keys m)
                             (filter #(str/starts-with? (name %) "field_"))
                             seq)]
-      (try
-        (reduce (fn [m k]
-                  (let [[managed-by-type managed-by-id] (managed-by-k m)
-                        field-spec-id (composite-uuid :field-spec
-                                                      (to-uuid :board managed-by-id)
-                                                      (to-uuid :field (subs (name k) 6)))
-                        target-id (:entity/id m)
-                        v (m k)
-                        field-type (:field/type (@!all-field-specs field-spec-id))
-                        ;; NOTE - we ignore fields that do not have a spec
-                        field-value (when field-type
-                                      (case field-type
-                                        :field.type/images (let [v (cond-> v (string? v) vector)]
-                                                             (u/guard (into [] (map (partial hash-map :image/url) v)) seq))
-                                        :field.type/link-list {:link-list/items (mapv #(rename-keys % {:label :text
-                                                                                                       :url :url}) v)}
-                                        :field.type/select {:select/value v}
-                                        :field.type/text-content (html-content v)
-                                        :field.type/video (some->> (video-value v)
-                                                                   (hash-map :video/value))
-                                        (throw (Exception. (str "Field type not found "
-                                                                {:field/type field-type
-                                                                 :field-spec/id field-spec-id
-                                                                 })))))]
-                    (-> (dissoc m k)
-                        (cond-> field-value
-                                (update
-                                  to-k
-                                  ;; question, how to have uniqueness
-                                  ;; based on tuple of [field-spec/id, field/target]
-                                  (fnil conj [])
-                                  {:field/id (composite-uuid :field target-id field-spec-id)
-                                   :field/value [field-type field-value]
-                                   :field/spec [:field-spec/id field-spec-id]})))))
-                m
-                field-ks)
-        (catch Exception e
-          (clojure.pprint/pprint
-            {:managed-by [managed-by-k (managed-by-k m)]
-             :m m})
-          (throw e)))
+      (let [managed-by (managed-by-k m)]
+        (try
+          (reduce (fn [m k]
+                    (let [field-id (composite-uuid :field
+                                                   (to-uuid :board managed-by)
+                                                   (to-uuid :field (subs (name k) 6)))
+                          target-id (:entity/id m)
+                          v (m k)
+                          field-type (:field/type (@!all-fields field-id))
+                          ;; NOTE - we ignore fields that do not have a spec
+                          entry-value (when field-type
+                                        (case field-type
+                                          :field.type/images (let [v (cond-> v (string? v) vector)]
+                                                               (u/guard (into [] (map (partial hash-map :image/url) v)) seq))
+                                          :field.type/link-list {:link-list/items (mapv #(rename-keys % {:label :text
+                                                                                                         :url :url}) v)}
+                                          :field.type/select {:select/value v}
+                                          :field.type/text-content (html-content v)
+                                          :field.type/video (some->> (video-value v)
+                                                                     (hash-map :video/value))
+                                          (throw (Exception. (str "Field type not found "
+                                                                  {:field/type field-type
+                                                                   :field-spec/id field-id
+                                                                   })))))]
+                      (-> (dissoc m k)
+                          (cond-> entry-value
+                                  (update
+                                    to-k
+                                    ;; question, how to have uniqueness
+                                    ;; based on tuple of [field-spec/id, field/target]
+                                    (fnil conj [])
+                                    {:field-entry/id (composite-uuid :entry target-id field-id)
+                                     :field-entry/value [field-type entry-value]
+                                     :field-entry/field [:field/id field-id]})))))
+                  m
+                  field-ks)
+          (catch Exception e
+            (clojure.pprint/pprint
+              {:managed-by [managed-by-k (managed-by-k m)]
+               :m m})
+            (throw e))))
       m)))
 
 (defonce !orders (atom 0))
@@ -449,20 +452,25 @@
   (delay (into {}
                (for [[board-id {:strs [tags]}] (read-coll :board/as-map)
                      :let [board-id (to-uuid :board board-id)
-                           tags (update-vals tags #(update % "label" (fn [l] (or l (get % "name") :NO_TAG))))]]
+                           tags (->> (update-vals tags #(update % "label" (fn [l]
+                                                                            (or l (get % "name")))))
+                                     (filter #(get (val %) "label"))
+                                     (into {}))]]
                  [board-id (-> (merge (zipmap (map #(str/lower-case (get % "label")) (vals tags))
                                               (keys tags))
                                       (zipmap (map str/lower-case (keys tags))
                                               (keys tags)))
-                               (update-vals #(composite-uuid board-id (to-uuid :tag %))))]))))
+                               (update-vals #(composite-uuid :tag board-id (to-uuid :tag %))))]))))
+
 
 (comment
   (first @!tag->id))
 
 (defn resolve-tag [board-id tag-string]
-  (if-let [tag-id (get-in @!tag->id [(to-uuid :board board-id) (str/lower-case tag-string)])]
+  (if-let [tag-id (get-in @!tag->id [board-id (str/lower-case tag-string)])]
     (when-not (= :NO_TAG tag-id)
-      {:tag/id tag-id})
+      {:entity/id tag-id
+       :entity/kind :tag})
     {:tag.ad-hoc/label tag-string}))
 
 (defn mongo-id? [x]
@@ -471,6 +479,13 @@
 
 (defn add-kind [kind]
   #(assoc % :entity/kind kind))
+
+(defn make-membership [member-id entity-id roles & [info]]
+  {:pre [(uuid? member-id) (uuid? entity-id)]}
+  {:membership/id (composite-uuid :membership member-id entity-id)
+   :membership/member (uuid-ref nil member-id)
+   :membership/entity (uuid-ref nil entity-id)
+   :membership/roles roles})
 
 (def changes {:board/as-map
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
@@ -524,15 +539,15 @@
                                 (let [managed-by (:entity/id m)]
                                   (assoc m a
                                            (try (->> v
-                                                     (flat-map :field-spec/id
-                                                               #(composite-uuid :field-spec
+                                                     (flat-map :field/id
+                                                               #(composite-uuid :field
                                                                                 managed-by
-                                                                                (to-uuid :field-spec %)))
+                                                                                (to-uuid :field %)))
                                                      (sort-by #(% "order"))
                                                      (mapv (fn [m]
                                                              (-> m
-                                                                 ;; field-spec ids prepend their manager,
-                                                                 ;; because field-specs have been duplicated everywhere
+                                                                 ;; fields ids prepend their manager,
+                                                                 ;; because fields have been duplicated everywhere
                                                                  ;; and have the same IDs but represent different instances.
                                                                  ;; unsure: how to re-use fields when searching across boards, etc.
                                                                  (dissoc "id" "name")
@@ -547,14 +562,19 @@
                                                                                "order" :field/order})
                                                                  (u/update-some {:field/options
                                                                                  (partial mapv
-                                                                                          #(update-keys %
-                                                                                                        (fn [k]
-                                                                                                          (case k "label" :option/label
-                                                                                                                  "value" :option/value
-                                                                                                                  "color" :option/color
-                                                                                                                  "default" :option/default?))))})
+                                                                                          #(-> %
+                                                                                               (dissoc "default")
+                                                                                               (update-keys (fn [k]
+                                                                                                              (case k "label" :field-option/label
+                                                                                                                      "value" :field-option/value
+                                                                                                                      "color" :field-option/color)))))})
+                                                                 (u/assoc-some :field/default-value (->> (m "options")
+                                                                                                         (filter #(get % "default"))
+                                                                                                         first
+                                                                                                         (get "value")))
                                                                  (update :field/order #(or % (swap! !orders inc)))
-                                                                 (update :field/type parse-field-type)))))
+                                                                 (update :field/type parse-field-type)
+                                                                 (assoc :field/managed-by (uuid-ref :board managed-by))))))
                                                 (catch Exception e (prn a v) (throw e))))))]
                  ["groupFields" (& field-xf (rename :board/project-fields))
                   "userFields" (& field-xf (rename :board/member-fields))])
@@ -662,7 +682,7 @@
                            "images" (& parse-image-urls
                                        (rename :entity/images))
                            "showOrgTab" (rename :org/show-org-tab?)
-                           "creator" (uuid-ref-as :member :entity/created-by)
+                           "creator" (uuid-ref-as :account :entity/created-by)
                            "boardTemplate" (uuid-ref-as :board :org/default-board-template)
                            "socialFeed" (rename :entity/social-feed)]
               :slack.user/as-map [::prepare (partial flat-map :slack.user/id identity)
@@ -715,24 +735,22 @@
                                   "title" (rename :entity/title)
                                   "images" (& parse-image-urls
                                               (rename :entity/images))
-                                  "boards" (& (xf (fn [m] (into [] (comp (filter val) (map (comp uuid-ref key))) m)))
+                                  "boards" (& (xf (fn [m] (into [] (comp (filter val) (map (comp (partial uuid-ref :board) key))) m)))
                                               (rename :collection/boards)) ;; ordered list!
 
                                   ]
+
               :membership/as-map [::prepare
                                   (fn [{:strs [e-u-r]}]
                                     (into [] (mapcat
                                                (fn [[ent user-map]]
-                                                 (for [[user role-map] user-map
-                                                       :let [entity (parse-sparkboard-id ent)
-                                                             user (parse-sparkboard-id user)]]
-                                                   {:membership/id (composite-uuid :membership (:uid user) (:uid entity))
-                                                    :membership/member (:ref user)
-                                                    :membership/entity (:ref entity)
-                                                    :membership/roles (into #{} (comp (filter val)
-                                                                                      (map key)
-                                                                                      (map (fn [r]
-                                                                                             (case r "admin" :role/admin)))) role-map)})))
+                                                 (for [[user role-map] user-map]
+                                                   (make-membership (:uuid (parse-sparkboard-id user))
+                                                                    (:uuid (parse-sparkboard-id ent))
+                                                                    (into #{} (comp (filter val)
+                                                                                    (map key)
+                                                                                    (map (fn [r]
+                                                                                           (case r "admin" :role/admin)))) role-map)))))
                                           e-u-r))]
               ::firebase ["socialFeed" (xf (partial change-keys
                                                     ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
@@ -787,7 +805,7 @@
                               :_id (partial id-with-timestamp :member)
                               :boardId (uuid-ref-as :board :member/board)
 
-                              ::always (parse-fields :member/board :member/fields)
+                              ::always (parse-fields :member/board :entity/field-entries)
                               :account rm
 
                               :firebaseAccount (uuid-ref-as :account :member/account)
@@ -809,13 +827,11 @@
 
                               :name (rename :member/name)
                               :roles (& (fn [m a roles]
-                                          (assoc m a (when (seq roles)
-                                                       (let [member-ref (uuid-ref :member (:entity/id m))
-                                                             entity-ref (uuid-ref :board (:member/board m))]
-                                                         [{:membership/id (composite-uuid :membership member-ref entity-ref)
-                                                           :membership/member member-ref
-                                                           :membership/entity entity-ref
-                                                           :membership/roles (into #{} (comp (map (partial keyword "role")) (distinct)) roles)}]))))
+                                          (assoc m a
+                                                   (when (seq roles)
+                                                     [(make-membership (:entity/id m)
+                                                                       (to-uuid :board (:member/board m))
+                                                                       (into #{} (comp (map (partial keyword "role")) (distinct)) roles))])))
                                         (rename :membership/_member))
                               :tags (& (fn [m a v]
                                          (let [tags (keep (partial resolve-tag (:member/board m)) v)
@@ -878,7 +894,7 @@
                                :field_description (& (xf html-content)
                                                      (rename :project/admin-description))
                                :boardId (uuid-ref-as :board :project/board)
-                               ::always (parse-fields :project/board :entity/fields)
+                               ::always (parse-fields :project/board :entity/field-entries)
                                :lastModifiedBy (& (keep-entity :member/as-map)
                                                   (uuid-ref-as :member :entity/modified-by))
                                :tags rm                     ;; no longer used - fields instead
@@ -967,7 +983,7 @@
                                                      (merge (case type
                                                               "newMember" {:notification/type :notification.type/new-project-member}
                                                               "newMessage" {:notification/type :notification.type/new-thread-message
-                                                                            :notification/thread (uuid-ref (get-oid targetId))}
+                                                                            :notification/thread (uuid-ref :thread (get-oid targetId))}
                                                               "newPost" {:notification/type :notification.type/new-discussion-post}
                                                               "newComment" {:notification/type :notification.type/new-post-comment})))))
                                     :notification/board rm
@@ -979,7 +995,7 @@
                               :createdAt (& (xf parse-mongo-date)
                                             (rename :entity/created-at))
                               :readBy (& (xf keys)
-                                         (xf (partial mapv (comp uuid-ref name)))
+                                         (xf (partial mapv (comp (partial uuid-ref :member) name)))
                                          (rename :thread/read-by)) ;; change to a set of has-unread?
                               :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
 
@@ -1111,7 +1127,7 @@
                        :let [schema (@sschema/!registry k)]
                        :when (not (m/validate schema entity))]
                    (do (clojure.pprint/pprint entity)
-                       (sparkboard.server.validate/humanized schema entity)))))
+                       (sparkboard.validate/humanized schema entity)))))
        first))
 
 (defn read-all []
@@ -1191,9 +1207,11 @@
                     (into #{})))
 
   ;; example of looking for any project that contains a particular id
-  (->> (coll-entities :project/as-map)
-       (filter (partial contains-somewhere? "527a76956fe44c0200000005"))
+  (->>  (all-entities)
+       (filter (partial contains-somewhere? #uuid "a38f39bf-4f31-3d0b-87a6-ef6a2f702d30"))
        distinct)
+  (parse-sparkboard-id "sparkboard_user:ORqqqQ1zcFPAtWYIB4QBWlkc4Kp1")
+  (coll-entities :account/as-map)
 
 
   ;; misc
