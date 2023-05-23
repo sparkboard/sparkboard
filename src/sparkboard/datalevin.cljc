@@ -13,12 +13,12 @@
      (alter-var-root #'db/*conn* (constantly conn))))
 
 (comment
- (dl/close conn)
+  (dl/close conn)
 
- (do
-   (dl/clear conn)
-   (def conn (dl/get-conn (env/db-path "datalevin") {}))
-   (alter-var-root #'db/*conn* (constantly conn))))
+  (do
+    (dl/clear conn)
+    (def conn (dl/get-conn (env/db-path "datalevin") {}))
+    (alter-var-root #'db/*conn* (constantly conn))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Fulltext search
@@ -47,5 +47,17 @@
       (cond-> by (assoc :entity/created-by by))))
 
 (defn q [query & inputs]
-  #?(:clj (apply dl/q query inputs)
+  #?(:clj  (apply dl/q query inputs)
      :cljs (throw (ex-info "datalevin/q not implemented in cljs" {:query query :inputs inputs}))))
+
+(comment
+  (->> (db/where [:account/email])
+
+       (map (comp distinct flatten (juxt :account/display-name
+                                (comp (partial map :member/name) :member/_account))))
+
+       (remove (comp #{1} count))
+       (take 100)
+
+       )
+  )

@@ -50,7 +50,7 @@
     :tag-spec "ac"
     :thread "ad"
     :message "ae"
-    :membership "af"
+    :roles "af"
     :account "b0"
     :ballot "b1"
     :site "b2"
@@ -119,7 +119,7 @@
                      :board/as-map "settings"
                      :domain/as-map "domain"
                      :collection/as-map "collection"
-                     :membership/as-map "roles"
+                     :roles/as-map "roles"
                      :slack.user/as-map "slack-user"
                      :slack.team/as-map "slack-team"
                      :slack.broadcast/as-map "slack-broadcast"
@@ -480,12 +480,12 @@
 (defn add-kind [kind]
   #(assoc % :entity/kind kind))
 
-(defn make-membership [member-id entity-id roles & [info]]
+(defn make-roles [member-id entity-id roles & [info]]
   {:pre [(uuid? member-id) (uuid? entity-id)]}
-  {:membership/id (composite-uuid :membership member-id entity-id)
-   :membership/member (uuid-ref nil member-id)
-   :membership/entity (uuid-ref nil entity-id)
-   :membership/roles roles})
+  {:roles/id (composite-uuid :roles member-id entity-id)
+   :roles/recipient (uuid-ref nil member-id)
+   :roles/entity (uuid-ref nil entity-id)
+   :roles/roles roles})
 
 (def changes {:board/as-map
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
@@ -740,17 +740,17 @@
 
                                   ]
 
-              :membership/as-map [::prepare
+              :roles/as-map [::prepare
                                   (fn [{:strs [e-u-r]}]
                                     (into [] (mapcat
                                                (fn [[ent user-map]]
                                                  (for [[user role-map] user-map]
-                                                   (make-membership (:uuid (parse-sparkboard-id user))
-                                                                    (:uuid (parse-sparkboard-id ent))
-                                                                    (into #{} (comp (filter val)
-                                                                                    (map key)
-                                                                                    (map (fn [r]
-                                                                                           (case r "admin" :role/admin)))) role-map)))))
+                                                   (make-roles (:uuid (parse-sparkboard-id user))
+                                                               (:uuid (parse-sparkboard-id ent))
+                                                               (into #{} (comp (filter val)
+                                                                               (map key)
+                                                                               (map (fn [r]
+                                                                                      (case r "admin" :role/admin)))) role-map)))))
                                           e-u-r))]
               ::firebase ["socialFeed" (xf (partial change-keys
                                                     ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
@@ -829,10 +829,10 @@
                               :roles (& (fn [m a roles]
                                           (assoc m a
                                                    (when (seq roles)
-                                                     [(make-membership (:entity/id m)
-                                                                       (to-uuid :board (:member/board m))
-                                                                       (into #{} (comp (map (partial keyword "role")) (distinct)) roles))])))
-                                        (rename :membership/_member))
+                                                     [(make-roles (:entity/id m)
+                                                                  (to-uuid :board (:member/board m))
+                                                                  (into #{} (comp (map (partial keyword "role")) (distinct)) roles))])))
+                                        (rename :roles/_member))
                               :tags (& (fn [m a v]
                                          (let [tags (keep (partial resolve-tag (:member/board m)) v)
                                                {tags true
@@ -919,13 +919,13 @@
                                                                                              :role/member))]
                                                                                 (-> m
                                                                                     (dissoc :role :user_id)
-                                                                                    (assoc :membership/id (composite-uuid :membership
-                                                                                                                          member-id
-                                                                                                                          project-id)
-                                                                                           :membership/roles #{role}
-                                                                                           :membership/entity (uuid-ref :project project-id)
-                                                                                           :membership/member (uuid-ref :member member-id)))))))))))
-                                          (rename :membership/_entity))
+                                                                                    (assoc :roles/id (composite-uuid :roles
+                                                                                                                     member-id
+                                                                                                                     project-id)
+                                                                                           :roles/roles #{role}
+                                                                                           :roles/entity (uuid-ref :project project-id)
+                                                                                           :roles/recipient (uuid-ref :member member-id)))))))))))
+                                          (rename :roles/_entity))
                                :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                                (rename :project/open-requests))
                                :sticky (rename :project/sticky?)
@@ -1207,7 +1207,7 @@
                     (into #{})))
 
   ;; example of looking for any project that contains a particular id
-  (->>  (all-entities)
+  (->> (all-entities)
        (filter (partial contains-somewhere? #uuid "a38f39bf-4f31-3d0b-87a6-ef6a2f702d30"))
        distinct)
   (parse-sparkboard-id "sparkboard_user:ORqqqQ1zcFPAtWYIB4QBWlkc4Kp1")

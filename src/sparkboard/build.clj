@@ -48,6 +48,8 @@
 
  (require '[sparkboard.migration.one-time :as one-time]
           '[datalevin.core :as dl]
+          '[sparkboard.datalevin :as sd]
+          '[sparkboard.server.env :as env]
           '[re-db.api :as db]
           '[sparkboard.schema :as sb.schema])
 
@@ -73,6 +75,11 @@
          (throw e)))))
 
  (do
+   ;; complete reset
+
+   (dl/clear sd/conn)
+   (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
+   (alter-var-root #'re-db.api/*conn* (constantly sd/conn))
    ;; transact schema
    (db/merge-schema! sb.schema/sb-schema)
    ;; upsert lookup refs

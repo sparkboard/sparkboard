@@ -101,7 +101,7 @@
    :board/rules {s- [:map-of
                      [:qualified-keyword {:namespace :action}]
                      [:map
-                      [:policy/requires-role [:set :membership.role]]]]}
+                      [:policy/requires-role [:set :roles.role]]]]}
    :board/custom-css {:doc "Custom CSS for this board"
                       s- :string}
    :board/custom-js {:doc "Custom JS for this board"
@@ -324,33 +324,33 @@
        [:y :int]]]]
     {:x {:y "foo"}}))
 
-(def sb-memberships
-  {:membership/_entity {s- [:sequential :membership/as-map]}
-   :membership/_member {s- [:sequential :membership/as-map]}
-   :membership/id (merge {:doc "ID field allowing for direct lookup of permissions"
-                          :derived-from [:membership/entity
-                                         :membership/member]
-                          :todo "Replace with composite unique-identity attribute :grant/member+entity"}
-                         unique-uuid)
-   :membership/entity (merge {:doc "Entity to which a grant applies"}
-                             (ref :one))
-   :membership/member (merge {:doc "Member or account who is granted the roles"}
-                             (ref :one)),
-   :membership.role {:doc "A keyword representing a role which may be granted to a member",
-                     s- [:enum :role/admin :role/collaborator :role/member]},
-   :membership/roles (merge {:doc "Set of roles granted",
-                             s- [:set :membership.role]}
-                            s/keyword
-                            s/many)
-   :membership/as-map {s- [:and [:map {:closed true}
-                                 :membership/id
-                                 :membership/roles
-                                 :membership/entity
-                                 :membership/member]
-                           [:fn {:error/message "Membership must contain :membership/member or :membership/account"}
-                            '(fn [{:keys [:membership/member :membership/account]}]
-                               (and (or member account)
-                                    (not (and member account))))]]}})
+(def sb-roles
+  {:roles/_entity {s- [:sequential :roles/as-map]}
+   :roles/_member {s- [:sequential :roles/as-map]}
+   :roles/id (merge {:doc "ID field allowing for direct lookup of permissions"
+                     :derived-from [:roles/entity
+                                    :roles/recipient]
+                     :todo "Replace with composite unique-identity attribute :grant/member+entity"}
+                    unique-uuid)
+   :roles/entity (merge {:doc "Entity to which a grant applies"}
+                        (ref :one))
+   :roles/recipient (merge {:doc "Member or account who is granted the roles"}
+                           (ref :one)),
+   :roles.role {:doc "A keyword representing a role which may be granted to a member",
+                s- [:enum :role/admin :role/collaborator :role/member]},
+   :roles/roles (merge {:doc "Set of roles granted",
+                        s- [:set :roles.role]}
+                       s/keyword
+                       s/many)
+   :roles/as-map {s- [:and [:map {:closed true}
+                            :roles/id
+                            :roles/roles
+                            :roles/entity
+                            :roles/recipient]
+                      [:fn {:error/message "Membership must contain :roles/member or :roles/account"}
+                       '(fn [{:keys [:roles/recipient :roles/account]}]
+                          (and (or recipient account)
+                               (not (and recipient account))))]]}})
 
 (def sb-util
   ;; TODO, tighten url
@@ -400,7 +400,7 @@
                        :member/project-participant?
                        :entity/created-at
                        :entity/updated-at
-                       (? :membership/_member)
+                       (? :roles/_member)
                        (? :entity/field-entries)
                        (? :member/tags.custom)
                        (? :member/image-url)
@@ -543,7 +543,7 @@
                         :entity/title
                         :entity/created-at
                         :entity/updated-at
-                        (? :membership/_entity)
+                        (? :roles/_entity)
                         (? [:project/card-classes {:doc "css classes for card"
                                                    :to-deprecate true}
                             [:sequential :string]])
@@ -739,7 +739,7 @@
              sb-entity
              sb-fields
              sb-account
-             sb-memberships
+             sb-roles
              sb-util
              sb-i18n
              sb-member
