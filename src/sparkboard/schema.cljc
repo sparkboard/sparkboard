@@ -115,6 +115,12 @@
                       :board/org
                       :board/registration-open?
 
+                      (? :image/logo)
+                      (? :image/logo-large)
+                      (? :image/footer)
+                      (? :image/background)
+                      (? :image/sub-header)
+
                       (? :entity/website)
                       (? :entity/meta-description)
                       (? :entity/description)
@@ -122,7 +128,6 @@
                       (? :entity/locale-default)
                       (? :entity/locale-dicts)
                       (? :entity/locale-suggestions)
-                      (? :entity/images)
                       (? :entity/social-feed)
                       (? :entity/deleted-at)
 
@@ -155,10 +160,11 @@
    :collection/as-map {s- [:map {:closed true}
                            :entity/id
                            :entity/kind
-                           :entity/images
                            :collection/boards
                            :entity/title
-                           :entity/domain]}})
+                           :entity/domain
+                           (? :image/logo)
+                           (? :image/background)]}})
 
 (def sb-discussion
   {:discussion/followers (ref :many),
@@ -464,12 +470,14 @@
                     :entity/title
                     :entity/kind
                     :entity/created-by
+                    (? :image/logo)
+                    (? :image/background)
+                    (? :image/sub-header)
                     (? :org/show-org-tab?)
                     (? :entity/description)
                     (? :entity/social-feed)
                     (? :entity/locale-default)
                     (? :entity/locale-suggestions)
-                    (? :entity/images)
                     (? :entity/domain)
                     (? :entity/public?)
                     (? :org/default-board-template)
@@ -701,23 +709,31 @@
                         :asset.provider/s3
                         :asset.provider/external-link]}
    :asset/id unique-uuid
-   :asset/created-by (ref :one)
+   :asset/content-type {s- :string}
+   :asset/size {s- 'number?}
+   :src {s- :string}
 
    :s3/bucket-name {s- :string}
-   :s3/object-key {s- :string}
-
-   :external-link/src {s- :string}
 
    :asset/as-map {s- [:map {:closed true}
-
                       :asset/provider
                       :asset/id
-                      :asset/created-by
+                      [:src :src]
+                      (? :s3/bucket-name)
+                      (? :asset/content-type)
+                      (? :asset/size)
+                      (? :entity/created-by)
+                      (? :entity/created-at)]}
 
-                      (? :external-link/src)
-                      (? :s3/object-key)
-                      (? :s3/bucket-name)]}})
-
+   :image/logo (ref :one :asset/as-map)
+   :image/logo-large (ref :one :asset/as-map)
+   :image/footer (ref :one :asset/as-map)
+   :image/background (ref :one :asset/as-map)
+   :image/sub-header (ref :one :asset/as-map)})
+(comment
+  (m/explain :asset/as-map {:src ""
+                            :asset/id (random-uuid)
+                            :asset/provider :asset.provider/s3}))
 (def sb-webhooks
   {:webhook/event {s- [:enum
                        :event.board/update-member

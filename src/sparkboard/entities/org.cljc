@@ -160,11 +160,13 @@
 
      [:h2.text-2xl :tr/new-org]
      (when-let [logo @?logo-url]
-       [:img {:src (assets/path @?logo-url)}])
+       [:img {:src (:src logo)}])
+     (ui/pprinted @?logo-url)
      [:input {:type "file" :on-change (fn [e]
                                         (when-let [file (j/get-in e [:target :files 0])]
                                           (p/let [asset (routes/POST :assets/upload (doto (js/FormData.)
                                                                                       (.append "files" file)))]
+                                            (prn :asset asset)
                                             (reset! ?logo-url asset)
                                             (prn :UPLOADED)))
 

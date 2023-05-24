@@ -54,6 +54,7 @@
     :account "b0"
     :ballot "b1"
     :site "b2"
+    :asset "b3"
     (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))
     #_"af"))
 
@@ -351,13 +352,18 @@
           time/instant
           Date/from))
 
-(def parse-image-urls
-  (xf (fn [urls]
-        (rename-keys urls {"logo" :image/logo-url
-                           "logoLarge" :image/logo-large-url
-                           "footer" :image/footer-url
-                           "background" :image/background-url
-                           "subHeader" :image/sub-header-url}))))
+(defn parse-image-urls [m a urls]
+  (let [image-k #(case % "logo" :image/logo
+                         "logoLarge" :image/logo-large
+                         "footer" :image/footer
+                         "background" :image/background
+                         "subHeader" :image/sub-header)]
+    (reduce-kv (fn [m k url]
+              (assoc m (image-k k) {:asset/id (to-uuid :asset url)
+                                    :asset/provider :asset.provider/external-link
+                                    :src url}))
+            (dissoc m a)
+            urls)))
 
 (defn parse-field-type [t]
   (case t "image" :field.type/images
@@ -634,8 +640,7 @@
                                                        "newMember" (& (xf (partial hash-map :webhook/url))
                                                                       (rename :event.board/new-member))]))
                              (rename :webhook/subscriptions))
-               "images" (& parse-image-urls
-                           (rename :entity/images))
+               "images" parse-image-urls
                "userLabel" (& (fn [m a [singular plural]]
                                 (update m :board/labels merge {:label/member.one singular
                                                                :label/member.many plural})) rm)
@@ -691,8 +696,7 @@
                            "localeSupport" (rename :entity/locale-suggestions)
                            "title" (rename :entity/title)
                            "allowPublicViewing" (rename :entity/public?)
-                           "images" (& parse-image-urls
-                                       (rename :entity/images))
+                           "images" parse-image-urls
                            "showOrgTab" (rename :org/show-org-tab?)
                            "creator" (uuid-ref-as :account :entity/created-by)
                            "boardTemplate" (uuid-ref-as :board :org/default-board-template)
@@ -745,8 +749,7 @@
               :collection/as-map [::prepare (partial flat-map :entity/id (partial to-uuid :collection))
                                   ::always (add-kind :collection)
                                   "title" (rename :entity/title)
-                                  "images" (& parse-image-urls
-                                              (rename :entity/images))
+                                  "images" parse-image-urls
                                   "boards" (& (xf (fn [m] (into [] (comp (filter val) (map (comp (partial uuid-ref :board) key))) m)))
                                               (rename :collection/boards)) ;; ordered list!
 
@@ -1262,6 +1265,3 @@
 ;; - pipeline: stream from live firebase/mongo db
 ;; - visualize: client streams/queries data (behind a security wall)
 
-(comment
-
-  )

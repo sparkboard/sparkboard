@@ -25,47 +25,26 @@
                                   (java.util.Date. (+ (System/currentTimeMillis) (* 7 24 60 60 1000)))))))
 
 #?(:clj
-   (defn s3-upload [{:s3/keys [object-key bucket-name]} ^java.io.File file]
-     (s3/put-object amazonica-config
-                    bucket-name
-                    object-key
-                    file)))
-
-#?(:clj
-   (defn s3-tx [bucket-name filename created-by]
-     (let [id (random-uuid)]
-       {:asset/provider :asset.provider/s3
-        :asset/id id
-        :asset/created-by created-by
-
-        :s3/bucket-name bucket-name
-        :s3/object-key (str id filename)})))
-
-#?(:clj
    (defn upload-handler [req _ _]
-     ;; Q
-     ;; what happens to :body-params when we upload a file using fetch?
-     (let [{{:keys [filename tempfile]} "files"} (:multipart-params req)]
-       (def temp-file tempfile)
-       (let [asset (s3-tx (:bucket-name amazonica-config)
-                          (str (random-uuid) "_" filename)
-                          [:entity/id (:entity/id (:account req))])]
-         (prn :upload asset)
-         (prn (s3-upload asset tempfile))
+     (let [{{:as f :keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
+       (let [{:keys [bucket-name serving-host]} amazonica-config
+             asset-id (random-uuid)
+             object-key (str asset-id "-" filename)
+             asset {:asset/provider :asset.provider/s3
+                    :asset/id asset-id
+                    :asset/content-type content-type
+                    :asset/size size
+                    :s3/bucket-name bucket-name
+                    :entity/created-at (java.util.Date.)
+                    :entity/created-by [:entity/id (:entity/id (:account req))]
+                    :src (str serving-host "/" object-key)}]
+         (s3/put-object amazonica-config
+                        bucket-name
+                        object-key
+                        tempfile)
          (dl/transact! [asset])
          {:status 200
           :body asset}))))
-
-#?(:cljs
-   (def serving-host (delay (:serving-host (db/get :env/config :s3)))))
-
-#?(:cljs
-   (defn path [asset]
-     (case (:asset/provider asset)
-       :s3
-       (str @serving-host "/" (:s3/object-key asset))
-       (str "No provider" asset))))
-
 
 (comment
   (s3-upload (clojure.java.io/file
