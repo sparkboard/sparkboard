@@ -10,7 +10,8 @@
             [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]
             [sparkboard.websockets :as ws]
-            [sparkboard.util :as u]))
+            [sparkboard.util :as u]
+            [sparkboard.assets :as assets]))
 
 #?(:clj
    (defn new!
@@ -69,7 +70,6 @@
                       :where
                       [?board :board/org ?org]
                       [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]]
-                    @dl/conn
                     q
                     [:entity/id org])
       :projects (dl/q '[:find [(pull ?project [:entity/id
@@ -83,7 +83,6 @@
                         [?board :board/org ?org]
                         [?project :project/board ?board]
                         [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]]
-                      @dl/conn
                       q
                       [:entity/id org])}))
 
@@ -140,6 +139,8 @@
   (forms/with-form [!org {:entity/title ?title
                           :entity/description ?description
                           :org/public? ?public
+                          :org/images {:image/logo-url ?logo-url
+                                       :image/background-url ?background-url}
                           :entity/domain {:domain/name ?domain}}
                     :required [?title ?domain]
                     :validators {?public [(fn [v _]
@@ -158,6 +159,16 @@
                        result)))}
 
      [:h2.text-2xl :tr/new-org]
+     (when-let [logo @?logo-url]
+       [:img {:src (assets/path @?logo-url)}])
+     [:input {:type "file" :on-change (fn [e]
+                                        (when-let [file (j/get-in e [:target :files 0])]
+                                          (p/let [asset (routes/POST :assets/upload (doto (js/FormData.)
+                                                                                      (.append "files" file)))]
+                                            (reset! ?logo-url asset)
+                                            (prn :UPLOADED)))
+
+                                        )}]
      (ui/show-field ?title {:label :tr/title})
      (ui/show-field ?domain {:label :tr/domain-name
                              :auto-complete "off"

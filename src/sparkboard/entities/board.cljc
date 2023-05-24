@@ -11,21 +11,21 @@
     [:div
      [:h3 :tr/new-board]
      (ui/show-field ?title)
-     [:button {:on-click #(p/let [res (routes/POST route @!board '[*])]
+     [:button {:on-click #(p/let [res (routes/POST route @!board)]
                             (when-not (:error res)
                               (routes/set-path! :org/read params)
                               ;; FIXME "Uncaught (in promise) DOMException: The operation was aborted."
                               ))}
       :tr/create]]))
 
-(defn new! [req params board pull]
+(defn new! [req params board]
   (validate/assert board [:map {:closed true} :entity/title])
   ;; auth: user is admin of :board/org
   (db/transact!
     [(-> board
          (assoc :board/org [:entity/id (:entity/id params)])
          (sd/new-entity :board :by (:db/id (:account req))))])
-  (db/pull pull))
+  (db/pull '[*]))
 
 (ui/defview register:view [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]

@@ -36,7 +36,7 @@
                        :view `views/home})
          "/ws" (E :websocket {:public true
                               :GET 'sparkboard.server.core/ws-handler})
-
+         "/upload" (E :assets/upload {:POST 'sparkboard.assets/upload-handler})
          ["/documents/" :file/name] (E :markdown/file
                                        {:GET 'sparkboard.server.core/serve-markdown
                                         :public true})
@@ -150,12 +150,16 @@
           (->> (impl/match-route @!routes) :route)))
 
 #?(:cljs
-   (defn POST [route & argv]
+   (defn POST [route body]
      (-> (js/fetch (path-for route)
-                   (j/lit {:headers {"Accept" "application/transit+json"
-                                     "Content-type" "application/transit+json"}
-                           :body (t/write (vec argv))
-                           :method "POST"}))
+                   (if (instance? js/FormData body)
+                     (j/lit {:method "POST"
+                             :headers {"Accept" "application/transit+json"}
+                             :body body})
+                     (j/lit {:headers {"Accept" "application/transit+json"
+                                       "Content-type" "application/transit+json"}
+                             :body (t/write body)
+                             :method "POST"})))
          (.then http/format-response))))
 
 #?(:cljs

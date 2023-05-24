@@ -75,6 +75,7 @@
 ;; Account lookup
 
 (def exposed-account-keys [:db/id
+                           :entity/id
                            :account/display-name
                            :account/email
                            :account/photo-url
@@ -110,7 +111,8 @@
     (handler (assoc req :account
                         (when-let [account-id (try (some-> (get-in req [:cookies "account-id" :value])
                                                            t/read)
-                                                   (catch Exception e nil))]
+                                                   (catch Exception e
+                                                     (tap> [:ACCOUNT-ERROR e])))]
                           (try (not-empty (db/pull exposed-account-keys account-id))
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))

@@ -79,8 +79,7 @@
                                :label/project.many] :string]},
    :board/org (ref :one)
    :board/instructions {:doc "Secondary instructions for a board, displayed above projects"
-                        s- :text-content/block
-                        :db/fulltext true},
+                        s- :text-content/block},
    :board/max-projects-per-member {:doc "Set a maximum number of projects a member may join"
                                    s- :int}
    :board/sticky-color {:doc "Border color for sticky projects", s- :html/color}
@@ -696,19 +695,28 @@
                                :entity/created-at
                                :thread.message/text]}})
 
+
 (def sb-assets
-  {:asset/provider [:enum :s3]
+  {:asset/provider {s- [:enum
+                        :asset.provider/s3
+                        :asset.provider/external-link]}
+   :asset/id unique-uuid
+   :asset/created-by (ref :one)
+
+   :s3/bucket-name {s- :string}
    :s3/object-key {s- :string}
-   :s3/bucket {s- :string}
-   :s3/upload-complete? {s- :boolean}
-   :s3/as-map {s- [:map {:closed true}
-                   :asset/provider
-                   :entity/id
-                   :s3/object-key
-                   :s3/bucket
-                   :entity/created-at
-                   :entity/created-by
-                   (? :entity/deleted-at)]}})
+
+   :external-link/src {s- :string}
+
+   :asset/as-map {s- [:map {:closed true}
+
+                      :asset/provider
+                      :asset/id
+                      :asset/created-by
+
+                      (? :external-link/src)
+                      (? :s3/object-key)
+                      (? :s3/bucket-name)]}})
 
 (def sb-webhooks
   {:webhook/event {s- [:enum

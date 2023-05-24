@@ -58,12 +58,6 @@
  (one-time/fetch-firebase)
  (one-time/fetch-accounts)
 
- ;; RESHAPED ENTITIES
-
- (comment
-  (into #{} (filter (comp #{"id"} name)) (mapcat keys entities)))
-
-
  (defn try-transact! [txs]
    (doseq [tx txs]
      (try
@@ -72,14 +66,16 @@
          (pprint [:failed tx])
          (throw e)))))
 
+ ;; reset db (may break fulltext index?)
  (do
-   ;; complete reset
+   (dl/clear sd/conn)
+   (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
+   (alter-var-root #'re-db.api/*conn* (constantly sd/conn)))
+
+ (do
 
    (def entities (one-time/all-entities))
 
-   (dl/clear sd/conn)
-   (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
-   (alter-var-root #'re-db.api/*conn* (constantly sd/conn))
    ;; transact schema
    (db/merge-schema! sb.schema/sb-schema)
    ;; upsert lookup refs

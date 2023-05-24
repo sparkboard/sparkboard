@@ -22,6 +22,7 @@
             [ring.middleware.format]
             [ring.util.http-response :as ring.http]
             [ring.util.mime-type :as ring.mime]
+            [ring.middleware.multipart-params :as multipart]
             [ring.util.request]
             [ring.util.response :as ring.response]
             [sparkboard.datalevin :as datalevin]
@@ -101,7 +102,6 @@
           method (:request-method req)
           data-req? (some-> (get-in req [:headers "accept"]) (str/includes? "application/transit+json"))
           authed? (:account req)]
-      (tap> [:method method])
       (cond
 
         (and (not authed?) (not public)) (throw (ex-info "Unauthorized" {:uri uri
@@ -109,7 +109,7 @@
                                                                          :status 401}))
 
         (and GET (= method :get)) (GET req params)
-        (and POST (= method :post)) (apply POST req params (:body-params req))
+        (and POST (= method :post)) (POST req params (:body-params req (:body req)))
 
         (and query data-req?) (some-> (query params) ring.http/ok)
         (or query view) (server.html/app-page
@@ -129,9 +129,7 @@
       {:error (ex-message e)})))
 
 (defn resolve-query [[_ params :as route]]
-  (tap> [:resolve-query route])
   (let [{[_ matched-params] :route :keys [$query] :as match} (routes/match-path route)]
-    (tap> [:match match])
     (when $query
       ($txs ($query (merge {} params matched-params))))))
 
@@ -152,6 +150,7 @@
                           i18n/wrap-i18n
                           accounts/wrap-accounts
                           impl/wrap-query-params            ;; required for accounts (oauth2)
+                          multipart/wrap-multipart-params
                           wrap-log
                           ring.cookies/wrap-cookies
                           (muu.middleware/wrap-format muuntaja))))

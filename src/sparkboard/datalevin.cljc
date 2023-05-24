@@ -47,8 +47,12 @@
       (cond-> by (assoc :entity/created-by by))))
 
 (defn q [query & inputs]
-  #?(:clj  (apply dl/q query inputs)
+  #?(:clj  (apply dl/q query @conn inputs)
      :cljs (throw (ex-info "datalevin/q not implemented in cljs" {:query query :inputs inputs}))))
+
+#?(:clj
+   (defn transact! [txs]
+     (dl/transact! conn txs)))
 
 (comment
   (->> (db/where [:account/email])
