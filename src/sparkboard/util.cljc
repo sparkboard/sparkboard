@@ -30,3 +30,17 @@
 
 (defn find-first [coll pred]
   (reduce (fn [_ x] (if (pred x) (reduced x) _)) nil coll))
+
+(defn prune
+  "Removes nil values from a map recursively"
+  [m]
+  (reduce-kv (fn [m k v]
+               (if (map? v)
+                 (assoc-seq m k (prune v))
+                 (if (or (nil? v) (and (coll? v) (empty? v)))
+                   m
+                   (assoc m k v)))) {} m))
+
+(comment
+  (prune {:x nil
+          :y {:z nil}}))

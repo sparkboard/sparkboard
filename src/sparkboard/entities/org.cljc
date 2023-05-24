@@ -33,12 +33,15 @@
 
 (defn index:query [_]
   (->> (db/where [[:entity/kind :org]])
-       (mapv (re-db.api/pull '[*]))))
+       (mapv (re-db.api/pull '[*
+                               {:image/logo [:src]}
+                               {:image/background [:src]}]))))
 
 (defn read:query [params]
   (db/pull '[:entity/id
              :entity/kind
              :entity/title
+             {:image/logo [:src]}
              {:board/_org [:entity/created-at
                            :entity/id
                            :entity/kind
@@ -93,11 +96,14 @@
 
 (ui/defview read:view [params]
   (forms/with-form [_ ?q]
-    (let [{:as org :keys [entity/title]} (:value (ws/watch [:org/read params]))
+    (let [{:as org :keys [entity/title image/logo]} (:data params)
           q (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
           result (when q (ws/once [:org/search (assoc params :q q)]))]
       [:div
        [:div.entity-header
+        (when logo
+          [:img.h-10.w-10.bg-contain.rounded-md
+           {:style {:background-image (ui/css-url (:src logo))}}])
         [:h3.header-title title]
         [:a.inline-flex.items-center {:class "hover:text-muted-foreground"
                                       :href (routes/entity org :settings)}
@@ -129,7 +135,7 @@
            _ (validate/assert org [:map {:closed true}
                                    :entity/title
                                    :entity/description
-                                   :image/logo
+                                   [:image/logo {:optional true}]
                                    [:entity/domain [:map {:closed true}
                                                     [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
            org (dl/new-entity org :org :by (:db/id account))]
@@ -140,26 +146,27 @@
   ;; TODO
   ;; page layout (narrow, centered)
   ;; typography
-  (forms/with-form [!org {:entity/title ?title
-                          :entity/description ?description
-                          :image/logo (:db/id ?logo)
-                          :image/background (:db/id ?background)
-                          :entity/domain {:domain/name ?domain}}
+  (forms/with-form [!org (u/prune
+                           {:entity/title ?title
+                            :entity/description ?description
+                            :image/logo (:db/id ?logo)
+                            :entity/domain {:domain/name ?domain}})
                     :required [?title ?domain]
+                    :label {?logo :tr/logo}
                     :validators {?domain [(forms/min-length 3)
                                           domain/domain-valid-chars
                                           (domain/domain-availability-validator)]}]
     [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto.bg-background
      {:on-submit (fn [e]
                    (j/call e :preventDefault)
-                   (forms/try-submit+ !org
-                     (p/let [result (routes/POST :org/new @!org)]
-                       (when-not (:error result)
-                         (routes/set-path! :org/read {:org (:entity/id result)}))
-                       result)))}
+                   (p/let [result (forms/try-submit+ !org
+                                    (routes/POST :org/new @!org))]
+                     (when-not (:error result)
+                       (routes/set-path! :org/read {:org (:entity/id result)}))
+                     result))}
 
      [:h2.text-2xl :tr/new-org]
-     (ui/image-upload-field ?logo)
+     (ui/image-field ?logo)
      (ui/show-field ?title {:label :tr/title})
      (ui/show-field ?domain {:label :tr/domain-name
                              :auto-complete "off"

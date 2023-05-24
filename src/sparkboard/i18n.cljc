@@ -41,6 +41,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :skeleton/nix {:en "Nothing to see here, folks.", :fr "Rien à voir ici, les amis.", :es "Nada que ver aquí, amigos."},
      :tr/create {:en "Create", :fr "Créer", :es "Crear"},
      :tr/invalid-email {:en "Invalid email", :fr "Courriel invalide", :es "Correo electrónico inválido"},
+     :tr/logo {:en "Logo", :fr "Logo", :es "Logo"},
      :tr/lang {:en "Language", :fr "Langue", :es "Idioma"},
      :tr/member {:en "Member", :fr "Membre", :es "Miembro"},
      :tr/logout {:en "Log out", :fr "Se déconnecter", :es "Cerrar sesión"},

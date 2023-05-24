@@ -1,6 +1,7 @@
 (ns sparkboard.views.ui
   (:require [applied-science.js-interop :as j]
             [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
             [inside-out.forms :as forms]
             [inside-out.macros]
             [promesa.core :as p]
@@ -14,6 +15,9 @@
             [yawn.view :as v]
             [sparkboard.routes :as routes])
   (:require-macros [sparkboard.views.ui :refer [defview tr]]))
+
+(defn pprinted [x]
+  [:pre-wrap (with-out-str (pprint x))])
 
 (def safe-html sanitize/safe-html)
 
@@ -40,17 +44,19 @@
 
 (defview entity-card
   {:key :entity/id}
-  [{:as entity :entity/keys [title image/logo image/background]}]
-    [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
-     {:href (routes/entity entity :read)}
-     [:div.absolute.inset-0.bg-cover.bg-center.h-24
-      {:class "bg-muted-foreground/10"
+  [{:as entity :keys [entity/title
+                      image/logo
+                      image/background]}]
+  [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
+   {:href (routes/entity entity :read)}
+   [:div.absolute.inset-0.bg-cover.bg-center.h-24
+    {:class "bg-muted-foreground/10"
      :style {:background-image (css-url (:src background))}}]
    (when (:src logo)
-       [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
-        {:class "border-foreground/50"
+     [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
+      {:class "border-foreground/50"
        :style {:background-image (css-url (:src logo))}}])
-   [:div.font-medium.leading-snug.text-md.mt-3 title]])
+   [:div.font-medium.leading-snug.text-md.mt-6.mb-3 title]])
 
 (def logo-url "/images/logo-2023.png")
 
@@ -77,19 +83,20 @@
 (def invalid-text-color "red")
 (def invalid-bg-color "light-pink")
 
-(def loader
+(defn loader [& [class]]
   (v/x
     [:div.flex.items-center.justify-left
-     [:svg.animate-spin.h-4.w-4.text-blue-600.ml-2
+     [:svg.animate-spin
       {:xmlns "http://www.w3.org/2000/svg"
        :fill "none"
-       :viewBox "0 0 24 24"}
+       :viewBox "0 0 24 24"
+       :class class}
       [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
       [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]]))
 
 (defview view-message [{:keys [type content]}]
   (case type
-    :in-progress loader
+    :in-progress (loader " h-4 w-4 text-blue-600 ml-2")
     [:div
      {:style (case type
                (:error :invalid) {:color invalid-text-color
@@ -98,7 +105,7 @@
      content]))
 
 (defview input-label [props content]
-  [:label.block
+  [:label.block.-mb-1
    (v/props {:class "text-muted-foreground
                      text-sm
                      font-medium
@@ -123,8 +130,9 @@
   (when-let [messages (seq (forms/visible-messages ?field))]
     (v/x (into [:div.gap-3.text-sm] (map view-message messages)))))
 
-(defn show-label [?field props]
-  (when-let [label (or (:label props) (:label (meta ?field)))]
+(defn show-label [?field & [props]]
+  (when-let [label (or (:label props)
+                       (:label (meta ?field)))]
     [input-label {:for (field-id ?field)} label]))
 
 (defn show-postfix [?field props]
@@ -155,12 +163,12 @@
        (show-field-messages ?field)])))
 
 (defn prose-props [?field]
-  {:value (or (:text/value @?field) "")
+  {:value (or (:prose/string @?field) "")
    :on-change (fn [e]
                 (reset! ?field
                         (when-let [value (u/guard (.. ^js e -target -value) seq)]
-                          #:text{:format :prose.format/markdown
-                                 :value value})))})
+                          {:prose/format :prose.format/markdown
+                           :prose/string value})))})
 
 (defn prose-field [?field & [props]]
   (text-field ?field (v/merge-props props (prose-props ?field))))
@@ -195,22 +203,52 @@
                                         (icon:search))}
                             (dissoc attrs :loading? :error))))
 
-(defview image-upload-field [?field]
-  [:<>
-   (when-let [src (:src @?field)]
-     [:img {:src src}])
-   [:input {:type "file" :on-change (fn [e]
-                                      (forms/touch! ?field)
-                                      (when-let [file (j/get-in e [:target :files 0])]
-                                        (p/let [asset (forms/watch-promise ?field
-                                                        (routes/POST :assets/upload (doto (js/FormData.)
-                                                                                      (.append "files" file))))]
-                                          (when-not (:error asset)
-                                            (reset! ?field asset)))))}]
-   (show-field-messages ?field)])
 
-(defn pprinted [x]
-  [:pre-wrap (with-out-str (pprint x))])
+
+(defn error-view [{:keys [error]}]
+  (when error
+    [:div.px-body.my-4
+     [:div.text-destructive.border-2.border-destructive.rounded.shadow.p-4
+      (str error)]]))
+
+(defn loading-bar [& [class]]
+  [:div.relative
+   {:class class}
+   [:div.loading-bar]])
+
+(defn upload-icon [class]
+  [:svg {:class class :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+   [:path {:d "M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z"}]
+   [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
+
+(defview image-field [?field]
+  (let [src (:src @?field)
+        loading? (:loading? ?field)]
+    [:div.flex.flex-col.gap-2
+     (show-label ?field)
+     [:label.block.w-24.h-24.border-2.relative.rounded.cursor-pointer.flex.items-end
+      (v/props {:class ["border-primary/20
+                         bg-background text-muted-foreground hover:text-foreground"]
+                :for (field-id ?field)}
+               (cond loading? {:class "loading-bar"}
+                     src {:class "bg-contain"
+                          :style (when src {:background-image (css-url src)})}
+                     :else {:class "bg-background"})
+               )
+      (when (and (not src) (not loading?))
+        (upload-icon "w-6 h-6 m-auto"))
+      [:input.hidden
+       {:id (field-id ?field)
+        :type "file"
+        :on-change (fn [e]
+                     (forms/touch! ?field)
+                     (when-let [file (j/get-in e [:target :files 0])]
+                       (p/let [asset (forms/watch-promise ?field
+                                       (routes/POST :assets/upload (doto (js/FormData.)
+                                                                     (.append "files" file))))]
+                         (when-not (:error asset)
+                           (reset! ?field asset)))))}]
+      (show-field-messages ?field)]]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 
@@ -220,17 +258,6 @@
       (vd/humanized schema v))))
 
 
-
-(defn error-view [{:keys [error]}]
-  (when error
-    [:div.px-body.my-4
-     [:div.text-destructive.border-2.border-destructive.rounded.shadow.p-4
-      (str error)]]))
-
-(defn loading-bar [{:keys [loading?]}]
-  (when loading?
-    [:div.relative.bg-blue-100
-     [:div.loading-bar]]))
 
 (defn merge-async
   "Accepts a collection of {:loading?, :error, :value} maps, returns a single map:
@@ -248,8 +275,8 @@
   "Given a map of {:loading?, :error}, shows a loading bar and/or error message"
   [result]
   [:<>
-   [loading-bar result]
-   [error-view result]])
+   (when (:loading? result) [loading-bar "bg-blue-100"])
+   (when (:error result) [error-view result])])
 
 (defn use-promise
   "Returns a {:loading?, :error, :value} map for a promise (which should be memoized)"

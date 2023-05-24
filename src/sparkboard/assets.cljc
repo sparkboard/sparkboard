@@ -2,7 +2,6 @@
   (:require #?(:clj [sparkboard.server.env :as env])
             #?(:clj [amazonica.aws.s3 :as s3])
             [clojure.set :as set]
-            [re-db.api :as db]
             [sparkboard.datalevin :as dl]
             [sparkboard.validate :as sv]))
 
@@ -36,7 +35,9 @@
      (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
        (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]
                   {:message "File size must be less than 20MB."})
-       (tap> [size (type size)])
+       (sv/assert content-type
+                  [:enum "image/jpeg" "image/png" "image/gif" "image/svg+xml" "image/webp" "image/avif"]
+                  {:message "Sorry, that image format isn't supported."})
        (let [{:keys [bucket-name serving-host]} amazonica-config
              asset-id (random-uuid)
              object-key (str asset-id "-" filename)
@@ -62,17 +63,3 @@
                (clojure.java.io/resource "public/images/logo-2023.png"))
              "logo-2023.png")
   (slurp (str (s3-presigned-url "logo-2023.png"))))
-
-;; TODO
-;; [x] set up r2 storage
-;; [x] set up db schema
-;; [x] fn to upload file to s3
-;; [ ] endpoint to upload file to s3
-;; [ ] UI/form widget to upload file & include a reference to it in another entity
-;;     - max file size
-;;     - file type restrictions
-;;     - upload progress
-;;     - upload error handling
-;; [ ] image resizing
-;;     - store a reference to generated sizes in db
-;;     - name the sizes, or whitelist params?
