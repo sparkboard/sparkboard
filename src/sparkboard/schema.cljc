@@ -702,19 +702,19 @@
 (def sb-assets
   {:asset/provider {s- [:enum
                         :asset.provider/s3
-                        :asset.provider/external-link]}
+                        :asset.provider/link]}
    :asset/id unique-uuid
    :asset/content-type {s- :string}
    :asset/size {s- 'number?}
-   :src {s- :string}
-
    :s3/bucket-name {s- :string}
+   :asset/link {s- :http/url}
 
    :asset/as-map {s- [:map {:closed true}
                       :asset/provider
                       :asset/id
-                      [:src :src]
+
                       (? :s3/bucket-name)
+                      (? :asset/link)
                       (? :asset/content-type)
                       (? :asset/size)
                       (? :entity/created-by)

@@ -21,6 +21,15 @@
                    m
                    (assoc m k (f v))))) m updaters))
 
+(defn update-some-paths [m & pvs]
+  (reduce (fn [m [path f]]
+            (if-some [v (get-in m path)]
+              (assoc-in m path (f v))
+              m))
+          m
+          (partition 2 pvs)))
+
+
 (defn ensure-prefix [s prefix]
   (if (str/starts-with? s prefix)
     s

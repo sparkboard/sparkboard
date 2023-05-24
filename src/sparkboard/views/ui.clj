@@ -21,6 +21,19 @@
       args)
     ``~name))
 
+(defmacro with-submission [bindings & body]
+  (let [binding-map (apply hash-map bindings)
+        ?form (:form binding-map)
+        [result promise] (first (dissoc binding-map :form))]
+    (assert ?form "with-submission requires a :form")
+    (assert (= 4 (count bindings))
+            "with-submission requires exactly 2 bindings, [result (...promise) :form !form]")
+    `(~'promesa.core/let [result# (~'inside-out.forms/try-submit+ ~?form
+                                    ~promise)]
+       (when-not (:error result#)
+         (let [~result result#]
+           ~@body)))))
+
 (defmacro x [& args]
   (let [args (wrap-tr args)]
     `(do ~@(butlast args)

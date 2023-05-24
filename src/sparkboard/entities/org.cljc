@@ -12,7 +12,8 @@
             [sparkboard.views.ui :as ui]
             [sparkboard.websockets :as ws]
             [sparkboard.util :as u]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [sparkboard.assets :as assets]))
 
 (defn delete!
   "Mutation fn. Retracts organization by given org-id."
@@ -34,14 +35,14 @@
 (defn index:query [_]
   (->> (db/where [[:entity/kind :org]])
        (mapv (re-db.api/pull '[*
-                               {:image/logo [:src]}
-                               {:image/background [:src]}]))))
+                               {:image/logo [:asset/id :asset/link]}
+                               {:image/background [:asset/id :asset/link]}]))))
 
 (defn read:query [params]
   (db/pull '[:entity/id
              :entity/kind
              :entity/title
-             {:image/logo [:src]}
+             {:image/logo [:asset/id :asset/link]}
              {:board/_org [:entity/created-at
                            :entity/id
                            :entity/kind
@@ -103,7 +104,7 @@
        [:div.entity-header
         (when logo
           [:img.h-10.w-10.bg-contain.rounded-md
-           {:style {:background-image (ui/css-url (:src logo))}}])
+           {:style {:background-image (ui/css-url (assets/src logo))}}])
         [:h3.header-title title]
         [:a.inline-flex.items-center {:class "hover:text-muted-foreground"
                                       :href (routes/entity org :settings)}
@@ -128,19 +129,29 @@
   [:div.p-body.prose :tr/settings]
   )
 
+(comment
+  (-> org
+      (update-some-paths [:entity/domain :domain/name] domain/qualify-domain
+                         [:image/logo] dl/asset-ref
+                         [:image/background] dl/asset-ref)))
+
 #?(:clj
    (defn new!
      [{:keys [account]} _ org]
-     (let [org (update-in org [:entity/domain :domain/name] #(some-> % domain/qualify-domain))
+     (let [org (u/update-some-paths org
+                                    [:entity/domain :domain/name] domain/qualify-domain
+                                    [:image/logo] dl/asset-ref)
+           ;; use malli to qualify domains and figure out assets?
            _ (validate/assert org [:map {:closed true}
                                    :entity/title
-                                   :entity/description
-                                   [:image/logo {:optional true}]
+                                   :image/logo
                                    [:entity/domain [:map {:closed true}
                                                     [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
            org (dl/new-entity org :org :by (:db/id account))]
        (db/transact! [org])
        {:body org})))
+
+
 
 (ui/defview new:view [params]
   ;; TODO
@@ -148,32 +159,27 @@
   ;; typography
   (forms/with-form [!org (u/prune
                            {:entity/title ?title
-                            :entity/description ?description
-                            :image/logo (:db/id ?logo)
+                            :image/logo ?logo
                             :entity/domain {:domain/name ?domain}})
                     :required [?title ?domain]
-                    :label {?logo :tr/logo}
                     :validators {?domain [(forms/min-length 3)
                                           domain/domain-valid-chars
                                           (domain/domain-availability-validator)]}]
     [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto.bg-background
      {:on-submit (fn [e]
                    (j/call e :preventDefault)
-                   (p/let [result (forms/try-submit+ !org
-                                    (routes/POST :org/new @!org))]
-                     (when-not (:error result)
-                       (routes/set-path! :org/read {:org (:entity/id result)}))
-                     result))}
-
+                   (ui/with-submission [result (routes/POST :org/new @!org)
+                                        :form !org]
+                     (routes/set-path! :org/read {:org (:entity/id result)})))}
      [:h2.text-2xl :tr/new-org]
-     (ui/image-field ?logo)
+     (ui/show-field ?logo {:el ui/image-field
+                           :label :tr/logo})
      (ui/show-field ?title {:label :tr/title})
      (ui/show-field ?domain {:label :tr/domain-name
                              :auto-complete "off"
                              :spell-check false
                              :placeholder "XYZ.sparkboard.com"
                              :postfix (when @?domain [:span.text-sm.text-gray-500 ".sparkboard.com"])})
-     (ui/show-field ?description {:el ui/prose-field})
 
      (ui/show-field-messages !org)
      (str "v?" (forms/messages !org :deep true))

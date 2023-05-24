@@ -7,9 +7,10 @@
             [sparkboard.routes :as routes]))
 
 (defn qualify-domain [domain]
-  (if (str/includes? domain ".")
-    domain
-    (str domain ".sparkboard.com")))
+  (when domain
+    (if (str/includes? domain ".")
+      domain
+      (str domain ".sparkboard.com"))))
 
 (defn availability [req {:keys [domain]}]
   (let [domain (qualify-domain domain)]

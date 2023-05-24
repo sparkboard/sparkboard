@@ -54,6 +54,9 @@
    (defn transact! [txs]
      (dl/transact! conn txs)))
 
+(defn to-ref [m id-key] [id-key (id-key m)])
+(def asset-ref #(to-ref % :asset/id))
+
 #?(:clj
    (defn uuid-prefix [kind]
      (case kind
@@ -85,14 +88,8 @@
      (java.util.UUID/fromString (str (uuid-prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
 
 (comment
-  (->> (db/where [:account/email])
-
-       (map (comp distinct flatten (juxt :account/display-name
-                                (comp (partial map :member/name) :member/_account))))
-
-       (remove (comp #{1} count))
-       (take 100)
-
-       )
+  (do (db/transact! [{:asset/id (to-uuid :account "foo")
+                      :foo "hello, world"}])
+      @(db/entity [:asset/id (to-uuid :account "foo")]))
   )
 

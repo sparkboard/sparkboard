@@ -3,13 +3,14 @@
             #?(:clj [amazonica.aws.s3 :as s3])
             [clojure.set :as set]
             [sparkboard.datalevin :as dl]
-            [sparkboard.validate :as sv]))
+            [sparkboard.validate :as sv]
+            [re-db.api :as db]))
 
 #?(:clj
    (defn external-link [url]
      {:asset/id (dl/to-uuid :asset url)
-      :asset/provider :asset.provider/external-link
-      :src url}))
+      :asset/provider :asset.provider/link
+      :asset/link url}))
 
 ;; user uploads will be stored using an s3-compatible service.
 ;; we'll use the same service and bucket for all uploads.
@@ -40,25 +41,31 @@
                   {:message "Sorry, that image format isn't supported."})
        (let [{:keys [bucket-name serving-host]} amazonica-config
              asset-id (random-uuid)
-             object-key (str asset-id "-" filename)
              asset {:asset/provider :asset.provider/s3
                     :asset/id asset-id
                     :asset/content-type content-type
                     :asset/size size
                     :s3/bucket-name bucket-name
                     :entity/created-at (java.util.Date.)
-                    :entity/created-by [:entity/id (:entity/id (:account req))]
-                    :src (str serving-host "/" object-key)}]
+                    :entity/created-by [:entity/id (:entity/id (:account req))]}]
          (s3/put-object amazonica-config
                         bucket-name
-                        object-key
-                        tempfile)
+                        (str asset-id)
+                        (clojure.java.io/input-stream tempfile)
+                        {:content-type content-type})
          (dl/transact! [asset])
          {:status 200
-          :body {:db/id [:asset/id asset-id]
-                 :src (:src asset)}}))))
+          :body {:asset/id asset-id}}))))
+
+#?(:cljs (def !serving-host (delay (-> (db/get :env/config :s3) :serving-host))))
+#?(:cljs (defn src [asset]
+           (when asset
+             (or (:asset/link asset)
+                 (str @!serving-host "/" (:asset/id asset))))))
 
 (comment
+  (clojure.java.io/input-stream (clojure.java.io/file
+                                  (clojure.java.io/resource "public/images/logo-2023.png")))
   (s3-upload (clojure.java.io/file
                (clojure.java.io/resource "public/images/logo-2023.png"))
              "logo-2023.png")

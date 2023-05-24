@@ -13,8 +13,9 @@
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [sparkboard.routes :as routes])
-  (:require-macros [sparkboard.views.ui :refer [defview tr]]))
+            [sparkboard.routes :as routes]
+            [sparkboard.assets :as assets])
+  (:require-macros [sparkboard.views.ui :refer [defview tr with-submission]]))
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
@@ -47,16 +48,16 @@
   [{:as entity :keys [entity/title
                       image/logo
                       image/background]}]
-  [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
+  [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24.text-card-foreground
    {:href (routes/entity entity :read)}
-   [:div.absolute.inset-0.bg-cover.bg-center.h-24
-    {:class "bg-muted-foreground/10"
-     :style {:background-image (css-url (:src background))}}]
-   (when (:src logo)
+   [:div.absolute.inset-0.bg-cover.bg-center.h-24.border-b-2
+    {:class "bg-card-foreground/20 border-card-foreground/05"
+     :style {:background-image (css-url (assets/src background))}}]
+   (when logo
      [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
-      {:class "border-foreground/50"
-       :style {:background-image (css-url (:src logo))}}])
-   [:div.font-medium.leading-snug.text-md.mt-6.mb-3 title]])
+      {:class "border-card-foreground/30"
+       :style {:background-image (css-url (assets/src logo))}}])
+   [:div.font-medium.leading-snug.text-md.mt-5.mb-2 title]])
 
 (def logo-url "/images/logo-2023.png")
 
@@ -222,8 +223,9 @@
    [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
 
 (defview image-field [?field]
-  (let [src (:src @?field)
-        loading? (:loading? ?field)]
+  (let [src (assets/src @?field)
+        loading? (:loading? ?field)
+        preview (h/use-state (:init ?field))]
     [:div.flex.flex-col.gap-2
      (show-label ?field)
      [:label.block.w-24.h-24.border-2.relative.rounded.cursor-pointer.flex.items-end
@@ -243,11 +245,10 @@
         :on-change (fn [e]
                      (forms/touch! ?field)
                      (when-let [file (j/get-in e [:target :files 0])]
-                       (p/let [asset (forms/watch-promise ?field
-                                       (routes/POST :assets/upload (doto (js/FormData.)
-                                                                     (.append "files" file))))]
-                         (when-not (:error asset)
-                           (reset! ?field asset)))))}]
+                       (with-submission [asset (routes/POST :assets/upload (doto (js/FormData.)
+                                                                             (.append "files" file)))
+                                         :form ?field]
+                         (reset! ?field asset))))}]
       (show-field-messages ?field)]]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
@@ -348,7 +349,7 @@
 (def email-validator (fn [v _]
                        (when v
                          (when-not (re-find #"^[^@]+@[^@]+$" v)
-                           :tr/invalid-email))))
+                           (tr :tr/invalid-email)))))
 
 
 (defn ^:dev/after-load init-forms []
