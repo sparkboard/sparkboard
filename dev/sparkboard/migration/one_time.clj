@@ -34,38 +34,13 @@
 
 (defn get-oid [x] (str (:$oid x x)))
 
-(defn uuid-prefix [kind]
-  (case kind
-    :org "a0"
-    :board "a1"
-    :collection "a2"
-    :member "a3"
-    :project "a4"
-    :field "a5"
-    :entry "a6"
-    :discussion "a7"
-    :post "a8"
-    :comment "a9"
-    :notification "aa"
-    :tag "ab"
-    :tag-spec "ac"
-    :thread "ad"
-    :message "ae"
-    :roles "af"
-    :account "b0"
-    :ballot "b1"
-    :site "b2"
-    :asset "b3"
-    (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))
-    #_"af"))
-
 (def to-uuid
   (memoize
     (fn [kind s]
       (let [s (:$oid s s)]
         (cond (uuid? s) s
               (and (vector? s) (= :entity/id (first s))) (second s)
-              (string? s) (java.util.UUID/fromString (str (uuid-prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))
+              (string? s) (sb.dl/to-uuid kind s)
               :else (throw (ex-info "Invalid UUID" {:s s})))))))
 
 (defn composite-uuid [kind & ss]
@@ -353,11 +328,6 @@
           time/instant
           Date/from))
 
-(defn external-asset [url]
-  {:asset/id (to-uuid :asset url)
-   :asset/provider :asset.provider/external-link
-   :src url})
-
 (defn parse-image-urls [m a urls]
   (let [image-k #(case % "logo" :image/logo
                          "logoLarge" :image/logo-large
@@ -365,7 +335,7 @@
                          "background" :image/background
                          "subHeader" :image/sub-header)]
     (reduce-kv (fn [m k url]
-              (assoc m (image-k k) (external-asset url)))
+              (assoc m (image-k k) (assets/external-link url)))
             (dissoc m a)
             urls)))
 
@@ -374,8 +344,8 @@
           "video" :field.type/video
           "select" :field.type/select
           "linkList" :field.type/link-list
-          "textarea" :field.type/text-content
-          :field.type/text-content))
+          "textarea" :field.type/prose
+          :field.type/prose))
 
 (def !all-fields
   (delay
@@ -385,12 +355,12 @@
          (map (juxt :field/id identity))
          (into {}))))
 
-(defn text-block [s]
+(defn prose [s]
   (when-not (str/blank? s)
-    {:text-content/format (if (str/includes? s "<")
-                            :text.format/html
-                            :text.format/markdown)
-     :text-content/string s}))
+    {:prose/format (if (str/includes? s "<")
+                     :prose.format/html
+                     :prose.format/markdown)
+     :prose/string s}))
 
 (defn video-value [v]
   (when (and v (not (str/blank? v)))
@@ -423,7 +393,7 @@
                                           :field.type/link-list {:link-list/items (mapv #(rename-keys % {:label :text
                                                                                                          :url :url}) v)}
                                           :field.type/select {:select/value v}
-                                          :field.type/text-content (text-block v)
+                                          :field.type/prose (prose v)
                                           :field.type/video (video-value v)
                                           (throw (Exception. (str "Field type not found "
                                                                   {:field/type field-type
@@ -590,8 +560,7 @@
                                                                                                          first
                                                                                                          (get "value")))
                                                                  (update :field/order #(or % (swap! !orders inc)))
-                                                                 (update :field/type parse-field-type)
-                                                                 (assoc :field/managed-by (uuid-ref :board managed-by))))))
+                                                                 (update :field/type parse-field-type)))))
                                                 (catch Exception e (prn a v) (throw e))))))]
                  ["groupFields" (& field-xf (rename :board/project-fields))
                   "userFields" (& field-xf (rename :board/member-fields))])
@@ -606,7 +575,6 @@
                                              (sort-by first)
                                              (flat-map :tag/id #(composite-uuid :tag board-ref (to-uuid :tag %)))
                                              (map #(-> %
-                                                       (assoc :tag/managed-by board-ref)
                                                        (dissoc "order")
                                                        (rename-keys {"color" :tag/background-color
                                                                      "name" :tag/label
@@ -650,9 +618,9 @@
 
                "descriptionLong" rm                         ;;  last used in 2015
 
-               "description" (& (xf text-block)
+               "description" (& (xf prose)
                                 (rename :entity/description)) ;; if = "Description..." then it's never used
-               "publicWelcome" (& (xf text-block)
+               "publicWelcome" (& (xf prose)
                                   (rename :board/instructions))
 
                "css" (rename :board/custom-css)
@@ -668,8 +636,8 @@
                "registrationEmailBody" (rename :board/registration-invitation-email-text)
                "learnMoreLink" (rename :entity/website)
                "metaDesc" (rename :entity/meta-description)
-               "registrationMessage" (& (xf text-block)
-                                        (rename :board/registration-message-content))
+               "registrationMessage" (& (xf prose)
+                                        (rename :board/registration-message))
                "defaultFilter" rm
                "defaultTag" rm
                "locales" (rename :entity/locale-dicts)
@@ -780,10 +748,11 @@
                                                             (assoc-some-value {}
                                                                               :entity/id account-id
                                                                               :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
-                                                                              :account/photo-url (or (some-> (:picture most-recent-member-doc)
-                                                                                                             (u/guard #(not (str/starts-with? % "/images"))))
-                                                                                                     (:photoUrl account)
-                                                                                                     (:photoUrl provider))
+                                                                              :account/photo (when-let [src (or (some-> (:picture most-recent-member-doc)
+                                                                                                                        (u/guard #(not (str/starts-with? % "/images"))))
+                                                                                                                (:photoUrl account)
+                                                                                                                (:photoUrl provider))]
+                                                                                               (assets/external-link src))
                                                                               :account/display-name (:name most-recent-member-doc)
                                                                               :account/email (:email account)
                                                                               :account/email-verified? (:emailVerified account)
@@ -886,7 +855,7 @@
                                                         ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
                                                         ::always (remove-when (comp str/blank? :text))
 
-                                                        :text (& (xf text-block) (rename :post/text-content))
+                                                        :text (& (xf prose) (rename :post/text))
 
                                                         :doNotFollow (uuid-ref-as :member :post/do-not-follow)
                                                         :followers (& (xf #(remove (partial missing-entity? :member/as-map) %))
@@ -906,7 +875,7 @@
                                ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                ::always (add-kind :project)
                                :_id (partial id-with-timestamp :project)
-                               :field_description (& (xf text-block)
+                               :field_description (& (xf prose)
                                                      (rename :project/admin-description))
                                :boardId (uuid-ref-as :board :project/board)
                                ::always (parse-fields :project/board :entity/field-entries)
@@ -1029,7 +998,7 @@
                                    (rename :entity/deleted-at))
                        ::always (remove-when :entity/deleted-at)
                        :updatedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
-                       :intro (& (xf text-block)
+                       :intro (& (xf prose)
                                  (rename :entity/description))
                        :owner (uuid-ref-as :member :entity/created-by)
 

@@ -51,7 +51,7 @@
    [:blockquote
     [ui/safe-html (-> board
                       :entity/description
-                      :text-content/string)]]
+                      :prose/string)]]
    ;; TODO - tabs
    [:div.rough-tabs {:class "w-100"}
     [:div.rough-tab                                         ;; projects

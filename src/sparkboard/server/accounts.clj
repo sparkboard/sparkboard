@@ -13,7 +13,8 @@
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.response :as ring.response]
-            [sparkboard.i18n :refer [tr]])
+            [sparkboard.i18n :refer [tr]]
+            [sparkboard.assets :as assets])
   (:import [com.smartmovesystems.hashcheck FirebaseScrypt]
            [org.apache.commons.codec.binary Base64]
            [java.nio.charset StandardCharsets]))
@@ -78,7 +79,7 @@
                            :entity/id
                            :account/display-name
                            :account/email
-                           :account/photo-url
+                           :account/photo
                            :account/locale])
 (defn account-cookie [id expires]
   {:value (t/write id)
@@ -186,7 +187,7 @@
         :account/display-name (:name provider-info)
         :account/email (:email provider-info)
         :account/email-verified? (:email_verified provider-info)
-        :account/photo-url (:picture provider-info)
+        :account/photo (assets/external-link (:picture provider-info))
         :account/locale (some-> (:locale provider-info) (str/split #"-") first)})
       existing
       ;; last-sign-in can overwrite existing data

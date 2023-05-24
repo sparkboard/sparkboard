@@ -31,7 +31,7 @@
                   :db/fulltext true}
    :entity/kind {s- [:enum :board :org :collection :member :project]}
    :entity/description {:doc "Description of an entity (for card/header display)"
-                        s- :text-content/block
+                        s- :prose/as-map
                         :db/fulltext true}
    :entity/field-entries (merge (ref :many :field-entry/as-map)
                                 s/component)
@@ -79,7 +79,7 @@
                                :label/project.many] :string]},
    :board/org (ref :one)
    :board/instructions {:doc "Secondary instructions for a board, displayed above projects"
-                        s- :text-content/block},
+                        s- :prose/as-map},
    :board/max-projects-per-member {:doc "Set a maximum number of projects a member may join"
                                    s- :int}
    :board/sticky-color {:doc "Border color for sticky projects", s- :html/color}
@@ -92,8 +92,8 @@
                                           s- :boolean},
    :board/registration-open? {:doc "Allows new registrations via the registration page. Does not affect invitations.",
                               s- :boolean},
-   :board/registration-message-content {:doc "Content displayed on registration screen (before user chooses provider / enters email)"
-                                        s- :text-content/block},
+   :board/registration-message {:doc "Content displayed on registration screen (before user chooses provider / enters email)"
+                                s- :prose/as-map},
    :board/registration-url-override {:doc "URL to redirect user for registration (replaces the Sparkboard registration page, admins are expected to invite users)",
                                      s- :http/url},
    :board/registration-codes {s- [:map-of :string [:map {:closed true} [:registration-code/active? :boolean]]]}
@@ -145,7 +145,7 @@
                       (? :board/project-sharing-buttons)
                       (? :board/registration-codes)
                       (? :board/registration-invitation-email-text)
-                      (? :board/registration-message-content)
+                      (? :board/registration-message)
                       (? :board/registration-newsletter-field?)
                       (? :board/registration-url-override)
                       (? :board/show-project-numbers?)
@@ -226,8 +226,8 @@
                     :field.type/video
                     :field.type/select
                     :field.type/link-list
-                    :field.type/text-content
-                    :field.type/text-content]}
+                    :field.type/prose
+                    :field.type/prose]}
 
    :field-entry/id unique-uuid
    :field-entry/field (ref :one)
@@ -245,9 +245,9 @@
                          [:tuple 'any?
                           [:map {:closed true}
                            [:select/value :string]]]]
-                        [:field.type/text-content
+                        [:field.type/prose
                          [:tuple 'any?
-                          :text-content/block]]
+                          :prose/as-map]]
                         [:field.type/video :video/value
                          [:tuple 'any? [:map {:closed true} :video/value :video/type]]]]}
    :field-entry/as-map {s- [:map {:closed true}
@@ -291,7 +291,7 @@
    :account/last-sign-in {s- 'inst?}
    :account/password-hash {s- :string}
    :account/password-salt {s- :string}
-   :account/photo-url {s- :http/url}
+   :account/photo (ref :one :asset/as-map)
    :account/locale {s- :i18n/locale}
    :account/as-map {s- [:map {:closed true}
                         :entity/id
@@ -303,7 +303,7 @@
                         (? :account/display-name)
                         (? :account/password-hash)
                         (? :account/password-salt)
-                        (? :account/photo-url)
+                        (? :account/photo)
                         (? :account.provider.google/sub)]}})
 
 ;; validation for endpoints
@@ -485,8 +485,8 @@
   {:post/_discussion {s- [:sequential :post/as-map]}
    :post/comments (merge (ref :many :comment/as-map)
                          s/component)
-   :post/text-content {s- :text-content/block
-                       :db/fulltext true}
+   :post/text {s- :prose/as-map
+               :db/fulltext true}
    :post/do-not-follow (merge
                          {:doc "Members who should not auto-follow this post after replying to it"}
                          (ref :many))
@@ -495,7 +495,7 @@
    :comment/text {s- :string}
    :post/as-map {s- [:map {:closed true}
                      :entity/id
-                     :post/text-content
+                     :post/text
                      :entity/created-by
                      :entity/created-at
                      (? :post/comments)
@@ -521,7 +521,7 @@
                     :todo "This could be stored in the board entity, a map of {project, number}, so that projects may participate in multiple boards"
                     s- :string}
    :project/admin-description {:doc "A description field only writable by an admin"
-                               s- :text-content/block}
+                               s- :prose/as-map}
    :project/inactive? {:doc "Marks a project inactive, hidden."
                        s- :boolean}
    :project/sticky? {:doc "Show project with border at top of project list"
@@ -664,14 +664,14 @@
                     (? :tag/background-color)
                     (? :tag/restricted?)]}})
 
-(def sb-text-content
-  {:text-content/format {s- [:enum
-                             :text.format/html
-                             :text.format/markdown]}
-   :text-content/string {s- :string}
-   :text-content/block {s- [:map {:closed true}
-                            :text-content/format
-                            :text-content/string]}})
+(def sb-prose
+  {:prose/format {s- [:enum
+                      :prose.format/html
+                      :prose.format/markdown]}
+   :prose/string {s- :string}
+   :prose/as-map {s- [:map {:closed true}
+                      :prose/format
+                      :prose/string]}})
 
 (def sb-thread
   {:thread/members (merge (ref :many)
@@ -760,7 +760,7 @@
              sb-social-feed
              sb-social-sharing
              sb-tags
-             sb-text-content
+             sb-prose
              sb-thread
              sb-assets
              sb-webhooks)

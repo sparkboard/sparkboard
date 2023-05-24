@@ -54,6 +54,36 @@
    (defn transact! [txs]
      (dl/transact! conn txs)))
 
+#?(:clj
+   (defn uuid-prefix [kind]
+     (case kind
+       :org "a0"
+       :board "a1"
+       :collection "a2"
+       :member "a3"
+       :project "a4"
+       :field "a5"
+       :entry "a6"
+       :discussion "a7"
+       :post "a8"
+       :comment "a9"
+       :notification "aa"
+       :tag "ab"
+       :tag-spec "ac"
+       :thread "ad"
+       :message "ae"
+       :roles "af"
+       :account "b0"
+       :ballot "b1"
+       :site "b2"
+       :asset "b3"
+       (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))
+       #_"af")))
+
+#?(:clj
+   (defn to-uuid [kind s]
+     (java.util.UUID/fromString (str (uuid-prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
+
 (comment
   (->> (db/where [:account/email])
 
@@ -65,3 +95,4 @@
 
        )
   )
+

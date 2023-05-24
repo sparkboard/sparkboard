@@ -47,11 +47,6 @@
 
  (deps/sync-deps)
 
- (require '[sparkboard.migration.one-time :as one-time]
-          '[datalevin.core :as dl]
-          '[sparkboard.datalevin :as sd]
-          '[sparkboard.server.env :as env]
-          '[sparkboard.schema :as sb.schema])
 
  ;; DATA IMPORT - copies to ./.db
  (one-time/fetch-mongodb)
@@ -65,6 +60,13 @@
        (catch Exception e
          (pprint [:failed tx])
          (throw e)))))
+
+
+ (require '[sparkboard.migration.one-time :as one-time]
+          '[datalevin.core :as dl]
+          '[sparkboard.datalevin :as sd]
+          '[sparkboard.server.env :as env]
+          '[sparkboard.schema :as sb.schema])
 
  ;; reset db (may break fulltext index?)
  (do

@@ -31,9 +31,10 @@
         {:xmlns "http://www.w3.org/2000/svg"}
         [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
 
-(defn show-content [{:text-content/keys [format string]}]
+(defn show-prose [{:prose/keys [format string]}]
   (case format
-    :text.format/html [sanitize/safe-html string]))
+    :prose.format/html [sanitize/safe-html string]
+    :prose.format/markdown string))
 
 (defn css-url [s] (str "url(" s ")"))
 
@@ -153,16 +154,16 @@
         (show-postfix ?field props)]
        (show-field-messages ?field)])))
 
-(defn text-block-props [?field]
+(defn prose-props [?field]
   {:value (or (:text/value @?field) "")
    :on-change (fn [e]
                 (reset! ?field
                         (when-let [value (u/guard (.. ^js e -target -value) seq)]
-                          #:text{:format :text.format/markdown
+                          #:text{:format :prose.format/markdown
                                  :value value})))})
 
-(defn text-block-field [?field & [props]]
-  (text-field ?field (v/merge-props props (text-block-props ?field))))
+(defn prose-field [?field & [props]]
+  (text-field ?field (v/merge-props props (prose-props ?field))))
 
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"

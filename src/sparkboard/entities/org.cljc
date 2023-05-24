@@ -166,7 +166,7 @@
                              :spell-check false
                              :placeholder "XYZ.sparkboard.com"
                              :postfix (when @?domain [:span.text-sm.text-gray-500 ".sparkboard.com"])})
-     (ui/show-field ?description {:el ui/text-block-field})
+     (ui/show-field ?description {:el ui/prose-field})
 
      (ui/show-field-messages !org)
      (str "v?" (forms/messages !org :deep true))

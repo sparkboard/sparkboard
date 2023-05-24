@@ -6,6 +6,12 @@
             [sparkboard.datalevin :as dl]
             [sparkboard.validate :as sv]))
 
+#?(:clj
+   (defn external-link [url]
+     {:asset/id (dl/to-uuid :asset url)
+      :asset/provider :asset.provider/external-link
+      :src url}))
+
 ;; user uploads will be stored using an s3-compatible service.
 ;; we'll use the same service and bucket for all uploads.
 
