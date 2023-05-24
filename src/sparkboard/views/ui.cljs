@@ -1,5 +1,6 @@
 (ns sparkboard.views.ui
-  (:require [clojure.pprint :refer [pprint]]
+  (:require [applied-science.js-interop :as j]
+            [clojure.pprint :refer [pprint]]
             [inside-out.forms :as forms]
             [inside-out.macros]
             [promesa.core :as p]
@@ -7,6 +8,7 @@
             [shadow.lazy :as lazy]
             [sparkboard.client.sanitize :as sanitize]
             [sparkboard.schema :as schema]
+            [sparkboard.util :as u]
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
@@ -37,18 +39,17 @@
 
 (defview entity-card
   {:key :entity/id}
-  [{:as entity :entity/keys [title description images kind]}]
-  (let [{:image/keys [logo-url background-url]} images]
+  [{:as entity :entity/keys [title image/logo image/background]}]
     [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24
      {:href (routes/entity entity :read)}
      [:div.absolute.inset-0.bg-cover.bg-center.h-24
       {:class "bg-muted-foreground/10"
-       :style {:background-image (css-url background-url)}}]
-     (when logo-url
+     :style {:background-image (css-url (:src background))}}]
+   (when (:src logo)
        [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
         {:class "border-foreground/50"
-         :style {:background-image (css-url logo-url)}}])
-     [:div.font-medium.leading-snug.text-md.mt-3 title]]))
+       :style {:background-image (css-url (:src logo))}}])
+   [:div.font-medium.leading-snug.text-md.mt-3 title]])
 
 (def logo-url "/images/logo-2023.png")
 
@@ -129,7 +130,7 @@
   (when-let [postfix (or (:postfix props) (:postfix (meta ?field)))]
     [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix]))
 
-(defn input-text
+(defn text-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
   (let [{:as props :keys [multi-line wrapper-class]} (merge props (:props (meta ?field)))]
@@ -152,7 +153,18 @@
         (show-postfix ?field props)]
        (show-field-messages ?field)])))
 
-(defview input-checkbox
+(defn text-block-props [?field]
+  {:value (or (:text/value @?field) "")
+   :on-change (fn [e]
+                (reset! ?field
+                        (when-let [value (u/guard (.. ^js e -target -value) seq)]
+                          #:text{:format :text.format/markdown
+                                 :value value})))})
+
+(defn text-block-field [?field & [props]]
+  (text-field ?field (v/merge-props props (text-block-props ?field))))
+
+(defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field attrs]
   (let [messages (forms/visible-messages ?field)]
@@ -170,17 +182,31 @@
        (into [:div.mt-1] (map view-message) messages))]))
 
 (defn show-field [?field & [attrs]]
-  (let [{:keys [el props]
-         :or {el input-text}} (meta ?field)]
-    (el ?field (v/merge-props props attrs))))
+  (let [props (v/merge-props (:props (meta ?field)) attrs)
+        el (:el props text-field)]
+    (el ?field (dissoc props :el))))
 
-(defn filter-input [?field & [attrs]]
+(defn filter-field [?field & [attrs]]
   (show-field ?field (merge {:class "pr-9"
                              :wrapper-class "flex-grow sm:flex-none"
                              :postfix (if (:loading? attrs)
                                         (icon:loading)
                                         (icon:search))}
                             (dissoc attrs :loading? :error))))
+
+(defview image-upload-field [?field]
+  [:<>
+   (when-let [src (:src @?field)]
+     [:img {:src src}])
+   [:input {:type "file" :on-change (fn [e]
+                                      (forms/touch! ?field)
+                                      (when-let [file (j/get-in e [:target :files 0])]
+                                        (p/let [asset (forms/watch-promise ?field
+                                                        (routes/POST :assets/upload (doto (js/FormData.)
+                                                                                      (.append "files" file))))]
+                                          (when-not (:error asset)
+                                            (reset! ?field asset)))))}]
+   (show-field-messages ?field)])
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
@@ -192,26 +218,7 @@
     (fn [v _]
       (vd/humanized schema v))))
 
-(defn ^:dev/after-load init-forms []
-  #_(when k
-      (let [validator (some-> schema/sb-schema (get k) :malli/schema malli-validator)]
-        (cond-> (k field-meta)
-                validator
-                (update :validators conj validator))))
-  (forms/set-global-meta!
-    (tr
-      {:account/email {:el input-text
-                       :props {:type "email"
-                               :placeholder :tr/email}
-                       :validators [(fn [v _]
-                                      (when v
-                                        (when-not (re-find #"^[^@]+@[^@]+$" v)
-                                          :tr/invalid-email)))]}
-       :account/password {:el input-text
-                          :props {:type "password"
-                                  :placeholder :tr/password}
-                          :validators [(forms/min-length 8)]}}))
-  )
+
 
 (defn error-view [{:keys [error]}]
   (when error
@@ -309,3 +316,27 @@
         (reset! !mounted true)
         cancel))
     @!state))
+
+(def email-validator (fn [v _]
+                       (when v
+                         (when-not (re-find #"^[^@]+@[^@]+$" v)
+                           :tr/invalid-email))))
+
+
+(defn ^:dev/after-load init-forms []
+  #_(when k
+      (let [validator (some-> schema/sb-schema (get k) :malli/schema malli-validator)]
+        (cond-> (k field-meta)
+                validator
+                (update :validators conj validator))))
+  (forms/set-global-meta!
+    (tr
+      {:account/email {:el text-field
+                       :props {:type "email"
+                               :placeholder :tr/email}
+                       :validators [email-validator]}
+       :account/password {:el text-field
+                          :props {:type "password"
+                                  :placeholder :tr/password}
+                          :validators [(forms/min-length 8)]}}))
+  )

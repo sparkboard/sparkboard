@@ -1,7 +1,8 @@
 (ns sparkboard.build
   (:require [babashka.process :as bp]
             [clojure.repl.deps :as deps]
-            [clojure.pprint :refer [pprint]]))
+            [clojure.pprint :refer [pprint]]
+            [re-db.api :as db]))
 
 (defn start
   {:shadow/requires-server true}
@@ -50,7 +51,6 @@
           '[datalevin.core :as dl]
           '[sparkboard.datalevin :as sd]
           '[sparkboard.server.env :as env]
-          '[re-db.api :as db]
           '[sparkboard.schema :as sb.schema])
 
  ;; DATA IMPORT - copies to ./.db

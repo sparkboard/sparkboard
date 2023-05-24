@@ -267,14 +267,12 @@
                     :video.type/youtube-url
                     :video.type/vimeo-url]}
    :video/value {s- :string}
-   :field/managed-by (ref :one)
    :field/as-map {:doc "Description of a field."
                   :todo ["Field specs should be definable at a global, org or board level."
                          "Orgs/boards should be able to override/add field.spec options."
                          "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
                   s- [:map {:closed true}
                       :field/id
-                      :field/managed-by
                       :field/order
                       :field/type
                       (? :field/hint)
@@ -656,16 +654,13 @@
 (def sb-tags
   {:tag/id unique-uuid
    :tag/background-color {s- :html/color},
-   :tag/label {s- :string},
-   :tag/managed-by (merge (ref :one)
-                          {:doc "The entity which manages this tag"}),
+   :tag/label {s- :string},,
    :tag/restricted? {:doc "Tag may only be modified by an admin of the owner of this tag"
                      s- :boolean}
    :tag/as-map {:doc "Description of a tag which may be applied to an entity."
                 s- [:map {:closed true}
                     :tag/id
                     :tag/label
-                    :tag/managed-by
                     (? :tag/background-color)
                     (? :tag/restricted?)]}})
 

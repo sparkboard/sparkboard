@@ -54,8 +54,10 @@
    (when-let [messages (messages-by-path schema value)]
      (throw (ex-info "Validation failed"
                      {:status (or code 400)
-                      :body {:error "Validation failed"
-                             :inside-out.forms/messages-by-path messages}
+                      :body (if message
+                              {:error message}
+                              {:error "Validation failed"
+                               :inside-out.forms/messages-by-path messages})
                       :value value})))))
 
 

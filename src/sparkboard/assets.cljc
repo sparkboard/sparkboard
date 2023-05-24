@@ -3,7 +3,8 @@
             #?(:clj [amazonica.aws.s3 :as s3])
             [clojure.set :as set]
             [re-db.api :as db]
-            [sparkboard.datalevin :as dl]))
+            [sparkboard.datalevin :as dl]
+            [sparkboard.validate :as sv]))
 
 ;; user uploads will be stored using an s3-compatible service.
 ;; we'll use the same service and bucket for all uploads.
@@ -26,7 +27,10 @@
 
 #?(:clj
    (defn upload-handler [req _ _]
-     (let [{{:as f :keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
+     (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
+       (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]
+                  {:message "File size must be less than 20MB."})
+       (tap> [size (type size)])
        (let [{:keys [bucket-name serving-host]} amazonica-config
              asset-id (random-uuid)
              object-key (str asset-id "-" filename)
@@ -44,7 +48,8 @@
                         tempfile)
          (dl/transact! [asset])
          {:status 200
-          :body asset}))))
+          :body {:db/id [:asset/id asset-id]
+                 :src (:src asset)}}))))
 
 (comment
   (s3-upload (clojure.java.io/file

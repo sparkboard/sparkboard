@@ -48,23 +48,25 @@
 (defn wrap-log
   "Log requests (log/info) and errors (log/error)"
   [f]
-  (let [handle-e (fn [e]
+  (let [handle-e (fn [req e]
                    (if (env/config :dev.logging/tap?)       ;; configured in .local.config.edn
                      (log/error (ex-message e) e)
                      (log/error (ex-message e)
                                 (ex-data e)
                                 (ex-cause e)))
                    (let [{:as data :keys [wrap-response] :or {wrap-response identity}} (ex-data e)]
+                     (case (-> req :muuntaja/response :format)
+                       ("application/transit+json" "application/json") data
                      (-> (server.html/error e data)
-                         wrap-response)))]
+                           wrap-response))))]
     (fn [req]
       (log/info :req req)
       (log/info :URI (:uri req))
       (try (let [res (f req)]
              (log/info :res res)
              res)
-           (catch Exception e (handle-e e))
-           (catch java.lang.AssertionError e (handle-e e))))))
+           (catch Exception e (handle-e req e))
+           (catch java.lang.AssertionError e (handle-e req e))))))
 
 (defn serve-static
   "Serve files from `public-dir` with content-type derived from file extension."

@@ -15,7 +15,8 @@
             [sparkboard.server.env :as env]
             [re-db.api :as db]
             [re-db.triplestore :as ts]
-            [sparkboard.util :as u])
+            [sparkboard.util :as u]
+            [sparkboard.assets :as assets])
   (:import (java.lang Integer)
            (java.util Date)))
 
@@ -352,6 +353,11 @@
           time/instant
           Date/from))
 
+(defn external-asset [url]
+  {:asset/id (to-uuid :asset url)
+   :asset/provider :asset.provider/external-link
+   :src url})
+
 (defn parse-image-urls [m a urls]
   (let [image-k #(case % "logo" :image/logo
                          "logoLarge" :image/logo-large
@@ -359,9 +365,7 @@
                          "background" :image/background
                          "subHeader" :image/sub-header)]
     (reduce-kv (fn [m k url]
-              (assoc m (image-k k) {:asset/id (to-uuid :asset url)
-                                    :asset/provider :asset.provider/external-link
-                                    :src url}))
+              (assoc m (image-k k) (external-asset url)))
             (dissoc m a)
             urls)))
 
@@ -381,17 +385,12 @@
          (map (juxt :field/id identity))
          (into {}))))
 
-(defn md-content [s]
+(defn text-block [s]
   (when-not (str/blank? s)
-    {:text-content/format :text.format/markdown
+    {:text-content/format (if (str/includes? s "<")
+                            :text.format/html
+                            :text.format/markdown)
      :text-content/string s}))
-
-(defn html-content [s]
-  (when-not (str/blank? s)
-    (if (str/includes? s "<")
-      {:text-content/format :text.format/html
-       :text-content/string s}
-      (md-content s))))
 
 (defn video-value [v]
   (when (and v (not (str/blank? v)))
@@ -424,7 +423,7 @@
                                           :field.type/link-list {:link-list/items (mapv #(rename-keys % {:label :text
                                                                                                          :url :url}) v)}
                                           :field.type/select {:select/value v}
-                                          :field.type/text-content (html-content v)
+                                          :field.type/text-content (text-block v)
                                           :field.type/video (video-value v)
                                           (throw (Exception. (str "Field type not found "
                                                                   {:field/type field-type
@@ -651,9 +650,9 @@
 
                "descriptionLong" rm                         ;;  last used in 2015
 
-               "description" (& (xf html-content)
+               "description" (& (xf text-block)
                                 (rename :entity/description)) ;; if = "Description..." then it's never used
-               "publicWelcome" (& (xf html-content)
+               "publicWelcome" (& (xf text-block)
                                   (rename :board/instructions))
 
                "css" (rename :board/custom-css)
@@ -669,7 +668,7 @@
                "registrationEmailBody" (rename :board/registration-invitation-email-text)
                "learnMoreLink" (rename :entity/website)
                "metaDesc" (rename :entity/meta-description)
-               "registrationMessage" (& (xf html-content)
+               "registrationMessage" (& (xf text-block)
                                         (rename :board/registration-message-content))
                "defaultFilter" rm
                "defaultTag" rm
@@ -887,7 +886,7 @@
                                                         ::always (remove-when (comp (partial missing-entity? :member/as-map) :entity/created-by))
                                                         ::always (remove-when (comp str/blank? :text))
 
-                                                        :text (& (xf html-content) (rename :post/text-content))
+                                                        :text (& (xf text-block) (rename :post/text-content))
 
                                                         :doNotFollow (uuid-ref-as :member :post/do-not-follow)
                                                         :followers (& (xf #(remove (partial missing-entity? :member/as-map) %))
@@ -907,7 +906,7 @@
                                ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                ::always (add-kind :project)
                                :_id (partial id-with-timestamp :project)
-                               :field_description (& (xf html-content)
+                               :field_description (& (xf text-block)
                                                      (rename :project/admin-description))
                                :boardId (uuid-ref-as :board :project/board)
                                ::always (parse-fields :project/board :entity/field-entries)
@@ -1030,7 +1029,7 @@
                                    (rename :entity/deleted-at))
                        ::always (remove-when :entity/deleted-at)
                        :updatedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
-                       :intro (& (xf html-content)
+                       :intro (& (xf text-block)
                                  (rename :entity/description))
                        :owner (uuid-ref-as :member :entity/created-by)
 

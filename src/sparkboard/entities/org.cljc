@@ -1,5 +1,6 @@
 (ns sparkboard.entities.org
-  (:require [sparkboard.datalevin :as dl]
+  (:require #?(:cljs [yawn.hooks :as h])
+            [sparkboard.datalevin :as dl]
             [applied-science.js-interop :as j]
             [inside-out.forms :as forms]
             [promesa.core :as p]
@@ -11,20 +12,7 @@
             [sparkboard.views.ui :as ui]
             [sparkboard.websockets :as ws]
             [sparkboard.util :as u]
-            [sparkboard.assets :as assets]))
-
-#?(:clj
-   (defn new!
-     [{:keys [account]} _ org]
-     (let [org (update-in org [:entity/domain :domain/name] #(some-> % domain/qualify-domain))
-           _ (validate/assert org [:map {:closed true}
-                                   :entity/title
-                                   :entity/description
-                                   [:entity/domain [:map {:closed true}
-                                                    [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
-           org (dl/new-entity org :org :by (:db/id account))]
-       (db/transact! [org])
-       {:body org})))
+            [yawn.view :as v]))
 
 (defn delete!
   "Mutation fn. Retracts organization by given org-id."
@@ -64,7 +52,8 @@
       :boards (dl/q '[:find [(pull ?board [:entity/id
                                            :entity/title
                                            :entity/kind
-                                           :entity/images
+                                           :image/logo
+                                           :image/backgrouond
                                            {:entity/domain [:domain/name]}]) ...]
                       :in $ ?terms ?org
                       :where
@@ -76,7 +65,8 @@
                                                :entity/title
                                                :entity/kind
                                                :entity/description
-                                               :entity/images
+                                               :image/logo
+                                               :image/backgrouond
                                                {:project/board [:entity/id]}]) ...]
                         :in $ ?terms ?org
                         :where
@@ -91,7 +81,7 @@
     [:<>
      [:div.entity-header
       [:h3.header-title :tr/orgs]
-      [ui/filter-input ?filter]
+      [ui/filter-field ?filter]
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
      (into [:div.card-grid]
            (comp
@@ -118,7 +108,7 @@
                                                      title "?"))
                          (routes/POST :org/delete params))}
            ]
-        [ui/filter-input ?q {:loading? (:loading? result)}]
+        [ui/filter-field ?q {:loading? (:loading? result)}]
         [:a.btn.btn-light {:href (routes/path-for :org/new-board params)} :tr/new-board]]
        [ui/error-view result]
 
@@ -132,21 +122,31 @@
   [:div.p-body.prose :tr/settings]
   )
 
+#?(:clj
+   (defn new!
+     [{:keys [account]} _ org]
+     (let [org (update-in org [:entity/domain :domain/name] #(some-> % domain/qualify-domain))
+           _ (validate/assert org [:map {:closed true}
+                                   :entity/title
+                                   :entity/description
+                                   :image/logo
+                                   [:entity/domain [:map {:closed true}
+                                                    [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
+           org (dl/new-entity org :org :by (:db/id account))]
+       (db/transact! [org])
+       {:body org})))
+
 (ui/defview new:view [params]
   ;; TODO
   ;; page layout (narrow, centered)
   ;; typography
   (forms/with-form [!org {:entity/title ?title
                           :entity/description ?description
-                          :org/public? ?public
-                          :org/images {:image/logo-url ?logo-url
-                                       :image/background-url ?background-url}
+                          :image/logo (:db/id ?logo)
+                          :image/background (:db/id ?background)
                           :entity/domain {:domain/name ?domain}}
                     :required [?title ?domain]
-                    :validators {?public [(fn [v _]
-                                            (when-not v
-                                              (forms/message :invalid "Too bad")))]
-                                 ?domain [(forms/min-length 3)
+                    :validators {?domain [(forms/min-length 3)
                                           domain/domain-valid-chars
                                           (domain/domain-availability-validator)]}]
     [:form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto.bg-background
@@ -159,27 +159,19 @@
                        result)))}
 
      [:h2.text-2xl :tr/new-org]
-     (when-let [logo @?logo-url]
-       [:img {:src (:src logo)}])
-     (ui/pprinted @?logo-url)
-     [:input {:type "file" :on-change (fn [e]
-                                        (when-let [file (j/get-in e [:target :files 0])]
-                                          (p/let [asset (routes/POST :assets/upload (doto (js/FormData.)
-                                                                                      (.append "files" file)))]
-                                            (prn :asset asset)
-                                            (reset! ?logo-url asset)
-                                            (prn :UPLOADED)))
-
-                                        )}]
+     (ui/image-upload-field ?logo)
      (ui/show-field ?title {:label :tr/title})
      (ui/show-field ?domain {:label :tr/domain-name
                              :auto-complete "off"
                              :spell-check false
                              :placeholder "XYZ.sparkboard.com"
                              :postfix (when @?domain [:span.text-sm.text-gray-500 ".sparkboard.com"])})
-     (ui/show-field ?description {:label :tr/description})
+     (ui/show-field ?description {:el ui/text-block-field})
 
-     (into [:<>] (map ui/view-message (forms/visible-messages !org)))
+     (ui/show-field-messages !org)
+     (str "v?" (forms/messages !org :deep true))
+
+     [:pre (ui/pprinted @!org)]
 
      [:button.btn.btn-primary.px-6.py-3.self-start {:type "submit"
                                                     :disabled (not (forms/submittable? !org))}
