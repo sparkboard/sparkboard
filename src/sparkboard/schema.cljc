@@ -243,10 +243,8 @@
                         [:field.type/text-content
                          [:tuple 'any?
                           :text-content/block]]
-                        [:field.type/video
-                         [:tuple 'any?
-                          [:map {:closed true}
-                           :video/value]]]]}
+                        [:field.type/video :video/value
+                         [:tuple 'any? [:map {:closed true} :video/value :video/type]]]]}
    :field-entry/as-map {s- [:map {:closed true}
                             :field-entry/id
                             :field-entry/field
@@ -255,16 +253,15 @@
                     s- [:map {:closed true}
                         (? [:text :string])
                         [:url :string]]}
-   :video/value {s- [:multi {:dispatch 'first}
-                     [:video/vimeo-url [:tuple [:= :video/vimeo-url] :http/url]]
-                     [:video/youtube-url [:tuple [:= :video/youtube-url] :http/url]]
-                     [:video/youtube-id [:tuple [:= :video/youtube-id] :string]]]}
    :field-option/color {s- :html/color},
    :field-option/default {s- :string},
    :field-option/label {s- :string},
    :field-option/value {s- :string},
-   :video/youtube-id {s- :string}
-
+   :video/type {s- [:enum
+                    :video.type/youtube-id
+                    :video.type/youtube-url
+                    :video.type/vimeo-url]}
+   :video/value {s- :string}
    :field/managed-by (ref :one)
    :field/as-map {:doc "Description of a field."
                   :todo ["Field specs should be definable at a global, org or board level."
@@ -369,13 +366,10 @@
                        s- [:map-of :i18n/locale :i18n/dict]}})
 
 (def sb-member
-  {:member/name {s- :string},
-   :member/new? {s- :boolean},
+  {:member/new? {s- :boolean},
    :member/newsletter-subscription? {s- :boolean},
-   :member/project-participant? {:doc "Member has the intention of participating in a project"
-                                 s- :boolean}
    :member/tags (ref :many :tag/as-map)
-   :member/tags.custom {s- [:sequential :tag/ad-hoc]}
+   :member/ad-hoc-tags {s- [:sequential [:map {:closed true} :tag/label]]}
    :member/inactive? {:doc "Marks a member inactive, hidden."
                       :admin true
                       :todo "If an inactive member signs in to a board, mark as active again?"
@@ -387,7 +381,6 @@
                                 :member.email-frequency/periodic
                                 :member.email-frequency/instant]}
    :member/account (ref :one)
-   :member/image-url {s- :http/url},
    :member/as-map {s- [:map {:closed true}
                        :entity/id
                        :entity/kind
@@ -395,15 +388,12 @@
                        :member/board
                        :member/email-frequency
                        :member/account
-                       :member/name
                        :member/new?
-                       :member/project-participant?
                        :entity/created-at
                        :entity/updated-at
                        (? :roles/_member)
                        (? :entity/field-entries)
-                       (? :member/tags.custom)
-                       (? :member/image-url)
+                       (? :member/ad-hoc-tags)
                        (? :member/newsletter-subscription?)
                        (? :member/tags)
                        (? :entity/deleted-at)
@@ -657,15 +647,13 @@
                                :social.sharing-button/qr-code]}})
 
 (def sb-tags
-  {:tag/ad-hoc {s- [:map :tag.ad-hoc/label]}
-   :tag/id unique-uuid
+  {:tag/id unique-uuid
    :tag/background-color {s- :html/color},
    :tag/label {s- :string},
    :tag/managed-by (merge (ref :one)
                           {:doc "The entity which manages this tag"}),
    :tag/restricted? {:doc "Tag may only be modified by an admin of the owner of this tag"
                      s- :boolean}
-   :tag.ad-hoc/label {s- :string}
    :tag/as-map {:doc "Description of a tag which may be applied to an entity."
                 s- [:map {:closed true}
                     :tag/id

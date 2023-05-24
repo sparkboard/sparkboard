@@ -194,6 +194,15 @@
                                     #_(mapv (fn [[k m]] (assoc m :firebase/id k))))
             :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
+
+(def !account->member-docs
+  (delay
+    (-> (group-by :firebaseAccount (read-coll :member/as-map))
+        (dissoc nil)
+        (update-keys #(some->> % (to-uuid :account)))
+        (update-vals #(->> %
+                           (sort-by (comp bson-id-timestamp get-oid :_id)))))))
+
 (defn unmunge-domain [s] (str/replace s "_" "."))
 
 (declare coll-entities)
@@ -366,21 +375,26 @@
          (map (juxt :field/id identity))
          (into {}))))
 
-(defn html-content [s]
-  (when-not (str/blank? s)
-    {:text-content/format :text.format/html
-     :text-content/string s}))
-
 (defn md-content [s]
   (when-not (str/blank? s)
     {:text-content/format :text.format/markdown
      :text-content/string s}))
 
+(defn html-content [s]
+  (when-not (str/blank? s)
+    (if (str/includes? s "<")
+      {:text-content/format :text.format/html
+       :text-content/string s}
+      (md-content s))))
+
 (defn video-value [v]
   (when (and v (not (str/blank? v)))
-    (cond (re-find #"vimeo" v) [:video/vimeo-url v]
-          (re-find #"youtube" v) [:video/youtube-url v]
-          :else [:video/youtube-id v])))
+    (cond (re-find #"vimeo" v) {:video/type :video.type/vimeo-url
+                                :video/value v}
+          (re-find #"youtube" v) {:video/type :video.type/youtube-url
+                                  :video/value v}
+          :else {:video/type :video.type/youtube-id
+                 :video/value v})))
 
 (defn parse-fields [managed-by-k to-k]
   (fn [m]
@@ -405,8 +419,7 @@
                                                                                                          :url :url}) v)}
                                           :field.type/select {:select/value v}
                                           :field.type/text-content (html-content v)
-                                          :field.type/video (some->> (video-value v)
-                                                                     (hash-map :video/value))
+                                          :field.type/video (video-value v)
                                           (throw (Exception. (str "Field type not found "
                                                                   {:field/type field-type
                                                                    :field-spec/id field-id
@@ -469,9 +482,8 @@
 (defn resolve-tag [board-id tag-string]
   (if-let [tag-id (get-in @!tag->id [board-id (str/lower-case tag-string)])]
     (when-not (= :NO_TAG tag-id)
-      {:entity/id tag-id
-       :entity/kind :tag})
-    {:tag.ad-hoc/label tag-string}))
+      {:tag/id tag-id})
+    {:tag/label tag-string}))
 
 (defn mongo-id? [x]
   (try (do (bson-id-timestamp x) true)
@@ -741,17 +753,17 @@
                                   ]
 
               :roles/as-map [::prepare
-                                  (fn [{:strs [e-u-r]}]
-                                    (into [] (mapcat
-                                               (fn [[ent user-map]]
-                                                 (for [[user role-map] user-map]
-                                                   (make-roles (:uuid (parse-sparkboard-id user))
-                                                               (:uuid (parse-sparkboard-id ent))
-                                                               (into #{} (comp (filter val)
-                                                                               (map key)
-                                                                               (map (fn [r]
-                                                                                      (case r "admin" :role/admin)))) role-map)))))
-                                          e-u-r))]
+                             (fn [{:strs [e-u-r]}]
+                               (into [] (mapcat
+                                          (fn [[ent user-map]]
+                                            (for [[user role-map] user-map]
+                                              (make-roles (:uuid (parse-sparkboard-id user))
+                                                          (:uuid (parse-sparkboard-id ent))
+                                                          (into #{} (comp (filter val)
+                                                                          (map key)
+                                                                          (map (fn [r]
+                                                                                 (case r "admin" :role/admin)))) role-map)))))
+                                     e-u-r))]
               ::firebase ["socialFeed" (xf (partial change-keys
                                                     ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
                                                      "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
@@ -760,19 +772,23 @@
                                       (rename :entity/domain))]
               :account/as-map [::prepare (fn [accounts]
                                            (->> accounts
-                                                (map (fn [{:as account [provider] :providerUserInfo}]
-                                                       (assoc-some-value {}
-                                                                         :account/email (:email account)
-                                                                         :account/email-verified? (:emailVerified account)
-                                                                         :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
-                                                                         :account/display-name (:displayName account)
-                                                                         :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
-                                                                         :entity/id (to-uuid :account (:localId account))
-                                                                         :account/password-hash (:passwordHash account)
-                                                                         :account/password-salt (:salt account)
-                                                                         :account/photo-url (or (:photoUrl account)
-                                                                                                (:photoUrl provider))
-                                                                         :account.provider.google/sub (:rawId provider))))))]
+                                                (keep (fn [{:as account [provider] :providerUserInfo}]
+                                                        (let [account-id (to-uuid :account (:localId account))]
+                                                          (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
+                                                            (assoc-some-value {}
+                                                                              :entity/id account-id
+                                                                              :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
+                                                                              :account/photo-url (or (some-> (:picture most-recent-member-doc)
+                                                                                                             (u/guard #(not (str/starts-with? % "/images"))))
+                                                                                                     (:photoUrl account)
+                                                                                                     (:photoUrl provider))
+                                                                              :account/display-name (:name most-recent-member-doc)
+                                                                              :account/email (:email account)
+                                                                              :account/email-verified? (:emailVerified account)
+                                                                              :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
+                                                                              :account/password-hash (:passwordHash account)
+                                                                              :account/password-salt (:salt account)
+                                                                              :account.provider.google/sub (:rawId provider))))))))]
               :ballot/as-map [::prepare (fn [users]
                                           (->> users
                                                (mapcat (fn [{:keys [_id boardId votesByDomain]}]
@@ -793,7 +809,6 @@
                               ::always (add-kind :member)
 
                               ::defaults {:member/new? false
-                                          :member/project-participant? true
                                           :member/inactive? false
                                           :member/email-frequency :member.email-frequency/periodic}
                               :lastModifiedBy rm
@@ -821,11 +836,11 @@
                               :contact_me rm
 
                               :first_time (rename :member/new?)
-                              :ready (& (xf not) (rename :member/project-participant?))
+                              :ready rm
                               ;; new feature - not-joining-a-project
 
 
-                              :name (rename :member/name)
+                              :name rm
                               :roles (& (fn [m a roles]
                                           (assoc m a
                                                    (when (seq roles)
@@ -839,14 +854,12 @@
                                                 custom-tags false} (group-by (comp boolean :entity/id) tags)]
                                            (-> m
                                                (u/assoc-seq :member/tags (mapv (comp uuid-ref :entity/id) tags))
-                                               (u/assoc-seq :member/tags.custom (vec custom-tags))
+                                               (u/assoc-seq :member/ad-hoc-tags (vec custom-tags))
                                                (dissoc :tags)))))
 
                               :newsletterSubscribe (rename :member/newsletter-subscription?)
                               :active (& (xf not) (rename :member/inactive?)) ;; same as deleted?
-                              :picture (& (xf #(when-not (str/starts-with? % "/images/")
-                                                 %))
-                                          (rename :member/image-url))
+                              :picture rm
                               :votesByDomain rm
                               :feedbackRating rm
 

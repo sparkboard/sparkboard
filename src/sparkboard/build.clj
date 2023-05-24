@@ -59,12 +59,10 @@
  (one-time/fetch-accounts)
 
  ;; RESHAPED ENTITIES
- (def entities (one-time/all-entities))
+
  (comment
   (into #{} (filter (comp #{"id"} name)) (mapcat keys entities)))
 
- ;; COMMIT TO DB - note, you may wish to
- (dl/clear conn)                                            ;; NOTE - after this, re-run `def conn` in sparkboard.datalevin
 
  (defn try-transact! [txs]
    (doseq [tx txs]
@@ -76,6 +74,8 @@
 
  (do
    ;; complete reset
+
+   (def entities (one-time/all-entities))
 
    (dl/clear sd/conn)
    (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))

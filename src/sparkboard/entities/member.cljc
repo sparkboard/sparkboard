@@ -2,21 +2,17 @@
   (:require [re-db.api :as db]
             [sparkboard.views.ui :as ui]))
 
-(ui/defview read:view [{member :data}]
-  [:div
-   [:h1 (:member/name member)]
-   (when-let [tags (seq (concat (:member/tags member)
-                                (:member/tags.custom member)))]
-     [:section [:h3 :tr/tags]
-      (into [:ul]
-            (map (fn [tag]
-                   (if (:tag.ad-hoc/label tag)
-                     [:li (:tag.ad-hoc/label tag)]
-                     [:li [:span (when-let [bg (:tag/background-color tag)]
-                                   {:style {:background-color bg}})
-                           (:tag/label tag)]])))
-            tags)])
-   [:img {:src (:member/image-url member)}]])
+(ui/defview read:view [{{:member/keys [tags ad-hoc-tags account]} :data}]
+  (let [{:account/keys [display-name photo-url]} account]
+    [:div
+     [:h1 display-name]
+     (when-let [tags (seq (concat tags ad-hoc-tags))]
+       [:section [:h3 :tr/tags]
+        (into [:ul]
+              (map (fn [{:tag/keys [label background-color]}]
+                     [:li {:style (when background-color {:background-color background-color})} label]))
+              tags)])
+     (when photo-url [:img {:src photo-url}])]))
 
 (defn read:query [params]
   (dissoc (db/pull '[*
