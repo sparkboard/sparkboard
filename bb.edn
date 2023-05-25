@@ -14,7 +14,7 @@
          compile-scrypt (do (shell "mkdir -p classes")
                             ;; compile SCRYPT (for password hashing)
                             (when-not (fs/exists? "classes/com")
-                              (shell "clj -T:compile-java compile-java")))
+                              (shell "clojure -T:compile-java compile-java")))
          dev (do (run 'compile-scrypt)
                  (shell "yarn shadow-cljs -A:dev:nio clj-run sparkboard.build/start"))
          cljs (do (shell "yarn install")
