@@ -2,6 +2,7 @@
   (:require #?(:clj [datalevin.core :as dl])
             #?(:clj [sparkboard.server.env :as env])
             #?(:clj [re-db.integrations.datalevin])
+            [clojure.string :as str]
             [re-db.api :as db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -91,5 +92,12 @@
   (do (db/transact! [{:asset/id (to-uuid :account "foo")
                       :foo "hello, world"}])
       @(db/entity [:asset/id (to-uuid :account "foo")]))
+  (transact! [[:db/retractEntity [:asset/id #uuid"b36f39af-8832-38aa-9653-cbc8d02a8cae"]]])
+
+  (->> (q '[:find [?link ...]
+           :where [?asset :asset/link ?link]])
+
+       (take 100))
+
   )
 

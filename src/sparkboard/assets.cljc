@@ -4,7 +4,8 @@
             [clojure.set :as set]
             [sparkboard.datalevin :as dl]
             [sparkboard.validate :as sv]
-            [re-db.api :as db]))
+            [re-db.api :as db])
+  #?(:clj (:import [com.criteo.vips VipsImage])))
 
 #?(:clj
    (defn external-link [url]
@@ -37,7 +38,7 @@
        (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]
                   {:message "File size must be less than 20MB."})
        (sv/assert content-type
-                  [:enum "image/jpeg" "image/png" "image/gif" "image/svg+xml" "image/webp" "image/avif"]
+                  [:enum "image/jpeg" "image/png" "image/gif" "image/svg+xml" "image/webp"]
                   {:message "Sorry, that image format isn't supported."})
        (let [{:keys [bucket-name serving-host]} amazonica-config
              asset-id (random-uuid)
@@ -52,7 +53,9 @@
                         bucket-name
                         (str asset-id)
                         (clojure.java.io/input-stream tempfile)
-                        {:content-type content-type})
+                        {:content-type content-type
+                         :cache-control "max-age=31536000"
+                         :content-length size})
          (dl/transact! [asset])
          {:status 200
           :body {:asset/id asset-id}}))))
@@ -66,7 +69,11 @@
 (comment
   (clojure.java.io/input-stream (clojure.java.io/file
                                   (clojure.java.io/resource "public/images/logo-2023.png")))
-  (s3-upload (clojure.java.io/file
-               (clojure.java.io/resource "public/images/logo-2023.png"))
-             "logo-2023.png")
-  (slurp (str (s3-presigned-url "logo-2023.png"))))
+  (def file (clojure.java.io/file
+              (clojure.java.io/resource "public/images/logo-2023.png")))
+  (s3-upload file "logo-2023.png")
+  (slurp (str (s3-presigned-url "logo-2023.png")))
+
+  ;; use VipsImage to get image dimensions
+  (VipsImage. "logo-2023.png")
+  )

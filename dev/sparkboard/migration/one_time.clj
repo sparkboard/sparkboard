@@ -1192,7 +1192,7 @@
 
   ;; example of looking for any project that contains a particular id
   (->> (all-entities)
-       (filter (partial contains-somewhere? #uuid "a38f39bf-4f31-3d0b-87a6-ef6a2f702d30"))
+       (filter (partial contains-somewhere? "X"))
        distinct)
   (parse-sparkboard-id "sparkboard_user:ORqqqQ1zcFPAtWYIB4QBWlkc4Kp1")
   (coll-entities :account/as-map)
