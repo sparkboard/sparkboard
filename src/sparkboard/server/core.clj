@@ -146,16 +146,17 @@
   (#'ws/handle-ws-request ws-options req))
 
 (def handler
-  (impl/join-handlers (serve-static "public")
-                      slack.server/handlers
-                      (-> #'route-handler
-                          i18n/wrap-i18n
-                          accounts/wrap-accounts
-                          impl/wrap-query-params            ;; required for accounts (oauth2)
-                          multipart/wrap-multipart-params
-                          wrap-log
-                          ring.cookies/wrap-cookies
-                          (muu.middleware/wrap-format muuntaja))))
+  (delay
+    (impl/join-handlers (serve-static "public")
+                        slack.server/handlers
+                        (-> #'route-handler
+                            i18n/wrap-i18n
+                            accounts/wrap-accounts
+                            impl/wrap-query-params            ;; required for accounts (oauth2)
+                            multipart/wrap-multipart-params
+                            wrap-log
+                            ring.cookies/wrap-cookies
+                            (muu.middleware/wrap-format muuntaja)))))
 
 (defonce the-server
          (atom nil))
@@ -169,8 +170,9 @@
   Starts HTTP server, stopping existing HTTP server first if necessary."
   [port]
   (stop-server!)
-  (reset! the-server (httpkit/run-server #'handler {:port port
-                                                    :legacy-return-value? false}))
+  (reset! the-server (httpkit/run-server (fn [req] (@handler req))
+                                         {:port                 port
+                                          :legacy-return-value? false}))
   (when (not= "dev" (env/config :env))                      ;; using shadow-cljs server in dev
     (nrepl/start!)))
 
