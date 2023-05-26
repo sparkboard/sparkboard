@@ -15,7 +15,7 @@ Contents:
 1. Start a JVM process with `yarn shadow-cljs`
 1. Open a REPL with your favorite editor, reading the port from `.nrepl-port`
 1. `(shadow/watch :web)` compiles/reloads the client (not much there yet)
-1. `org.sparkboard.server.server/-main` starts the server
+1. `org.sparkboard.server.core/-main` starts the server
 
 Other approacheS:
   * see *dev/README.md*

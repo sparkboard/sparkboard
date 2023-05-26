@@ -17,6 +17,7 @@
             [re-db.read :as read]
             [re-db.sync :as sync]
             [re-db.sync.entity-diff-1 :as sync.entity]
+            [ring.middleware.basic-authentication :as basic-auth]
             [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.defaults]
             [ring.middleware.format]
@@ -156,7 +157,14 @@
                             multipart/wrap-multipart-params
                             wrap-log
                             ring.cookies/wrap-cookies
-                            (muu.middleware/wrap-format muuntaja)))))
+                            (muu.middleware/wrap-format muuntaja)
+                            (cond-> 
+                             (= "staging" (env/config :env))
+                              (basic-auth/wrap-basic-authentication (fn [_user pass]
+                                                                      (when (= pass (env/config :basic-auth/password))
+                                                                        "admin"))))))))
+
+
 
 (defonce the-server
          (atom nil))

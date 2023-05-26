@@ -1,5 +1,5 @@
 (ns sparkboard.server.accounts
-  (:require [buddy.core.keys :as buddy.keys]
+  (:require [buddy.core.keys :as buddy.keys] 
             [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
             [clj-http.client :as http]
@@ -8,7 +8,7 @@
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
             [sparkboard.server.env :as env]
-            [re-db.api :as db]
+            [re-db.api :as db] 
             [ring.middleware.oauth2 :as oauth2]
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
@@ -25,6 +25,7 @@
 (def hash-config (:password-auth/hash-config (cond-> env/config
                                                      (not (= "staging" (:env env/config)))
                                                      :prod)))
+
 
 (defn generate-salt
   "Returns a base64-encoded random salt."
@@ -173,22 +174,22 @@
                      :redirect-uri (routes/path-for [:oauth2.google/callback])
                      :landing-uri (routes/path-for [:oauth2.google/landing])}})
 
-(defn keep-vals [m]
-  (into {} (filter (comp some? val) m)))
+(defn filter-vals [m pred]
+  (into {} (filter (comp pred val) m)))
 
 (defn google-account-tx [account-id provider-info]
   (let [existing (not-empty (db/pull '[*] account-id))
         now (java.util.Date.)]
     [(merge
       ;; backfill account info (do not overwrite current data)
-      (keep-vals
-       {:entity/created-at now
-        :account.provider.google/sub (:sub provider-info)
-        :account/display-name (:name provider-info)
-        :account/email (:email provider-info)
-        :account/email-verified? (:email_verified provider-info)
-        :account/photo (assets/external-link (:picture provider-info))
-        :account/locale (some-> (:locale provider-info) (str/split #"-") first)})
+      (-> {:entity/created-at now
+           :account.provider.google/sub (:sub provider-info)
+           :account/display-name (:name provider-info)
+           :account/email (:email provider-info)
+           :account/email-verified? (:email_verified provider-info)
+           :account/photo (some-> (:picture provider-info) (assets/external-link))
+           :account/locale (some-> (:locale provider-info) (str/split #"-") first)}
+          (filter-vals some?))
       existing
       ;; last-sign-in can overwrite existing data
       {:account/last-sign-in now})]))
@@ -249,5 +250,3 @@
                                           {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
                                            :readers {'clj-time/date-time clj-time.coerce/from-string}})
                                   :cookie-attrs {:http-only true :secure (= (env/config :env) "prod")}})))
-
-

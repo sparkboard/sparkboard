@@ -39,6 +39,7 @@
         ring/ring-defaults {:mvn/version "0.3.4"}
         ring-oauth2/ring-oauth2 {:mvn/version "0.2.0"}
         ring-middleware-format/ring-middleware-format {:mvn/version "0.7.4"}
+        ring-basic-authentication/ring-basic-authentication {:mvn/version "1.1.0"}
         metosin/ring-http-response {:mvn/version "0.9.1"}
         buddy/buddy-auth {:mvn/version "3.0.1"}
         buddy/buddy-sign {:mvn/version "3.4.333"}
