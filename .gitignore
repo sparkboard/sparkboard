@@ -31,3 +31,4 @@ dev/scratch
 cloudflare-mailer/*.pem
 cloudflare-mailer/*.txt
 cloudflare-mailer/.dev.vars
+.calva/output-window/output.calva-repl
