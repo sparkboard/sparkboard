@@ -187,7 +187,7 @@
            :account/display-name (:name provider-info)
            :account/email (:email provider-info)
            :account/email-verified? (:email_verified provider-info)
-           :account/photo (some-> (:picture provider-info) (assets/external-link))
+           :account/photo (some-> (:picture provider-info) (assets/link-asset))
            :account/locale (some-> (:locale provider-info) (str/split #"-") first)}
           (filter-vals some?))
       existing

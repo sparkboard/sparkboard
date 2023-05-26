@@ -335,7 +335,7 @@
                          "background" :image/background
                          "subHeader" :image/sub-header)]
     (reduce-kv (fn [m k url]
-              (assoc m (image-k k) (assets/external-link url)))
+              (assoc m (image-k k) (assets/link-asset url)))
             (dissoc m a)
             urls)))
 
@@ -752,7 +752,7 @@
                                                                                                                         (u/guard #(not (str/starts-with? % "/images"))))
                                                                                                                 (:photoUrl account)
                                                                                                                 (:photoUrl provider))]
-                                                                                               (assets/external-link src))
+                                                                                               (assets/link-asset src))
                                                                               :account/display-name (:name most-recent-member-doc)
                                                                               :account/email (:email account)
                                                                               :account/email-verified? (:emailVerified account)

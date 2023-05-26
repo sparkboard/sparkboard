@@ -53,3 +53,9 @@
 (comment
   (prune {:x nil
           :y {:z nil}}))
+
+(defn select-as [m kmap]
+  (reduce-kv (fn [out k as]
+               (if (contains? m k)
+                 (assoc out as (get m k))
+                 out)) {} kmap))

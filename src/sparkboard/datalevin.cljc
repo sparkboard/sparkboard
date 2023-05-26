@@ -1,7 +1,7 @@
 (ns sparkboard.datalevin
   (:require #?(:clj [datalevin.core :as dl])
             #?(:clj [sparkboard.server.env :as env])
-            #?(:clj [re-db.integrations.datalevin])
+            #?(:clj [re-db.integrations.datalevin]) 
             [clojure.string :as str]
             [re-db.api :as db]))
 
@@ -50,6 +50,9 @@
 (defn q [query & inputs]
   #?(:clj  (apply dl/q query @conn inputs)
      :cljs (throw (ex-info "datalevin/q not implemented in cljs" {:query query :inputs inputs}))))
+
+#?(:clj 
+   (defn entity [id] (dl/entity @conn id)))
 
 #?(:clj
    (defn transact! [txs]

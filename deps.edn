@@ -27,7 +27,8 @@
         clj-gatling/clj-gatling {:mvn/version "0.17.6"}
         com.taoensso/tempura {:mvn/version "1.5.3"}
         amazonica/amazonica {:mvn/version "0.3.134"}
-        com.criteo/jvips {:mvn/version "8.12.2-69bf715"}
+        com.sksamuel.scrimage/scrimage-core {:mvn/version "4.0.34"}
+        com.sksamuel.scrimage/scrimage-webp {:mvn/version "4.0.34"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}

@@ -706,14 +706,24 @@
    :asset/id unique-uuid
    :asset/content-type {s- :string}
    :asset/size {s- 'number?}
-   :s3/bucket-name {s- :string}
-   :asset/link {s- :http/url}
+   
+   :s3.bucket/as-map {s- [:map {:closed true}
+                          :s3/bucket-host
+                          :s3/bucket-name 
+                          :s3/endpoint]}
+   
+   :s3/bucket-name unique-string-id
+   :s3/bucket-host {s- :string}
+   :s3/endpoint {s- :string}
+   :s3/bucket (ref :one :s3.bucket/as-map)
+
+   :asset/link {s- :string}
 
    :asset/as-map {s- [:map {:closed true}
                       :asset/provider
                       :asset/id
 
-                      (? :s3/bucket-name)
+                      (? :s3/bucket)
                       (? :asset/link)
                       (? :asset/content-type)
                       (? :asset/size)
