@@ -29,7 +29,7 @@
                                  [(keyword k) v])))
              (into {}))))))
 
-(defn url-encode [x]
+(defn url-encode [x] 
   #?(:cljs (js/encodeURIComponent x)
      :clj  (-> x
                (java.net.URLEncoder/encode "UTF-8")
@@ -39,12 +39,16 @@
   "Returns query string from map, including '?'. Removes empty values. Returns nil if empty."
   [m]
   (some->> m
-           (reduce-kv (fn [out k v]
-                        (cond-> out
-                                (not (str/blank? v))
-                                (conj (str (url-encode (name k))
-                                           "="
-                                           (url-encode v))))) [])
+           (reduce (fn [out [k v]]
+                        (if-let [v (cond (string? v) (when-not (str/blank? v) v)
+                                         (nil? v) nil
+                                         (coll? v) (not-empty v)
+                                         :else (str v))]
+                          (conj out (str (url-encode (name k))
+                                         "="
+                                         (url-encode v)))
+                          out)) 
+                   [])
            (str/join "&")
            (str "?")))
 

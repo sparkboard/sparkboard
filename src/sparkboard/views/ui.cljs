@@ -13,9 +13,12 @@
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [sparkboard.routes :as routes]
-            [sparkboard.assets :as assets])
+            [sparkboard.routes :as routes])
   (:require-macros [sparkboard.views.ui :refer [defview tr with-submission]]))
+
+(defn asset-src [asset]
+  (when asset
+    (str "/assets/" (:asset/id asset))))
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
@@ -52,11 +55,11 @@
    {:href (routes/entity entity :read)}
    [:div.absolute.inset-0.bg-cover.bg-center.h-24.border-b-2
     {:class "bg-card-foreground/20 border-card-foreground/05"
-     :style {:background-image (css-url (assets/src background))}}]
+     :style {:background-image (css-url (asset-src background))}}]
    (when logo
      [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
       {:class "border-card-foreground/30"
-       :style {:background-image (css-url (assets/src logo))}}])
+       :style {:background-image (css-url (asset-src logo))}}])
    [:div.font-medium.leading-snug.text-md.mt-5.mb-2 title]])
 
 (def logo-url "/images/logo-2023.png")
@@ -223,7 +226,7 @@
    [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
 
 (defview image-field [?field]
-  (let [src (assets/src @?field)
+  (let [src (asset-src @?field)
         loading? (:loading? ?field)
         preview (h/use-state (:init ?field))]
     [:div.flex.flex-col.gap-2

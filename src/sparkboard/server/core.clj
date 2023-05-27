@@ -39,6 +39,7 @@
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
             [sparkboard.websockets :as ws]
+            [sparkboard.util :as u]
             [taoensso.timbre :as log]))
 
 (def muuntaja
@@ -90,6 +91,7 @@
 (defn serve-markdown [_ {:keys [file/name]}]
   (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
+
 (def route-handler
   (fn [{:as req :keys [uri]}]
     (tap> req)
@@ -99,9 +101,7 @@
                             public
                             GET
                             POST]} (routes/match-path uri)
-          params (cond->> params
-                          (:query-params req)
-                          (merge (update-keys (:query-params req) keyword)))
+          params (u/assoc-seq params :query-params (update-keys (:query-params req) keyword))
           method (:request-method req)
           data-req? (some-> (get-in req [:headers "accept"]) (str/includes? "application/transit+json"))
           authed? (:account req)]

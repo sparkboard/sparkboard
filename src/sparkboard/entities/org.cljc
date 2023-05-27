@@ -12,8 +12,7 @@
             [sparkboard.views.ui :as ui]
             [sparkboard.websockets :as ws]
             [sparkboard.util :as u]
-            [yawn.view :as v]
-            [sparkboard.assets :as assets]))
+            [yawn.view :as v]))
 
 (defn delete!
   "Mutation fn. Retracts organization by given org-id."
@@ -35,14 +34,14 @@
 (defn index:query [_]
   (->> (db/where [[:entity/kind :org]])
        (mapv (re-db.api/pull '[*
-                               {:image/logo [:asset/id :asset/link]}
-                               {:image/background [:asset/id :asset/link]}]))))
+                               {:image/logo [:asset/id]}
+                               {:image/background [:asset/id]}]))))
 
 (defn read:query [params]
   (db/pull '[:entity/id
              :entity/kind
              :entity/title
-             {:image/logo [:asset/id :asset/link]}
+             {:image/logo [:asset/id]}
              {:board/_org [:entity/created-at
                            :entity/id
                            :entity/kind
@@ -51,7 +50,8 @@
            [:entity/id (:org params)]))
 
 #?(:clj
-   (defn search:query [{:keys [org q]}]
+   (defn search:query [{:keys [org]
+                        {:keys [q]} :query-params}]
      {:q q
       :boards (dl/q '[:find [(pull ?board [:entity/id
                                            :entity/title
@@ -104,7 +104,7 @@
        [:div.entity-header
         (when logo
           [:img.h-10.w-10.bg-contain.rounded-md
-           {:style {:background-image (ui/css-url (assets/src logo))}}])
+           {:style {:background-image (ui/css-url (ui/asset-src logo))}}])
         [:h3.header-title title]
         [:a.inline-flex.items-center {:class "hover:text-muted-foreground"
                                       :href (routes/entity org :settings)}

@@ -1,7 +1,6 @@
 (ns sparkboard.entities.member
   (:require [re-db.api :as db]
-            [sparkboard.views.ui :as ui]
-            [sparkboard.assets :as assets]))
+            [sparkboard.views.ui :as ui]))
 
 (ui/defview read:view [{{:member/keys [tags ad-hoc-tags account]} :data}]
   (let [{:account/keys [display-name photo]} account]
@@ -13,7 +12,7 @@
               (map (fn [{:tag/keys [label background-color]}]
                      [:li {:style (when background-color {:background-color background-color})} label]))
               tags)])
-     (when photo [:img {:src (assets/src photo)}])]))
+     (when photo [:img {:src (ui/asset-src photo)}])]))
 
 (defn read:query [params]
   (dissoc (db/pull '[*

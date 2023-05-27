@@ -23,10 +23,10 @@
               route [tag params]]
           (assoc @(:handler m)
             :tag tag
-            :params (assoc params
-                      :query-params (not-empty (query-params/path->map path))
-                      :path path
-                      :route route)))
+            :params (-> params
+                        (u/assoc-some :query-params (not-empty (query-params/path->map path)))
+                        (assoc :path path
+                               :route route))))
         (prn :no-match! path)))))
 
 #?(:cljs
@@ -76,9 +76,9 @@
     (if (:ns &env)
       (u/update-some endpoint {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))})
       (-> endpoint
-          (u/update-some {:query (fn [s] `@(requiring-resolve ~s))
-                          :GET (fn [s] `@(requiring-resolve ~s))
-                          :POST (fn [s] `@(requiring-resolve ~s))})
+          (u/update-some {:query (fn [s] `(requiring-resolve ~s))
+                          :GET (fn [s] `(requiring-resolve ~s))
+                          :POST (fn [s] `(requiring-resolve ~s))})
           (cond-> (:query endpoint)
                   (assoc :$query `(memo-fn-var (requiring-resolve ~(:query endpoint)))))))))
 

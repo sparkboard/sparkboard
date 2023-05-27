@@ -718,6 +718,7 @@
    :s3/bucket (ref :one :s3.bucket/as-map)
 
    :asset/link {s- :string}
+   :asset.link/failed? {s- :boolean}
 
    :asset/as-map {s- [:map {:closed true}
                       :asset/provider
@@ -729,6 +730,13 @@
                       (? :asset/size)
                       (? :entity/created-by)
                       (? :entity/created-at)]}
+   
+   :asset/variants (ref :many :asset.variant/as-map)
+
+   :asset.variant/as-map {s- [:map {:closed true} 
+                              :s3/bucket 
+                              :asset.variant/param-string]} 
+   :asset.variant/param-string {s- :string}
 
    :image/logo (ref :one :asset/as-map)
    :image/logo-large (ref :one :asset/as-map)
@@ -824,7 +832,3 @@
 
 (comment
   ())
-
-(-> (ref :one)
-    s-
-    (malli.core/explain [:entity/id 'uuid?]))
