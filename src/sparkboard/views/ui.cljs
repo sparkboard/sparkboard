@@ -248,7 +248,7 @@
         :on-change (fn [e]
                      (forms/touch! ?field)
                      (when-let [file (j/get-in e [:target :files 0])]
-                       (with-submission [asset (routes/POST :assets/upload (doto (js/FormData.)
+                       (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
                                                                              (.append "files" file)))
                                          :form ?field]
                          (reset! ?field asset))))}]

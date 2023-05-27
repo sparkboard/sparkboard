@@ -706,12 +706,12 @@
    :asset/id unique-uuid
    :asset/content-type {s- :string}
    :asset/size {s- 'number?}
-   
+
    :s3.bucket/as-map {s- [:map {:closed true}
                           :s3/bucket-host
-                          :s3/bucket-name 
+                          :s3/bucket-name
                           :s3/endpoint]}
-   
+
    :s3/bucket-name unique-string-id
    :s3/bucket-host {s- :string}
    :s3/endpoint {s- :string}
@@ -730,13 +730,17 @@
                       (? :asset/size)
                       (? :entity/created-by)
                       (? :entity/created-at)]}
-   
-   :asset/variants (ref :many :asset.variant/as-map)
 
-   :asset.variant/as-map {s- [:map {:closed true} 
-                              :s3/bucket 
-                              :asset.variant/param-string]} 
-   :asset.variant/param-string {s- :string}
+   :asset/variants (ref :many :asset.variant/as-map)
+   :asset.variant/params {s- :string}
+   :asset.variant/bucket+params (merge {:db/tupleAttrs [:s3/bucket :asset.variant/params]}
+                                       s/unique-id)
+
+   :asset.variant/as-map {s- [:map {:closed true}
+                              :asset.variant/bucket+param-string
+                              :s3/bucket
+                              :asset.variant/params]}
+
 
    :image/logo (ref :one :asset/as-map)
    :image/logo-large (ref :one :asset/as-map)

@@ -36,8 +36,9 @@
                        :view `views/home})
          "/ws" (E :websocket {:public true
                               :GET 'sparkboard.server.core/ws-handler})
-         "/upload" (E :assets/upload {:POST 'sparkboard.assets/upload-handler})
-         ["/assets/" [bidi/uuid :asset/id]] (E :assets/serve {:GET 'sparkboard.assets/serve-asset})
+         "/upload" (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
+         ["/assets/" [bidi/uuid :asset/id]] (E :asset/serve {:public true 
+                                                             :GET 'sparkboard.assets/serve-asset})
          ["/documents/" :file/name] (E :markdown/file
                                        {:GET 'sparkboard.server.core/serve-markdown
                                         :public true})

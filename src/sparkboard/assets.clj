@@ -24,7 +24,9 @@
                                    :s3/bucket-host
                                    :s3/endpoint])]))))
 
-(init-db!)
+(def !default-bucket 
+  (delay (init-db!)
+         (:db/id (dl/entity [:s3/bucket-name (:s3/bucket-name env/config)]))))
 
 
 (defn link-asset
@@ -77,7 +79,7 @@
                   :asset/id asset-id
                   :asset/size size
                   :asset/content-type content-type
-                  :s3/bucket [:s3/bucket-name bucket-name]
+                  :s3/bucket @!default-bucket
                   :entity/created-at (java.util.Date.)
                   :asset/created-by [:entity/id (:entity/id (:account req))]}]
       (upload-to-s3!  bucket-name
@@ -91,6 +93,21 @@
 
 (defn resizable? [content-type]
   (not (contains? #{"image/svg+xml" "image/gif"} content-type)))
+
+(defn find-or-create-variant! 
+  "A variant contains a reference to an s3 bucket and the normalized parameter string."
+  [bucket params]
+  (or (dl/q '[:find ?e .
+              :where
+              [?e :s3/bucket ?bucket]
+              [?e :asset.variant/params ?params]
+              :in $ ?bucket ?params]
+            bucket params)
+      (-> (dl/transact! [{:db/id -1 
+                          :s3/bucket bucket 
+                          :asset.variant/params params}]) 
+          :tempids 
+          (get -1))))
 
 (defn ensure-content-type!
   "Returns content-type for asset, reading via a HEAD request if necessary."
@@ -119,58 +136,62 @@
     :asset.provider/s3 (str (-> asset :s3/bucket :s3/bucket-host) "/" (:asset/id asset))))
 
 (defn variant-src [asset variant]
-  (str (-> variant :s3/bucket :s3/bucket-host) "/" (:asset/id asset) (:asset.variant/param-string variant)))
+  (str (-> variant :s3/bucket :s3/bucket-host) "/" (:asset/id asset) "_" (:asset.variant/params variant)))
 
 (defn url-stream [url]
   (let [conn (.openConnection (java.net.URL. url))]
     (io/input-stream (.getInputStream conn))))
 
 (defn serve-variant 
-  ([asset query-params] (serve-variant asset query-params true))
-  ([asset query-params find-or-create?]
-   (tap> [:asset (seq asset)])
-   (or (when-let [param-string (and (resizable? (ensure-content-type! asset))
-                                    (images/param-string query-params))] 
-         (if-let [variant (u/find-first (:asset/variants asset) (comp #{param-string} :asset.variant/param-string))]
-           (resp/redirect (variant-src asset variant) 302)
-          ;; upload new variant
-           (when find-or-create?
-             (let [source (url-stream (asset-src asset))
-                   bytes (images/format source query-params)
-                   asset-id (:asset/id asset)
-                   bucket-name (:s3/bucket-name env/config)]
-               (upload-to-s3! bucket-name
-                              (str asset-id "?" param-string)
-                              (count bytes)
+  [asset query-params]
+  (tap> [:asset (seq asset)])
+  (resp/redirect
+   (if-let [params (and (resizable? (ensure-content-type! asset))
+                        (images/params-string query-params))]
+     (if-let [variant (u/find-first (:asset/variants asset) (comp #{params} :asset.variant/params))]
+       (variant-src asset variant)
+       (let [asset-stream (url-stream (asset-src asset))
+             formatted-bytes  (images/format asset-stream query-params)
+             asset-id (:asset/id asset)
+             _ (upload-to-s3! (:s3/bucket-name env/config)
+                              (str asset-id "_" params)
+                              (count formatted-bytes)
                               "image/webp"
-                              bytes)
-               (dl/transact! [[:db/add [:asset/id asset-id] :asset/variants "variant"]
-                              {:db/id "variant"
-                               :asset.variant/param-string param-string
-                               :s3/bucket [:s3/bucket-name bucket-name]}])
-               (serve-variant (dl/entity [:asset/id asset-id]) query-params false))))) 
-       (resp/redirect (asset-src asset) 302))))
-
-
+                              formatted-bytes)
+             variant-id (find-or-create-variant! @!default-bucket params)]
+         (dl/transact! [[:db/add [:asset/id asset-id] :asset/variants variant-id]])
+         (variant-src asset (dl/entity variant-id))))
+     (asset-src asset))
+   302))
 
 (comment
   
-  (def a (->> (dl/q '[:find [?asset ...]
-                      :where [?asset :asset/link ?url]
-                      :in $])
-              (drop 1)
-              (take 1)
-              (map dl/entity)
-              first))
-  (:asset/variants a)
-  (serve-variant a {:width 101 :height 100 :mode :bound})
+
+  
+  (defn all-assets []
+    (->> (dl/q '[:find [?asset ...]
+                 :where [?asset :asset/link ?url]
+                 :in $])
+         (map dl/entity)))
+  
+  (sparkboard.routes/path-for :asset/serve :asset/id (:asset/id (first (all-assets)))
+                              :query {:width 100 :height 100})
+
+  (dl/transact! (for [?v (dl/q '[:find [?v ...]
+                                 :where [?v :asset.variant/params]])]
+                  [:db/retractEntity ?v]))
+
+  (dl/q '[:find [?variant ...]
+          :where [?variant :asset.variant/params _]])
+
+  (serve-variant (nth (all-assets) 2)
+                 {:width  101
+                  :height 100
+                  :mode   :bound})
   (dl/transact! [[:db/add [:asset/id (:asset/id a)] :asset/variants "variant"]
-                 {:db/id "variant"
-                  :asset.variant/param-string "abc"
-                  :s3/bucket [:s3/bucket-name (:s3/bucket-name env/config)]}])
-  
-  
-  
+                 {:db/id                "variant"
+                  :asset.variant/params "abc"
+                  :s3/bucket            [:s3/bucket-name (:s3/bucket-name env/config)]}])
   )
 
 (defn serve-asset [req {:keys [asset/id query-params]}]
