@@ -1,4 +1,5 @@
 (ns sparkboard.server.images
+  (:refer-clojure :exclude [format])
   (:require [clojure.java.io :as io]          
             [sparkboard.validate :as validate]
             [sparkboard.util :as u]
@@ -52,3 +53,7 @@
                 "cover" (.cover img width height)
                 "bound" (.bound img width height)))
         (.bytes WebpWriter/DEFAULT))))
+
+(comment 
+  (require '[libpython-clj2.python :as py])
+  )

@@ -105,7 +105,9 @@
             bucket params)
       (-> (dl/transact! [{:db/id -1 
                           :s3/bucket bucket 
-                          :asset.variant/params params}]) 
+                          :asset.variant/params params 
+                          :asset.variant/generated-via "scrimage"
+                          :asset.variant/content-type "image/webp"}]) 
           :tempids 
           (get -1))))
 

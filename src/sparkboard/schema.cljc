@@ -735,11 +735,13 @@
    :asset.variant/params {s- :string}
    :asset.variant/bucket+params (merge {:db/tupleAttrs [:s3/bucket :asset.variant/params]}
                                        s/unique-id)
+   :asset.variant/content-type {s- :string}
 
    :asset.variant/as-map {s- [:map {:closed true}
                               :asset.variant/bucket+param-string
                               :s3/bucket
-                              :asset.variant/params]}
+                              :asset.variant/params
+                              :asset.variant/generated-via]}
 
 
    :image/logo (ref :one :asset/as-map)
