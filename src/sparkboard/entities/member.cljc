@@ -12,7 +12,7 @@
               (map (fn [{:tag/keys [label background-color]}]
                      [:li {:style (when background-color {:background-color background-color})} label]))
               tags)])
-     (when photo [:img {:src (ui/asset-src photo)}])]))
+     (when photo [:img {:src (ui/asset-src photo :card)}])]))
 
 (defn read:query [params]
   (dissoc (db/pull '[*

@@ -700,55 +700,60 @@
 
 
 (def sb-assets
-  {:asset/provider {s- [:enum
-                        :asset.provider/s3
-                        :asset.provider/link]}
-   :asset/id unique-uuid
-   :asset/content-type {s- :string}
-   :asset/size {s- 'number?}
+  {:asset/provider                         (ref :one :asset.provider/as-map)
+   :asset.provider/type                    {s- [:enum :asset.provider/s3]}
+   :asset.provider.s3/endpoint+bucket-name {:db/tupleAttrs [:s3/endpoint :s3/bucket-name]
+                                            :db/unique     :db.unique/identity}
+   :asset.provider/as-map                  {s- [:map {:closed true}
+                                                :asset.provider/type
+                                                :s3/endpoint
+                                                :s3/bucket-name
+                                                :s3/bucket-host]}
 
-   :s3.bucket/as-map {s- [:map {:closed true}
-                          :s3/bucket-host
-                          :s3/bucket-name
-                          :s3/endpoint]}
+   :s3/bucket-name                         unique-string-id
+   :s3/bucket-host                         {s- :string}
+   :s3/endpoint                            {s- :string}
 
-   :s3/bucket-name unique-string-id
-   :s3/bucket-host {s- :string}
-   :s3/endpoint {s- :string}
-   :s3/bucket (ref :one :s3.bucket/as-map)
+   :asset/id                               unique-uuid
+   :asset/content-type                     {s- :string}
+   :asset/size                             {s- 'number?}
+   :asset/variants                         (ref :many :asset.variant/as-map)
 
-   :asset/link {s- :string}
-   :asset.link/failed? {s- :boolean}
+   :asset/link                             {s- :string}
+   :asset/link-failed?                     {s- :boolean}
 
-   :asset/as-map {s- [:map {:closed true}
-                      :asset/provider
-                      :asset/id
-
-                      (? :s3/bucket)
-                      (? :asset/link)
-                      (? :asset/content-type)
-                      (? :asset/size)
-                      (? :entity/created-by)
-                      (? :entity/created-at)]}
-
-   :asset/variants (ref :many :asset.variant/as-map)
-   :asset.variant/params {s- :string}
-   :asset.variant/bucket+params (merge {:db/tupleAttrs [:s3/bucket :asset.variant/params]}
-                                       s/unique-id)
-   :asset.variant/content-type {s- :string}
-
-   :asset.variant/as-map {s- [:map {:closed true}
-                              :asset.variant/bucket+param-string
-                              :s3/bucket
-                              :asset.variant/params
-                              :asset.variant/generated-via]}
+   :asset/as-map                           {s- [:map {:closed true}
+                                                :asset/id
+                                                (? :asset/variants)
+                                                (? :asset/provider)
+                                                (? :asset/link)
+                                                (? :asset/content-type)
+                                                (? :asset/size)
+                                                (? :entity/created-by)
+                                                (? :entity/created-at)]}
 
 
-   :image/logo (ref :one :asset/as-map)
-   :image/logo-large (ref :one :asset/as-map)
-   :image/footer (ref :one :asset/as-map)
-   :image/background (ref :one :asset/as-map)
-   :image/sub-header (ref :one :asset/as-map)})
+   :asset.variant/params                   {s- :string}
+   :asset.variant/provider                 (ref :one :asset.provider/as-map)
+
+   :asset.variant/provider+params          (merge {:db/tupleAttrs [:asset.variant/provider
+                                                                   :asset.variant/params]}
+                                                  s/unique-id)
+   :asset.variant/content-type             {s- :string}
+   :asset.variant/generated-via            {s- :string}
+
+   :asset.variant/as-map                   {s- [:map {:closed true}
+                                                :asset.variant/params
+                                                :asset.variant/provider
+                                                :asset.variant/generated-via
+                                                :asset.variant/content-type]}
+
+
+   :image/logo                             (ref :one :asset/as-map)
+   :image/logo-large                       (ref :one :asset/as-map)
+   :image/footer                           (ref :one :asset/as-map)
+   :image/background                       (ref :one :asset/as-map)
+   :image/sub-header                       (ref :one :asset/as-map)})
 (comment
   (m/explain :asset/as-map {:src ""
                             :asset/id (random-uuid)

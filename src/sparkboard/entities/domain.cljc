@@ -12,7 +12,7 @@
       domain
       (str domain ".sparkboard.com"))))
 
-(defn availability [req {:keys [domain]}]
+(defn availability [req {{:keys [domain]} :query-params}]
   (let [domain (qualify-domain domain)]
     {:body {:available?
             (and (re-matches #"^[a-z0-9-.]+$" domain)

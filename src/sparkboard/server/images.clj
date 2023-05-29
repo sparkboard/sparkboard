@@ -7,14 +7,17 @@
   (:import [com.sksamuel.scrimage ImmutableImage]
            [com.sksamuel.scrimage.webp WebpWriter]))
 
+(def MAX-WIDTH 2000)
+(def MAX-HEIGHT 2000)
+
   ;; https://sksamuel.github.io/scrimage/
   ;; https://sksamuel.github.io/scrimage/webp/
 
-(def options-schema [:map {:closed true}
-                     [:mode {:optional true} [:enum "cover" "bound"]]
-                     [:width {:optional true} [:<= 2000]]
-                     [:height {:optional true} [:<= 2000]]
-                     [:autocrop {:optional true} :boolean]])
+(def options-schema [:and [:map {:closed true}
+                           [:op [:enum "cover" "bound"]]
+                           [:width {:optional true} [:<= MAX-WIDTH]]
+                           [:height {:optional true} [:<= MAX-HEIGHT]]
+                           [:autocrop {:optional true} :boolean]]])
 
 (defn normalize-options [options]
   (-> options
@@ -22,25 +25,27 @@
                        :height   #(Integer. %)
                        :autocrop #(when % true)})
       (u/prune)
-      (update :mode #(if % (name %) "bound"))))
+      (validate/assert options-schema)))
 
 (defn params-string 
   "Normalized param string with stable order"
   [options]
-  (when (seq options)
-    (let [options (normalize-options options)]
-      (validate/assert options options-schema)
-      (subs (query-params/query-string  
-             (sort-by key (u/update-some options {:width str :height str})))
-            1))))
+  (if (string? options)
+    options
+    (when (seq options)
+      (let [options (normalize-options options)]
+        (subs (query-params/query-string  
+               (sort-by key (u/update-some options {:width str :height str})))
+              1)))))
 
 (comment 
-  (params-string {:width 100 :height 100}))
+  (params-string {:width 100 :height 100})
+  (params-string {:width 100 }))
 
 (defn format
   "Accepts input (must be coercable to InputStream) and options:"
   [input options]
-  (let [{:keys [mode
+  (let [{:keys [op
                 width
                 height
                 autocrop]} (normalize-options options)]
@@ -48,10 +53,10 @@
         (.fromStream (io/input-stream input))
         (cond-> autocrop (.autocrop))
         (as-> img
-              (case mode
+              (case op
                 ;; don't expose any upsizing methods
                 "cover" (.cover img width height)
-                "bound" (.bound img width height)))
+                "bound" (.bound img (or width MAX-WIDTH) (or height MAX-HEIGHT))))
         (.bytes WebpWriter/DEFAULT))))
 
 (comment 

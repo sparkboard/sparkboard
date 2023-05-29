@@ -58,7 +58,8 @@
                               {:error message}
                               {:error "Validation failed"
                                :inside-out.forms/messages-by-path messages})
-                      :value value})))))
+                      :value value})))
+   value))
 
 
 (comment

@@ -1,24 +1,28 @@
 (ns sparkboard.views.ui
   (:require [applied-science.js-interop :as j]
             [clojure.pprint :refer [pprint]]
-            [clojure.string :as str]
             [inside-out.forms :as forms]
             [inside-out.macros]
             [promesa.core :as p]
             [re-db.react]
             [shadow.lazy :as lazy]
             [sparkboard.client.sanitize :as sanitize]
-            [sparkboard.schema :as schema]
             [sparkboard.util :as u]
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [sparkboard.routes :as routes])
+            [sparkboard.routes :as routes]
+            [sparkboard.query-params :as query-params])
   (:require-macros [sparkboard.views.ui :refer [defview tr with-submission]]))
 
-(defn asset-src [asset]
+(def variants {:logo {:op "bound" :width 200 :height 200}
+               :card {:op "bound" :width 600}
+               :page {:op "bound" :width 1200}})
+
+(defn asset-src [asset variant]
   (when asset
-    (str "/assets/" (:asset/id asset))))
+    (str "/assets/" (:asset/id asset)
+         (some-> (variants variant) query-params/query-string))))
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
@@ -55,11 +59,11 @@
    {:href (routes/entity entity :read)}
    [:div.absolute.inset-0.bg-cover.bg-center.h-24.border-b-2
     {:class "bg-card-foreground/20 border-card-foreground/05"
-     :style {:background-image (css-url (asset-src background))}}]
+     :style {:background-image (css-url (asset-src background :card))}}]
    (when logo
      [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
       {:class "border-card-foreground/30"
-       :style {:background-image (css-url (asset-src logo))}}])
+       :style {:background-image (css-url (asset-src logo :logo))}}])
    [:div.font-medium.leading-snug.text-md.mt-5.mb-2 title]])
 
 (def logo-url "/images/logo-2023.png")
@@ -226,33 +230,39 @@
    [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
 
 (defview image-field [?field]
-  (let [src (asset-src @?field)
+  (prn )
+  (let [value (asset-src @?field :card) 
         loading? (:loading? ?field)
-        preview (h/use-state (:init ?field))]
+        ;; TODO handle existing state (for edit mode)
+        preview (h/use-state (:init ?field))
+        selected-blob (h/use-state nil)]
     [:div.flex.flex-col.gap-2
      (show-label ?field)
-     [:label.block.w-24.h-24.border-2.relative.rounded.cursor-pointer.flex.items-end
-      (v/props {:class ["border-primary/20
-                         bg-background text-muted-foreground hover:text-foreground"]
-                :for (field-id ?field)}
-               (cond loading? {:class "loading-bar"}
-                     src {:class "bg-contain"
-                          :style (when src {:background-image (css-url src)})}
-                     :else {:class "bg-background"})
-               )
-      (when (and (not src) (not loading?))
-        (upload-icon "w-6 h-6 m-auto"))
+     [:label.block.w-24.h-24.relative.rounded.cursor-pointer.flex.items-center.justify-center
+      (v/props {:class ["border-primary/20"
+                        "text-muted-foreground hover:text-foreground"]
+                :for   (field-id ?field)}
+               (cond loading? {:class "loading-bar border-2"}
+                     value  {:class "bg-contain bg-no-repeat bg-center"
+                             :style {:background-image (css-url value)}}
+                     :else  {:class "bg-background border-2"}))
+      (cond loading? (when-let [blob @selected-blob]
+                       [:img.w-12.h-12.rounded-full.loading-bar.relative {:style {:background-image (css-url blob)}}])
+            value nil
+            :else (upload-icon "w-6 h-6 m-auto"))
       [:input.hidden
-       {:id (field-id ?field)
-        :type "file"
+       {:id        (field-id ?field)
+        :type      "file"
+        :accept    "image/webp, image/jpeg, image/gif, image/png"
         :on-change (fn [e]
                      (forms/touch! ?field)
                      (when-let [file (j/get-in e [:target :files 0])]
+                       (reset! selected-blob (js/URL.createObjectURL file))
                        (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
-                                                                             (.append "files" file)))
+                                                                            (.append "files" file)))
                                          :form ?field]
-                         (reset! ?field asset))))}]
-      (show-field-messages ?field)]]))
+                         (reset! ?field asset))))}]]
+     (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 

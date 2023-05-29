@@ -103,8 +103,8 @@
       [:div
        [:div.entity-header
         (when logo
-          [:img.h-10.w-10.bg-contain.rounded-md
-           {:style {:background-image (ui/css-url (ui/asset-src logo))}}])
+          [:img.h-10.w-10
+           {:src (ui/asset-src logo :logo)}])
         [:h3.header-title title]
         [:a.inline-flex.items-center {:class "hover:text-muted-foreground"
                                       :href (routes/entity org :settings)}
