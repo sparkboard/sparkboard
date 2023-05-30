@@ -325,6 +325,23 @@
      [:y :int]]]]
   {:x {:y "foo"}}))
 
+(def sb-util
+  ;; TODO, tighten url
+  {:http/url       {s- [:re #"(?:[a-z]+?://)?.+\..+"]}
+   ;; TODO - fix these in the db, remove "file" below
+   :http/image-url {s- [:re #"(?i)https?://.+\..+\.(?:jpg|png|jpeg|gif|webp)$"]}
+   :html/color     {s- :string}
+   :email          {s- [:re {:error/message "should be a valid email"} #"^[^@]+@[^@]+$"]}})
+
+(def sb-i18n
+  {:i18n/locale             {:doc "ISO 639-2 language code (eg. 'en')"
+                             s-   [:re #"[a-z]{2}"]}
+   :i18n/default-locale     {s- :string},
+   :i18n/dict               {s- [:map-of :string :string]}
+   :i18n/locale-suggestions {s- [:sequential :i18n/locale]}
+   :i18n/locale-dicts       {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
+                             s-   [:map-of :i18n/locale :i18n/dict]}})
+
 (def sb-roles
   {:roles/_entity {s- [:sequential :roles/as-map]}
    :roles/_member {s- [:sequential :roles/as-map]}
@@ -352,54 +369,55 @@
                        '(fn [{:keys [:roles/recipient :roles/account]}]
                           (and (or recipient account)
                                (not (and recipient account))))]]}})
-
-(def sb-util
-  ;; TODO, tighten url
-  {:http/url       {s- [:re #"(?:[a-z]+?://)?.+\..+"]}
-   ;; TODO - fix these in the db, remove "file" below
-   :http/image-url {s- [:re #"(?i)https?://.+\..+\.(?:jpg|png|jpeg|gif|webp)$"]}
-   :html/color     {s- :string}
-   :email          {s- [:re {:error/message "should be a valid email"} #"^[^@]+@[^@]+$"]}})
-(def sb-i18n
-  {:i18n/locale             {:doc "ISO 639-2 language code (eg. 'en')"
-                             s-   [:re #"[a-z]{2}"]}
-   :i18n/default-locale     {s- :string},
-   :i18n/dict               {s- [:map-of :string :string]}
-   :i18n/locale-suggestions {s- [:sequential :i18n/locale]}
-   :i18n/locale-dicts       {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
-                             s-   [:map-of :i18n/locale :i18n/dict]}})
-
+;; TODO 
+;; - get rid of :roles/*, use a :member/roles attribute instead.
+;;   :member/as-map is then not only for boards, but any entity (orgs, projects, etc)
+;; - tags can be used for boards, projects, orgs, etc.
 (def sb-member
-  {:member/new?                     {s- :boolean},
-   :member/newsletter-subscription? {s- :boolean},
+  {:member/entity                   (ref :one)
+   :member/account                  (ref :one)
+
    :member/tags                     (ref :many :tag/as-map)
    :member/ad-hoc-tags              {s- [:sequential [:map {:closed true} :tag/label]]}
-   :member/inactive?                {:doc   "Marks a member inactive, hidden."
-                                     :admin true
-                                     :todo  "If an inactive member signs in to a board, mark as active again?"
-                                     s-     :boolean},
-   :member/board                    (ref :one)
+
+   ;; TODO: move/remove. this should simply be a field that an organizer adds.
+   :member/newsletter-subscription? {s- :boolean},
+
+   ;; TODO: move email-frequency to a separate place (focused on notifications)
    :member/email-frequency          {s- [:enum
                                          :member.email-frequency/never
                                          :member.email-frequency/daily
                                          :member.email-frequency/periodic
                                          :member.email-frequency/instant]}
-   :member/account                  (ref :one)
+
+
+   ;; TODO: better define this state. 
+   ;; - used for people who are no longer attending / need to be managed by organizers.
+   ;; - different than deleted - user can still sign in to reactivate?
+   :member/inactive?                {:doc   "Marks a member inactive, hidden."
+                                     :admin true
+                                     :todo  "If an inactive member signs in to a board, mark as active again?"
+                                     s-     :boolean},
+
+
    :member/as-map                   {s- [:map {:closed true}
                                          :entity/id
                                          :entity/kind
-                                         :member/inactive?
-                                         :member/board
-                                         :member/email-frequency
+                                         :member/entity
                                          :member/account
-                                         :member/new?
-                                         :entity/created-at
-                                         :entity/updated-at
-                                         (? :roles/_member)
-                                         (? :entity/field-entries)
+
+                                         :member/inactive?
+                                         :member/email-frequency
                                          (? :member/ad-hoc-tags)
                                          (? :member/newsletter-subscription?)
                                          (? :member/tags)
+
+                                         (? :roles/_member)
+
+                                         :entity/created-at
+                                         :entity/updated-at
+
+                                         (? :entity/field-entries)
                                          (? :entity/deleted-at)
                                          (? :entity/modified-by)]}})
 

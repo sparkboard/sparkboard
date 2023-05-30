@@ -34,7 +34,7 @@
      (case (:entity/kind ent)
        :org (= org-id (:entity/id ent))
        :board (= org-id (:board/org ent))
-       :member (= org-id (-> ent :member/board :board/org))
+       :member (= org-id (-> ent :member/entity :board/org))
        :project (= org-id (:project/board ent))
        false)))
 

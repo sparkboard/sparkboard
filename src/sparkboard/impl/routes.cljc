@@ -72,13 +72,14 @@
         resolve-sym (fn [sym]
                       (if-let [resolved (get aliases (symbol (namespace sym)))]
                         (symbol (str resolved) (name sym))
-                        sym))]
+                        sym))
+        wrap-requiring-resolve (fn [s] `(requiring-resolve ~s))]
     (if (:ns &env)
       (u/update-some endpoint {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))})
       (-> endpoint
-          (u/update-some {:query (fn [s] `(requiring-resolve ~s))
-                          :GET (fn [s] `(requiring-resolve ~s))
-                          :POST (fn [s] `(requiring-resolve ~s))})
+          (u/update-some {:query wrap-requiring-resolve
+                          :GET wrap-requiring-resolve
+                          :POST wrap-requiring-resolve})
           (cond-> (:query endpoint)
                   (assoc :$query `(memo-fn-var (requiring-resolve ~(:query endpoint)))))))))
 

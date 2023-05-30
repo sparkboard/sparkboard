@@ -153,8 +153,9 @@
   (h/use-effect #(routes/set-path! to)))
 
 (ui/defview home [params]
-  (if (db/get :env/account)
-    [:a.btn.btn-primary.m-10.p-10 {:href (routes/path-for :org/index)} "Org/Index"]
+  (if-let [account-id (db/get :env/account :entity/id)]
+    #_[:a.btn.btn-primary.m-10.p-10 {:href (routes/path-for :org/index)} "Org/Index"]
+    (redirect (routes/path-for :account/read {:account account-id}))
     (redirect (routes/path-for :account/sign-in params))))
 
 (comment

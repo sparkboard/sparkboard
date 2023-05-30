@@ -18,6 +18,7 @@
             [sparkboard.entities.member :as-alias member]
             [sparkboard.entities.org :as-alias org]
             [sparkboard.entities.project :as-alias project]
+            [sparkboard.entities.account :as-alias account]
             [sparkboard.http :as http]
             [sparkboard.util :as u]
             [sparkboard.impl.routes :as impl :refer [E]])
@@ -33,7 +34,8 @@
   :GET      - symbol pointing to a (server) function accepting a request map"
   (r/reaction
     ["" {"/" (E :home {:public true
-                       :view `views/home})
+                       :view `views/home
+                       })
          "/ws" (E :websocket {:public true
                               :GET 'sparkboard.server.core/ws-handler})
          "/upload" (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
@@ -61,6 +63,9 @@
 
          "/domain-availability" (E :domain/availability
                                    {:GET `domain/availability})
+         ["/a/" [bidi/uuid :account]]  (E :account/read 
+                                          {:query `account/read-query 
+                                           :view `account/read-view})
          "/o" {"/index" (E :org/index
                            {:query `org/index:query
                             :view `org/index:view})

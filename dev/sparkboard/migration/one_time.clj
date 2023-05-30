@@ -779,8 +779,7 @@
                               ::always (remove-when :entity/deleted-at)
                               ::always (add-kind :member)
 
-                              ::defaults {:member/new? false
-                                          :member/inactive? false
+                              ::defaults {:member/inactive? false
                                           :member/email-frequency :member.email-frequency/periodic}
                               :lastModifiedBy rm
                               :salt rm
@@ -789,9 +788,9 @@
                               :email rm                     ;; in account
                               :account rm
                               :_id (partial id-with-timestamp :member)
-                              :boardId (uuid-ref-as :board :member/board)
+                              :boardId (uuid-ref-as :board :member/entity)
 
-                              ::always (parse-fields :member/board :entity/field-entries)
+                              ::always (parse-fields :member/entity :entity/field-entries)
                               :account rm
 
                               :firebaseAccount (uuid-ref-as :account :member/account)
@@ -806,7 +805,7 @@
                               :acceptedTerms rm
                               :contact_me rm
 
-                              :first_time (rename :member/new?)
+                              :first_time rm
                               :ready rm
                               ;; new feature - not-joining-a-project
 
@@ -816,11 +815,11 @@
                                           (assoc m a
                                                    (when (seq roles)
                                                      [(make-roles (:entity/id m)
-                                                                  (to-uuid :board (:member/board m))
+                                                                  (to-uuid :board (:member/entity m))
                                                                   (into #{} (comp (map (partial keyword "role")) (distinct)) roles))])))
                                         (rename :roles/_member))
                               :tags (& (fn [m a v]
-                                         (let [tags (keep (partial resolve-tag (:member/board m)) v)
+                                         (let [tags (keep (partial resolve-tag (:member/entity m)) v)
                                                {tags true
                                                 custom-tags false} (group-by (comp boolean :entity/id) tags)]
                                            (-> m
@@ -834,7 +833,6 @@
                               :votesByDomain rm
                               :feedbackRating rm
 
-                              ::always (remove-when (comp str/blank? :member/name))
                               ::always (remove-when :suspectedFake)]
 
               :discussion/as-map [#_#_::prepare (fn [m]
