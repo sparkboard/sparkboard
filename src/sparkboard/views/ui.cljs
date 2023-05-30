@@ -253,7 +253,7 @@
       [:input.hidden
        {:id        (field-id ?field)
         :type      "file"
-        :accept    "image/webp, image/jpeg, image/gif, image/png"
+        :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
         :on-change (fn [e]
                      (forms/touch! ?field)
                      (when-let [file (j/get-in e [:target :files 0])]

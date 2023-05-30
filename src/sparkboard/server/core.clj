@@ -65,8 +65,10 @@
                           :or   {wrap-response identity}} (ex-data e)]
                      (wrap-response 
                       (if (data-req? req)
-                        {:status (:code data 500)
-                         :body   (dissoc data :wrap-response)}
+                        (or (:response data)
+                            {:status (:code data 500)
+                             :body {:error (or (:message data)
+                                               (ex-message e))}})
                         (server.html/error e data)))))]
     (fn [req]
       (log/info :req req)
