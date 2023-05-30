@@ -47,6 +47,10 @@
   ;; empty String if no read format is declared for the request's content-type.
   (muu/create m/default-options))
 
+(defn data-req? [req]
+  (some->> (get-in req [:headers "accept"])
+           (re-find #"^application/(?:transit\+json|json)")))
+
 (defn wrap-log
   "Log requests (log/info) and errors (log/error)"
   [f]
@@ -56,14 +60,16 @@
                      (log/error (ex-message e)
                                 (ex-data e)
                                 (ex-cause e)))
-                   (let [{:as data :keys [wrap-response] :or {wrap-response identity}} (ex-data e)]
-                     (case (-> req :muuntaja/response :format)
-                       ("application/transit+json" "application/json") data
-                     (-> (server.html/error e data)
-                           wrap-response))))]
+                   (let [{:as   data
+                          :keys [wrap-response]
+                          :or   {wrap-response identity}} (ex-data e)]
+                     (wrap-response 
+                      (if (data-req? req)
+                        {:status (:code data 500)
+                         :body   (dissoc data :wrap-response)}
+                        (server.html/error e data)))))]
     (fn [req]
       (log/info :req req)
-      (log/info :URI (:uri req))
       (try (let [res (f req)]
              (log/info :res res)
              res)
@@ -103,7 +109,6 @@
                             POST]} (routes/match-path uri)
           params (u/assoc-seq params :query-params (update-keys (:query-params req) keyword))
           method (:request-method req)
-          data-req? (some-> (get-in req [:headers "accept"]) (str/includes? "application/transit+json"))
           authed? (:account req)]
       (cond
 
@@ -114,7 +119,7 @@
         (and GET (= method :get)) (GET req params)
         (and POST (= method :post)) (POST req params (:body-params req (:body req)))
 
-        (and query data-req?) (some-> (query params) ring.http/ok)
+        (and query (data-req? req)) (some-> (query params) ring.http/ok)
         (or query view) (server.html/app-page
                           {:tx [(assoc env/client-config :db/id :env/config)
                                 (assoc (:account req) :db/id :env/account)]})

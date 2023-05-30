@@ -95,11 +95,6 @@
                                     (.minusDays 1)
                                     .toString))))
 
-(defn flash! [res message]
-  ;; TODO
-  ;; include a message that will be shown temporarily to the user
-  res)
-
 (defn account-not-found! [account-id]
   (throw
    (ex-info (str "Account not found: " account-id)

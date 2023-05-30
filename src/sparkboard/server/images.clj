@@ -27,7 +27,7 @@
       (u/prune)
       (validate/assert options-schema)))
 
-(defn params-string 
+(defn param-string 
   "Normalized param string with stable order"
   [options]
   (if (string? options)
@@ -39,8 +39,8 @@
             (subs 1))))))
 
 (comment 
-  (params-string {:op "bound" :width 100 :height 100})
-  (params-string {:op "cover ":width 100 }))
+  (param-string {:op "bound" :width 100 :height 100})
+  (param-string {:op "cover ":width 100 }))
 
 (defn format
   "Accepts input (must be coercable to InputStream) and options:"
@@ -49,15 +49,16 @@
                 width
                 height
                 autocrop]} (normalize-options options)]
-    (-> (ImmutableImage/loader)
-        (.fromStream (io/input-stream input))
-        (cond-> autocrop (.autocrop))
-        (as-> img
-              (case op
+    {:bytes (-> (ImmutableImage/loader)
+                (.fromStream (io/input-stream input))
+                (cond-> autocrop (.autocrop))
+                (as-> img
+                      (case op
                 ;; don't expose any upsizing methods
-                "cover" (.cover img width height)
-                "bound" (.bound img (or width MAX-WIDTH) (or height MAX-HEIGHT))))
-        (.bytes WebpWriter/DEFAULT))))
+                        "cover" (.cover img width height)
+                        "bound" (.bound img (or width MAX-WIDTH) (or height MAX-HEIGHT))))
+                (.bytes WebpWriter/DEFAULT))
+     :content-type "image/webp"}))
 
 (comment 
   (require '[libpython-clj2.python :as py])

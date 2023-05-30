@@ -739,14 +739,10 @@
    :asset.variant/provider+params          (merge {:db/tupleAttrs [:asset.variant/provider
                                                                    :asset.variant/param-string]}
                                                   s/unique-id)
-   :asset.variant/content-type             {s- :string}
-   :asset.variant/generated-via            {s- :string}
-
+   
    :asset.variant/as-map                   {s- [:map {:closed true}
                                                 :asset.variant/param-string
-                                                :asset.variant/provider
-                                                :asset.variant/generated-via
-                                                :asset.variant/content-type]}
+                                                :asset.variant/provider]}
 
 
    :image/logo                             (ref :one :asset/as-map)

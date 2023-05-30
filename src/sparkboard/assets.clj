@@ -1,14 +1,13 @@
 (ns sparkboard.assets
-  (:require [clojure.java.io :as io]
-            [sparkboard.server.env :as env]
-            [amazonica.aws.s3 :as s3]
-            [sparkboard.server.images :as images]
+  (:require [amazonica.aws.s3 :as s3]
+            [clj-http.client :as http]
+            [clojure.java.io :as io]
             [ring.util.response :as resp]
             [sparkboard.datalevin :as dl]
+            [sparkboard.server.env :as env]
             [sparkboard.server.images :as images]
-            [sparkboard.validate :as sv]
             [sparkboard.util :as u]
-            [clj-http.client :as http]
+            [sparkboard.validate :as sv]
             [sparkboard.validate :as validate]))
 
 (defn init-db!
@@ -63,31 +62,18 @@
                   :cache-control "max-age=31536000"
                   :content-length size}))
 
-(def upload-schema [:map {:closed true}
-                    [:provider 'some?]
-                    [:object-key :string]
-                    [:size [:<= (* 20 1000 1000)]]
-                    [:content-type 'string?]
-                    [:stream 'some?]])
-
 (defn upload-to-provider! [{:as upload :keys [provider object-key size content-type stream]}]
-  (validate/assert upload upload-schema)
+  {:pre [provider
+         (string? object-key)
+         (<= size (* 20 1000 1000))
+         (string? content-type)
+         stream]}
   (case (:asset.provider/type provider)
     :asset.provider/s3 (upload-to-s3! (:s3/bucket-name provider)
                                       object-key
                                       size
                                       content-type
                                       stream)))
-
-(def asset-schema [:map {:closed true}
-                   [:asset/provider 'int?]
-                   [:asset/id 'uuid? ]
-                   [:asset/size 'number?]
-                   [:asset/content-type 'string?]
-                   [:entity/created-by 'vector?]
-                   [:entity/created-at 'some?] 
-                  
-                   ])
 
 (defn upload-handler [req _ _]
   (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
@@ -104,42 +90,28 @@
                             :content-type content-type
                             :stream       (io/input-stream tempfile)})
       (dl/transact! [(-> #:asset{:provider          (:db/id provider)
-                                 :id          asset-id
+                                 :id                asset-id
                                  :size              size
                                  :content-type      content-type
                                  :entity/created-at (java.util.Date.)
-                                 :entity/created-by        [:entity/id (:entity/id (:account req))]}
-                         (validate/assert asset-schema))])
+                                 :entity/created-by [:entity/id (:entity/id (:account req))]}
+                         (validate/assert :asset/as-map))])
       {:status 200
        :body {:asset/id asset-id}})))
 
 (defn resizable? [content-type]
   (not (contains? #{"image/svg+xml" "image/gif"} content-type)))
 
-(def variant-schema [:map {:closed true}
-                     [:asset.variant/provider 'int?]
-                     [:asset.variant/param-string 'string?]
-                     [:asset.variant/content-type 'string?]
-                     [:asset.variant/generated-via 'string?]])
-
 (defn find-or-create-variant! 
-  "A variant contains a reference to a provider and the normalized parameter string."
+  "Returns an asset.variant entity."
   [provider query-params]
-  (let [params (images/params-string query-params)]
-    (or (dl/q '[:find ?variant .
-                :where
-                [?variant :asset.variant/provider ?provider]
-                [?variant :asset.variant/param-string ?params]
-                :in $ ?provider ?params]
-              (:db/id provider) params)
-        (-> (dl/transact! [(-> #:asset.variant{:provider (:db/id provider)
-                                               :param-string params
-                                               :content-type "image/webp"
-                                               :generated-via "scrimage"}
-                               (validate/assert variant-schema)
-                               (assoc :db/id -1))]) 
-            :tempids 
-            (get -1)))))
+  (let [param-string (images/param-string query-params)
+        lookup-ref [:asset.variant/provider+params [(:db/id provider) param-string]]]
+    (or (dl/entity lookup-ref)
+        (do (dl/transact! [(-> #:asset.variant{:provider      (:db/id provider)
+                                               :param-string  param-string}
+                               (validate/assert :asset.variant/as-map))])
+            (dl/entity lookup-ref)))))
 
 (defn ensure-content-type!
   "Returns content-type for asset, reading via a HEAD request if necessary."
@@ -171,8 +143,6 @@
       (provider-link (:asset/provider asset) asset)))
 
 (defn variant-link [asset variant]
-  (tap> [:variant-link {:variant variant
-                        :asset asset}])
   (str (provider-link (:asset.variant/provider variant) asset)
        "_"
        (:asset.variant/param-string variant)))
@@ -186,32 +156,34 @@
     (io/copy is baos)
     (.toByteArray baos)))
 
-(defn serve-variant 
+(defn variant-link!
   [asset query-params]
-  (resp/redirect
-   (if-let [params (and (resizable? (ensure-content-type! asset))
-                        (images/params-string query-params))]
-     (if-let [variant (u/find-first (:asset/variants asset) (comp #{params} :asset.variant/param-string))]
-       (variant-link asset variant)
-       (let [asset-stream (url-stream (asset-link asset))
-             formatted-bytes  (images/format asset-stream query-params)
-             asset-id (:asset/id asset)
-             _ (upload-to-provider! {:provider @!default-provider
-                                     :object-key (str asset-id "_" params)
-                                     :size (count formatted-bytes)
-                                     :content-type "image/webp"
-                                     :stream (io/input-stream formatted-bytes)})
-             variant-id (find-or-create-variant! @!default-provider params)]
-         (dl/transact! [[:db/add [:asset/id asset-id] :asset/variants variant-id]])
-         (variant-link asset (dl/entity variant-id))))
-     (asset-link asset))
-   302))
+  {:pre [(dl/entity? asset)]}
+  (when-let [param-string (and (resizable? (ensure-content-type! asset)) 
+                               (images/param-string query-params))]
+    (if-let [variant (->> (:asset/variants asset)
+                          (filter (comp #{param-string} :asset.variant/param-string))
+                          first)]
+      (variant-link asset variant))
+    (let [asset-stream (url-stream (asset-link asset))
+          {:keys [bytes content-type]} (images/format asset-stream query-params)
+          variant (find-or-create-variant! @!default-provider query-params)]
+      (upload-to-provider! {:provider @!default-provider
+                            :object-key (str (:asset/id asset) "_" param-string)
+                            :size (count bytes)
+                            :content-type content-type
+                            :stream (io/input-stream bytes)})
+      (dl/transact! [[:db/add (:db/id asset) :asset/variants (:db/id variant)]])
+      (variant-link asset variant))))
 
 (defn serve-asset [req {:keys [asset/id query-params]}]
-  (when-let [asset (dl/entity [:asset/id id])]
-    (cond (:asset/link-failed? asset) (resp/not-found "Asset not found")
-          (seq query-params) (serve-variant asset query-params)
-          :else
-          (resp/redirect (asset-link asset) 302))))
+  (if-let [asset (some-> (dl/entity [:asset/id id])
+                         (u/guard (complement :asset/link-failed?)))]
+    (resp/redirect
+     (or  
+      (variant-link! asset query-params)
+      (asset-link asset))
+     302)
+    (resp/not-found "Asset not found")))
 
 

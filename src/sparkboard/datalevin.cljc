@@ -13,6 +13,8 @@
      (def conn (dl/get-conn (env/db-path "datalevin") {}))
      (alter-var-root #'db/*conn* (constantly conn))))
 
+#?(:clj 
+   (def entity? datalevin.entity/entity?))
 (comment
   (dl/close conn)
 
