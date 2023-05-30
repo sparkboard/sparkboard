@@ -30,7 +30,7 @@
    (defn domain-availability-validator []
      (-> (fn [v _]
            (when (>= (count v) 3)
-             (p/let [res (routes/GET :domain/availability :query {:domain v})]
+             (p/let [res (routes/GET :domain/availability :query-params {:domain v})]
                (if (:available? res)
                  (forms/message :info
                                 [:span.text-green-500.font-bold (tr :tr/available)])

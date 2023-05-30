@@ -34,13 +34,13 @@
     options
     (when (seq options)
       (let [options (normalize-options options)]
-        (subs (query-params/query-string  
-               (sort-by key (u/update-some options {:width str :height str})))
-              1)))))
+        (-> (sort-by key options)
+            query-params/query-string 
+            (subs 1))))))
 
 (comment 
-  (params-string {:width 100 :height 100})
-  (params-string {:width 100 }))
+  (params-string {:op "bound" :width 100 :height 100})
+  (params-string {:op "cover ":width 100 }))
 
 (defn format
   "Accepts input (must be coercable to InputStream) and options:"

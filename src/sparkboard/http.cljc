@@ -59,12 +59,12 @@
             (dissoc :auth/token)))
     opts))
 
-(defn request [url {:as opts :keys [query body auth/token method response-fn]}]
+(defn request [url {:as opts :keys [query-params body auth/token method response-fn]}]
   (let [opts (cond-> opts
                      token (assoc-in [:headers "Authorization"] (str "Bearer: " token))
                      body (format-req-body)
-                     true (dissoc :query :auth/token :response-fn))
-        url (cond-> url query (str "?" (uri/map->query-string query)))]
+                     true (dissoc :query-params :auth/token :response-fn))
+        url (cond-> url query-params (str "?" (uri/map->query-string query-params)))]
     #?(:cljs
        (p/-> (fetch url (->js opts))
              ((if response-fn

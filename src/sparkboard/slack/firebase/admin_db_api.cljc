@@ -17,12 +17,12 @@
        (http/request (str database-url (str/replace-first path #"^/*" "/") ".json")
                      (-> opts
                          (assoc :method method)
-                         (update :query #(-> (if (map? %) % (apply hash-map %))
-                                             (assoc :auth (:firebase/database-secret env/config))
-                                             (u/update-some {:orderBy clj->json
-                                                             :startAt clj->json
-                                                             :endAt clj->json
-                                                             :equalTo clj->json}))))))))
+                         (update :query-params #(-> (if (map? %) % (apply hash-map %))
+                                                    (assoc :auth (:firebase/database-secret env/config))
+                                                    (u/update-some {:orderBy clj->json
+                                                                    :startAt clj->json
+                                                                    :endAt   clj->json
+                                                                    :equalTo clj->json}))))))))
 
 #?(:clj
    (defn- apply-query [ref query]
@@ -43,9 +43,9 @@
 ;; API
 
 (def read #?(:cljs (firebase-fetch "GET")
-             :clj  (fn [path & [{:keys [query]}]]
+             :clj  (fn [path & [{:keys [query-params]}]]
                      (-> (fire-jvm/->ref path)
-                         (cond-> query (apply-query query))
+                         (cond-> query-params (apply-query query-params))
                          (fire-jvm/read)))))
 
 ;; replace value at path

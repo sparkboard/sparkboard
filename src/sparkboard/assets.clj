@@ -118,7 +118,7 @@
 
 (def variant-schema [:map {:closed true}
                      [:asset.variant/provider 'int?]
-                     [:asset.variant/params 'string?]
+                     [:asset.variant/param-string 'string?]
                      [:asset.variant/content-type 'string?]
                      [:asset.variant/generated-via 'string?]])
 
@@ -129,11 +129,11 @@
     (or (dl/q '[:find ?variant .
                 :where
                 [?variant :asset.variant/provider ?provider]
-                [?variant :asset.variant/params ?params]
+                [?variant :asset.variant/param-string ?params]
                 :in $ ?provider ?params]
               (:db/id provider) params)
         (-> (dl/transact! [(-> #:asset.variant{:provider (:db/id provider)
-                                               :params params
+                                               :param-string params
                                                :content-type "image/webp"
                                                :generated-via "scrimage"}
                                (validate/assert variant-schema)
@@ -160,23 +160,22 @@
           (dl/transact! [[:db/add [:asset/id (:asset/id asset)] :asset/link-failed? true]])
           (throw (ex-info "Unable to determine content type" {:status 404}))))))
 
-(defn provider-link [provider asset-id]
-  (tap> [:provider-link {:provider provider :asset-id asset-id}])
+(defn provider-link [provider asset]
   (case (:asset.provider/type provider)
     :asset.provider/s3 (str (:s3/bucket-host provider)
                             "/"
-                            asset-id)))
+                            (:asset/id asset))))
 
 (defn asset-link [asset]
   (or (:asset/link asset)
-      (provider-link (:asset/provider asset) (:asset/id asset))))
+      (provider-link (:asset/provider asset) asset)))
 
 (defn variant-link [asset variant]
   (tap> [:variant-link {:variant variant
                         :asset asset}])
-  (str (provider-link (:asset.variant/provider variant) (:asset/id asset))
-       "_" 
-       (:asset.variant/params variant)))
+  (str (provider-link (:asset.variant/provider variant) asset)
+       "_"
+       (:asset.variant/param-string variant)))
 
 (defn url-stream [url]
   (let [conn (.openConnection (java.net.URL. url))]
@@ -189,12 +188,10 @@
 
 (defn serve-variant 
   [asset query-params]
-  (tap> {:asset (seq asset)
-         :query-params query-params})
   (resp/redirect
    (if-let [params (and (resizable? (ensure-content-type! asset))
                         (images/params-string query-params))]
-     (if-let [variant (u/find-first (:asset/variants asset) (comp #{params} :asset.variant/params))]
+     (if-let [variant (u/find-first (:asset/variants asset) (comp #{params} :asset.variant/param-string))]
        (variant-link asset variant)
        (let [asset-stream (url-stream (asset-link asset))
              formatted-bytes  (images/format asset-stream query-params)

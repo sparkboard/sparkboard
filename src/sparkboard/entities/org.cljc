@@ -50,8 +50,10 @@
            [:entity/id (:org params)]))
 
 #?(:clj
-   (defn search:query [{:keys [org]
+   (defn search:query [{:as params 
+                        :keys [org]
                         {:keys [q]} :query-params}]
+     (tap> [:search params])
      {:q q
       :boards (dl/q '[:find [(pull ?board [:entity/id
                                            :entity/title

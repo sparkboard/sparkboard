@@ -105,8 +105,8 @@
                 (keyword? route) (bidi/path-for @!routes route options)
                 (vector? route) (apply bidi/path-for @!routes route)
                 :else (bidi/path-for @!routes route options))
-          (:query options)
-          (-> (query-params/merge-query (:query options)) :path)))
+          (:query-params options)
+          (-> (query-params/merge-query (:query-params options)) :path)))
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e

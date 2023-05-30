@@ -76,10 +76,10 @@
                 reinstall?]} (tokens/decode state)
         ;; use the code from Slack to request an access token
         response (get+ (str base-uri "oauth.v2.access")
-                       {:query {:code code
-                                :client_id (:client-id slack-config)
-                                :client_secret (:client-secret slack-config)
-                                :redirect_uri (str (:sparkboard/jvm-root env/config) "/slack-api/oauth-redirect")}})
+                       {:query-params {:code          code
+                                       :client_id     (:client-id slack-config)
+                                       :client_secret (:client-secret slack-config)
+                                       :redirect_uri  (str (:sparkboard/jvm-root env/config) "/slack-api/oauth-redirect")}})
         _ (assert (or (and board-id account-id)
                       team-id
                       reinstall?) "token must include board-id and account-id")]
@@ -93,8 +93,8 @@
       ;; use the access token to look up the user and make sure they are an admin of the Slack team they're installing
       ;; this app on.
       (let [user-response (get+ (str base-uri "users.info")
-                                {:query {:user user-id
-                                         :token access_token}})]
+                                {:query-params {:user  user-id
+                                                :token access_token}})]
         (log/trace :redirect/user-response user-response)
 
         (assert (get-in user-response [:user :is_admin])
