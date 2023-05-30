@@ -31,7 +31,7 @@
 
 (defn url-encode [x] 
   #?(:cljs (js/encodeURIComponent x)
-     :clj  (-> x
+     :clj  (-> (str x)
                (java.net.URLEncoder/encode "UTF-8")
                (str/replace "+" "%20"))))
 
