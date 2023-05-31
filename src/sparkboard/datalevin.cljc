@@ -63,36 +63,38 @@
 (defn to-ref [m id-key] [id-key (id-key m)])
 (def asset-ref #(to-ref % :asset/id))
 
-#?(:clj
-   (defn uuid-prefix [kind]
-     (case kind
-       :org "a0"
-       :board "a1"
-       :collection "a2"
-       :member "a3"
-       :project "a4"
-       :field "a5"
-       :entry "a6"
-       :discussion "a7"
-       :post "a8"
-       :comment "a9"
-       :notification "aa"
-       :tag "ab"
-       :tag-spec "ac"
-       :thread "ad"
-       :message "ae"
-       :roles "af"
-       :account "b0"
-       :ballot "b1"
-       :site "b2"
-       :asset "b3"
-       (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))
-       #_"af")))
+(def kind->prefix* {:org          "a0"
+                    :board        "a1"
+                    :collection   "a2"
+                    :member       "a3"
+                    :project      "a4"
+                    :field        "a5"
+                    :entry        "a6"
+                    :discussion   "a7"
+                    :post         "a8"
+                    :comment      "a9"
+                    :notification "aa"
+                    :tag          "ab"
+                    :tag-spec     "ac"
+                    :thread       "ad"
+                    :message      "ae"
+                    :roles        "af"
+                    :account      "b0"
+                    :ballot       "b1"
+                    :site         "b2"
+                    :asset        "b3"})
+
+(def prefix->kind* (zipmap (vals kind->prefix*) (keys kind->prefix*)))
+
+(defn uuid->kind [uuid]
+  (let [prefix (subs (str uuid) 0 2)]
+    (or (prefix->kind* prefix) 
+        (throw (ex-info (str "Unknown kind for uuid prefix " prefix) {:uuid uuid :prefix prefix})))))
+
+(defn kind->prefix [kind]
+  (or (kind->prefix* kind) (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))))
 
 #?(:clj
    (defn to-uuid [kind s]
-     (java.util.UUID/fromString (str (uuid-prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
-
-(comment
-  )
+     (java.util.UUID/fromString (str (kind->prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
 

@@ -36,7 +36,7 @@
    :entity/field-entries      (merge (ref :many :field-entry/as-map)
                                      s/component)
    :entity/video              {:doc "Primary video for project (distinct from fields)"
-                               s-   :video/value}
+                               s-   :video/entry}
    :entity/public?            {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
                                s-   :boolean}
    :entity/website            {:doc "External website for entity"
@@ -99,10 +99,7 @@
    :board/registration-url-override          {:doc "URL to redirect user for registration (replaces the Sparkboard registration page, admins are expected to invite users)",
                                               s-   :http/url},
    :board/registration-codes                 {s- [:map-of :string [:map {:closed true} [:registration-code/active? :boolean]]]}
-   :board/rules                              {s- [:map-of
-                                                  [:qualified-keyword {:namespace :action}]
-                                                  [:map
-                                                   [:policy/requires-role [:set :roles.role]]]]}
+   :board/new-projects-require-approval?     {s- :boolean}
    :board/custom-css                         {:doc "Custom CSS for this board"
                                               s-   :string}
    :board/custom-js                          {:doc "Custom JS for this board"
@@ -142,7 +139,7 @@
                                                   (? :board/max-projects-per-member)
                                                   (? :board/member-fields)
                                                   (? :board/member-tags)
-                                                  (? :board/rules)
+                                                  (? :board/new-projects-require-approval?)
                                                   (? :board/project-fields)
                                                   (? :board/project-sharing-buttons)
                                                   (? :board/registration-codes)
@@ -250,7 +247,7 @@
                                 [:tuple 'any?
                                  :prose/as-map]]
                                [:field.type/video :video/value
-                                [:tuple 'any? [:map {:closed true} :video/value :video/type]]]]}
+                                [:tuple 'any? :video/entry]]]}
    :field-entry/as-map    {s- [:map {:closed true}
                                :field-entry/id
                                :field-entry/field
@@ -268,6 +265,9 @@
                                :video.type/youtube-url
                                :video.type/vimeo-url]}
    :video/value           {s- :string}
+   :video/entry           {s- [:map {:closed true} 
+                               :video/value 
+                               :video/type]}
    :field/as-map          {:doc  "Description of a field."
                            :todo ["Field specs should be definable at a global, org or board level."
                                   "Orgs/boards should be able to override/add field.spec options."
@@ -342,39 +342,23 @@
    :i18n/locale-dicts       {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
                              s-   [:map-of :i18n/locale :i18n/dict]}})
 
-(def sb-roles
-  {:roles/_entity {s- [:sequential :roles/as-map]}
-   :roles/_member {s- [:sequential :roles/as-map]}
-   :roles/id (merge {:doc "ID field allowing for direct lookup of permissions"
-                     :derived-from [:roles/entity
-                                    :roles/recipient]
-                     :todo "Replace with composite unique-identity attribute :grant/member+entity"}
-                    unique-uuid)
-   :roles/entity (merge {:doc "Entity to which a grant applies"}
-                        (ref :one))
-   :roles/recipient (merge {:doc "Member or account who is granted the roles"}
-                           (ref :one)),
-   :roles.role {:doc "A keyword representing a role which may be granted to a member",
-                s- [:enum :role/admin :role/collaborator :role/member]},
-   :roles/roles (merge {:doc "Set of roles granted",
-                        s-   [:set :roles.role]}
-                       s/keyword
-                       s/many)
-   :roles/as-map {s- [:and [:map {:closed true}
-                            :roles/id
-                            :roles/roles
-                            :roles/entity
-                            :roles/recipient]
-                      [:fn {:error/message "Membership must contain :roles/member or :roles/account"}
-                       '(fn [{:keys [:roles/recipient :roles/account]}]
-                          (and (or recipient account)
-                               (not (and recipient account))))]]}})
-;; TODO 
-;; - get rid of :roles/*, use a :member/roles attribute instead.
-;;   :member/as-map is then not only for boards, but any entity (orgs, projects, etc)
-;; - tags can be used for boards, projects, orgs, etc.
 (def sb-member
-  {:member/entity                   (ref :one)
+  {:roles/as-map {s- :member/as-map}
+   :member/entity+account (merge {:db/tupleAttrs [:member/entity :member/account]}
+                                 s/unique-value)
+   :member/_entity {s- [:or 
+                        :member/as-map
+                        [:sequential 
+                         :member/as-map]]}
+   :member/role {s- [:enum 
+                     :role/admin
+                     :role/owner
+                     :role/collaborator
+                     :role/member]}
+   :member/roles (merge s/keyword 
+                        s/many 
+                        {s- [:set :member/role]})
+   :member/entity                   (ref :one)
    :member/account                  (ref :one)
 
    :member/tags                     (ref :many :tag/as-map)
@@ -406,36 +390,33 @@
                                          :member/entity
                                          :member/account
 
-                                         :member/inactive?
-                                         :member/email-frequency
+                                         (? :member/inactive?)
+                                         (? :member/email-frequency)
                                          (? :member/ad-hoc-tags)
                                          (? :member/newsletter-subscription?)
                                          (? :member/tags)
+                                         (? :member/roles)
 
-                                         (? :roles/_member)
-
-                                         :entity/created-at
-                                         :entity/updated-at
+                                         ;; TODO, backfill?
+                                         (? :entity/created-at)
+                                         (? :entity/updated-at)
 
                                          (? :entity/field-entries)
                                          (? :entity/deleted-at)
                                          (? :entity/modified-by)]}})
 
 (def sb-member-vote
-  {:member-vote/open? {:doc "Opens a community vote (shown as a tab on the board)"
-                       s-   :boolean}
-   :ballot/as-map     {s- [:map {:closed true}
-                           :ballot/id
-                           :ballot/board
-                           :ballot/member
-                           :ballot/project]}
-   :ballot/board      (ref :one)
-   :ballot/id         (merge unique-uuid
-                             {:derived-from [:ballot/board
-                                             :ballot/member
-                                             :ballot/project]})
-   :ballot/member     (ref :one)
-   :ballot/project    (ref :one)})
+  {:member-vote/open?            {:doc "Opens a community vote (shown as a tab on the board)"
+                                  s-   :boolean}
+   :ballot/as-map                {s- [:map {:closed true}
+                                      :ballot/board
+                                      :ballot/account
+                                      :ballot/project]}
+   :ballot/board                 (ref :one)
+   :ballot/account+board+project (merge {:db/tupleAttrs [:ballot/account :ballot/board :ballot/project]}
+                                        s/unique-id)         
+   :ballot/account               (ref :one)
+   :ballot/project               (ref :one)})
 
 (def sb-notification
   {:notification/comment             (ref :one),
@@ -443,7 +424,7 @@
    :notification/emailed?            {:doc  "The notification has been included in an email",
                                       :todo "deprecate: log {:notifications/emailed-at _} per member"
                                       s-    :boolean},
-   :notification/member              (ref :one)
+   :notification/account              (ref :one)
    :notification/post                (ref :one)
    :notification/post.comment        (ref :one)
    :notification/project             (ref :one)
@@ -469,7 +450,7 @@
                                           :notification/viewed?
                                           :entity/created-at
                                           (? :notification/discussion)
-                                          (? :notification/member)
+                                          (? :notification/account)
                                           (? :notification/post)
                                           (? :notification/post.comment)
                                           (? :notification/project)
@@ -532,7 +513,7 @@
                                s-   [:sequential :request/map]},
    :project/team-complete?    {:doc "Project team marked sufficient"
                                s-   :boolean}
-   :project/admin-approved?   {:doc "Set by an admin when :action/project.approve policy is present. Unapproved projects are hidden."
+   :project/approved?         {:doc "Set by an admin when :board/new-projects-require-approval? is enabled. Unapproved projects are hidden."
                                s-   :boolean}
    :project/badges            {:doc "A badge is displayed on a project with similar formatting to a tag. Badges are ad-hoc, not defined at a higher level.",
                                s-   [:vector :content/badge]}
@@ -557,11 +538,11 @@
                                    :entity/title
                                    :entity/created-at
                                    :entity/updated-at
-                                   (? :roles/_entity)
+                                   (? :member/_entity)
                                    (? [:project/card-classes {:doc          "css classes for card"
                                                               :to-deprecate true}
                                        [:sequential :string]])
-                                   (? :project/admin-approved?)
+                                   (? :project/approved?)
                                    (? :project/badges)
                                    (? :project/number)
                                    (? :project/admin-description)
@@ -789,7 +770,6 @@
              sb-entity
              sb-fields
              sb-account
-             sb-roles
              sb-util
              sb-i18n
              sb-member

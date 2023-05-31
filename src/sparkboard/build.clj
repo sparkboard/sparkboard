@@ -78,6 +78,7 @@
  (do
 
    (def entities (one-time/all-entities))
+   *e 
 
    ;; transact schema
    (db/merge-schema! sb.schema/sb-schema)
@@ -94,8 +95,9 @@
           (throw e!))))
 
  (one-time/explain-errors!) 
- 
 
+ 
+*e
 
 
  )
