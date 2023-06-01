@@ -2,7 +2,8 @@
   (:require [babashka.process :as bp]
             [clojure.repl.deps :as deps]
             [clojure.pprint :refer [pprint]]
-            [re-db.api :as db]))
+            [re-db.api :as db]
+            [sparkboard.migration.one-time :as one-time]))
 
 (defn start
   {:shadow/requires-server true}
@@ -45,62 +46,67 @@
 
 (comment
 
- (deps/sync-deps)
-  
+  (deps/sync-deps)
+
 
 
  ;; DATA IMPORT - copies to ./.db
- (one-time/fetch-mongodb)
- (one-time/fetch-firebase)
- (one-time/fetch-accounts)
+  (one-time/fetch-mongodb)
+  (one-time/fetch-firebase)
+  (one-time/fetch-accounts)
 
- (defn try-transact! [txs]
-   (doseq [tx txs]
-     (try
-       (db/transact! [tx])
-       (catch Exception e
-         (pprint [:failed tx])
-         (throw e)))))
+  (defn try-transact! [txs]
+    (doseq [tx txs]
+      (try
+        (db/transact! [tx])
+        (catch Exception e
+          (pprint [:failed tx])
+          (throw e)))))
 
 
- (require '[sparkboard.migration.one-time :as one-time]
-          '[datalevin.core :as dl]
-          '[sparkboard.datalevin :as sd]
-          '[sparkboard.server.env :as env]
-          '[sparkboard.schema :as sb.schema])
+  (require '[sparkboard.migration.one-time :as one-time]
+           '[datalevin.core :as dl]
+           '[sparkboard.datalevin :as sd]
+           '[sparkboard.server.env :as env]
+           '[sparkboard.schema :as sb.schema])
 
  ;; reset db (may break fulltext index?)
- (do
-   (dl/clear sd/conn)
-   (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
-   (alter-var-root #'re-db.api/*conn* (constantly sd/conn)))
+  (do
+    (dl/clear sd/conn)
+    (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
+    (alter-var-root #'re-db.api/*conn* (constantly sd/conn)))
 
- (do
+  (do
 
-   (def entities (one-time/all-entities))
-   *e 
+    (def entities (one-time/all-entities))
+
 
    ;; transact schema
-   (db/merge-schema! sb.schema/sb-schema)
+    (db/merge-schema! sb.schema/sb-schema)
    ;; upsert lookup refs
-   (db/transact! (mapcat sb.schema/unique-keys entities))
+    (db/transact! (mapcat sb.schema/unique-keys entities))
    ;; transact entities
-   (db/transact! (one-time/all-entities)))
+    (db/transact! (one-time/all-entities)))
 
  ;; add entities, print and stop if one fails
- (doseq [e entities]
-   (try (db/transact! [e])
-        (catch Exception e!
-          (prn e)
-          (throw e!))))
+  (doseq [e entities]
+    (try (db/transact! [e])
+         (catch Exception e!
+           (prn e)
+           (throw e!))))
+  *e
 
- (one-time/explain-errors!) 
+  (one-time/explain-errors!)
 
- 
-*e
+  (->> entities
+       (filter (partial 
+                one-time/contains-somewhere? #uuid "add545dd-2c20-3d45-944f-aaf3448b74a1")))
 
 
- )
+  *e
+
+
+  )
 
 ;; TODO
 ;; playground for writing datalevin queries using plain english

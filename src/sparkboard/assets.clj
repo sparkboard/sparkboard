@@ -183,7 +183,7 @@
      (or  
       (variant-link! asset query-params)
       (asset-link asset))
-     302)
+     301)
     (resp/not-found "Asset not found")))
 
 

@@ -24,6 +24,11 @@
     (str "/assets/" (:asset/id asset)
          (some-> (variants variant) query-params/query-string))))
 
+(defn filtered [?pattern]
+  (filter (if @?pattern 
+            #(re-find (re-pattern @?pattern) (:entity/title %))
+            identity)))
+
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
 

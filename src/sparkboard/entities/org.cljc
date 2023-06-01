@@ -83,7 +83,7 @@
                       [:entity/id org])}))
 
 (ui/defview index:view [params]
-  (ui/with-form [?pattern (str "(?i)" ?filter)]
+  (ui/with-form [?pattern (when ?filter (str "(?i)" ?filter))]
     [:<>
      [:div.entity-header
       [:h3.header-title :tr/orgs]
@@ -91,10 +91,8 @@
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
      (into [:div.card-grid]
            (comp
-             (filter (if @?filter
-                       #(re-find (re-pattern @?pattern) (:entity/title %))
-                       identity))
-             (map ui/entity-card))
+            (ui/filtered ?pattern)
+            (map ui/entity-card))
            (:data params))]))
 
 (ui/defview read:view [params]
@@ -150,7 +148,12 @@
                                    [:entity/domain [:map {:closed true}
                                                     [:domain/name [:re #"^[a-z0-9-.]+.sparkboard.com$"]]]]])
            org (dl/new-entity org :org :by (:db/id account))]
-       (db/transact! [org])
+       (db/transact! [(assoc org :db/id -1)
+                      {:entity/id      (random-uuid)
+                       :entity/kind    :member
+                       :member/entity  -1
+                       :member/account (:db/id account)
+                       :member/roles   #{:role/owner}} ])
        {:body org})))
 
 

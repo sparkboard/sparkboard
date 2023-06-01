@@ -999,10 +999,6 @@
                                              (uuid-ref-as :post :notification/post))
                                     :discussion (& (xf :id)
                                                    (uuid-ref-as :discussion :notification/discussion))
-                                    ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
-                                                               (not (:notification/account %))
-                                                               (missing-entity? :post/as-map (:notification/post %))
-                                                               (missing-entity? :discussion/as-map (:notification/discussion %))))
                                     ::always (fn [m]
                                                (let [{:keys [type targetId]} m]
                                                  (-> m
@@ -1013,6 +1009,11 @@
                                                                             :notification/thread (uuid-ref :thread (get-oid targetId))}
                                                               "newPost" {:notification/type :notification.type/new-discussion-post}
                                                               "newComment" {:notification/type :notification.type/new-post-comment})))))
+                                     ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
+                                                                (not (:notification/account %))
+                                                                (missing-entity? :thread/as-map (:notification/thread %))
+                                                                (missing-entity? :post/as-map (:notification/post %))
+                                                                (missing-entity? :discussion/as-map (:notification/discussion %))))
                                     :notification/board rm
 
                                     ]
