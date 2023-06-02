@@ -23,7 +23,7 @@
   {:body ""})
 
 
-(defn settings-query [params]
+(defn edit-query [params]
   ;; all the settings that can be changed
   (db/pull '[*
              {:entity/domain [:domain/name]}] [:entity/id (:org params)]))
@@ -84,7 +84,7 @@
       (u/update-some-paths [:entity/domain :domain/name] domain/qualify-domain)
       (validate/assert (mu/optional-keys :org/as-map))))
 
-(defn settings! [{:keys [account]} params org]
+(defn edit! [{:keys [account]} params org]
   (let [org (db/transact! [(normalize-and-validate org)])]
     {:body org}))
 

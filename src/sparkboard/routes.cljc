@@ -75,10 +75,10 @@
                ["/" [bidi/uuid :org]] {""           (E :org/read
                                                        {:query `org/read-query
                                                         :view  `org/read-view})
-                                       "/settings"  (E :org/settings
-                                                       {:view  `org/settings-view
-                                                        :query `org/settings-query
-                                                        :POST  `org/settings!})
+                                       "/settings"  (E :org/edit
+                                                       {:view  `org/edit-view
+                                                        :query `org/edit-query
+                                                        :POST  `org/edit!})
                                        "/delete"    (E :org/delete
                                                        {:POST `org/delete!})
                                        "/new-board" (E :org/new-board

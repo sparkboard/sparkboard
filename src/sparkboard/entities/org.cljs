@@ -55,7 +55,7 @@
 (def form-el :form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto.bg-background)
 (def button-el :button.btn.btn-primary.px-6.py-3.self-start)
 
-(ui/defview settings-view [{:as params org :data}]
+(ui/defview edit-view [{:as params org :data}]
   (forms/with-form [!org (u/prune 
                           {:entity/id          (:entity/id org)
                            :entity/title       (?title :label :tr/title 
@@ -71,7 +71,7 @@
     [form-el
      {:on-submit (fn [e]
                    (j/call e :preventDefault)
-                   (ui/with-submission [result (routes/POST [:org/settings params] @!org)
+                   (ui/with-submission [result (routes/POST [:org/edit params] @!org)
                                         :form !org]
                      (routes/set-path! :org/read params)))}
      [:pre (ui/pprinted params)]
