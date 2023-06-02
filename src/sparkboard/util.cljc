@@ -50,10 +50,23 @@
                    m
                    (assoc m k v)))) {} m))
 
+(defn keep-changes
+  "Removes nil values from a map recursively"
+  [old new]
+  (reduce-kv (fn [m k v]
+               (let [oldv (get old k)]
+                 (if (map? v)
+                   (assoc-seq m k (keep-changes oldv v))
+                   (if (= v (get old k))
+                     (dissoc m k)
+                     (assoc m k v))))) {} new))
+
 (comment
   (prune {:x nil
-          :y {:z nil}}))
-
+          :y {:z nil}})
+  (keep-changes {:entity/domain {:domain/name nil}}
+                {:entity/domain {:domain/name "foo"}}))
+  
 (defn select-as [m kmap]
   (reduce-kv (fn [out k as]
                (if (contains? m k)

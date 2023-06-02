@@ -1,18 +1,10 @@
 (ns sparkboard.entities.org
-  (:require  [sparkboard.datalevin :as dl]
-             [applied-science.js-interop :as j]
-             [inside-out.forms :as forms]
-             [promesa.core :as p]
-             [re-db.api :as db]
-             [sparkboard.entities.domain :as domain]
-             [sparkboard.i18n :refer [tr]]
-             [sparkboard.routes :as routes]
-             [sparkboard.validate :as validate]
-             [sparkboard.views.ui :as ui]
-             [sparkboard.websockets :as ws]
-             [sparkboard.util :as u]
-             [yawn.view :as v]
-             [malli.util :as mu]))
+  (:require [malli.util :as mu]
+            [re-db.api :as db]
+            [sparkboard.datalevin :as dl]
+            [sparkboard.entities.domain :as domain]
+            [sparkboard.util :as u]
+            [sparkboard.validate :as validate]))
 
 (defn delete!
   "Mutation fn. Retracts organization by given org-id."
@@ -26,7 +18,10 @@
 (defn edit-query [params]
   ;; all the settings that can be changed
   (db/pull '[*
-             {:entity/domain [:domain/name]}] [:entity/id (:org params)]))
+             {:image/logo [:asset/id]}
+             {:image/background [:asset/id]}
+             {:entity/domain [:domain/name]}] 
+           [:entity/id (:org params)]))
 
 
 (defn list-query [_]
@@ -39,7 +34,9 @@
   (db/pull '[:entity/id
              :entity/kind
              :entity/title
+             :entity/description
              {:image/logo [:asset/id]}
+             {:image/background [:asset/id]}
              {:board/_org [:entity/created-at
                            :entity/id
                            :entity/kind
@@ -50,7 +47,6 @@
 (defn search-query [{:as         params 
                      :keys       [org]
                      {:keys [q]} :query-params}]
-  (tap> [:search params])
   {:q        q
    :boards   (dl/q '[:find [(pull ?board [:entity/id
                                           :entity/title
@@ -82,10 +78,12 @@
 (defn normalize-and-validate [org]
   (-> org
       (u/update-some-paths [:entity/domain :domain/name] domain/qualify-domain)
-      (validate/assert (mu/optional-keys :org/as-map))))
+      (validate/assert (-> (mu/optional-keys :org/as-map)
+                           (mu/assoc :entity/domain (mu/optional-keys :domain/as-map))))))
 
 (defn edit! [{:keys [account]} params org]
-  (let [org (db/transact! [(normalize-and-validate org)])]
+  (let [org (normalize-and-validate (assoc org :entity/id (:org params)))]
+    (db/transact! [org])
     {:body org}))
 
 (defn new!

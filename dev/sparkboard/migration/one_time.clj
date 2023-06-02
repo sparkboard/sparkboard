@@ -351,17 +351,17 @@
      :ref (uuid-ref kind id-string)}))
 
 (defn parse-domain-target [s]
+  ;; TODO - domains that point to URLs should be "owned" by someone
   (if (str/starts-with? s "redirect:")
     {:domain/kind :domain.kind/url
-     :domain.kind/url (-> (subs s 9)
+     :domain/url (-> (subs s 9)
                           (str/replace "%3A" ":")
                           (str/replace "%2F" "/"))}
     (let [{:keys [kind id-string ref]} (parse-sparkboard-id s)]
       (if (= [kind id-string] [:site "account"])
         {:domain/kind :domain.kind/url
-         :domain.kind/url "https://account.sparkboard.com"}
-        {:domain/kind :domain.kind/entity
-         :domain.kind/entity ref}))))
+         :domain/url "https://account.sparkboard.com"}
+        {:domain/kind :domain.kind/entity}))))
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 

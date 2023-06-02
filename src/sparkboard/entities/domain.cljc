@@ -1,5 +1,6 @@
 (ns sparkboard.entities.domain
-  (:require [clojure.string :as str]
+  (:require [applied-science.js-interop :as j]
+            [clojure.string :as str]
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
@@ -26,7 +27,7 @@
 
 
 (defn domain-valid-string [v _]
-  (when v
+  (when-let [v (unqualify-domain (:domain/name v))]
     (when (< (count v) 3)
       (tr :tr/too-short))
     (when-not (re-matches #"^[a-z0-9-]+$" v)
@@ -36,16 +37,18 @@
 
 #?(:cljs
    (defn domain-availability-validator []
-     (-> (fn [v _]
-           (when (>= (count v) 3)
-             (p/let [res (routes/GET :domain/availability :query-params {:domain v})]
-               (if (:available? res)
-                 (forms/message :info
-                                [:span.text-green-500.font-bold (tr :tr/available)])
-                 (forms/message :invalid
-                                (tr :tr/not-available)
-                                {:visibility :always})))))
-         (forms/debounce 1000))))
+     (-> (fn [v {:keys [field]}]
+           (when (not= (:init field) v)
+             (when-let [v (:domain/name v)]
+               (when (>= (count v) 3)
+                 (p/let [res (routes/GET :domain/availability :query-params {:domain v})]
+                   (if (:available? res)
+                     (forms/message :info
+                                    [:span.text-green-500.font-bold (tr :tr/available)])
+                     (forms/message :invalid
+                                    (tr :tr/not-available)
+                                    {:visibility :always})))))))
+         (forms/debounce 300))))
 
 #?(:cljs 
    (defn show-domain-field [?domain]
@@ -53,4 +56,7 @@
                              :auto-complete "off"
                              :spell-check false
                              :placeholder (or (:placeholder ?domain) "<your-subdomain>")
-                             :postfix  [:span.text-sm.text-gray-500 ".sparkboard.com"]})))
+                             :postfix [:span.text-sm.text-gray-500 ".sparkboard.com"]
+                             :on-change (fn [^js e]
+                                          (reset! ?domain {:domain/name (qualify-domain (.. e -target -value))}))
+                             :value (or (unqualify-domain (:domain/name @?domain)) "")})))

@@ -26,7 +26,7 @@
    {:pre [(keyword? nesting-schema)]}
    (case cardinality :one (merge s/ref
                                  s/one
-                                 {s- (conj db-schema nesting-schema)})
+                                 {s- (conj db-id nesting-schema)})
                      :many (merge s/ref
                                   s/many
                                   {s- [:sequential

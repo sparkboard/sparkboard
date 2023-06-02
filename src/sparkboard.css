@@ -170,6 +170,9 @@
         @apply
          border-b border-secondary px-body py-3 gap-3 flex items-stretch
     }
+    hr {
+        @apply border-b border-secondary
+    }
     .header-title {
         @apply items-center hidden sm:inline-flex flex-grow
     }

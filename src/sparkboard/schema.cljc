@@ -178,27 +178,20 @@
                               (? :discussion/posts)]}})
 
 (def sb-domains
-  {:domain.kind/url    {s- :http/url}
+  {:domain/url    {s- :http/url}
    :domain/kind        {s- [:enum
-                            :domain.kind/url
+                            :domain/url
                             :domain.kind/entity]}
    :domain.kind/entity (merge (ref :one)
                               {:doc "The entity this domain points to"})
    :domain/name        (merge {:doc "A complete domain name, eg a.b.com"}
                               unique-string-id)
-   :entity/domain      (merge (ref :one) {:doc "Domain name linked to this entity"})
+   :entity/domain      (merge (ref :one :domain/as-map) {:doc "Domain name linked to this entity"})
    :domain/as-map      (merge (ref :one)
-                              {s- [:multi {:dispatch :domain/kind}
-                                   [:domain.kind/url
-                                    [:map {:closed true}
-                                     [:domain/kind [:= :domain.kind/url]]
-                                     :domain.kind/url
-                                     :domain/name]]
-                                   [:domain.kind/entity
-                                    [:map {:closed true}
-                                     [:domain/kind [:= :domain.kind/entity]]
-                                     :domain.kind/entity
-                                     :domain/name]]]})})
+                              {s- [:map {:closed true}
+                                   :domain/name 
+                                   :domain/kind 
+                                   (? :domain/url)]})})
 
 (def sb-fields
   {:image/url             {s- :http/url}
