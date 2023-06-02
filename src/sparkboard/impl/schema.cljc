@@ -8,35 +8,29 @@
 (defn string-lookup-ref [ks]
   [:tuple (into [:enum] ks) :string])
 
+(def db-id [:or
+            :int
+            [:tuple :qualified-keyword [:or :string :uuid]]
+            [:map {:closed true} [:db/id :int]]])
+
 (defn ref
   "returns a schema entry for a ref (one or many)"
   ([cardinality]
    (case cardinality :one (merge s/ref
                                  s/one
-                                 {s- [:or
-                                      :int
-                                      [:tuple :qualified-keyword [:or :string :uuid]]]})
+                                 {s- db-id})
                      :many (merge s/ref
                                   s/many
-                                  {s- [:sequential
-                                       [:or
-                                        :int
-                                        [:tuple :qualified-keyword [:or :string :uuid]]]]})))
+                                  {s- [:sequential db-id]})))
   ([cardinality nesting-schema]
    {:pre [(keyword? nesting-schema)]}
    (case cardinality :one (merge s/ref
                                  s/one
-                                 {s- [:or
-                                      :int
-                                      [:tuple :qualified-keyword [:or :string :uuid]]
-                                      nesting-schema]})
+                                 {s- (conj db-schema nesting-schema)})
                      :many (merge s/ref
                                   s/many
                                   {s- [:sequential
-                                       [:or
-                                        :int
-                                        [:tuple :qualified-keyword [:or :string :uuid]]
-                                        nesting-schema]]}))))
+                                       (conj db-id nesting-schema)]}))))
 
 (def unique-string-id (merge s/unique-id
                              s/string

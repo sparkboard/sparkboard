@@ -66,41 +66,41 @@
          ["/a/" [bidi/uuid :account]]  (E :account/read 
                                           {:query `account/read-query 
                                            :view `account/read-view})
-         "/o" {"/index" (E :org/index
-                           {:query `org/index:query
-                            :view `org/index:view})
-               "/new" (E :org/new
-                         {:view `org/new:view
-                          :POST `org/new!})
-               ["/" [bidi/uuid :org]] {"" (E :org/read
-                                             {:query `org/read:query
-                                              :view `org/read:view})
-                                       "/settings" (E :org/settings
-                                                      {:view `org/settings-view
-                                                       :query `org/settings:query
-                                                       :POST `org/settings!})
-                                       "/delete" (E :org/delete
-                                                    {:POST `org/delete!})
+         "/o" {"/list"                  (E :org/list
+                                           {:query `org/list-query
+                                            :view  `org/list-view})
+               "/new"                    (E :org/new
+                                           {:view `org/new-view
+                                            :POST `org/new!})
+               ["/" [bidi/uuid :org]] {""           (E :org/read
+                                                       {:query `org/read-query
+                                                        :view  `org/read-view})
+                                       "/settings"  (E :org/settings
+                                                       {:view  `org/settings-view
+                                                        :query `org/settings-query
+                                                        :POST  `org/settings!})
+                                       "/delete"    (E :org/delete
+                                                       {:POST `org/delete!})
                                        "/new-board" (E :org/new-board
-                                                       {:view `board/new:view
+                                                       {:view `board/new-view
                                                         :POST `board/new!})
-                                       "/search" (E :org/search
-                                                    {:query `org/search:query})}}
+                                       "/search"    (E :org/search
+                                                       {:query `org/search-query})}}
          ["/b/" [bidi/uuid :board]] {"" (E :board/read
-                                           {:query `board/read:query
-                                            :view `board/read:view})
+                                           {:query `board/read-query
+                                            :view `board/read-view})
                                      "/new-project" (E :project/new
-                                                       {:view `project/new:view
+                                                       {:view `project/new-view
                                                         :POST `project/new!})
                                      "/register" (E :board/register
-                                                    {:view `board/register:view
+                                                    {:view `board/register-view
                                                      :POST `board/register!})}
          ["/p/" [bidi/uuid :project]] {"" (E :project/read
-                                             {:query `project/read:query
-                                              :view `project/read:view})}
+                                             {:query `project/read-query
+                                              :view `project/read-view})}
          ["/m/" [bidi/uuid :member]] {"" (E :member/read
-                                            {:query `member/read:query
-                                             :view `member/read:view})}}]))
+                                            {:view `member/read-view
+                                             :query `member/read-query})}}]))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
@@ -127,8 +127,8 @@
 
 (comment
   (sparkboard.impl.routes/resolve-endpoint
-    {:query `org/index:query
-     :view `org/index:view
+    {:query `org/list-query
+     :view `org/list-view
      })
   (match-path "/o/index"))
 

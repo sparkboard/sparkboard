@@ -42,13 +42,6 @@
 (defn now [] #?(:cljs (js/Date.now)
                 :clj  (java.util.Date.)))
 
-(defn new-entity [m kind & {:keys [by]}]
-  (-> m
-      (merge #:entity{:id (squuid)
-                      :created-at (now)
-                      :kind kind})
-      (cond-> by (assoc :entity/created-by by))))
-
 (defn q [query & inputs]
   #?(:clj  (apply dl/q query @conn inputs)
      :cljs (throw (ex-info "datalevin/q not implemented in cljs" {:query query :inputs inputs}))))
@@ -98,3 +91,15 @@
    (defn to-uuid [kind s]
      (java.util.UUID/fromString (str (kind->prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
 
+#?(:clj 
+   (defn new-uuid [kind] 
+     (java.util.UUID/fromString (str (kind->prefix kind)
+                                     (subs (str (random-uuid)) 2)))))
+
+#?(:clj
+   (defn new-entity [m kind & {:keys [by]}]
+     (-> m
+         (merge #:entity{:id (new-uuid kind)
+                         :created-at (now)
+                         :kind kind})
+         (cond-> by (assoc :entity/created-by by)))))

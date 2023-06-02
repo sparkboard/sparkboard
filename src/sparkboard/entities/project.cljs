@@ -6,7 +6,7 @@
             [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]))
 
-(ui/defview new:view [{:as params :keys [route]}]
+(ui/defview new-view [{:as params :keys [route]}]
   (ui/with-form [!project {:entity/title ?title}]
     [:div
      [:h3 :tr/new-project]
@@ -32,7 +32,7 @@
   (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
   )
 
-(ui/defview read:view [{project :data}]
+(ui/defview read-view [{project :data}]
   [:div
    [:h1 (:entity/title project)]
    [:blockquote (:entity/description project)]
@@ -44,17 +44,3 @@
    (when-let [vid (:entity/video project)]
      [:section [:h3 :tr/video]
       [video-field vid]])])
-
-(defn read:query [params]
-  (db/pull '[*] [:entity/id (:project params)]))
-
-
-(defn new! [req params project]
-  (validate/assert project [:map {:closed true} :entity/title])
-  ;; auth: user is member of board & board allows members to create projects
-  (db/transact! [(-> project
-                     (assoc :project/board [:entity/id (:entity/id params)])
-                     (dl/new-entity :project :by (:db/id (:account req))))])
-  ;; what to return?
-  {:status 201}
-  )

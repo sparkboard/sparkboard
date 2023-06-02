@@ -160,7 +160,7 @@
 
 (comment
   (routes/set-path! :org/new)
-  (routes/set-path! :org/index)
+  (routes/set-path! :org/list)
   (routes/set-path! :org/read {:entity/id "645a2f3e-0c80-404d-b604-db485a39e431"}))
 
 

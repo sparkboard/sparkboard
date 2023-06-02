@@ -6,7 +6,7 @@
             [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]))
 
-(ui/defview new:view [{:as params :keys [route]}]
+(ui/defview new-view [{:as params :keys [route]}]
   (ui/with-form [!board {:entity/title ?title}]
     [:div
      [:h3 :tr/new-board]
@@ -18,16 +18,7 @@
                               ))}
       :tr/create]]))
 
-(defn new! [req params board]
-  (validate/assert board [:map {:closed true} :entity/title])
-  ;; auth: user is admin of :board/org
-  (db/transact!
-    [(-> board
-         (assoc :board/org [:entity/id (:entity/id params)])
-         (sd/new-entity :board :by (:db/id (:account req))))])
-  (db/pull '[*]))
-
-(ui/defview register:view [{:as params :keys [route]}]
+(ui/defview register-view [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 :tr/register]
@@ -40,11 +31,7 @@
                                 res))}
       :tr/register]]))
 
-(defn register! [req params registration-data]
-  ;; create membership
-  )
-
-(ui/defview read:view [{:as params board :data}]
+(ui/defview read-view [{:as params board :data}]
   [:<>
    [:h1 (:entity/title board)]
    [:p (-> board :entity/domain :domain/name)]
@@ -75,16 +62,3 @@
       [:li "suggested locales:" (str (:entity/locale-suggestions board))]
       [:li "default locale:" (str (:i18n/default-locale board))]
       [:li "extra-translations:" (str (:i18n/locale-dicts board))]]]]])
-
-(defn read:query [params]
-  (db/pull '[:entity/id
-             :entity/kind
-             :entity/title
-             :board/registration-open?
-             {:project/_board [*]}
-             {:board/org [:entity/id
-                          :entity/kind
-                          :entity/title]}
-             {:member/_board [*]}
-             {:entity/domain [:domain/name]}]
-           [:entity/id (:board params)]))

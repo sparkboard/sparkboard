@@ -128,7 +128,7 @@
 (defn field-id [?field]
   (str "field-" (goog/getUid ?field)))
 
-(defn pass-props [props] (dissoc props :multi-line :label :postfix :wrapper-class))
+(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class))
 
 (defn text-props [?field]
   {:id (field-id ?field)
@@ -203,8 +203,8 @@
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
-(defn show-field [?field & [attrs]]
-  (let [props (v/merge-props (:props (meta ?field)) attrs)
+(defn show-field [?field & [props]]
+  (let [props (v/merge-props (:props (meta ?field)) props)
         el (:el props text-field)]
     (el ?field (dissoc props :el))))
 
@@ -235,7 +235,6 @@
    [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
 
 (defview image-field [?field]
-  (prn )
   (let [value (asset-src @?field :card) 
         loading? (:loading? ?field)
         ;; TODO handle existing state (for edit mode)
