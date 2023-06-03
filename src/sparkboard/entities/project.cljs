@@ -1,9 +1,6 @@
 (ns sparkboard.entities.project
-  (:require [sparkboard.datalevin :as dl]
-            [promesa.core :as p]
-            [re-db.api :as db]
+  (:require [promesa.core :as p]
             [sparkboard.routes :as routes]
-            [sparkboard.validate :as validate]
             [sparkboard.views.ui :as ui]))
 
 (ui/defview new-view [{:as params :keys [route]}]

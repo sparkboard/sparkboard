@@ -1,6 +1,7 @@
 (ns sparkboard.entities.board
   (:require [re-db.api :as db]
             [sparkboard.datalevin :as sd]
+            [sparkboard.entities.entity :as entity]
             [sparkboard.validate :as validate]))
 
 (defn new! [req params board]
@@ -17,14 +18,9 @@
   )
 
 (defn read-query [params]
-  (db/pull '[:entity/id
-             :entity/kind
-             :entity/title
+  (db/pull `[~@entity/fields
              :board/registration-open?
              {:project/_board [*]}
-             {:board/org [:entity/id
-                          :entity/kind
-                          :entity/title]}
-             {:member/_board [*]}
-             {:entity/domain [:domain/name]}]
+             {:board/org ~entity/fields}
+             {:member/_board [*]}]
            [:entity/id (:board params)]))

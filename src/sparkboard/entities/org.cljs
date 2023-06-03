@@ -52,11 +52,13 @@
        [:div.p-body (ui/show-prose description)]
        [ui/error-view result]
 
-       (for [[kind results] (dissoc (:value result) :q)
-             :when          (seq results)]
-         [:<>
-          [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
-          [:div.card-grid (map ui/entity-card results)]])])))
+       (if (seq q)
+         (for [[kind results] (dissoc (:value result) :q)
+               :when          (seq results)]
+           [:<>
+            [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
+            [:div.card-grid (map ui/entity-card results)]])
+         [:div.card-grid (map ui/entity-card (:board/_org org))])])))
 
 (def form-el :form.flex.flex-col.gap-3.p-6.max-w-lg.mx-auto.bg-background)
 (def button-el :button.btn.btn-primary.px-6.py-3.self-start)

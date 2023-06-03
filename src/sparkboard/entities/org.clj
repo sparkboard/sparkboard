@@ -3,6 +3,7 @@
             [re-db.api :as db]
             [sparkboard.datalevin :as dl]
             [sparkboard.entities.domain :as domain]
+            [sparkboard.entities.entity :as entity]
             [sparkboard.util :as u]
             [sparkboard.validate :as validate]))
 
@@ -31,17 +32,8 @@
                                {:image/background [:asset/id]}]))))
 
 (defn read-query [params]
-  (db/pull '[:entity/id
-             :entity/kind
-             :entity/title
-             :entity/description
-             {:image/logo [:asset/id]}
-             {:image/background [:asset/id]}
-             {:board/_org [:entity/created-at
-                           :entity/id
-                           :entity/kind
-                           :entity/title]}
-             {:entity/domain [:domain/name]}]
+  (db/pull `[~@entity/fields
+             {:board/_org ~entity/fields}]
            [:entity/id (:org params)]))
 
 (defn search-query [{:as         params 

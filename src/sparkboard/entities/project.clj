@@ -1,10 +1,11 @@
 (ns sparkboard.entities.project
   (:require [re-db.api :as db]
             [sparkboard.datalevin :as dl]
+            [sparkboard.entities.entity :as entity]
             [sparkboard.validate :as validate]))
 
 (defn read-query [params]
-  (db/pull '[*] [:entity/id (:project params)]))
+  (db/pull `[~@entity/fields] [:entity/id (:project params)]))
 
 (defn new! [req params project]
   (validate/assert project [:map {:closed true} :entity/title])
