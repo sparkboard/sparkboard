@@ -102,7 +102,6 @@
 
 (def route-handler
   (fn [{:as req :keys [uri]}]
-    (tap> req)
     (let [{:as match :keys [view
                             query
                             params

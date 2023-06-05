@@ -1,5 +1,7 @@
 (ns sparkboard.util
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [promesa.core :as p])
+  #?(:cljs (:require-macros sparkboard.util)))
 
 (defn guard [x f]
   (when (f x) x))
@@ -51,18 +53,20 @@
                    (assoc m k v)))) {} m))
 
 (defn keep-changes
-  "Removes nil values from a map recursively"
+  "Removes nil values from a map, not recursive"
   [old new]
   (reduce-kv (fn [m k v]
-               (let [oldv (get old k)]
-                 (if (map? v)
-                   (assoc-seq m k (keep-changes oldv v))
-                   (if (= v (get old k))
-                     (dissoc m k)
-                     (assoc m k v))))) {} new))
+               (if (= v (get old k))
+                 (dissoc m k)
+                 (assoc m k v))) {} new))
   
 (defn select-as [m kmap]
   (reduce-kv (fn [out k as]
                (if (contains? m k)
                  (assoc out as (get m k))
                  out)) {} kmap))
+
+(defmacro p-when [test & body]
+  `(p/let [result# ~test]
+     (when result# 
+       ~@body)))

@@ -34,14 +34,34 @@
 
 (def safe-html sanitize/safe-html)
 
+(defn icon:arrow-back [& [class-name]]
+  [:svg {:xmlns "http://www.w3.org/2000/svg"
+         :viewBox "0 0 20 20"
+         :fill "currentColor"
+         :className class-name}
+   [:g {:clipPath "url(#clip0_9_2121)"}
+    [:path
+     {:fillRule "evenodd"
+      :d
+      "M10 18a8 8 0 100-16 8 8 0 000 16zm3.25-7.25a.75.75 0 000-1.5H8.66l2.1-1.95a.75.75 0 10-1.02-1.1l-3.5 3.25a.75.75 0 000 1.1l3.5 3.25a.75.75 0 001.02-1.1l-2.1-1.95h4.59z"
+      :clipRule "evenodd"}]]
+   [:defs [:clipPath#clip0_9_2121 [:path {:d "M0 0h20v20H0z"}]]]])
+
 (defn icon:settings [& [class-name]]
   (v/x
     [:svg {:class (or class-name "w-6 h-6") :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 24 24" :fill "currentColor"}
      [:path {:fillRule "evenodd" :d "M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 01-.517.608 7.45 7.45 0 00-.478.198.798.798 0 01-.796-.064l-.453-.324a1.875 1.875 0 00-2.416.2l-.243.243a1.875 1.875 0 00-.2 2.416l.324.453a.798.798 0 01.064.796 7.448 7.448 0 00-.198.478.798.798 0 01-.608.517l-.55.092a1.875 1.875 0 00-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 01-.064.796l-.324.453a1.875 1.875 0 00.2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 01.796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 01.517-.608 7.52 7.52 0 00.478-.198.798.798 0 01.796.064l.453.324a1.875 1.875 0 002.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 01-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 001.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 01-.608-.517 7.507 7.507 0 00-.198-.478.798.798 0 01.064-.796l.324-.453a1.875 1.875 0 00-.2-2.416l-.243-.243a1.875 1.875 0 00-2.416-.2l-.453.324a.798.798 0 01-.796.064 7.462 7.462 0 00-.478-.198.798.798 0 01-.517-.608l-.091-.55a1.875 1.875 0 00-1.85-1.566h-.344zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" :clipRule "evenodd"}]]))
 
-(defn icon:loading []
-  ;; todo
-  "L")
+(defn icon:loading [& [class]]
+  (v/x 
+   [:svg {:xmlns   "http://www.w3.org/2000/svg"
+          :viewBox "0 0 20 20"
+          :fill    "currentColor"
+          :class   ["rotate-3s" class]}
+    [:path
+     {:fillRule "evenodd"
+      :d        "M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z"
+      :clipRule "evenodd"}]]))
 
 (defn icon:search []
   (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
@@ -118,12 +138,19 @@
                nil)}
      content]))
 
+(defn auto-submit-handler [?field]
+  (fn [e]
+    (let [!form  (->> (iterate forms/parent ?field)
+                      ( take-while identity)
+                      last)]
+      (when-let [submit! (:auto-submit !form)]
+        (forms/watch-promise ?field 
+                             (u/p-when (forms/valid?+ !form)
+                                       (submit! @!form)))))))
+
 (defview input-label [props content]
-  [:label.block.-mb-1
-   (v/props {:class "text-muted-foreground
-                     text-sm
-                     font-medium
-                     leading-6"} props)
+  [:label.block.text-muted-foreground.text-sm.font-medium
+   (v/props props)
    content])
 
 (defn field-id [?field]
@@ -131,13 +158,18 @@
 
 (defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class))
 
+(defn compseq [& fs]
+  (fn [& args]
+    (doseq [f fs] (apply f args))))
+
 (defn text-props [?field]
   {:id        (field-id ?field)
    :value     (or @?field "")
    :on-change (fn [e]
                 (js/console.log (.. e -target -checked))
                 ((forms/change-handler ?field) e))
-   :on-blur   (forms/blur-handler ?field)
+   :on-blur   (compseq (forms/blur-handler ?field)
+                       (auto-submit-handler ?field))
    :on-focus  (forms/focus-handler ?field)})
 
 (defn show-field-messages [?field]
@@ -150,7 +182,10 @@
     [input-label {:for (field-id ?field)} label]))
 
 (defn show-postfix [?field props]
-  (when-let [postfix (or (:postfix props) (:postfix (meta ?field)))]
+  (when-let [postfix (or (:postfix props) 
+                         (:postfix (meta ?field))
+                         (and (:loading? ?field)
+                              [icon:loading "w-4 h-4 text-foreground/40"]))]
     [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix]))
 
 (defn text-field
@@ -158,7 +193,7 @@
   [?field & [props]]
   (let [{:as props :keys [multi-line wrapper-class]} (merge props (:props (meta ?field)))]
     (v/x
-      [:div.gap-2.flex.flex-col.relative.bg-background
+      [:div.gap-2.flex.flex-col.relative
        {:class wrapper-class}
        (show-label ?field props)
        [:div.flex.relative
@@ -196,7 +231,8 @@
       (v/props {:type      "checkbox"
                 :on-blur   (forms/blur-handler ?field)
                 :on-focus  (forms/focus-handler ?field)
-                :on-change #(reset! ?field (.. ^js % -target -checked))
+                :on-change (compseq #(reset! ?field (.. ^js % -target -checked))
+                                    (auto-submit-handler ?field))
                 :checked   (or @?field false)
                 :class     (if (:invalid (forms/types messages))
                              "outline-default"
@@ -213,7 +249,7 @@
   (show-field ?field (merge {:class         "pr-9"
                              :wrapper-class "flex-grow sm:flex-none"
                              :postfix       (if (:loading? attrs)
-                                              (icon:loading)
+                                              (icon:loading "w-4 h-4 rotate-3s text-foreground/40")
                                               (icon:search))}
                             (dissoc attrs :loading? :error))))
 
@@ -255,9 +291,11 @@
         loading? (:loading? ?field)
         !selected-blob (h/use-state nil)
         thumbnail (use-loaded-image src @!selected-blob)]
-    [:div.flex.flex-col.gap-2
+    [:div.flex.flex-col.gap-3.relative.shadow-sm.border.p-3.rounded-lg
+     (when loading?
+           [icon:loading "w-4 h-4 absolute top-0 right-0 text-foreground/40"])
      (show-label ?field)
-     [:label.block.w-24.h-24.relative.rounded.cursor-pointer.flex.items-center.justify-center
+     [:label.block.w-32.h-32.relative.rounded.cursor-pointer.flex.items-center.justify-center
       (v/props {:class ["border-primary/20 bg-background"
                         "text-muted-foreground hover:text-foreground"]
                 :for   (field-id ?field)}
@@ -265,21 +303,24 @@
                  {:class "bg-contain bg-no-repeat bg-center shadow-inner"
                   :style {:background-image (css-url thumbnail)}}
                  {:class "border-2"}))
-      (cond loading? [:img.w-12.h-12.rounded-full.loading-bar.relative]
-            src nil
-            :else (upload-icon "w-6 h-6 m-auto"))
+      
+      (when-not src
+        (upload-icon "w-6 h-6 m-auto"))
+      
       [:input.hidden
        {:id        (field-id ?field)
         :type      "file"
         :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
-        :on-change (fn [e]
-                     (forms/touch! ?field)
-                     (when-let [file (j/get-in e [:target :files 0])]
-                       (reset! !selected-blob (js/URL.createObjectURL file))
-                       (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
-                                                                            (.append "files" file)))
-                                         :form ?field]
-                         (reset! ?field asset))))}]]
+        :on-change (compseq 
+                    (fn [e]
+                      (forms/touch! ?field)
+                      (when-let [file (j/get-in e [:target :files 0])]
+                        (reset! !selected-blob (js/URL.createObjectURL file))
+                        (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
+                                                                             (.append "files" file)))
+                                          :form ?field]
+                          (reset! ?field asset))))
+                    (auto-submit-handler ?field))}]]
      (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
@@ -307,7 +348,7 @@
   "Given a map of {:loading?, :error}, shows a loading bar and/or error message"
   [result]
   [:<>
-   (when (:loading? result) [loading-bar "bg-blue-100"])
+   (when (:loading? result) [loading-bar "bg-blue-100 h-1"])
    (when (:error result) [error-view result])])
 
 (defn use-promise

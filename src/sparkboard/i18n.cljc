@@ -33,6 +33,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     {:tr/domain-already-registered       {:en "Domain already registered"
                                           :fr "Domaine déjà enregistré"
                                           :es "Dominio ya registrado"},
+     :tr/images                          {:en "Images"
+                                          :fr "Images"
+                                          :es "Imágenes"},
+     :tr/back                            {:en "Back"
+                                          :fr "Retour"
+                                          :es "Atrás"},
+     :tr/done                            {:en "Done"
+                                          :fr "Terminé"
+                                          :es "Hecho"},
      :tr/boards                          {:en "Boards"
                                           :fr "Tableaux"
                                           :es "Tableros"},

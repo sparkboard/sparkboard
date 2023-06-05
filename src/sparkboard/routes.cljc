@@ -158,21 +158,24 @@
 
 #?(:cljs
    (defn POST [route body]
-     (-> (js/fetch (path-for route)
-                   (if (instance? js/FormData body)
-                     (j/lit {:method  "POST"
-                             :headers {"Accept" "application/transit+json"}
-                             :body    body})
-                     (j/lit {:headers {"Accept"       "application/transit+json"
-                                       "Content-type" "application/transit+json"}
-                             :body    (t/write body)
-                             :method  "POST"})))
-         (.then http/format-response))))
+     (let [path (path-for route)]
+       (tap> [:POST path body])
+       (-> (js/fetch path
+                     (if (instance? js/FormData body)
+                       (j/lit {:method  "POST"
+                               :headers {"Accept" "application/transit+json"}
+                               :body    body})
+                       (j/lit {:headers {"Accept"       "application/transit+json"
+                                         "Content-type" "application/transit+json"}
+                               :body    (t/write body)
+                               :method  "POST"})))
+           (.then http/format-response)))))
 
 #?(:cljs
    (defn GET [route & args]
-     (-> (js/fetch (apply path-for route args)
-                   (j/lit {:headers {"Accept"       "application/transit+json"
+     
+     (-> (apply path-for route args)
+         (js/fetch (j/lit {:headers {"Accept"       "application/transit+json"
                                      "Content-type" "application/transit+json"}
                            :method  "GET"}))
          (.then http/format-response))))

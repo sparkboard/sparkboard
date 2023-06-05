@@ -99,6 +99,16 @@
     .p-body {
         @apply p-2 sm:p-6
     }
+    .rotate-4s {
+        animation: rotation 4s infinite linear;
+    }
+    .rotate-3s {
+        animation: rotation 3s infinite linear;
+    }
+    .rotate-2s {
+        animation: rotation 2s infinite linear;
+    }
+      
 }
 @layer components {
 
@@ -112,8 +122,12 @@
 
     .form-text {
         @apply
-        flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2
-        text-sm ring-offset-background placeholder:text-muted-foreground
+        flex h-10 w-full rounded-lg px-3 py-2
+
+        bg-background
+        border border-foreground
+        
+        text-sm ring-offset-background placeholder:text-foreground/80
         disabled:cursor-not-allowed disabled:opacity-50
     }
 
@@ -134,8 +148,8 @@
 
     .btn-light {
         @apply
-        ring-offset-background border
-        hover:border-primary/30 focus-visible:border-primary/30
+        ring-offset-background
+        border  border-primary hover:border-primary/60 focus-visible:border-primary/60
         text-primary
     }
 
@@ -180,18 +194,26 @@
         @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-body text-card-foreground p-body
     }
     .loading-bar {
-        background: repeating-linear-gradient(270deg, rgb(219 234 254), rgb(84 157 255), rgb(219 234 254));
-        background-size: 200% 200%;
-        background-position: 0 200%;
-        animation: gradient 5s infinite;
+        background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0),rgba(255, 255, 255, 0), rgb(84 157 255),rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));
+        background-size: 200% 100%;
+        animation: gradient 3s infinite;
         animation-fill-mode: forwards;
         animation-timing-function: linear;
+        z-index: 50;
 
         @apply absolute inset-0
     }
 
 }
 
+  @keyframes rotation {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
 @keyframes gradient {
     0% {
         background-position: 0 0;
