@@ -25,7 +25,7 @@
          (some-> (variants variant) query-params/query-string))))
 
 (defn filtered [?pattern]
-  (filter (if @?pattern 
+  (filter (if @?pattern
             #(re-find (re-pattern @?pattern) (:entity/title %))
             identity)))
 
@@ -75,17 +75,17 @@
 (def logo-url "/images/logo-2023.png")
 
 (defn logo [classes]
-  [:svg {:class classes
-         :viewBox "0 0 551 552"
-         :version "1.1"
-         :xmlns "http://www.w3.org/2000/svg"
+  [:svg {:class       classes
+         :viewBox     "0 0 551 552"
+         :version     "1.1"
+         :xmlns       "http://www.w3.org/2000/svg"
          :xmlns-xlink "http://www.w3.org/1999/xlink"
-         :xml-space "preserve"
-         :fill "currentColor"
-         :style {:fill-rule "evenodd"
-                 :clip-rule "evenodd"
-                 :stroke-linejoin "round"
-                 :stroke-miterlimit 2}}
+         :xml-space   "preserve"
+         :fill        "currentColor"
+         :style       {:fill-rule         "evenodd"
+                       :clip-rule         "evenodd"
+                       :stroke-linejoin   "round"
+                       :stroke-miterlimit 2}}
    [:path {:d "M282,0.5L550.5,0.5L550.5,273.5L462.5,273.5L462.5,313L539.5,313L539.5,551.5L308,551.5L308,507.5L252,507.5L252,548.5L0.5,548.5L0.5,313L105,313L105,279L6.5,279L6.5,6.5L234.5,6.5L234.5,77L282,77L282,0.5ZM283,1.5L283,78L233.5,78L233.5,7.5L7.5,7.5L7.5,278L106,278L106,314L1.5,314L1.5,547.5L251,547.5L251,506.5L309,506.5L309,550.5L538.5,550.5L538.5,314L461.5,314L461.5,272.5L549.5,272.5L549.5,1.5L283,1.5ZM305,24L527,24L527,249L461.5,249L461.5,202.5L439,202.5L439,249L380,249L380,176.5L305,176.5L305,100L353,100L353,78L305,78L305,24ZM306,25L306,77L354,77L354,101L306,101L306,175.5L381,175.5L381,248L438,248L438,201.5L462.5,201.5L462.5,248L526,248L526,25L306,25ZM30.5,30L210.5,30L210.5,78L173,78L173,100L210.5,100L210.5,144.5L233.5,144.5L233.5,100L283,100L283,176.5L188.5,176.5L188.5,278L218,278L218,206.5L283,206.5L283,272.5L349,272.5L349,302.5L380,302.5L380,272.5L439,272.5L439,314L309,314L309,484L251,484L251,314L136,314L136,278L159,278L159,255.5L136,255.5L136,221.5L106,221.5L106,255.5L30.5,255.5L30.5,30ZM31.5,31L31.5,254.5L105,254.5L105,220.5L137,220.5L137,254.5L160,254.5L160,279L137,279L137,313L252,313L252,483L308,483L308,313L438,313L438,273.5L381,273.5L381,303.5L348,303.5L348,273.5L282,273.5L282,207.5L219,207.5L219,279L187.5,279L187.5,175.5L282,175.5L282,101L234.5,101L234.5,145.5L209.5,145.5L209.5,101L172,101L172,77L209.5,77L209.5,31L31.5,31ZM305,206.5L349,206.5L349,249L305,249L305,206.5ZM306,207.5L306,248L348,248L348,207.5L306,207.5ZM328.5,333.5L439,333.5L439,400.5L461.5,400.5L461.5,333.5L519.5,333.5L519.5,532L328.5,532L328.5,506.5L361.5,506.5L361.5,484L328.5,484L328.5,333.5ZM329.5,334.5L329.5,483L362.5,483L362.5,507.5L329.5,507.5L329.5,531L518.5,531L518.5,334.5L462.5,334.5L462.5,401.5L438,401.5L438,334.5L329.5,334.5ZM32.5,345L106,345L106,374L136,374L136,345L220.5,345L220.5,484L181,484L181,506.5L220.5,506.5L220.5,517.5L32.5,517.5L32.5,345ZM33.5,346L33.5,516.5L219.5,516.5L219.5,507.5L180,507.5L180,483L219.5,483L219.5,346L137,346L137,375L105,375L105,346L33.5,346Z"}]
    [:path {:d "M283,1.5L549.5,1.5L549.5,272.5L461.5,272.5L461.5,314L538.5,314L538.5,550.5L309,550.5L309,506.5L251,506.5L251,547.5L1.5,547.5L1.5,314L106,314L106,278L7.5,278L7.5,7.5L233.5,7.5L233.5,78L283,78L283,1.5ZM32.5,345L32.5,517.5L220.5,517.5L220.5,506.5L181,506.5L181,484L220.5,484L220.5,345L136,345L136,374L106,374L106,345L32.5,345ZM30.5,30L30.5,255.5L106,255.5L106,221.5L136,221.5L136,255.5L159,255.5L159,278L136,278L136,314L251,314L251,484L309,484L309,314L439,314L439,272.5L380,272.5L380,302.5L349,302.5L349,272.5L283,272.5L283,206.5L218,206.5L218,278L188.5,278L188.5,176.5L283,176.5L283,100L233.5,100L233.5,144.5L210.5,144.5L210.5,100L173,100L173,78L210.5,78L210.5,30L30.5,30ZM305,206.5L305,249L349,249L349,206.5L305,206.5ZM305,24L305,78L353,78L353,100L305,100L305,176.5L380,176.5L380,249L439,249L439,202.5L461.5,202.5L461.5,249L527,249L527,24L305,24ZM328.5,333.5L328.5,484L361.5,484L361.5,506.5L328.5,506.5L328.5,532L519.5,532L519.5,333.5L461.5,333.5L461.5,400.5L439,400.5L439,333.5L328.5,333.5Z"}]])
 
@@ -101,10 +101,10 @@
   (v/x
     [:div.flex.items-center.justify-left
      [:svg.animate-spin
-      {:xmlns "http://www.w3.org/2000/svg"
-       :fill "none"
+      {:xmlns   "http://www.w3.org/2000/svg"
+       :fill    "none"
        :viewBox "0 0 24 24"
-       :class class}
+       :class   class}
       [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
       [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]]))
 
@@ -113,7 +113,7 @@
     :in-progress (loader " h-4 w-4 text-blue-600 ml-2")
     [:div
      {:style (case type
-               (:error :invalid) {:color invalid-text-color
+               (:error :invalid) {:color            invalid-text-color
                                   :background-color invalid-bg-color}
                nil)}
      content]))
@@ -132,13 +132,13 @@
 (defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class))
 
 (defn text-props [?field]
-  {:id (field-id ?field)
-   :value (or @?field "")
+  {:id        (field-id ?field)
+   :value     (or @?field "")
    :on-change (fn [e]
                 (js/console.log (.. e -target -checked))
                 ((forms/change-handler ?field) e))
-   :on-blur (forms/blur-handler ?field)
-   :on-focus (forms/focus-handler ?field)})
+   :on-blur   (forms/blur-handler ?field)
+   :on-focus  (forms/focus-handler ?field)})
 
 (defn show-field-messages [?field]
   (when-let [messages (seq (forms/visible-messages ?field))]
@@ -177,7 +177,7 @@
        (show-field-messages ?field)])))
 
 (defn prose-props [?field]
-  {:value (or (:prose/string @?field) "")
+  {:value     (or (:prose/string @?field) "")
    :on-change (fn [e]
                 (reset! ?field
                         (when-let [value (u/guard (.. ^js e -target -value) seq)]
@@ -193,14 +193,14 @@
   (let [messages (forms/visible-messages ?field)]
     [:<>
      [:input.h-5.w-5.rounded.border-gray-300.text-primary.focus:outline-primary
-      (v/props {:type "checkbox"
-                :on-blur (forms/blur-handler ?field)
-                :on-focus (forms/focus-handler ?field)
+      (v/props {:type      "checkbox"
+                :on-blur   (forms/blur-handler ?field)
+                :on-focus  (forms/focus-handler ?field)
                 :on-change #(reset! ?field (.. ^js % -target -checked))
-                :checked (or @?field false)
-                :class (if (:invalid (forms/types messages))
-                         "outline-default"
-                         "outline-invalid")})]
+                :checked   (or @?field false)
+                :class     (if (:invalid (forms/types messages))
+                             "outline-default"
+                             "outline-invalid")})]
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
@@ -210,11 +210,11 @@
     (el ?field (dissoc props :el))))
 
 (defn filter-field [?field & [attrs]]
-  (show-field ?field (merge {:class "pr-9"
+  (show-field ?field (merge {:class         "pr-9"
                              :wrapper-class "flex-grow sm:flex-none"
-                             :postfix (if (:loading? attrs)
-                                        (icon:loading)
-                                        (icon:search))}
+                             :postfix       (if (:loading? attrs)
+                                              (icon:loading)
+                                              (icon:search))}
                             (dissoc attrs :loading? :error))))
 
 
@@ -235,25 +235,38 @@
    [:path {:d "M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z"}]
    [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
 
+(defn use-loaded-image [url fallback]
+  (let [!loaded (h/use-state #{})]
+    (h/use-effect (fn []
+                    (when url
+                      (let [^js img (doto (js/document.createElement "img")
+                                      (j/assoc-in! [:style :display] "none")
+                                      (js/document.body.appendChild))]
+                        (j/assoc! img
+                                  :onload #(do (swap! !loaded conj url)
+                                               (.remove img))
+                                  :src url)))) [url])
+    (if (contains? @!loaded url)
+      url
+      fallback)))
+
 (defview image-field [?field]
-  (let [value (asset-src @?field :card) 
+  (let [src (asset-src @?field :card)
         loading? (:loading? ?field)
-        ;; TODO handle existing state (for edit mode)
-        preview (h/use-state (:init ?field))
-        selected-blob (h/use-state nil)]
+        !selected-blob (h/use-state nil)
+        thumbnail (use-loaded-image src @!selected-blob)]
     [:div.flex.flex-col.gap-2
      (show-label ?field)
      [:label.block.w-24.h-24.relative.rounded.cursor-pointer.flex.items-center.justify-center
-      (v/props {:class ["border-primary/20"
+      (v/props {:class ["border-primary/20 bg-background"
                         "text-muted-foreground hover:text-foreground"]
                 :for   (field-id ?field)}
-               (cond loading? {:class "loading-bar border-2"}
-                     value  {:class "bg-contain bg-no-repeat bg-center"
-                             :style {:background-image (css-url value)}}
-                     :else  {:class "bg-background border-2"}))
-      (cond loading? (when-let [blob @selected-blob]
-                       [:img.w-12.h-12.rounded-full.loading-bar.relative {:style {:background-image (css-url blob)}}])
-            value nil
+               (if thumbnail
+                 {:class "bg-contain bg-no-repeat bg-center shadow-inner"
+                  :style {:background-image (css-url thumbnail)}}
+                 {:class "border-2"}))
+      (cond loading? [:img.w-12.h-12.rounded-full.loading-bar.relative]
+            src nil
             :else (upload-icon "w-6 h-6 m-auto"))
       [:input.hidden
        {:id        (field-id ?field)
@@ -262,7 +275,7 @@
         :on-change (fn [e]
                      (forms/touch! ?field)
                      (when-let [file (j/get-in e [:target :files 0])]
-                       (reset! selected-blob (js/URL.createObjectURL file))
+                       (reset! !selected-blob (js/URL.createObjectURL file))
                        (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
                                                                             (.append "files" file)))
                                          :form ?field]
@@ -286,9 +299,9 @@
   [results]
   (if (map? results)
     results
-    {:error (first (keep :error results))
+    {:error    (first (keep :error results))
      :loading? (boolean (seq (filter :loading? results)))
-     :value (mapv :value results)}))
+     :value    (mapv :value results)}))
 
 (defview show-async-status
   "Given a map of {:loading?, :error}, shows a loading bar and/or error message"
@@ -327,7 +340,7 @@
                                   [view]))
         query-result (when query
                        (ws/watch (:route params)))
-        {:as result
+        {:as                 result
          [view query params] :value} (-> [view-result query-result {:value params}]
                                          merge-async
                                          ws/use-cached-result)]
@@ -378,12 +391,12 @@
                 (update :validators conj validator))))
   (forms/set-global-meta!
     (tr
-      {:account/email {:el text-field
-                       :props {:type "email"
-                               :placeholder :tr/email}
-                       :validators [email-validator]}
-       :account/password {:el text-field
-                          :props {:type "password"
-                                  :placeholder :tr/password}
+      {:account/email    {:el         text-field
+                          :props      {:type        "email"
+                                       :placeholder :tr/email}
+                          :validators [email-validator]}
+       :account/password {:el         text-field
+                          :props      {:type        "password"
+                                       :placeholder :tr/password}
                           :validators [(forms/min-length 8)]}}))
   )

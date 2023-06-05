@@ -80,9 +80,8 @@
 
 (defn new!
   [{:keys [account]} _ org]
-  (let [org (-> org
-                conform
-                (dl/new-entity :org :by (:db/id account)))
+  (let [org (-> (dl/new-entity org :org :by (:db/id account))
+                conform)
         member (-> {:member/entity  org
                     :member/account (:db/id account)
                     :member/roles   #{:role/owner}}
