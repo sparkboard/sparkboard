@@ -67,21 +67,21 @@
                    q
                    [:entity/id org])})
 
-(defn normalize-and-validate [org]
+(defn conform [org]
   (-> org
-      (u/update-some-paths [:entity/domain :domain/name] domain/qualify-domain)
+      (domain/conform-and-validate)
       (validate/assert (-> (mu/optional-keys :org/as-map)
                            (mu/assoc :entity/domain (mu/optional-keys :domain/as-map))))))
 
 (defn edit! [{:keys [account]} params org]
-  (let [org (normalize-and-validate (assoc org :entity/id (:org params)))]
+  (let [org (conform (assoc org :entity/id (:org params)))]
     (db/transact! [org])
     {:body org}))
 
 (defn new!
   [{:keys [account]} _ org]
   (let [org (-> org
-                normalize-and-validate
+                conform
                 (dl/new-entity :org :by (:db/id account)))
         member (-> {:member/entity  org
                     :member/account (:db/id account)

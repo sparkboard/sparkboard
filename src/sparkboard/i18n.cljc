@@ -30,7 +30,10 @@
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
 See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict                                             ;; grouped for easy generation of multiple languages
-    {:tr/boards                          {:en "Boards"
+    {:tr/domain-already-registered       {:en "Domain already registered"
+                                          :fr "Domaine déjà enregistré"
+                                          :es "Dominio ya registrado"},
+     :tr/boards                          {:en "Boards"
                                           :fr "Tableaux"
                                           :es "Tableros"},
      :tr/projects                        {:en "Projects"
@@ -200,8 +203,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                                                  vector))
                       #?(:cljs (doto (str "Missing" resource-ids) js/console.warn))))
   ([resource-ids resource-args] (or (tempura/tr {:dict dict} (locales) (cond-> resource-ids
-                                                                         (keyword? resource-ids)
-                                                                         vector) resource-args)
+                                                                               (keyword? resource-ids)
+                                                                               vector) resource-args)
                                     #?(:cljs (doto (str "Missing" resource-ids) js/console.warn)))))
 
 (def supported-locales (into #{} (map name) (keys dict)))
@@ -227,15 +230,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      (tap> (vector :set-locale locale (some? (:account req))))
      (vd/assert locale :i18n/locale)
      (if (:account req)
-       (do (re-db.api/transact! [{:db/id (:db/id (:account req))
+       (do (re-db.api/transact! [{:db/id          (:db/id (:account req))
                                   :account/locale locale}])
            {:status 200
-            :body {:i18n/locale locale}})
-       {:status 200
-        :body {:i18n/locale locale}
-        :cookies {"locale" {:value locale
+            :body   {:i18n/locale locale}})
+       {:status  200
+        :body    {:i18n/locale locale}
+        :cookies {"locale" {:value   locale
                             :max-age 31536000
-                            :path "/"}}})))
+                            :path    "/"}}})))
 
 #?(:clj
    (defn wrap-i18n [f] [f]

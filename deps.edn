@@ -6,11 +6,11 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.12"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "cab8732f2e6315774a637d15dd4f376d089005bd"}
+                                  :git/sha "a344eef72f6727b970b5e1936fcdd2df05376970"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "afb8f05e9cf45e83812d7f25bee9a284b7f53334"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
-                                       :git/sha "5228b5a3c1423d96c77cc3ef47fda7ca0ebeb080"}
+                                       :git/sha "e0b37b301428a486937c63ef148a8272ea44733e"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
