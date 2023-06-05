@@ -42,6 +42,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/tags                            {:en "Tags"
                                           :fr "Mots clés"
                                           :es "Etiquetas"},
+     :tr/my-stuff                        {:en "My stuff"
+                                          :fr "Mes trucs"
+                                          :es "Mis cosas"},
      :tr/sign-in                         {:en "Sign in"
                                           :fr "Connexion"
                                           :es "Iniciar sesión"},
@@ -196,7 +199,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                                                  (keyword? resource-ids)
                                                                  vector))
                       #?(:cljs (doto (str "Missing" resource-ids) js/console.warn))))
-  ([resource-ids resource-args] (or (tempura/tr {:dict dict} (locales) resource-ids resource-args)
+  ([resource-ids resource-args] (or (tempura/tr {:dict dict} (locales) (cond-> resource-ids
+                                                                         (keyword? resource-ids)
+                                                                         vector) resource-args)
                                     #?(:cljs (doto (str "Missing" resource-ids) js/console.warn)))))
 
 (def supported-locales (into #{} (map name) (keys dict)))

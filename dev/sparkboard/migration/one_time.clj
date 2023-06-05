@@ -226,33 +226,6 @@
 
 (declare coll-entities)
 
-(def !existing-ids
-  (delay
-    (-> #{}
-        ;; domain names
-        (into (map :domain/name (coll-entities :domain/as-map)))
-
-        (into (mapcat #(let [kind (keyword (name %))]
-                         (for [m (read-coll %)]
-                           (try (to-uuid kind (:_id m))
-                                (catch Exception e
-                                  (clojure.pprint/pprint :failed %)
-                                  (throw e))))))
-              (keys (dissoc mongo-colls :account/as-map)))
-
-        (into (map #(to-uuid :account (:localId %)) (read-coll :account/as-map)))
-
-        (into (comp (mapcat :posts)
-                    (mapcat (fn [{:as post :keys [comments]}]
-                              (cons (to-uuid :post (:_id post))
-                                    (map (comp (partial :comment to-uuid) :_id) comments)))))
-              (read-coll :discussion/as-map))
-
-        (into (mapcat #(let [kind (keyword (name %))]
-                         (for [[k _] (read-coll %)]
-                           (to-uuid kind k))))
-              (keys firebase-colls)))))
-
 (defn uuid-ref-as [kind as]
   (fn [m k v]
     (-> m
@@ -276,6 +249,11 @@
         coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)]
     (and ref
          (not ((unique-ids-from coll-k) (to-uuid kind ref))))))
+
+(defn missing-uuid? [the-uuid]
+  (let [kind (sb.dl/uuid->kind the-uuid)
+        coll-k (keyword (name kind) "as-map")]
+    (not (contains? (unique-ids-from coll-k) the-uuid))) )
 
 (defn keep-entity [coll-k]
   (fn [m a v]
@@ -353,15 +331,15 @@
 (defn parse-domain-target [s]
   ;; TODO - domains that point to URLs should be "owned" by someone
   (if (str/starts-with? s "redirect:")
-    {:domain/kind :domain.kind/url
-     :domain/url (-> (subs s 9)
-                          (str/replace "%3A" ":")
-                          (str/replace "%2F" "/"))}
-    (let [{:keys [kind id-string ref]} (parse-sparkboard-id s)]
+    {:domain/url (-> (subs s 9)
+                     (str/replace "%3A" ":")
+                     (str/replace "%2F" "/"))}
+    
+    (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id s)]
       (if (= [kind id-string] [:site "account"])
-        {:domain/kind :domain.kind/url
-         :domain/url "https://account.sparkboard.com"}
-        {:domain/kind :domain.kind/entity}))))
+        {:domain/url "https://account.sparkboard.com"}
+        (when-not (missing-uuid? uuid)
+          {:entity/_domain {:entity/id uuid}})))))
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 
@@ -739,7 +717,7 @@
                                      "team-id" (& (xf (partial vector :slack.team/id))
                                                   (rename :slack.channel/slack.team))]
               :domain/as-map [::prepare (partial mapv (fn [[name target]]
-                                                        (merge {:domain/name (unmunge-domain name)}
+                                                        (merge {:domain/name (unmunge-domain name)} 
                                                                (parse-domain-target target))))]
               :collection/as-map [::prepare (partial flat-map :entity/id (partial to-uuid :collection))
                                   ::always (add-kind :collection)
@@ -772,8 +750,7 @@
                                                     ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
                                                      "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
                                                      "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
-                          "domain" (& (xf (partial vector :domain/name))
-                                      (rename :entity/domain))]
+                          "domain" rm]
               :account/as-map [::prepare (fn [accounts]
                                            (->> accounts
                                                 (keep (fn [{:as account [provider] :providerUserInfo}]

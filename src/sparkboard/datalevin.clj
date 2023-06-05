@@ -103,7 +103,3 @@
                       :created-at (now)
                       :kind       kind})
       (cond-> by (assoc :entity/created-by by))))
-
-(comment 
-  (db/where [:asset/link-failed?])
-  )
