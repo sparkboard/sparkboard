@@ -76,12 +76,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Account lookup
 
-(def exposed-account-keys [:db/id
-                           :entity/id
-                           :account/display-name
-                           :account/email
-                           :account/photo
-                           :account/locale])
+(def pull-account [:db/id
+                   :entity/id
+                   :account/display-name
+                   :account/email
+                   {:account/photo [:asset/id]}
+                   :account/locale])
 (defn account-cookie [id expires]
   {:value (t/write id)
    :http-only true
@@ -110,7 +110,7 @@
                                                            t/read)
                                                    (catch Exception e
                                                      (tap> [:ACCOUNT-ERROR e])))]
-                          (try (not-empty (db/pull exposed-account-keys account-id))
+                          (try (not-empty (db/pull pull-account account-id))
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))
 
@@ -126,7 +126,7 @@
       ;; TODO
       ;; - verify that this value is encoded properly somewhere,
       ;; - in client, set this into :env/account
-      (assoc :body {:account (db/pull exposed-account-keys account-id)})))
+      (assoc :body {:account (db/pull pull-account account-id)})))
 
 (defn login!
   "POST handler. Returns 200/OK with account data if successful."

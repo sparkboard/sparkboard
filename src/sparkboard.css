@@ -9,32 +9,32 @@
 
     :root {
         --font-sans: ui-sans-serif;
-        --background: 0 0% 100%;
-        --foreground: 222.2 47.4% 11.2%;
+        --back: 0 0% 100%;
+        --txt: 222.2 47.4% 11.2%;
 
         --muted: 210 40% 96.1%;
-        --muted-foreground: 215.4 16.3% 46.9%;
+        --muted-txt: 215.4 16.3% 46.9%;
 
         --popover: 0 0% 100%;
-        --popover-foreground: 222.2 47.4% 11.2%;
+        --popover-txt: 222.2 47.4% 11.2%;
 
         --card: 0 0% 100%;
-        --card-foreground: 222.2 47.4% 11.2%;
+        --card-txt: 222.2 47.4% 11.2%;
 
         --border: 214.3 31.8% 91.4%;
         --input: 214.3 31.8% 91.4%;
 
         --primary: 222.2 47.4% 11.2%;
-        --primary-foreground: 210 40% 98%;
+        --primary-txt: 210 40% 98%;
 
         --secondary: 210 40% 96.1%;
-        --secondary-foreground: 222.2 47.4% 11.2%;
+        --secondary-txt: 222.2 47.4% 11.2%;
 
         --accent: 210 40% 96.1%;
-        --accent-foreground: 222.2 47.4% 11.2%;
+        --accent-txt: 222.2 47.4% 11.2%;
 
         --destructive: 0 94% 65%;
-        --destructive-foreground: 210 40% 98%;
+        --destructive-txt: 210 40% 98%;
 
         --ring: 215 20.2% 65.1%;
 
@@ -43,32 +43,32 @@
 
     @media (prefers-color-scheme: dark) {
         body {
-            --background: 224 71% 4%;
-            --foreground: 213 31% 91%;
+            --back: 69 64% 4%;
+            --txt: 211 21% 76%;
 
             --muted: 223 47% 11%;
-            --muted-foreground: 215.4 16.3% 56.9%;
+            --muted-txt: 215.4 16.3% 56.9%;
 
             --popover: 224 71% 4%;
-            --popover-foreground: 215 20.2% 65.1%;
+            --popover-txt: 215 20.2% 65.1%;
 
             --card: 0 0% 20%;
-            --card-foreground: 0 0% 50%%;
+            --card-txt: 0 0% 50%%;
 
             --border: 216 34% 17%;
             --input: 216 34% 17%;
 
             --primary: 210 40% 98%;
-            --primary-foreground: 222.2 47.4% 1.2%;
+            --primary-txt: 222.2 47.4% 1.2%;
 
             --secondary: 222.2 47.4% 11.2%;
-            --secondary-foreground: 210 40% 98%;
+            --secondary-txt: 210 40% 98%;
 
             --accent: 216 34% 17%;
-            --accent-foreground: 210 40% 98%;
+            --accent-txt: 210 40% 98%;
 
             --destructive: 0 63% 31%;
-            --destructive-foreground: 210 40% 98%;
+            --destructive-txt: 210 40% 98%;
 
             --ring: 216 34% 17%;
 
@@ -83,7 +83,7 @@
     }
 
     body {
-        @apply bg-background text-foreground;
+        @apply bg-back text-txt;
         font-feature-settings: "rlig" 1, "calt" 1;
     }
 }
@@ -124,10 +124,10 @@
         @apply
         flex h-10 w-full rounded-lg px-3 py-2
 
-        bg-background
-        border border-foreground
+        bg-back
+        border border-txt
         
-        text-sm ring-offset-background placeholder:text-foreground/80
+        text-sm ring-offset-back placeholder:text-muted-txt
         disabled:cursor-not-allowed disabled:opacity-50
     }
 
@@ -148,14 +148,14 @@
 
     .btn-light {
         @apply
-        ring-offset-background
+        ring-offset-back
         border  border-primary hover:border-primary/60 focus-visible:border-primary/60
         text-primary
     }
 
     .btn-primary {
         @apply
-        ring-offset-background bg-primary text-primary-foreground
+        ring-offset-back bg-primary text-primary-txt
         hover:bg-primary/90 focus-visible:bg-primary/90
         disabled:bg-primary
     }
@@ -182,16 +182,16 @@
     }
     .entity-header {
         @apply
-         border-b border-secondary px-body py-3 gap-3 flex items-stretch
+         bg-muted border-b border-secondary px-body py-6 gap-3 flex items-stretch
     }
     hr {
         @apply border-b border-secondary
     }
-    .header-title {
+    .entity-header h3 {
         @apply items-center hidden sm:inline-flex flex-grow
     }
     .card-grid {
-        @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-body text-card-foreground p-body
+        @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-body text-card-txt p-body
     }
     .loading-bar {
         background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0),rgba(255, 255, 255, 0), rgb(84 157 255),rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));

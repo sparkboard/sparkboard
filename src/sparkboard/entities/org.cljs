@@ -3,6 +3,7 @@
             [inside-out.forms :as forms]
             [re-db.reactive :as r]
             [sparkboard.entities.domain :as domain]
+            [sparkboard.entities.entity :as entity]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
@@ -12,14 +13,14 @@
 (ui/defview list-view [params]
   (ui/with-form [?pattern (when ?filter (str "(?i)" ?filter))]
     [:<>
-     [:div.entity-header
-      [:h3.header-title :tr/orgs]
+     [:div.entity-header 
+      [:h3 :tr/orgs]
       [ui/filter-field ?filter]
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]]
      (into [:div.card-grid]
            (comp
             (ui/filtered ?pattern)
-            (map ui/entity-card))
+            (map entity/card))
            (:data params))]))
 
 (ui/defview read-view [params]
@@ -32,14 +33,14 @@
           q (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
           result (when q (ws/once [:org/search (assoc params :q q)]))]
       [:div
-       [:div.entity-header
+       [:div.entity-header 
         {:style {:background-image (ui/css-url (ui/asset-src background :page))}}
         (when logo
           [:img.h-10.w-10
            {:src (ui/asset-src logo :logo)}]) 
-        [:h3.header-title title]
-        [:a.inline-flex.items-center {:class "hover:text-foreground/60"
-                                      :href  (routes/entity org :edit)}
+        [:h3 title]
+        [:a.inline-flex.items-center {:class "hover:text-txt/60"
+                                      :href  (entity/route org :org/edit)}
          [ui/icon:settings]]
         #_[:div
 
@@ -48,7 +49,7 @@
                          (routes/POST :org/delete params))}
            ]
         [ui/filter-field ?q {:loading? (:loading? result)}]
-        [:a.btn.btn-light {:href (routes/path-for :org/new-board params)} :tr/new-board]]
+        [:a.btn.btn-light {:href (entity/route org :org/new-board)} :tr/new-board]]
        
        [:div.p-body (ui/show-prose description)]
        [ui/error-view result]
@@ -58,10 +59,10 @@
                :when          (seq results)]
            [:<>
             [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
-            [:div.card-grid (map ui/entity-card results)]])
-         [:div.card-grid (map ui/entity-card (:board/_org org))])])))
+            [:div.card-grid (map entity/card results)]])
+         [:div.card-grid (map entity/card (:board/_org org))])])))
 
-(def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-background relative")
+(def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative")
 (def button-el :button.btn.btn-primary.px-6.py-3.self-start)
 
 (comment 
@@ -84,9 +85,8 @@
                     :init org
                     :form/auto-submit #(routes/POST [:org/edit params] %)]
     [:<> 
-     [:div.entity-header.text-center
-     [:a.flex.gap-2 {:class "hover:text-foreground/70"
-                     :href (routes/path-for :org/read params)} 
+     [:h3.text-center
+     [:a.flex.gap-2.hover:text-muted-txt {:href (routes/path-for :org/read params)} 
       [ui/icon:arrow-back "h-6 w-6"]
       :tr/back ]]
      [:div {:class form-classes}
@@ -99,32 +99,26 @@
        [ui/input-label {} :tr/images ]
        [:div.flex.gap-6
         (ui/image-field ?logo)
-        (ui/image-field ?background)]]
-      [:a.btn.btn-light.flex-shrink.p-4.flex.self-start {:href (routes/path-for :org/read params)}
-       :tr/done]]]))
+        (ui/image-field ?background)]]]]))
 
 (ui/defview new-view [params]
-  ;; TODO
-  ;; page layout (narrow, centered)
-  ;; typography
   (forms/with-form [!org (u/prune
                           {:entity/title ?title
                            :entity/domain ?domain})
                     :required [?title ?domain]
                     :validators {?domain [domain/domain-valid-string
                                           (domain/domain-availability-validator)]}]
-    [:form {:class form-classes}
-     {:on-submit (fn [e]
+    [:form
+     {:class form-classes
+      :on-submit (fn [e]
                    (j/call e :preventDefault)
                    (ui/with-submission [result (routes/POST :org/new @!org)
                                         :form !org]
                      (routes/set-path! :org/read {:org (:entity/id result)})))}
-     [:h2.text-2xl :tr/new-org] 
+     [:h2.text-2xl :tr/new-org]
      (ui/show-field ?title {:label :tr/title})
      (domain/show-domain-field ?domain)
-
      (ui/show-field-messages !org)
-
      [button-el {:type     "submit"
                  :disabled (not (forms/submittable? !org))}
       :tr/create]]))

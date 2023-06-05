@@ -76,22 +76,6 @@
 
 (defn css-url [s] (str "url(" s ")"))
 
-(defview entity-card
-  {:key :entity/id}
-  [{:as entity :keys [entity/title
-                      image/logo
-                      image/background]}]
-  [:a.shadow.p-3.block.relative.overflow-hidden.rounded.bg-card.pt-24.text-card-foreground
-   {:href (routes/entity entity :read)}
-   [:div.absolute.inset-0.bg-cover.bg-center.h-24.border-b-2
-    {:class "bg-card-foreground/20 border-card-foreground/05"
-     :style {:background-image (css-url (asset-src background :card))}}]
-   (when logo
-     [:div.absolute.inset-0.bg-white.bg-center.bg-contain.rounded.h-10.w-10.mx-3.border.shadow.mt-16
-      {:class "border-card-foreground/30"
-       :style {:background-image (css-url (asset-src logo :logo))}}])
-   [:div.font-medium.leading-snug.text-md.mt-5.mb-2 title]])
-
 (def logo-url "/images/logo-2023.png")
 
 (defn logo [classes]
@@ -110,7 +94,7 @@
    [:path {:d "M283,1.5L549.5,1.5L549.5,272.5L461.5,272.5L461.5,314L538.5,314L538.5,550.5L309,550.5L309,506.5L251,506.5L251,547.5L1.5,547.5L1.5,314L106,314L106,278L7.5,278L7.5,7.5L233.5,7.5L233.5,78L283,78L283,1.5ZM32.5,345L32.5,517.5L220.5,517.5L220.5,506.5L181,506.5L181,484L220.5,484L220.5,345L136,345L136,374L106,374L106,345L32.5,345ZM30.5,30L30.5,255.5L106,255.5L106,221.5L136,221.5L136,255.5L159,255.5L159,278L136,278L136,314L251,314L251,484L309,484L309,314L439,314L439,272.5L380,272.5L380,302.5L349,302.5L349,272.5L283,272.5L283,206.5L218,206.5L218,278L188.5,278L188.5,176.5L283,176.5L283,100L233.5,100L233.5,144.5L210.5,144.5L210.5,100L173,100L173,78L210.5,78L210.5,30L30.5,30ZM305,206.5L305,249L349,249L349,206.5L305,206.5ZM305,24L305,78L353,78L353,100L305,100L305,176.5L380,176.5L380,249L439,249L439,202.5L461.5,202.5L461.5,249L527,249L527,24L305,24ZM328.5,333.5L328.5,484L361.5,484L361.5,506.5L328.5,506.5L328.5,532L519.5,532L519.5,333.5L461.5,333.5L461.5,400.5L439,400.5L439,333.5L328.5,333.5Z"}]])
 
 (defn icon:checkmark [& [classes]]
-  [:svg.h-5.w-5 {:classes classes :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
+  [:svg {:class classes :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
    [:path {:fill-rule "evenodd" :d "M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" :clip-rule "evenodd"}]])
 
 (def invalid-border-color "red")
@@ -139,7 +123,7 @@
      content]))
 
 (defn auto-submit-handler [?field]
-  (fn [e]
+  (fn [& _]
     (let [!form  (->> (iterate forms/parent ?field)
                       ( take-while identity)
                       last)]
@@ -149,7 +133,7 @@
                                        (submit! @!form)))))))
 
 (defview input-label [props content]
-  [:label.block.text-muted-foreground.text-sm.font-medium
+  [:label.block.text-oreground-muted.text-sm.font-medium
    (v/props props)
    content])
 
@@ -185,7 +169,7 @@
   (when-let [postfix (or (:postfix props) 
                          (:postfix (meta ?field))
                          (and (:loading? ?field)
-                              [icon:loading "w-4 h-4 text-foreground/40"]))]
+                              [icon:loading "w-4 h-4 text-txt/40"]))]
     [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix]))
 
 (defn text-field
@@ -249,7 +233,7 @@
   (show-field ?field (merge {:class         "pr-9"
                              :wrapper-class "flex-grow sm:flex-none"
                              :postfix       (if (:loading? attrs)
-                                              (icon:loading "w-4 h-4 rotate-3s text-foreground/40")
+                                              (icon:loading "w-4 h-4 rotate-3s text-txt/40")
                                               (icon:search))}
                             (dissoc attrs :loading? :error))))
 
@@ -293,18 +277,17 @@
         thumbnail (use-loaded-image src @!selected-blob)]
     [:div.flex.flex-col.gap-3.relative.shadow-sm.border.p-3.rounded-lg
      (when loading?
-           [icon:loading "w-4 h-4 absolute top-0 right-0 text-foreground/40"])
+           [icon:loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
      (show-label ?field)
      [:label.block.w-32.h-32.relative.rounded.cursor-pointer.flex.items-center.justify-center
-      (v/props {:class ["border-primary/20 bg-background"
-                        "text-muted-foreground hover:text-foreground"]
+      (v/props {:class ["border-primary/20 bg-back"
+                        "text-muted-txt hover:text-txt"]
                 :for   (field-id ?field)}
-               (if thumbnail
+               (when thumbnail
                  {:class "bg-contain bg-no-repeat bg-center shadow-inner"
-                  :style {:background-image (css-url thumbnail)}}
-                 {:class "border-2"}))
+                  :style {:background-image (css-url thumbnail)}}))
       
-      (when-not src
+      (when-not thumbnail
         (upload-icon "w-6 h-6 m-auto"))
       
       [:input.hidden
@@ -319,8 +302,8 @@
                         (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
                                                                              (.append "files" file)))
                                           :form ?field]
-                          (reset! ?field asset))))
-                    (auto-submit-handler ?field))}]]
+                          (reset! ?field asset)
+                          ((auto-submit-handler ?field))))))}]]
      (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])

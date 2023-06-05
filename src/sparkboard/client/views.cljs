@@ -1,77 +1,100 @@
 (ns sparkboard.client.views
-  (:require
-    ["react" :as react]
-    ["@radix-ui/react-dropdown-menu" :as dm]
-    [applied-science.js-interop :as j]
-    [clojure.pprint :refer [pprint]]
-    [clojure.string :as str]
-    [inside-out.forms :as forms :refer [with-form]]
-    [re-db.api :as db]
-    [re-db.reactive :as r]
-    [sparkboard.i18n :as i18n :refer [tr]]
-    [sparkboard.routes :as routes]
-    [sparkboard.util :as u]
-    [sparkboard.views.ui :as ui]
-    [sparkboard.websockets :as ws]
-    [promesa.core :as p]
-    [yawn.hooks :as h :refer [use-state]]
-    [sparkboard.views.layouts :as layouts]
-    [yawn.view :as v]
-    [inside-out.forms :as forms]))
+  (:require ["@radix-ui/react-dropdown-menu" :as dm]
+            [inside-out.forms :as forms]
+            [promesa.core :as p]
+            [re-db.api :as db]
+            [sparkboard.i18n :as i18n]
+            [sparkboard.routes :as routes]
+            [sparkboard.views.layouts :as layouts]
+            [sparkboard.views.ui :as ui]
+            [yawn.hooks :as h]
+            [yawn.view :as v]))
 
 ;; TODO
 ;; - separate register screen
 ;; - password signin:
 ;;   - new-account flow, reset-pass, verify new email, check-pass-start-session
 
+(defn icon:languages [& [classes]]
+  (v/x
+   [:svg {:xmlns "http://www.w3.org/2000/svg"
+          :viewBox "0 0 20 20"
+          :fill "currentColor"
+          :className classes}
+    [:path
+     {:d
+      "M7.75 2.75a.75.75 0 00-1.5 0v1.258a32.987 32.987 0 00-3.599.278.75.75 0 10.198 1.487A31.545 31.545 0 018.7 5.545 19.381 19.381 0 017 9.56a19.418 19.418 0 01-1.002-2.05.75.75 0 00-1.384.577 20.935 20.935 0 001.492 2.91 19.613 19.613 0 01-3.828 4.154.75.75 0 10.945 1.164A21.116 21.116 0 007 12.331c.095.132.192.262.29.391a.75.75 0 001.194-.91c-.204-.266-.4-.538-.59-.815a20.888 20.888 0 002.333-5.332c.31.031.618.068.924.108a.75.75 0 00.198-1.487 32.832 32.832 0 00-3.599-.278V2.75z"}]
+    [:path
+     {:fillRule "evenodd"
+      :d
+      "M13 8a.75.75 0 01.671.415l4.25 8.5a.75.75 0 11-1.342.67L15.787 16h-5.573l-.793 1.585a.75.75 0 11-1.342-.67l4.25-8.5A.75.75 0 0113 8zm2.037 6.5L13 10.427 10.964 14.5h4.073z"
+      :clipRule "evenodd"}]]))
+
+(def menu-content-classes (v/classes ["rounded bg-popover text-popover-txt "
+                                      "shadow-md ring-1 ring-txt/10"
+                                      "focus:outline-none z-50"]))
+
+(def menu-portal (v/from-element :el dm/Portal))
+(def menu-content (v/from-element :el dm/Content {:sideOffset        0
+                                                  :collision-padding 16
+                                                  :class             menu-content-classes}))
+(defn menu-item [props & children]
+  (let [checks? (contains? props :selected)]
+    (v/x [:div (v/props {:class ["block px-4 py-2 text-sm relative"
+                                 "data-[selected=true]:font-bold data-[selected=true]:cursor-default"
+                                 "cursor-pointer data-[selected=false]:hover:bg-popover-txt/10"
+                                 (when checks? "pl-8")]
+                         :data-selected (:selected props)}
+                        (dissoc props :selected))
+          (when checks?
+            [:span.absolute.inset-y-0.left-0.flex.items-center.pl-2.text-txt.inline-flex
+             {:class "data-[selected=false]:hidden"
+              :data-selected (:selected props)}
+             [ui/icon:checkmark "h-4 w-4"]])
+          children])))
+ 
+
+(defn lang-menu-content []
+  (let [current-locale (i18n/current-locale)
+        on-select      (fn [v]
+                         (p/do (routes/POST :account/set-locale v)
+                               (js/window.location.reload)))]
+    (map (fn [lang]
+           (let [selected (= lang current-locale)]
+             [menu-item {:selected selected
+                         :on-click (when-not selected #(on-select lang))}
+              (get-in i18n/dict [lang :meta/lect])]))
+         (keys i18n/dict))) )
+
 (ui/defview header:lang []
-  [:div.flex.flex-row
+  [:div.flex.flex-row.items-center {:class "hover:text-txt-faded"}
    [:el dm/Root
-    [:el.btn.btn-transp.h-7 dm/Trigger
-     [:svg {:class "h-5 w-5" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor"}
-      [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802"}]]]
-    [:el dm/Portal
+    [:el.focus-visible:outline-none dm/Trigger
+     [icon:languages "w-5 h-5"]]
+    [menu-portal 
+     [menu-content
+      (lang-menu-content)]]]])
 
-     (let [current-locale (i18n/current-locale)
-           on-select (fn [v]
-                       (p/do (routes/POST :account/set-locale v)
-                             (js/window.location.reload)))]
-       (into [:el dm/Content {:sideOffset 0
-                              :collision-padding 16
-                              :class ["rounded bg-popover text-popover-foreground "
-                                      "shadow-md ring-1 ring-foreground/10"
-                                      "focus:outline-none z-50"]}]
-             (map (fn [lang]
-                    (let [current? (= lang current-locale)]
-                      [:div {:class ["block px-4 py-2 text-sm pr-8 relative"
-                                     (if current?
-                                       "font-bold cursor-default"
-                                       "cursor-pointer hover:bg-popover-foreground/10")]
-                             :on-click (when-not current? #(on-select lang))}
-                       (get-in i18n/dict [lang :meta/lect])
-                       (when current?
-                         [:span.absolute.inset-y-0.right-0.flex.items-center.pr-2.text-foreground
-                          [ui/icon:checkmark]])]))
-                  (keys i18n/dict))))]]])
+(ui/defview header:account []
+  (if-let [account (db/get :env/account)]
+    [:el dm/Root 
+     [:el.focus-visible:outline-none dm/Trigger 
+      [:img.rounded-full.h-8.w-8 {:src (ui/asset-src (:account/photo account) :logo)}]]
+     [menu-portal 
+      [menu-content 
+       [menu-item {:on-click #(routes/set-path! :account/logout)} :tr/logout]
 
-(ui/defview header:account [{[route-id] :route}]
-  (if (db/get :env/account)
-    [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/path-for :account/logout)} :tr/logout]
+       [:el dm/Sub 
+        [:el.px-4.py-2 dm/SubTrigger [icon:languages "w-5 h-5"]]
+        [menu-portal 
+         [:el dm/SubContent {:class menu-content-classes}
+          (lang-menu-content)]]]]]]
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for :account/sign-in)} :tr/sign-in]))
 
-(ui/defview header [params]
-  [:div.flex.flex-row.w-full.items-center.h-10.z-50.relative.px-body
-   {:class "bg-secondary text-foreground"}
 
-   [:a {:href "/"}
-    (ui/logo "w-5 h-5")
-    #_[:img.w-5.h-5 {:src ui/logo-url}]]
-   [:div.flex-grow]
-   [header:lang]
-   [header:account params]
-   [:div.rough-divider]])
+
+
 
 (defn http-ok? [rsp]
   (= 200 (.-status rsp)))
@@ -96,7 +119,7 @@
 
 (defn account:sign-in-terms []
   (ui/x
-    [:p.px-8.text-center.text-sm.text-muted-foreground :tr/sign-in-agree-to
+    [:p.px-8.text-center.text-sm {:class "text-txt/70"} :tr/sign-in-agree-to
      [:a.gray-link {:href "/documents/terms-of-service"} :tr/tos] ","
      [:a.gray-link {:target "_blank"
                     :href "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} :tr/cookie-policy]
@@ -136,7 +159,7 @@
        [:div.relative
         [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
         [:div.relative.flex.justify-center.text-xs.uppercase
-         [:span.bg-background.px-2.text-muted-foreground :tr/or]]]
+         [:span.bg-back.px-2.text-muted-txt :tr/or]]]
        [account:sign-in-with-google]
        [account:sign-in-terms]])))
 

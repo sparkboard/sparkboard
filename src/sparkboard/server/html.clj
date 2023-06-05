@@ -48,7 +48,7 @@
      (layouts/two-col
       [:img.mx-auto {:class "w-1/2" :src "/images/error-2023.svg"}]
       [:h1.text-3xl.md:text-5xl title]
-      [:p.text-muted-foreground description]
+      [:p.text-muted-txt description]
       [:div.flex.items-center.justify-center.gap-x-6
        [:a.btn.btn-primary.p-4.text-lg {:href "/"} "← Home"]]
       (when detail

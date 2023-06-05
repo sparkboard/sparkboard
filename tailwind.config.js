@@ -7,35 +7,38 @@ module.exports = {
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",
-                background: "hsl(var(--background))",
-                foreground: "hsl(var(--foreground))",
+                back: "hsl(var(--back))",
+                txt: {
+                    DEFAULT: "hsl(var(--txt))",
+                    faded: "hsl(var(--txt) / 70%)"
+                },
                 primary: {
                     DEFAULT: "hsl(var(--primary))",
-                    foreground: "hsl(var(--primary-foreground))",
+                    txt: "hsl(var(--primary-txt))",
                 },
                 secondary: {
                     DEFAULT: "hsl(var(--secondary))",
-                    foreground: "hsl(var(--secondary-foreground))",
+                    txt: "hsl(var(--secondary-txt))",
                 },
                 destructive: {
                     DEFAULT: "hsl(var(--destructive))",
-                    foreground: "hsl(var(--destructive-foreground))",
+                    txt: "hsl(var(--destructive-txt))",
                 },
                 muted: {
                     DEFAULT: "hsl(var(--muted))",
-                    foreground: "hsl(var(--muted-foreground))",
+                    txt: "hsla(var(--muted-txt), 70%)",
                 },
                 accent: {
                     DEFAULT: "hsl(var(--accent))",
-                    foreground: "hsl(var(--accent-foreground))",
+                    txt: "hsl(var(--accent-txt))",
                 },
                 popover: {
                     DEFAULT: "hsl(var(--popover))",
-                    foreground: "hsl(var(--popover-foreground))",
+                    txt: "hsl(var(--popover-txt))",
                 },
                 card: {
                     DEFAULT: "hsl(var(--card))",
-                    foreground: "hsl(var(--card-foreground))",
+                    txt: "hsl(var(--card-txt))",
                 },
             },
             borderRadius: {
