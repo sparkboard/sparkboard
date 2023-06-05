@@ -33,74 +33,74 @@
   :POST     - symbol pointing to a (server) function accepting [req, params & body]
   :GET      - symbol pointing to a (server) function accepting a request map"
   (r/reaction
-    ["" {"/" (E :home {:public true
-                       :view `views/home
-                       })
-         "/ws" (E :websocket {:public true
-                              :GET 'sparkboard.server.core/ws-handler})
-         "/upload" (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
-         ["/assets/" [bidi/uuid :asset/id]] (E :asset/serve {:public true 
-                                                             :GET 'sparkboard.assets/serve-asset})
-         ["/documents/" :file/name] (E :markdown/file
-                                       {:GET 'sparkboard.server.core/serve-markdown
-                                        :public true})
-         "/slack/" {"invite-offer" (E :slack/invite-offer
-                                      {:view `slack.client/invite-offer})
-                    "link-complete" (E :slack/link-complete
-                                       {:view `slack.client/link-complete})}
-         "/login" (E :account/sign-in {:view `views/account:sign-in
-                                       :header? false
-                                       :POST 'sparkboard.server.accounts/login!
-                                       :public true})
-         "/logout" (E :account/logout {:GET 'sparkboard.server.accounts/logout
-                                       :public true})
-         "/locale/set" (E :account/set-locale {:POST 'sparkboard.i18n/set-locale!})
-         "/oauth2" {"/google" {"/launch" (E :oauth2.google/launch {})
-                               "/callback" (E :oauth2.google/callback {})
-                               "/landing" (E :oauth2.google/landing
-                                             {:public true
-                                              :GET 'sparkboard.server.accounts/google-landing})}}
+    ["" {"/"                                (E :home {:public true
+                                                      :view   `views/home
+                                                      })
+         "/ws"                              (E :websocket {:public true
+                                                           :GET    'sparkboard.server.core/ws-handler})
+         "/upload"                          (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
+         ["/assets/" [bidi/uuid :asset/id]] (E :asset/serve {:public true
+                                                             :GET    'sparkboard.assets/serve-asset})
+         ["/documents/" :file/name]         (E :markdown/file
+                                               {:GET    'sparkboard.server.core/serve-markdown
+                                                :public true})
+         "/slack/"                          {"invite-offer"  (E :slack/invite-offer
+                                                                {:view `slack.client/invite-offer})
+                                             "link-complete" (E :slack/link-complete
+                                                                {:view `slack.client/link-complete})}
+         "/login"                           (E :account/sign-in {:view    `views/account:sign-in
+                                                                 :header? false
+                                                                 :POST    'sparkboard.server.accounts/login!
+                                                                 :public  true})
+         "/logout"                          (E :account/logout {:GET    'sparkboard.server.accounts/logout
+                                                                :public true})
+         "/locale/set"                      (E :account/set-locale {:POST 'sparkboard.i18n/set-locale!})
+         "/oauth2"                          {"/google" {"/launch"   (E :oauth2.google/launch {})
+                                                        "/callback" (E :oauth2.google/callback {})
+                                                        "/landing"  (E :oauth2.google/landing
+                                                                       {:public true
+                                                                        :GET    'sparkboard.server.accounts/google-landing})}}
 
-         "/domain-availability" (E :domain/availability
-                                   {:GET `domain/availability})
-         ["/a/" [bidi/uuid :account]]  (E :account/read 
-                                          {:query `account/read-query 
-                                           :view `account/read-view})
-         "/o" {"/list"                  (E :org/list
-                                           {:query `org/list-query
-                                            :view  `org/list-view})
-               "/new"                    (E :org/new
-                                           {:view `org/new-view
-                                            :POST `org/new!})
-               ["/" [bidi/uuid :org]] {""           (E :org/read
-                                                       {:query `org/read-query
-                                                        :view  `org/read-view})
-                                       "/settings"  (E :org/edit
-                                                       {:view  `org/edit-view
-                                                        :query `org/edit-query
-                                                        :POST  `org/edit!})
-                                       "/delete"    (E :org/delete
-                                                       {:POST `org/delete!})
-                                       "/new-board" (E :org/new-board
-                                                       {:view `board/new-view
-                                                        :POST `board/new!})
-                                       "/search"    (E :org/search
-                                                       {:query `org/search-query})}}
-         ["/b/" [bidi/uuid :board]] {"" (E :board/read
-                                           {:query `board/read-query
-                                            :view `board/read-view})
-                                     "/new-project" (E :project/new
-                                                       {:view `project/new-view
-                                                        :POST `project/new!})
-                                     "/register" (E :board/register
-                                                    {:view `board/register-view
-                                                     :POST `board/register!})}
-         ["/p/" [bidi/uuid :project]] {"" (E :project/read
-                                             {:query `project/read-query
-                                              :view `project/read-view})}
-         ["/m/" [bidi/uuid :member]] {"" (E :member/read
-                                            {:view `member/read-view
-                                             :query `member/read-query})}}]))
+         "/domain-availability"             (E :domain/availability
+                                               {:GET `domain/availability})
+         ["/a/" [bidi/uuid :account]]       (E :account/read
+                                               {:query `account/read-query
+                                                :view  `account/read-view})
+         "/o"                               {"/list"                (E :org/list
+                                                                       {:query `org/list-query
+                                                                        :view  `org/list-view})
+                                             "/new"                 (E :org/new
+                                                                       {:view `org/new-view
+                                                                        :POST `org/new!})
+                                             ["/" [bidi/uuid :org]] {""           (E :org/read
+                                                                                     {:query `org/read-query
+                                                                                      :view  `org/read-view})
+                                                                     "/settings"  (E :org/edit
+                                                                                     {:view  `org/edit-view
+                                                                                      :query `org/edit-query
+                                                                                      :POST  `org/edit!})
+                                                                     "/delete"    (E :org/delete
+                                                                                     {:POST `org/delete!})
+                                                                     "/new-board" (E :org/new-board
+                                                                                     {:view `board/new-view
+                                                                                      :POST `board/new!})
+                                                                     "/search"    (E :org/search
+                                                                                     {:query `org/search-query})}}
+         ["/b/" [bidi/uuid :board]]         {""             (E :board/read
+                                                               {:query `board/read-query
+                                                                :view  `board/read-view})
+                                             "/new-project" (E :project/new
+                                                               {:view `project/new-view
+                                                                :POST `project/new!})
+                                             "/register"    (E :board/register
+                                                               {:view `board/register-view
+                                                                :POST `board/register!})}
+         ["/p/" [bidi/uuid :project]]       {"" (E :project/read
+                                                   {:query `project/read-query
+                                                    :view  `project/read-view})}
+         ["/m/" [bidi/uuid :member]]        {"" (E :member/read
+                                                   {:view  `member/read-view
+                                                    :query `member/read-query})}}]))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
@@ -128,7 +128,7 @@
 (comment
   (sparkboard.impl.routes/resolve-endpoint
     {:query `org/list-query
-     :view `org/list-view
+     :view  `org/list-view
      })
   (match-path "/o/index"))
 
@@ -160,21 +160,21 @@
    (defn POST [route body]
      (-> (js/fetch (path-for route)
                    (if (instance? js/FormData body)
-                     (j/lit {:method "POST"
+                     (j/lit {:method  "POST"
                              :headers {"Accept" "application/transit+json"}
-                             :body body})
-                     (j/lit {:headers {"Accept" "application/transit+json"
+                             :body    body})
+                     (j/lit {:headers {"Accept"       "application/transit+json"
                                        "Content-type" "application/transit+json"}
-                             :body (t/write body)
-                             :method "POST"})))
+                             :body    (t/write body)
+                             :method  "POST"})))
          (.then http/format-response))))
 
 #?(:cljs
    (defn GET [route & args]
      (-> (js/fetch (apply path-for route args)
-                   (j/lit {:headers {"Accept" "application/transit+json"
+                   (j/lit {:headers {"Accept"       "application/transit+json"
                                      "Content-type" "application/transit+json"}
-                           :method "GET"}))
+                           :method  "GET"}))
          (.then http/format-response))))
 
 (defn tag [tag endpoint]

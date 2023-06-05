@@ -20,7 +20,9 @@
 (defn read-query [params]
   (db/pull `[~@entity/fields
              :board/registration-open?
-             {:project/_board [*]}
-             {:board/org ~entity/fields}
-             {:member/_board [*]}]
+             {:board/org [~@entity/fields
+                          :org/show-org-tab?]}
+
+             {:project/_board ~entity/fields}
+             {:member/_board ~entity/fields}]
            [:entity/id (:board params)]))
