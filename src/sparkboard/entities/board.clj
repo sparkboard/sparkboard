@@ -2,7 +2,8 @@
   (:require [re-db.api :as db]
             [sparkboard.datalevin :as sd]
             [sparkboard.entities.entity :as entity]
-            [sparkboard.validate :as validate]))
+            [sparkboard.validate :as validate]
+            [sparkboard.entities.member :as member]))
 
 (defn new! [req params board]
   (validate/assert board [:map {:closed true} :entity/title])
@@ -17,7 +18,10 @@
   ;; create membership
   )
 
-(defn read-query [params]
+(defn read-query 
+  {:authorize (fn [req params]
+                (member/read-and-log! (:board params) (:db/id  (:account req))))}
+  [params]
   (db/pull `[~@entity/fields
              :board/registration-open?
              {:board/org [~@entity/fields

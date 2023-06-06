@@ -20,11 +20,13 @@
                                                                                          {:asset/provider [:s3/bucket-host]}]}]}]}]
                               [:entity/id (:account params)])
                      :member/_account
-                     (map  #(lift-key % :member/entity)))]
+                     (map  #(lift-key % :member/entity)))
+        recents (->> entities
+                     (filter :member/last-visited)
+                     (sort-by :member/last-visited #(compare %2 %1))
+                     (take 5))]
     (->> entities
+         (remove (comp (into #{} (map :entity/id) recents) :entity/id))
          (group-by :entity/kind)
-         (merge {:recents (->> entities 
-                               (filter :member/last-visited)
-                               (sort-by :member/last-visited #(compare %2 %1))
-                               (take 5))}))))
+         (merge {:recents recents}))))
 
