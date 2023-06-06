@@ -87,5 +87,5 @@
   ;; wraps :view keys with lazy/loadable (and resolves aliases, with :as-alias support)
   [tag endpoint]
   `(~'bidi.bidi/tag
-     (delay (resolve-endpoint ~endpoint))
-     ~tag))
+    (delay (resolve-endpoint ~endpoint))
+    ~tag))

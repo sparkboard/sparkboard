@@ -4,6 +4,7 @@
             [sparkboard.datalevin :as dl]
             [sparkboard.entities.domain :as domain]
             [sparkboard.entities.entity :as entity]
+            [sparkboard.entities.member :as member]
             [sparkboard.util :as u]
             [sparkboard.validate :as validate]))
 
@@ -31,10 +32,13 @@
                                {:image/logo [:asset/id]}
                                {:image/background [:asset/id]}]))))
 
-(defn read-query [params]
+(defn read-query 
+  {:authorize (fn [req params] 
+                (member/read-and-log! (:org params) (:db/id (:account req))))}
+  [params]
   (db/pull `[~@entity/fields
              {:board/_org ~entity/fields}]
-           [:entity/id (:org params)]))
+           (dl/resolve-id (:org params))))
 
 (defn search-query [{:as         params 
                      :keys       [org]

@@ -334,6 +334,8 @@
 
 (def sb-member
   {:roles/as-map {s- :member/as-map}
+   :member/last-visited (merge s/instant 
+                               {s- 'inst?})
    :member/entity+account (merge {:db/tupleAttrs [:member/entity :member/account]}
                                  s/unique-value)
    :member/_entity {s- [:or 
@@ -386,6 +388,7 @@
                                          (? :member/newsletter-subscription?)
                                          (? :member/tags)
                                          (? :member/roles)
+                                         (? :member/last-visited)
 
                                          ;; TODO, backfill?
                                          (? :entity/created-at)

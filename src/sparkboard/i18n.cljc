@@ -33,6 +33,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     {:tr/domain-already-registered       {:en "Domain already registered"
                                           :fr "Domaine déjà enregistré"
                                           :es "Dominio ya registrado"},
+     :tr/recently-viewed                 {:en "Recently viewed"
+                                          :fr "Récemment consulté"
+                                          :es "Visto recientemente"}, 
      :tr/images                          {:en "Images"
                                           :fr "Images"
                                           :es "Imágenes"},

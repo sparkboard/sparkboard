@@ -46,6 +46,12 @@
 (defn q [query & inputs]
   (apply dl/q query @conn inputs))
 
+(defn pull [expr id] (dl/pull @conn expr id))
+(defn entid [id] (dl/entid @conn id))
+
+(defn resolve-id [id] (entid (if (uuid? id)
+                               [:entity/id id]
+                               id)))
 
 (defn entity [id] (dl/entity @conn id))
 

@@ -99,6 +99,10 @@
 (defn serve-markdown [_ {:keys [file/name]}]
   (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
+(defn authorize! [f req params]
+  (when-let [authorize (:authorize (meta f))]
+    (authorize req params)))
+
 
 (def route-handler
   (fn [{:as req :keys [uri]}]
@@ -108,7 +112,9 @@
                             public
                             GET
                             POST]} (routes/match-path uri)
-          params (u/assoc-seq params :query-params (update-keys (:query-params req) keyword))
+          params (-> params 
+                     (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
+                     (u/assoc-some :account (:account req)))
           method (:request-method req)
           authed? (:account req)]
       (cond
@@ -117,10 +123,13 @@
                                                                          :match match
                                                                          :status 401}))
 
-        (and GET (= method :get)) (GET req params)
-        (and POST (= method :post)) (POST req params (:body-params req (:body req)))
-
-        (and query (data-req? req)) (some-> (query params) ring.http/ok)
+        (and GET (= method :get)) (do (authorize! GET req params)
+                                      (GET req params))
+        (and POST (= method :post)) (do (authorize! POST req params) 
+                                        (POST req params (:body-params req (:body req))))
+        (and query (data-req? req)) (do (authorize! query req params)
+                                        (some-> (query params) ring.http/ok))
+        
         (or query view) (server.html/app-page
                           {:tx [(assoc env/client-config :db/id :env/config)
                                 (assoc (:account req) :db/id :env/account)]})
@@ -137,8 +146,11 @@
       (println e)
       {:error (ex-message e)})))
 
-(defn resolve-query [[_ params :as route]]
-  (let [{[_ matched-params] :route :keys [$query] :as match} (routes/match-path route)]
+(defn resolve-query [[_ params :as qvec]]
+  (let [{[_ matched-params] :route :keys [$query query] :as match} (routes/match-path qvec)
+        context (meta qvec)]
+    (when (::sync/watch context)
+      (authorize! query context (:params match)))
     (when $query
       ($txs ($query (merge {} params matched-params))))))
 

@@ -13,7 +13,9 @@
       [:div.btn.btn-light {:on-click #(routes/set-path! :org/new)} :tr/new-org]
       [views/header:account]]
      
-     (for [[title entities] [[:tr/orgs (:org data)]
+     
+     (for [[title entities] [[:tr/recently-viewed (:recents data)]
+                             [:tr/orgs (:org data)]
                              [:tr/boards (:board data)]
                              [:tr/projects (:project data)]]
            :let [results (sequence (ui/filtered ?pattern) entities)]

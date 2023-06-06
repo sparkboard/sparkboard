@@ -34,8 +34,7 @@
   :GET      - symbol pointing to a (server) function accepting a request map"
   (r/reaction
     ["" {"/"                                (E :home {:public true
-                                                      :view   `views/home
-                                                      })
+                                                      :view   `views/home})
          "/ws"                              (E :websocket {:public true
                                                            :GET    'sparkboard.server.core/ws-handler})
          "/upload"                          (E :asset/upload {:POST 'sparkboard.assets/upload-handler})

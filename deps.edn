@@ -6,7 +6,7 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.12"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "7ca8c6dde41724cea7a3562dfe72aa05adc97a49"}
+                                  :git/sha "4370410fa015a6b1116cf03133bdcab6fbfe8c08"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "ecd4cc1ac7d77fba453322536bb0c45018040984"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
@@ -22,7 +22,7 @@
         lambdaisland/uri {:mvn/version "1.13.95"}
         commons-codec/commons-codec {:mvn/version "1.15"}
         applied-science/js-interop {:mvn/version "0.4.2"}
-        clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
+        clojure.java-time/clojure.java-time {:mvn/version "1.2.0"}
         dev.weavejester/medley {:mvn/version "1.5.0"}
         clj-gatling/clj-gatling {:mvn/version "0.17.6"}
         com.taoensso/tempura {:mvn/version "1.5.3"}

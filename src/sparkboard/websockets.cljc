@@ -22,7 +22,8 @@
                                       (if (some-> @!ch httpkit/open?)
                                         (httpkit/send! @!ch (pack message))
                                         (println :sending-message-before-open message)))}
-               context {:channel channel}]
+               context {:channel channel
+                        :account (:account req)}]
            (httpkit/as-channel req
                                {:init (partial reset! !ch)
                                 :on-open sync/on-open
