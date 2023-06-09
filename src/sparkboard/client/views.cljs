@@ -66,8 +66,9 @@
               (get-in i18n/dict [lang :meta/lect])]))
          (keys i18n/dict))) )
 
-(ui/defview header:lang []
-  [:div.flex.flex-row.items-center {:class "hover:text-txt-faded"}
+(ui/defview header:lang [classes]
+  [:div.inline-flex.flex-row.items-center {:class [ "hover:text-txt-faded"
+                                                   classes]}
    [:el dm/Root
     [:el.focus-visible:outline-none dm/Trigger
      [icon:languages "w-5 h-5"]]
@@ -82,6 +83,7 @@
       [:img.rounded-full.h-8.w-8 {:src (ui/asset-src (:account/photo account) :logo)}]]
      [menu-portal 
       [menu-content 
+       [menu-item {:on-click #(routes/set-path! :home)} :tr/home]
        [menu-item {:on-click #(routes/set-path! :account/logout)} :tr/logout]
 
        [:el dm/Sub 
@@ -137,7 +139,7 @@
                            :account/password (?password :init "")}
                  :required [?email ?password]]
     (let [!step (h/use-state :email)]
-      [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-md.p-4
+      [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-sm.px-4
        {:on-submit (fn [^js e]
                      (.preventDefault e)
                      (case @!step
@@ -146,7 +148,7 @@
                        :password (p/let [res (routes/POST :account/sign-in @!account)]
                                    (js/console.log "res" res)
                                    (prn :res res))))}
-       [:h1.text-3xl.font-medium.mb-4.text-center :tr/welcome]
+       
 
        [:div.flex.flex-col.gap-2
         (ui/show-field ?email)
@@ -159,18 +161,20 @@
        [:div.relative
         [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
         [:div.relative.flex.justify-center.text-xs.uppercase
-         [:span.bg-back.px-2.text-muted-txt :tr/or]]]
+         [:span.bg-secondary.px-2.text-muted-txt :tr/or]]]
        [account:sign-in-with-google]
        [account:sign-in-terms]])))
 
-(ui/defview ^:no-header account:sign-in [params]
-  (layouts/two-col
-    [:img.mx-auto {:class "my-6 w-1/4 md:w-1/2"
-                   :src ui/logo-url}]
-    [:div.p-4.flex.justify-end
-     [header:lang]]
-    [:div.flex.flex-grow
-     [account:sign-in-form params]]))
+(ui/defview account:sign-in [params]
+  [:div.h-screen.flex.flex-col 
+   
+   [:div.flex.flex-col.flex-grow.items-center.max-w-sm.mt-10.relative.mt-24.mx-auto
+    {:class ["bg-secondary rounded-t-lg border-t border-r border-l border-txt/05"]}
+    [:div.w-full.p-3.flex.items-end
+     [:div.flex-grow]
+     [header:lang "absolute top-2 right-2"]]
+    [:h1.text-3xl.font-medium.text-center.mt-2.mb-6 :tr/welcome]
+    [account:sign-in-form params]]])
 
 (ui/defview redirect [to]
   (h/use-effect #(routes/set-path! to)))

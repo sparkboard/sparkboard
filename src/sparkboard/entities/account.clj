@@ -24,9 +24,8 @@
         recents (->> entities
                      (filter :member/last-visited)
                      (sort-by :member/last-visited #(compare %2 %1))
-                     (take 5))]
+                     (take 8))]
     (->> entities
-         (remove (comp (into #{} (map :entity/id) recents) :entity/id))
          (group-by :entity/kind)
          (merge {:recents recents}))))
 

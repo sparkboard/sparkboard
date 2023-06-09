@@ -154,7 +154,9 @@
                 ((forms/change-handler ?field) e))
    :on-blur   (compseq (forms/blur-handler ?field)
                        (auto-submit-handler ?field))
-   :on-focus  (forms/focus-handler ?field)})
+   :on-focus  (forms/focus-handler ?field)
+   :on-key-down #(when (= "Enter" (.-key ^js %))
+                   ((auto-submit-handler ?field) %))})
 
 (defn show-field-messages [?field]
   (when-let [messages (seq (forms/visible-messages ?field))]
@@ -424,3 +426,5 @@
                                        :placeholder :tr/password}
                           :validators [(forms/min-length 8)]}}))
   )
+(def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative")
+(def button :button.btn.btn-primary.px-6.py-3.self-start)

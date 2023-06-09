@@ -19,10 +19,7 @@
 
 (defn edit-query [params]
   ;; all the settings that can be changed
-  (db/pull '[*
-             {:image/logo [:asset/id]}
-             {:image/background [:asset/id]}
-             {:entity/domain [:domain/name]}] 
+  (db/pull `[ ~@entity/fields] 
            [:entity/id (:org params)]))
 
 

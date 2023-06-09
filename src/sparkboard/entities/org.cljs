@@ -2,6 +2,7 @@
   (:require [applied-science.js-interop :as j]
             [inside-out.forms :as forms]
             [re-db.reactive :as r]
+            [sparkboard.client.views :as views]
             [sparkboard.entities.domain :as domain]
             [sparkboard.entities.entity :as entity]
             [sparkboard.i18n :refer [tr]]
@@ -23,6 +24,20 @@
             (map entity/card))
            (:data params))]))
 
+(defn entity-header [{:as   entity
+                      :keys [entity/title
+                             entity/description
+                             image/logo
+                             image/background]} & children]
+  (into [:div.entity-header
+         {:style {:background-image (ui/css-url (ui/asset-src background :page))}}
+         (when logo
+           [:a.contents {:href (routes/entity entity :read)}
+            [:img.h-10.w-10
+             {:src (ui/asset-src logo :logo)}]])
+         [:a.contents {:href (routes/entity entity :read)} [:h3 title]]] 
+        (concat children [[views/header:account]])))
+
 (ui/defview read-view [params]
   (forms/with-form [_ ?q]
     (let [{:as   org
@@ -33,24 +48,28 @@
           q (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
           result (when q (ws/once [:org/search (assoc params :q q)]))]
       [:div
-       [:div.entity-header 
-        {:style {:background-image (ui/css-url (ui/asset-src background :page))}}
-        (when logo
-          [:img.h-10.w-10
-           {:src (ui/asset-src logo :logo)}]) 
-        [:h3 title]
-        [:a.inline-flex.items-center {:class "hover:text-txt/60"
-                                      :href  (entity/route org :org/edit)}
-         [ui/icon:settings]]
-        #_[:div
-
-           {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                     title "?"))
-                         (routes/POST :org/delete params))}
-           ]
-        [ui/filter-field ?q {:loading? (:loading? result)}]
-        [:a.btn.btn-light {:href (entity/route org :org/new-board)} :tr/new-board]]
        
+       (entity-header org 
+                      [:a.inline-flex.items-center {:class "hover:text-txt/60"
+                                                    :href  (entity/route org :org/edit)}
+                       [ui/icon:settings]]
+                      #_[:div
+
+                         {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                                   title "?"))
+                                       (routes/POST :org/delete params))}]
+                      [ui/filter-field ?q {:loading? (:loading? result)}]
+                      [:a.btn.btn-light {:href (entity/route org :org/new-board)} :tr/new-board])
+       
+       [:div.p-body.whitespace-pre
+        "This is the landing page for an organization. Its purpose is to provide a quick overview of the organization and list its boards.
+         - show hackathons by default. sort-by date, group-by year.
+         - tabs: hackathons, projects, [about / external tab(s)]
+         - search
+         
+         "
+        ]
+
        [:div.p-body (ui/show-prose description)]
        [ui/error-view result]
 
@@ -65,14 +84,8 @@
 (def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative")
 (def button-el :button.btn.btn-primary.px-6.py-3.self-start)
 
-(comment 
-  (let [METADATA {:entity/id "foo"}]
-    (macroexpand 
-     '(forms/with-form [!org {:entity/id ?id}
-                        :init METADATA])))
-  )
-
 (ui/defview edit-view [{:as params org :data}]
+  (prn (:entity/title org))
   (forms/with-form [!org (u/keep-changes org 
                                          {:entity/id          (:entity/id org)
                                           :entity/title       (?title :label :tr/title)
@@ -85,10 +98,8 @@
                     :init org
                     :form/auto-submit #(routes/POST [:org/edit params] %)]
     [:<> 
-     [:h3.text-center
-     [:a.flex.gap-2.hover:text-muted-txt {:href (routes/path-for :org/read params)} 
-      [ui/icon:arrow-back "h-6 w-6"]
-      :tr/back ]]
+     (entity-header org)
+     
      [:div {:class form-classes}
       
       (ui/show-field-messages !org)
@@ -99,7 +110,8 @@
        [ui/input-label {} :tr/images ]
        [:div.flex.gap-6
         (ui/image-field ?logo)
-        (ui/image-field ?background)]]]]))
+        (ui/image-field ?background)]]
+      [:a.btn.btn-primary.p-4 {:href (routes/entity org :read)} :tr/done]]]))
 
 (ui/defview new-view [params]
   (forms/with-form [!org (u/prune

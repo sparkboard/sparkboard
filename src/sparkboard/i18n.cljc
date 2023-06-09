@@ -33,9 +33,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     {:tr/domain-already-registered       {:en "Domain already registered"
                                           :fr "Domaine déjà enregistré"
                                           :es "Dominio ya registrado"},
-     :tr/recently-viewed                 {:en "Recently viewed"
-                                          :fr "Récemment consulté"
-                                          :es "Visto recientemente"}, 
+     :tr/recent                          {:en "Recent"
+                                          :fr "Récents"
+                                          :es "Recientes"}, 
+     :tr/show-more                       {:en "Show more"
+                                          :fr "Afficher plus"
+                                          :es "Mostrar más"},
+     :tr/show-less                       {:en "Show less"
+                                          :fr "Afficher moins"
+                                          :es "Mostrar menos"},
      :tr/images                          {:en "Images"
                                           :fr "Images"
                                           :es "Imágenes"},
@@ -207,6 +213,13 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/too-short                       {:en "Too short"
                                           :fr "Trop court"
                                           :es "Demasiado corto"}
+     :tr/all                             {:en "All"
+                                          :fr "Tous"
+                                          :es "Todos"}
+     :tr/home                            {:en "Home"
+                                          :fr "Accueil"
+                                          :es "Inicio"}
+     
      }))
 
 (defn tr

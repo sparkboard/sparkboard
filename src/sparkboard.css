@@ -41,19 +41,19 @@
         --radius: 0.5rem;
     }
 
-    @media (prefers-color-scheme: dark) {
+    /* @media (prefers-color-scheme: dark) {
         body {
-            --back: 69 64% 4%;
+            --back: 0 0 51%;
             --txt: 211 21% 76%;
 
             --muted: 223 47% 11%;
-            --muted-txt: 215.4 16.3% 56.9%;
+            --muted-txt: 0 0 20%;
 
             --popover: 224 71% 4%;
             --popover-txt: 215 20.2% 65.1%;
 
-            --card: 0 0% 20%;
-            --card-txt: 0 0% 50%%;
+            --card: 0 0% 40%;
+            --card-txt: 0 0% 95%;
 
             --border: 216 34% 17%;
             --input: 216 34% 17%;
@@ -74,7 +74,7 @@
 
             --radius: 0.5rem;
         }
-    }
+    } */
 }
 
 @layer base {
@@ -99,6 +99,17 @@
     .p-body {
         @apply p-2 sm:p-6
     }
+    .mx-body {
+        @apply mx-2 sm:mx-6
+    }
+
+    .my-body {
+        @apply my-2 sm:my-6
+    }
+
+    .m-body {
+        @apply m-2 sm:m-6
+    }
     .rotate-4s {
         animation: rotation 4s infinite linear;
     }
@@ -113,7 +124,7 @@
 @layer components {
 
     .gap-body {
-        @apply gap-2 sm:gap-6
+        @apply sm:gap-6
     }
 
     .gray-link {
@@ -184,14 +195,14 @@
         @apply
          bg-muted border-b border-secondary px-body py-6 gap-3 flex items-stretch
     }
-    hr {
-        @apply border-b border-secondary
-    }
+ 
     .entity-header h3 {
         @apply items-center hidden sm:inline-flex flex-grow
     }
     .card-grid {
-        @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-body text-card-txt p-body
+        @apply 
+         grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
+         gap-body text-card-txt p-body divide-y sm:divide-none
     }
     .loading-bar {
         background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0),rgba(255, 255, 255, 0), rgb(84 157 255),rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));
