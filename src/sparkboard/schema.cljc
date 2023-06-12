@@ -78,7 +78,7 @@
                                                                 :label/member.many
                                                                 :label/project.one
                                                                 :label/project.many] :string]},
-   :board/org                                (ref :one)
+   :board/owner                              (ref :one)
    :board/instructions                       {:doc "Secondary instructions for a board, displayed above projects"
                                               s-   :prose/as-map},
    :board/max-projects-per-member            {:doc "Set a maximum number of projects a member may join"
@@ -111,7 +111,7 @@
                                                   :entity/public?
                                                   :entity/kind
 
-                                                  :board/org
+                                                  :board/owner
                                                   :board/registration-open?
 
                                                   (? :image/logo)

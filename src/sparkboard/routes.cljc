@@ -11,7 +11,6 @@
             [re-db.reactive :as r]
             [re-db.hooks :as rh]
             [sparkboard.client.slack :as-alias slack.client]
-            [sparkboard.client.views :as-alias views]
             [sparkboard.query-params :as query-params]
             [sparkboard.entities.board :as-alias board]
             [sparkboard.entities.domain :as-alias domain]
@@ -34,7 +33,7 @@
   :GET      - symbol pointing to a (server) function accepting a request map"
   (r/reaction
     ["" {"/"                                (E :home {:public true
-                                                      :view   `views/home})
+                                                      :view   `account/home})
          "/ws"                              (E :websocket {:public true
                                                            :GET    'sparkboard.server.core/ws-handler})
          "/upload"                          (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
@@ -47,7 +46,7 @@
                                                                 {:view `slack.client/invite-offer})
                                              "link-complete" (E :slack/link-complete
                                                                 {:view `slack.client/link-complete})}
-         "/login"                           (E :account/sign-in {:view    `views/account:sign-in
+         "/login"                           (E :account/sign-in {:view    `account/account:sign-in
                                                                  :header? false
                                                                  :POST    'sparkboard.server.accounts/login!
                                                                  :public  true})
@@ -62,43 +61,44 @@
 
          "/domain-availability"             (E :domain/availability
                                                {:GET `domain/availability})
-         ["/a/" [bidi/uuid :account]]       (E :account/read
-                                               {:query `account/read-query
-                                                :view  `account/read-view})
-         "/o"                               {"/list"                (E :org/list
-                                                                       {:query `org/list-query
-                                                                        :view  `org/list-view})
-                                             "/new"                 (E :org/new
-                                                                       {:view `org/new-view
-                                                                        :POST `org/new!})
-                                             ["/" [bidi/uuid :org]] {""           (E :org/read
+         ["/a/" [bidi/uuid :account]]       {"" (E :account/read
+                                                   {:query `account/read-query
+                                                    :view  `account/read-view})
+                                             "/orgs" (E :account/orgs {:query `account/orgs-query})
+                                             "/new-org" (E :account/new-org 
+                                                           {:view `org/new
+                                                            :POST `org/new!})
+                                             "/new-board" (E :account/new-board 
+                                                             {:view `board/new 
+                                                              :POST `board/new!})}
+         "/o"                               {["/" [bidi/uuid :org]] {""           (E :org/read
                                                                                      {:query `org/read-query
-                                                                                      :view  `org/read-view})
+                                                                                      :view  `org/read})
                                                                      "/settings"  (E :org/edit
-                                                                                     {:view  `org/edit-view
+                                                                                     {:view  `org/edit
                                                                                       :query `org/edit-query
                                                                                       :POST  `org/edit!})
                                                                      "/delete"    (E :org/delete
                                                                                      {:POST `org/delete!})
                                                                      "/new-board" (E :org/new-board
-                                                                                     {:view `board/new-view
+                                                                                     {:view `board/new
                                                                                       :POST `board/new!})
                                                                      "/search"    (E :org/search
                                                                                      {:query `org/search-query})}}
          ["/b/" [bidi/uuid :board]]         {""             (E :board/read
                                                                {:query `board/read-query
-                                                                :view  `board/read-view})
+                                                                :view  `board/read})
                                              "/new-project" (E :project/new
-                                                               {:view `project/new-view
+                                                               {:view `project/new
                                                                 :POST `project/new!})
                                              "/register"    (E :board/register
-                                                               {:view `board/register-view
+                                                               {:view `board/register
                                                                 :POST `board/register!})}
          ["/p/" [bidi/uuid :project]]       {"" (E :project/read
                                                    {:query `project/read-query
-                                                    :view  `project/read-view})}
+                                                    :view  `project/read})}
          ["/m/" [bidi/uuid :member]]        {"" (E :member/read
-                                                   {:view  `member/read-view
+                                                   {:view  `member/read
                                                     :query `member/read-query})}}]))
 
 (defn path-for

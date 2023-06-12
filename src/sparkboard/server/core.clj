@@ -130,9 +130,9 @@
         (and query (data-req? req)) (do (authorize! query req params)
                                         (some-> (query params) ring.http/ok))
         
-        (or query view) (server.html/app-page
-                          {:tx [(assoc env/client-config :db/id :env/config)
-                                (assoc (:account req) :db/id :env/account)]})
+        view (server.html/app-page
+              {:tx [(assoc env/client-config :db/id :env/config)
+                    (assoc (:account req) :db/id :env/account)]})
 
         ;; query fns return reactions which must be wrapped in HTTP response maps
         :else (ring.http/not-found "Not found")))))

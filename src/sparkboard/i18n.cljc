@@ -35,7 +35,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                           :es "Dominio ya registrado"},
      :tr/recent                          {:en "Recent"
                                           :fr "Récents"
-                                          :es "Recientes"}, 
+                                          :es "Recientes"},
      :tr/show-more                       {:en "Show more"
                                           :fr "Afficher plus"
                                           :es "Mostrar más"},
@@ -219,7 +219,13 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/home                            {:en "Home"
                                           :fr "Accueil"
                                           :es "Inicio"}
-     
+     :tr/personal-account                {:en "Personal (%1)"
+                                          :fr "Personnel (%1)"
+                                          :es "Personal (%1)"}
+     :tr/owner                           {:en "Owner"
+                                          :fr "Propriétaire"
+                                          :es "Propietario"}
+
      }))
 
 (defn tr
@@ -227,9 +233,11 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                                                  (keyword? resource-ids)
                                                                  vector))
                       #?(:cljs (doto (str "Missing" resource-ids) js/console.warn))))
-  ([resource-ids resource-args] (or (tempura/tr {:dict dict} (locales) (cond-> resource-ids
-                                                                               (keyword? resource-ids)
-                                                                               vector) resource-args)
+  ([resource-ids resource-args] (or (tempura/tr {:dict dict} (locales)
+                                                (cond-> resource-ids
+                                                        (keyword? resource-ids)
+                                                        vector)
+                                                resource-args)
                                     #?(:cljs (doto (str "Missing" resource-ids) js/console.warn)))))
 
 (def supported-locales (into #{} (map name) (keys dict)))
@@ -238,6 +246,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (->> accept-language
        (re-find #".*[^;]?([a-z]{2})[;$]?.*")
        (second)))
+
 
 #?(:clj
    (defn req-locale [req]

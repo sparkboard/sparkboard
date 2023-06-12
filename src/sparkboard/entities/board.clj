@@ -10,7 +10,7 @@
   ;; auth: user is admin of :board/org
   (db/transact!
     [(-> board
-         (assoc :board/org [:entity/id (:entity/id params)])
+         (assoc :board/owner [:entity/id (:entity/id params)])
          (sd/new-entity :board :by (:db/id (:account req))))])
   (db/pull '[*]))
 
@@ -24,7 +24,7 @@
   [params]
   (db/pull `[~@entity/fields
              :board/registration-open?
-             {:board/org [~@entity/fields
+             {:board/owner [~@entity/fields
                           :org/show-org-tab?]}
 
              {:project/_board ~entity/fields}

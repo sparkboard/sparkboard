@@ -491,8 +491,8 @@
 (def changes {:board/as-map
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
                ::defaults {:board/registration-open? true
-                           :entity/public? true
-                           :board/org (uuid-ref :org "base")}
+                           :entity/public?           true
+                           :board/owner              (uuid-ref :org "base")}
                "createdAt" (& (xf #(Date. %)) (rename :entity/created-at))
                "socialFeed" (rename :entity/social-feed)
                "localeSupport" (rename :entity/locale-suggestions)
@@ -552,15 +552,15 @@
                                                                  ;; and have the same IDs but represent different instances.
                                                                  ;; unsure: how to re-use fields when searching across boards, etc.
                                                                  (dissoc "id" "name")
-                                                                 (rename-keys {"type" :field/type
-                                                                               "showOnCard" :field/show-on-card?
+                                                                 (rename-keys {"type"         :field/type
+                                                                               "showOnCard"   :field/show-on-card?
                                                                                "showAtCreate" :field/show-at-create?
                                                                                "showAsFilter" :field/show-as-filter?
-                                                                               "required" :field/required?
-                                                                               "hint" :field/hint
-                                                                               "label" :field/label
-                                                                               "options" :field/options
-                                                                               "order" :field/order})
+                                                                               "required"     :field/required?
+                                                                               "hint"         :field/hint
+                                                                               "label"        :field/label
+                                                                               "options"      :field/options
+                                                                               "order"        :field/order})
                                                                  (u/update-some {:field/options
                                                                                  (partial mapv
                                                                                           #(-> %
@@ -587,25 +587,25 @@
                            (let [board-ref (uuid-ref :board (:entity/id m))]
                              (assoc m a (->> v
                                              (sort-by first)
-                                             (flat-map :tag/id #(composite-uuid :tag 
+                                             (flat-map :tag/id #(composite-uuid :tag
                                                                                 (to-uuid :board board-ref)
                                                                                 (to-uuid :tag %)))
                                              (map #(-> %
                                                        (dissoc "order")
-                                                       (rename-keys {"color" :tag/background-color
-                                                                     "name" :tag/label
-                                                                     "label" :tag/label
+                                                       (rename-keys {"color"    :tag/background-color
+                                                                     "name"     :tag/label
+                                                                     "label"    :tag/label
                                                                      "restrict" :tag/restricted?})
                                                        (u/update-some {:tag/restricted? (constantly true)})))
                                              (filter :tag/label)
                                              vec))))
                          (rename :board/member-tags))
                "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:social.sharing-button/facebook true]]
-                                                         "twitter" [[:social.sharing-button/twitter true]]
-                                                         "qrCode" [[:social.sharing-button/qr-code true]]
-                                                         "all" [[:social.sharing-button/facebook true]
-                                                                [:social.sharing-button/twitter true]
-                                                                [:social.sharing-button/qr-code true]]})
+                                                         "twitter"  [[:social.sharing-button/twitter true]]
+                                                         "qrCode"   [[:social.sharing-button/qr-code true]]
+                                                         "all"      [[:social.sharing-button/facebook true]
+                                                                     [:social.sharing-button/twitter true]
+                                                                     [:social.sharing-button/qr-code true]]})
                                              (keys m)))) (rename :board/project-sharing-buttons))
                "userMessages" rm
                "groupSettings" rm
@@ -625,10 +625,10 @@
                              (rename :webhook/subscriptions))
                "images" parse-image-urls
                "userLabel" (& (fn [m a [singular plural]]
-                                (update m :board/labels merge {:label/member.one singular
+                                (update m :board/labels merge {:label/member.one  singular
                                                                :label/member.many plural})) rm)
                "groupLabel" (& (fn [m a [singular plural]]
-                                 (update m :board/labels merge {:label/project.one singular
+                                 (update m :board/labels merge {:label/project.one  singular
                                                                 :label/project.many plural})) rm)
                "publicVoteMultiple" rm
 
@@ -641,7 +641,7 @@
 
                "css" (rename :board/custom-css)
                "parent" (& (xf (comp :ref parse-sparkboard-id))
-                           (rename :board/org))
+                           (rename :board/owner))
                "authMethods" rm
                "allowPublicViewing" (rename :entity/public?)
                "communityVoteSingle" (rename :member-vote/open?)
@@ -662,37 +662,37 @@
                                 (rename :board/new-projects-require-approval?))
                "projectsRequireApproval" (rename :board/new-projects-require-approval?)
                "languages" (& (xf (partial mapv #(get % "code"))) (rename :entity/locale-suggestions))]
-              :org/as-map [::prepare (partial flat-map :entity/id (partial to-uuid :org))
-                           ::defaults {:entity/public? true}
-                           ::always (add-kind :org)
-                           "languageDefault" (rename :entity/locale-default)
-                           "localeSupport" (rename :entity/locale-suggestions)
-                           "title" (rename :entity/title)
-                           "allowPublicViewing" (rename :entity/public?)
-                           "images" parse-image-urls
-                           "showOrgTab" (rename :org/show-org-tab?)
-                           "creator" (uuid-ref-as :account :entity/created-by)
-                           "boardTemplate" (uuid-ref-as :board :org/default-board-template)
-                           "socialFeed" (rename :entity/social-feed)]
-              :slack.user/as-map [::prepare (partial flat-map :slack.user/id identity)
-                                  "account-id" (rename :slack.user/firebase-account-id)
-                                  "team-id" (& (xf (partial vector :slack.team/id))
-                                               (rename :slack.user/slack.team))]
-              :slack.team/as-map [::prepare (partial flat-map :slack.team/id identity)
-                                  "board-id" (uuid-ref-as :board :slack.team/board)
-                                  "team-id" (rename :slack.team/id)
-                                  "team-name" (rename :slack.team/name)
-                                  "invite-link" (rename :slack.team/invite-link)
-                                  "bot-user-id" (rename :slack.app/bot-user-id)
-                                  "bot-token" (rename :slack.app/bot-token)
-                                  "custom-messages" (& (xf (fn [m] (rename-keys m {"welcome" :slack.team/custom-welcome-message}))) (rename :slack.team/custom-messages))
-                                  "app" (& (xf (fn [app]
-                                                 (->> app
-                                                      (flat-map :slack.app/id identity)
-                                                      (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
-                                                                    "bot-token" (rename :slack.app/bot-token)])
-                                                      first)))
-                                           (rename :slack.team/slack.app))]
+              :org/as-map             [::prepare (partial flat-map :entity/id (partial to-uuid :org))
+                                       ::defaults {:entity/public? true}
+                                       ::always (add-kind :org)
+                                       "languageDefault" (rename :entity/locale-default)
+                                       "localeSupport" (rename :entity/locale-suggestions)
+                                       "title" (rename :entity/title)
+                                       "allowPublicViewing" (rename :entity/public?)
+                                       "images" parse-image-urls
+                                       "showOrgTab" (rename :org/show-org-tab?)
+                                       "creator" (uuid-ref-as :account :entity/created-by)
+                                       "boardTemplate" (uuid-ref-as :board :org/default-board-template)
+                                       "socialFeed" (rename :entity/social-feed)]
+              :slack.user/as-map      [::prepare (partial flat-map :slack.user/id identity)
+                                       "account-id" (rename :slack.user/firebase-account-id)
+                                       "team-id" (& (xf (partial vector :slack.team/id))
+                                                    (rename :slack.user/slack.team))]
+              :slack.team/as-map      [::prepare (partial flat-map :slack.team/id identity)
+                                       "board-id" (uuid-ref-as :board :slack.team/board)
+                                       "team-id" (rename :slack.team/id)
+                                       "team-name" (rename :slack.team/name)
+                                       "invite-link" (rename :slack.team/invite-link)
+                                       "bot-user-id" (rename :slack.app/bot-user-id)
+                                       "bot-token" (rename :slack.app/bot-token)
+                                       "custom-messages" (& (xf (fn [m] (rename-keys m {"welcome" :slack.team/custom-welcome-message}))) (rename :slack.team/custom-messages))
+                                       "app" (& (xf (fn [app]
+                                                      (->> app
+                                                           (flat-map :slack.app/id identity)
+                                                           (change-keys ["bot-user-id" (rename :slack.app/bot-user-id)
+                                                                         "bot-token" (rename :slack.app/bot-token)])
+                                                           first)))
+                                                (rename :slack.team/slack.app))]
 
               ;; response => destination-thread where team-responses are collected
               ;; reply    => team-thread where the message with "Reply" button shows up
@@ -711,359 +711,359 @@
                                        "response-channel" (rename :slack.broadcast/response-channel-id)
                                        "response-thread" (rename :slack.broadcast/response-thread-id)
                                        ]
-              :slack.channel/as-map [::prepare (partial flat-map :slack.channel/id identity)
-                                     "project-id" (uuid-ref-as :project :slack.channel/project)
-                                     ::always (remove-when (comp (partial missing-entity? :project/as-map) :slack.channel/project))
-                                     "team-id" (& (xf (partial vector :slack.team/id))
-                                                  (rename :slack.channel/slack.team))]
-              :domain/as-map [::prepare (partial mapv (fn [[name target]]
-                                                        (merge {:domain/name (unmunge-domain name)} 
-                                                               (parse-domain-target target))))]
-              :collection/as-map [::prepare (partial flat-map :entity/id (partial to-uuid :collection))
-                                  ::always (add-kind :collection)
-                                  "title" (rename :entity/title)
-                                  "images" parse-image-urls
-                                  "boards" (& (xf (fn [m] (into [] (comp (filter val) (map (comp (partial uuid-ref :board) key))) m)))
-                                              (rename :collection/boards)) ;; ordered list!
+              :slack.channel/as-map   [::prepare (partial flat-map :slack.channel/id identity)
+                                       "project-id" (uuid-ref-as :project :slack.channel/project)
+                                       ::always (remove-when (comp (partial missing-entity? :project/as-map) :slack.channel/project))
+                                       "team-id" (& (xf (partial vector :slack.team/id))
+                                                    (rename :slack.channel/slack.team))]
+              :domain/as-map          [::prepare (partial mapv (fn [[name target]]
+                                                                 (merge {:domain/name (unmunge-domain name)}
+                                                                        (parse-domain-target target))))]
+              :collection/as-map      [::prepare (partial flat-map :entity/id (partial to-uuid :collection))
+                                       ::always (add-kind :collection)
+                                       "title" (rename :entity/title)
+                                       "images" parse-image-urls
+                                       "boards" (& (xf (fn [m] (into [] (comp (filter val) (map (comp (partial uuid-ref :board) key))) m)))
+                                                   (rename :collection/boards)) ;; ordered list!
 
-                                  ]
+                                       ]
 
-              :roles/as-map [::prepare
-                             (fn [{:strs [e-u-r]}]
-                               (into [] (mapcat
-                                          (fn [[ent user-map]]
-                                            (for [[user role-map] user-map
-                                                  :let [account (parse-sparkboard-id user)
-                                                        ent (parse-sparkboard-id ent)
-                                                        _ (assert (= (:kind account) :account))]]
-                                              {:entity/id (composite-uuid :member (:uuid ent) (:uuid account))
-                                               :entity/kind :member
-                                               :member/account (uuid-ref :account (:uuid account))
-                                               :member/entity (:ref ent)
-                                               :member/roles (into (into #{} 
-                                                                         (comp (filter val)
-                                                                               (map key)
-                                                                               (map role-kw)) 
-                                                                         role-map))})))
-                                     e-u-r))]
-              ::firebase ["socialFeed" (xf (partial change-keys
-                                                    ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
-                                                     "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
-                                                     "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
-                          "domain" rm]
-              :account/as-map [::prepare (fn [accounts]
-                                           (->> accounts
-                                                (keep (fn [{:as account [provider] :providerUserInfo}]
-                                                        (let [account-id (to-uuid :account (:localId account))]
-                                                          (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
-                                                            (assoc-some-value {}
-                                                                              :entity/id account-id
-                                                                              :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
-                                                                              :account/photo (when-let [src (or (some-> (:picture most-recent-member-doc)
-                                                                                                                        (u/guard #(not (str/starts-with? % "/images"))))
-                                                                                                                (:photoUrl account)
-                                                                                                                (:photoUrl provider))]
-                                                                                               (assets/link-asset src))
-                                                                              :account/display-name (:name most-recent-member-doc)
-                                                                              :account/email (:email account)
-                                                                              :account/email-verified? (:emailVerified account)
-                                                                              :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
-                                                                              :account/password-hash (:passwordHash account)
-                                                                              :account/password-salt (:salt account)
-                                                                              :account.provider.google/sub (:rawId provider))))))))]
-              :ballot/as-map [::prepare (fn [users]
-                                          (->> users
-                                               (mapcat (fn [{:keys [_id boardId votesByDomain]}]
-                                                         (for [[domain project-id] votesByDomain
-                                                               :let [project-id (to-uuid :project project-id)
-                                                                     board-id (to-uuid :board boardId)
-                                                                     account-id (member->account-uuid _id)]
-                                                               :when account-id]
-                                                           {:ballot/account (uuid-ref :account account-id)
-                                                            :ballot/board (uuid-ref :board board-id)
-                                                            :ballot/project (uuid-ref :project project-id)})))))
-                              ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
-                                                         (missing-entity? :board/as-map (:ballot/board %))
-                                                         (not (:ballot/account %))))]
-              :member/as-map [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
-                              ::always (remove-when (comp nil? :firebaseAccount))
-                              ::always (remove-when :entity/deleted-at)
-                              ::always (remove-when :suspectedFake)
-                              ::always (add-kind :member)
+              :roles/as-map           [::prepare
+                                       (fn [{:strs [e-u-r]}]
+                                         (into [] (mapcat
+                                                    (fn [[ent user-map]]
+                                                      (for [[user role-map] user-map
+                                                            :let [account (parse-sparkboard-id user)
+                                                                  ent     (parse-sparkboard-id ent)
+                                                                  _       (assert (= (:kind account) :account))]]
+                                                        {:entity/id      (composite-uuid :member (:uuid ent) (:uuid account))
+                                                         :entity/kind    :member
+                                                         :member/account (uuid-ref :account (:uuid account))
+                                                         :member/entity  (:ref ent)
+                                                         :member/roles   (into (into #{}
+                                                                                     (comp (filter val)
+                                                                                           (map key)
+                                                                                           (map role-kw))
+                                                                                     role-map))})))
+                                               e-u-r))]
+              ::firebase              ["socialFeed" (xf (partial change-keys
+                                                                 ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
+                                                                  "twitterProfiles" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/profiles))
+                                                                  "twitterMentions" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/mentions))]))
+                                       "domain" rm]
+              :account/as-map         [::prepare (fn [accounts]
+                                                   (->> accounts
+                                                        (keep (fn [{:as account [provider] :providerUserInfo}]
+                                                                (let [account-id (to-uuid :account (:localId account))]
+                                                                  (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
+                                                                    (assoc-some-value {}
+                                                                                      :entity/id account-id
+                                                                                      :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
+                                                                                      :account/photo (when-let [src (or (some-> (:picture most-recent-member-doc)
+                                                                                                                                (u/guard #(not (str/starts-with? % "/images"))))
+                                                                                                                        (:photoUrl account)
+                                                                                                                        (:photoUrl provider))]
+                                                                                                       (assets/link-asset src))
+                                                                                      :account/display-name (:name most-recent-member-doc)
+                                                                                      :account/email (:email account)
+                                                                                      :account/email-verified? (:emailVerified account)
+                                                                                      :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
+                                                                                      :account/password-hash (:passwordHash account)
+                                                                                      :account/password-salt (:salt account)
+                                                                                      :account.provider.google/sub (:rawId provider))))))))]
+              :ballot/as-map          [::prepare (fn [users]
+                                                   (->> users
+                                                        (mapcat (fn [{:keys [_id boardId votesByDomain]}]
+                                                                  (for [[domain project-id] votesByDomain
+                                                                        :let [project-id (to-uuid :project project-id)
+                                                                              board-id   (to-uuid :board boardId)
+                                                                              account-id (member->account-uuid _id)]
+                                                                        :when account-id]
+                                                                    {:ballot/account (uuid-ref :account account-id)
+                                                                     :ballot/board   (uuid-ref :board board-id)
+                                                                     :ballot/project (uuid-ref :project project-id)})))))
+                                       ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
+                                                                  (missing-entity? :board/as-map (:ballot/board %))
+                                                                  (not (:ballot/account %))))]
+              :member/as-map          [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+                                       ::always (remove-when (comp nil? :firebaseAccount))
+                                       ::always (remove-when :entity/deleted-at)
+                                       ::always (remove-when :suspectedFake)
+                                       ::always (add-kind :member)
 
-                              ::defaults {:member/inactive? false
-                                          :member/email-frequency :member.email-frequency/periodic}
-                              :lastModifiedBy rm
-                              :salt rm
-                              :hash rm
-                              :passwordResetToken rm
-                              :email rm                     ;; in account
-                              :account rm
-                              :_id (fn [m a v]
-                                     (-> m
-                                         (assoc :entity/created-at (bson-id-timestamp (get-oid v))
-                                                :entity/id (composite-uuid :member 
-                                                                           (to-uuid :board (:boardId m))
-                                                                           (to-uuid :account (:firebaseAccount m))))
-                                         (dissoc a)))
-                              :boardId (uuid-ref-as :board :member/entity)
+                                       ::defaults {:member/inactive?       false
+                                                   :member/email-frequency :member.email-frequency/periodic}
+                                       :lastModifiedBy rm
+                                       :salt rm
+                                       :hash rm
+                                       :passwordResetToken rm
+                                       :email rm                     ;; in account
+                                       :account rm
+                                       :_id (fn [m a v]
+                                              (-> m
+                                                  (assoc :entity/created-at (bson-id-timestamp (get-oid v))
+                                                         :entity/id (composite-uuid :member
+                                                                                    (to-uuid :board (:boardId m))
+                                                                                    (to-uuid :account (:firebaseAccount m))))
+                                                  (dissoc a)))
+                                       :boardId (uuid-ref-as :board :member/entity)
 
-                              ::always (parse-fields :member/entity :entity/field-entries)
-                              :account rm
+                                       ::always (parse-fields :member/entity :entity/field-entries)
+                                       :account rm
 
-                              :firebaseAccount (uuid-ref-as :account :member/account)
+                                       :firebaseAccount (uuid-ref-as :account :member/account)
 
-                              :emailFrequency (& (xf #(case %
-                                                        "never" :member.email-frequency/never
-                                                        "daily" :member.email-frequency/daily
-                                                        "periodic" :member.email-frequency/periodic
-                                                        "instant" :member.email-frequency/instant
-                                                        :member.email-frequency/periodic))
-                                                 (rename :member/email-frequency))
-                              :acceptedTerms rm
-                              :contact_me rm
+                                       :emailFrequency (& (xf #(case %
+                                                                 "never" :member.email-frequency/never
+                                                                 "daily" :member.email-frequency/daily
+                                                                 "periodic" :member.email-frequency/periodic
+                                                                 "instant" :member.email-frequency/instant
+                                                                 :member.email-frequency/periodic))
+                                                          (rename :member/email-frequency))
+                                       :acceptedTerms rm
+                                       :contact_me rm
 
-                              :first_time rm
-                              :ready rm
-                              ;; new feature - not-joining-a-project
-
-
-                              :name rm
-                              :roles (& (xf #(into #{} (keep role-kw) %))
-                                        (rename :member/roles))
-                              :tags (& (fn [m a v]
-                                         (let [tags (keep (partial resolve-tag (:member/entity m)) v)
-                                               {tags true
-                                                custom-tags false} (group-by (comp boolean :entity/id) tags)]
-                                           (-> m
-                                               (u/assoc-seq :member/tags (mapv (comp uuid-ref :entity/id) tags))
-                                               (u/assoc-seq :member/ad-hoc-tags (vec custom-tags))
-                                               (dissoc :tags)))))
-
-                              :newsletterSubscribe (rename :member/newsletter-subscription?)
-                              :active (& (xf not) (rename :member/inactive?)) ;; same as deleted?
-                              :picture rm
-                              :votesByDomain rm
-                              :feedbackRating rm
-
-                              ]
-
-              :discussion/as-map [#_#_::prepare (fn [m]
-                                                  (when-not (empty? (:posts m))
-                                                    m))
-                                  :_id (partial id-with-timestamp :discussion)
-                                  :type rm
-                                  
-                                  :followers (&
-                                               (xf member->account-uuid)
-                                               (uuid-ref-as ::account :discussion/followers))
-                                  :parent (uuid-ref-as :project :discussion/project)
-                                  ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
-                                  :posts (& (xf
-                                              (partial change-keys
-                                                       [:_id (partial id-with-timestamp :post)
-                                                        :parent rm
-                                                        :user  (&
-                                                                (xf member->account-uuid)
-                                                                (uuid-ref-as :account :entity/created-by))
-                                                        ::always (remove-when (complement :entity/created-by))
-                                                        ::always (remove-when (comp str/blank? :text))
-
-                                                        :text (& (xf prose) (rename :post/text))
-
-                                                        :doNotFollow (& (xf member->account-uuid)
-                                                                        (uuid-ref-as :account :post/do-not-follow))
-                                                        :followers (& (xf member->account-uuid)
-                                                                      (uuid-ref-as :account :post/followers))
-                                                        :comments (& (xf (partial change-keys
-                                                                                  [:_id (partial id-with-timestamp :comment)
-                                                                                   :user (& (xf member->account-uuid)
-                                                                                            (uuid-ref-as :account :entity/created-by))
-                                                                                   ::always (remove-when (complement :entity/created-by))
-                                                                                   :text (rename :comment/text)
-                                                                                   ::always (remove-when (comp str/blank? :comment/text))
-                                                                                   :parent rm]))
-                                                                     (rename :post/comments))]))
-                                            (rename :discussion/posts))
-                                  :boardId rm
-                                  ::always (remove-when (comp empty? :discussion/posts))]
-              :project/as-map [::defaults {:project/inactive? false}
-                               
-                               ::always (remove-when :entity/deleted-at)
-                               ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
-                               ::always (add-kind :project)
-                               :_id (partial id-with-timestamp :project)
-                               
-                               
-                               :title (rename :entity/title)
-                               ::always (remove-when (comp str/blank? :entity/title))
-
-                               :field_description (& (xf prose)
-                                                     (rename :project/admin-description))
-                               :boardId (uuid-ref-as :board :project/board)
-                               ::always (parse-fields :project/board :entity/field-entries)
-                               :lastModifiedBy (& (xf member->account-uuid)
-                                                  (uuid-ref-as :account :entity/modified-by))
-                               :tags rm                     ;; no longer used - fields instead
-                               :number (rename :project/number)
-                               :badges (& (xf (partial mapv (partial hash-map :badge/label)))
-                                          (rename :project/badges)) ;; should be ref
-                               :active (& (xf not) (rename :project/inactive?))
-                               :approved (rename :project/approved?)
-                               :ready (rename :project/team-complete?)
-                               :members (&
-                                         (fn [m a v]
-                                           (let [project-id (:entity/id m)]
-                                             (assoc m a (keep
-                                                         (fn [{:as   m
-                                                               :keys [user_id]}]
-                                                           (when-let [account-id (member->account-uuid user_id)]
-                                                             (let [role (if (and (not (:role m))
-                                                                                 (= account-id (some->> (:entity/created-by m) 
-                                                                                                        (to-uuid :account ))))
-                                                                          :role/owner
-                                                                          (some-> (:role m) role-kw))]
-                                                               (merge {:entity/id (composite-uuid :member project-id account-id)
-                                                                       :entity/kind :member
-                                                                       :member/entity (uuid-ref :project project-id)
-                                                                       :member/account (uuid-ref :account account-id)}
-                                                                      (when role {:member/roles #{role}})))))
-                                                         v))))
-                                         (rename :member/_entity))
-                               
-                               ::always (remove-when #(and (not (:entity/created-by %))
-                                                           (empty? (:members/_entity %))))
-                               
-                               :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
-                                               (rename :project/open-requests))
-                               :sticky (rename :project/sticky?)
-                               :demoVideo (& (xf video-value)
-                                             (rename :entity/video))
-                               :discussion rm               ;; unused
-                               ]
-              :notification/as-map [::defaults {:notification/emailed? false}
-                                    ::always (fn [m]
-                                               (-> m
-                                                   (dissoc :targetViewed :notificationViewed)
-                                                   (assoc :notification/viewed? (boolean (or (:targetViewed m)
-                                                                                             (:notificationViewed m))))))
-                                    :_id (partial id-with-timestamp :notification)
-                                    ::always (remove-when
-                                              (fn notification-filter [m]
-                                                (let [day-threshold 180]
-                                                  (or (:notification/viewed? m)
-                                                      (> (-> (:entity/created-at m) date-time days-since)
-                                                         day-threshold)))))
-
-                                    :createdAt rm
-                                    :boardId (uuid-ref-as :board :notification/board)
-                                    :recipientId (& (xf member->account-uuid)
-                                                    (uuid-ref-as :account :notification/recipient))
-                                    ::always (remove-when (complement :notification/recipient))
-                                    :notificationEmailed (rename :notification/emailed?)
-                                    :data (fn [m a v] (-> m (dissoc a) (merge v)))
-                                    :project (& (xf :id)
-                                                (uuid-ref-as :project :notification/project))
-                                    :user (& (xf :id)
-                                             (xf member->account-uuid)
-                                             (uuid-ref-as :account :notification/account))
-                                    :message (& (xf :body)
-                                                (rename :notification/thread.message.text)
-                                                )
-                                    :comment (& (xf :id)
-                                                (uuid-ref-as :comment :notification/post.comment))
-                                    :post (& (xf :id)
-                                             (uuid-ref-as :post :notification/post))
-                                    :discussion (& (xf :id)
-                                                   (uuid-ref-as :discussion :notification/discussion))
-                                    ::always (fn [m]
-                                               (let [{:keys [type targetId]} m]
-                                                 (-> m
-                                                     (dissoc :type :targetId :targetPath)
-                                                     (merge (case type
-                                                              "newMember" {:notification/type :notification.type/new-project-member}
-                                                              "newMessage" {:notification/type :notification.type/new-thread-message
-                                                                            :notification/thread (uuid-ref :thread (get-oid targetId))}
-                                                              "newPost" {:notification/type :notification.type/new-discussion-post}
-                                                              "newComment" {:notification/type :notification.type/new-post-comment})))))
-                                     ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
-                                                                (not (:notification/account %))
-                                                                (missing-entity? :thread/as-map (:notification/thread %))
-                                                                (missing-entity? :post/as-map (:notification/post %))
-                                                                (missing-entity? :discussion/as-map (:notification/discussion %))))
-                                    :notification/board rm
-
-                                    ]
-              :thread/as-map [:_id (partial id-with-timestamp :thread)
-                              :participantIds (& (xf #(let [out (member->account-uuid %)]
-                                                        (when (= (count out) (count %))
-                                                          out)))
-                                                 (uuid-ref-as :account :thread/members))
-                              ::always (remove-when (complement :thread/members))
-                              :createdAt (& (xf parse-mongo-date)
-                                            (rename :entity/created-at))
-                              :readBy (& (xf #(map name (keys %)))
-                                         (xf member->account-uuid)
-                                         (uuid-ref-as :account :thread/read-by)) ;; change to a set of has-unread?
-                              :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
-
-                              ;; TODO - :messages
-                              :messages (& (xf (partial change-keys [:_id (partial id-with-timestamp :message)
-                                                                     :createdAt rm
-                                                                     :body (rename :thread.message/text)
-                                                                     :senderId (& (xf member->account-uuid)
-                                                                                  (uuid-ref-as :account :entity/created-by))
-                                                                     :senderData rm
-                                                                     ::always (remove-when (comp str/blank?
-                                                                                                 :thread.message/text))]))
-                                           (rename :thread/messages))
-                              :boardId rm
-                              ::always (remove-when (comp empty? :thread/messages))]
-              ::mongo [:deleted (& (xf (fn [x] (when x deletion-time)))
-                                   (rename :entity/deleted-at))
-                       ::always (remove-when :entity/deleted-at)
-                       :updatedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
-                       :intro (& (xf prose)
-                                 (rename :entity/description))
-                       :owner (& (xf member->account-uuid)
-                                 (uuid-ref-as :account :entity/created-by))
-
-                       :htmlClasses (fn [m k v]
-                                      (let [classes (str/split v #"\s+")]
-                                        (-> m
-                                            (dissoc k)
-                                            (u/assoc-some :project/card-classes (some-> (remove #{"sticky"} classes)
-                                                                                        seq
-                                                                                        distinct
-                                                                                        vec))
-                                            (cond->
-                                             (some #{"sticky"} classes)
-                                              (assoc :project/sticky? true)))))
+                                       :first_time rm
+                                       :ready rm
+                                       ;; new feature - not-joining-a-project
 
 
-                       #_#_:_id (& (xf #(:$oid % %))
-                                   (fn [m a id] (assoc m :entity/created-at (bson-id-timestamp id)))
-                                   (rename (keyword (name coll) "id")))
-                       :__v rm
-                       :boardIds rm
-                       :votes rm
-                       :links rm
-                       :boardMemberships rm
-                       :publicVoteCount rm
-                       :originalBoardId rm]})
+                                       :name rm
+                                       :roles (& (xf #(into #{} (keep role-kw) %))
+                                                 (rename :member/roles))
+                                       :tags (& (fn [m a v]
+                                                  (let [tags (keep (partial resolve-tag (:member/entity m)) v)
+                                                        {tags        true
+                                                         custom-tags false} (group-by (comp boolean :entity/id) tags)]
+                                                    (-> m
+                                                        (u/assoc-seq :member/tags (mapv (comp uuid-ref :entity/id) tags))
+                                                        (u/assoc-seq :member/ad-hoc-tags (vec custom-tags))
+                                                        (dissoc :tags)))))
+
+                                       :newsletterSubscribe (rename :member/newsletter-subscription?)
+                                       :active (& (xf not) (rename :member/inactive?)) ;; same as deleted?
+                                       :picture rm
+                                       :votesByDomain rm
+                                       :feedbackRating rm
+
+                                       ]
+
+              :discussion/as-map      [#_#_::prepare (fn [m]
+                                                       (when-not (empty? (:posts m))
+                                                         m))
+                                       :_id (partial id-with-timestamp :discussion)
+                                       :type rm
+
+                                       :followers (&
+                                                    (xf member->account-uuid)
+                                                    (uuid-ref-as ::account :discussion/followers))
+                                       :parent (uuid-ref-as :project :discussion/project)
+                                       ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
+                                       :posts (& (xf
+                                                   (partial change-keys
+                                                            [:_id (partial id-with-timestamp :post)
+                                                             :parent rm
+                                                             :user (&
+                                                                     (xf member->account-uuid)
+                                                                     (uuid-ref-as :account :entity/created-by))
+                                                             ::always (remove-when (complement :entity/created-by))
+                                                             ::always (remove-when (comp str/blank? :text))
+
+                                                             :text (& (xf prose) (rename :post/text))
+
+                                                             :doNotFollow (& (xf member->account-uuid)
+                                                                             (uuid-ref-as :account :post/do-not-follow))
+                                                             :followers (& (xf member->account-uuid)
+                                                                           (uuid-ref-as :account :post/followers))
+                                                             :comments (& (xf (partial change-keys
+                                                                                       [:_id (partial id-with-timestamp :comment)
+                                                                                        :user (& (xf member->account-uuid)
+                                                                                                 (uuid-ref-as :account :entity/created-by))
+                                                                                        ::always (remove-when (complement :entity/created-by))
+                                                                                        :text (rename :comment/text)
+                                                                                        ::always (remove-when (comp str/blank? :comment/text))
+                                                                                        :parent rm]))
+                                                                          (rename :post/comments))]))
+                                                 (rename :discussion/posts))
+                                       :boardId rm
+                                       ::always (remove-when (comp empty? :discussion/posts))]
+              :project/as-map         [::defaults {:project/inactive? false}
+
+                                       ::always (remove-when :entity/deleted-at)
+                                       ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+                                       ::always (add-kind :project)
+                                       :_id (partial id-with-timestamp :project)
+
+
+                                       :title (rename :entity/title)
+                                       ::always (remove-when (comp str/blank? :entity/title))
+
+                                       :field_description (& (xf prose)
+                                                             (rename :project/admin-description))
+                                       :boardId (uuid-ref-as :board :project/board)
+                                       ::always (parse-fields :project/board :entity/field-entries)
+                                       :lastModifiedBy (& (xf member->account-uuid)
+                                                          (uuid-ref-as :account :entity/modified-by))
+                                       :tags rm                     ;; no longer used - fields instead
+                                       :number (rename :project/number)
+                                       :badges (& (xf (partial mapv (partial hash-map :badge/label)))
+                                                  (rename :project/badges)) ;; should be ref
+                                       :active (& (xf not) (rename :project/inactive?))
+                                       :approved (rename :project/approved?)
+                                       :ready (rename :project/team-complete?)
+                                       :members (&
+                                                  (fn [m a v]
+                                                    (let [project-id (:entity/id m)]
+                                                      (assoc m a (keep
+                                                                   (fn [{:as   m
+                                                                         :keys [user_id]}]
+                                                                     (when-let [account-id (member->account-uuid user_id)]
+                                                                       (let [role (if (and (not (:role m))
+                                                                                           (= account-id (some->> (:entity/created-by m)
+                                                                                                                  (to-uuid :account))))
+                                                                                    :role/owner
+                                                                                    (some-> (:role m) role-kw))]
+                                                                         (merge {:entity/id      (composite-uuid :member project-id account-id)
+                                                                                 :entity/kind    :member
+                                                                                 :member/entity  (uuid-ref :project project-id)
+                                                                                 :member/account (uuid-ref :account account-id)}
+                                                                                (when role {:member/roles #{role}})))))
+                                                                   v))))
+                                                  (rename :member/_entity))
+
+                                       ::always (remove-when #(and (not (:entity/created-by %))
+                                                                   (empty? (:members/_entity %))))
+
+                                       :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
+                                                       (rename :project/open-requests))
+                                       :sticky (rename :project/sticky?)
+                                       :demoVideo (& (xf video-value)
+                                                     (rename :entity/video))
+                                       :discussion rm               ;; unused
+                                       ]
+              :notification/as-map    [::defaults {:notification/emailed? false}
+                                       ::always (fn [m]
+                                                  (-> m
+                                                      (dissoc :targetViewed :notificationViewed)
+                                                      (assoc :notification/viewed? (boolean (or (:targetViewed m)
+                                                                                                (:notificationViewed m))))))
+                                       :_id (partial id-with-timestamp :notification)
+                                       ::always (remove-when
+                                                  (fn notification-filter [m]
+                                                    (let [day-threshold 180]
+                                                      (or (:notification/viewed? m)
+                                                          (> (-> (:entity/created-at m) date-time days-since)
+                                                             day-threshold)))))
+
+                                       :createdAt rm
+                                       :boardId (uuid-ref-as :board :notification/board)
+                                       :recipientId (& (xf member->account-uuid)
+                                                       (uuid-ref-as :account :notification/recipient))
+                                       ::always (remove-when (complement :notification/recipient))
+                                       :notificationEmailed (rename :notification/emailed?)
+                                       :data (fn [m a v] (-> m (dissoc a) (merge v)))
+                                       :project (& (xf :id)
+                                                   (uuid-ref-as :project :notification/project))
+                                       :user (& (xf :id)
+                                                (xf member->account-uuid)
+                                                (uuid-ref-as :account :notification/account))
+                                       :message (& (xf :body)
+                                                   (rename :notification/thread.message.text)
+                                                   )
+                                       :comment (& (xf :id)
+                                                   (uuid-ref-as :comment :notification/post.comment))
+                                       :post (& (xf :id)
+                                                (uuid-ref-as :post :notification/post))
+                                       :discussion (& (xf :id)
+                                                      (uuid-ref-as :discussion :notification/discussion))
+                                       ::always (fn [m]
+                                                  (let [{:keys [type targetId]} m]
+                                                    (-> m
+                                                        (dissoc :type :targetId :targetPath)
+                                                        (merge (case type
+                                                                 "newMember" {:notification/type :notification.type/new-project-member}
+                                                                 "newMessage" {:notification/type   :notification.type/new-thread-message
+                                                                               :notification/thread (uuid-ref :thread (get-oid targetId))}
+                                                                 "newPost" {:notification/type :notification.type/new-discussion-post}
+                                                                 "newComment" {:notification/type :notification.type/new-post-comment})))))
+                                       ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
+                                                                  (not (:notification/account %))
+                                                                  (missing-entity? :thread/as-map (:notification/thread %))
+                                                                  (missing-entity? :post/as-map (:notification/post %))
+                                                                  (missing-entity? :discussion/as-map (:notification/discussion %))))
+                                       :notification/board rm
+
+                                       ]
+              :thread/as-map          [:_id (partial id-with-timestamp :thread)
+                                       :participantIds (& (xf #(let [out (member->account-uuid %)]
+                                                                 (when (= (count out) (count %))
+                                                                   out)))
+                                                          (uuid-ref-as :account :thread/members))
+                                       ::always (remove-when (complement :thread/members))
+                                       :createdAt (& (xf parse-mongo-date)
+                                                     (rename :entity/created-at))
+                                       :readBy (& (xf #(map name (keys %)))
+                                                  (xf member->account-uuid)
+                                                  (uuid-ref-as :account :thread/read-by)) ;; change to a set of has-unread?
+                                       :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
+
+                                       ;; TODO - :messages
+                                       :messages (& (xf (partial change-keys [:_id (partial id-with-timestamp :message)
+                                                                              :createdAt rm
+                                                                              :body (rename :thread.message/text)
+                                                                              :senderId (& (xf member->account-uuid)
+                                                                                           (uuid-ref-as :account :entity/created-by))
+                                                                              :senderData rm
+                                                                              ::always (remove-when (comp str/blank?
+                                                                                                          :thread.message/text))]))
+                                                    (rename :thread/messages))
+                                       :boardId rm
+                                       ::always (remove-when (comp empty? :thread/messages))]
+              ::mongo                 [:deleted (& (xf (fn [x] (when x deletion-time)))
+                                                   (rename :entity/deleted-at))
+                                       ::always (remove-when :entity/deleted-at)
+                                       :updatedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
+                                       :intro (& (xf prose)
+                                                 (rename :entity/description))
+                                       :owner (& (xf member->account-uuid)
+                                                 (uuid-ref-as :account :entity/created-by))
+
+                                       :htmlClasses (fn [m k v]
+                                                      (let [classes (str/split v #"\s+")]
+                                                        (-> m
+                                                            (dissoc k)
+                                                            (u/assoc-some :project/card-classes (some-> (remove #{"sticky"} classes)
+                                                                                                        seq
+                                                                                                        distinct
+                                                                                                        vec))
+                                                            (cond->
+                                                              (some #{"sticky"} classes)
+                                                              (assoc :project/sticky? true)))))
+
+
+                                       #_#_:_id (& (xf #(:$oid % %))
+                                                   (fn [m a id] (assoc m :entity/created-at (bson-id-timestamp id)))
+                                                   (rename (keyword (name coll) "id")))
+                                       :__v rm
+                                       :boardIds rm
+                                       :votes rm
+                                       :links rm
+                                       :boardMemberships rm
+                                       :publicVoteCount rm
+                                       :originalBoardId rm]})
 
 ;; account, :boardId, :discussion
 (defn fetch-mongodb []
   (doseq [[coll-k mongo-coll] mongo-colls
-          :let [_ (prn :starting coll-k)
+          :let [_   (prn :starting coll-k)
                 {:keys [out err exit]} (sh "mongoexport"    ;; <-- you'll need this installed; see https://www.mongodb.com/docs/database-tools/installation/installation/
                                            "--uri" MONGODB_URI
                                            "--jsonArray"
                                            "--collection" mongo-coll)
-                _ (prn :downloaded coll-k)
+                _   (prn :downloaded coll-k)
                 clj (->> (json/read-value out json/keyword-keys-object-mapper)
                          #_(mapv parse-mongo-doc))
-                _ (prn :parsed coll-k)]]
+                _   (prn :parsed coll-k)]]
     (when-not (zero? exit)
       (throw (Exception. err)))
     (spit (env/db-path (str mongo-coll ".edn")) clj)))
@@ -1101,7 +1101,7 @@
   (fetch-accounts))
 
 (defn fetch-firebase []
-  (let [{token :firebase/database-secret
+  (let [{token             :firebase/database-secret
          {db :databaseURL} :firebase/app-config} (:prod env/config)]
     (->> (str db "/.json?auth=" token)
          (slurp)
@@ -1135,8 +1135,8 @@
        (mapcat (fn [k]
                  (for [entity (coll-entities k)
                        :let [schema (@sschema/!registry k)
-                             _ (when-not schema 
-                                 (prn :NO_SCHEMA))]
+                             _      (when-not schema
+                                      (prn :NO_SCHEMA))]
                        :when (not (m/validate schema entity))]
                    (do (clojure.pprint/pprint entity)
                        (sparkboard.validate/humanized schema entity)))))

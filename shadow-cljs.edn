@@ -4,8 +4,7 @@
   {:target :browser
    :module-loader true
    :modules {:app {:init-fn sparkboard.client.core/init}
-             :org {:entries [sparkboard.entities.org
-                             sparkboard.entities.account] :depends-on #{:app}}
+             :org {:entries [sparkboard.entities.org] :depends-on #{:app}}
              :board {:entries [sparkboard.entities.board] :depends-on #{:app}}
              :member {:entries [sparkboard.entities.member] :depends-on #{:app}}
              :project {:entries [sparkboard.entities.project] :depends-on #{:app}}

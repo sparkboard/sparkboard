@@ -2,10 +2,12 @@
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
             [applied-science.js-interop :as j]
+            [inside-out.forms :as forms]
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sparkboard.client.scratch]
-            [sparkboard.client.views :as views]
+            [sparkboard.entities.domain :as domain]
+            [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]                ;; extends `ratom` reactivity
@@ -34,11 +36,30 @@
     (some-> schema db/merge-schema!)
     (some-> tx db/transact! :db/after println)))
 
+(defn ^:dev/after-load init-forms []
+  #_(when k
+      (let [validator (some-> schema/sb-schema (get k) :malli/schema malli-validator)]
+        (cond-> (k field-meta)
+                validator
+                (update :validators conj validator))))
+  (forms/set-global-meta!
+    {:account/email    {:el         ui/text-field
+                        :props      {:type        "email"
+                                     :placeholder (tr :tr/email)}
+                        :validators [ui/email-validator]}
+     :account/password {:el         ui/text-field
+                        :props      {:type        "password"
+                                     :placeholder (tr :tr/password)}
+                        :validators [(forms/min-length 8)]}
+     :entity/domain    {:validators [domain/domain-valid-string
+                                     (domain/domain-availability-validator)]}})
+  )
+
 (defn init []
   (read-env!)
   (firebase/init)
   (start-router)
-  (ui/init-forms)
+  (init-forms)
   (render))
 
 (comment

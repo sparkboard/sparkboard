@@ -1,5 +1,6 @@
 (ns sparkboard.entities.account
-  (:require [re-db.api :as db]))
+  (:require [re-db.api :as db]
+            [sparkboard.entities.entity :as entity]))
 
 (defn lift-key [m k]
   (merge (dissoc m k)
@@ -28,4 +29,19 @@
     (->> entities
          (group-by :entity/kind)
          (merge {:recents recents}))))
+
+(defn orgs-query 
+  {:authorize (fn [req params] 
+                (when-not (= (-> req :account :entity/id)
+                             (:account params))
+                  (throw (ex-message "Authorization failed." 
+                                     {:query           `orgs-query 
+                                      :expected-actual [(:account params)
+                                                        (-> req :account :entity/id)]}))))}
+  [{:keys [account]}]
+  (into []
+        (comp (map :member/entity)
+              (filter (comp #{:org} :entity/kind))
+              (map (db/pull entity/fields)))
+        (db/where [[:member/account [:entity/id account]]])))
 

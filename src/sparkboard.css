@@ -133,21 +133,13 @@
 
     .form-text {
         @apply
-        flex h-10 w-full rounded-lg px-3 py-2
+        flex w-full rounded-lg px-3 py-2
 
         bg-back
         border border-txt
         
         text-sm ring-offset-back placeholder:text-muted-txt
         disabled:cursor-not-allowed disabled:opacity-50
-    }
-
-    input.form-text {
-        @apply h-10
-    }
-
-    textarea.form-text {
-        @apply h-20
     }
 
     .btn {
@@ -193,7 +185,7 @@
     }
     .entity-header {
         @apply
-         bg-muted border-b border-secondary px-body py-6 gap-3 flex items-stretch
+         bg-muted border-b border-secondary px-body gap-3 flex h-16 p-3 items-stretch
     }
  
     .entity-header h3 {

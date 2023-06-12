@@ -22,13 +22,6 @@
   (db/pull `[ ~@entity/fields] 
            [:entity/id (:org params)]))
 
-
-(defn list-query [_]
-  (->> (db/where [[:entity/kind :org]])
-       (mapv (re-db.api/pull '[*
-                               {:image/logo [:asset/id]}
-                               {:image/background [:asset/id]}]))))
-
 (defn read-query 
   {:authorize (fn [req params] 
                 (member/read-and-log! (:org params) (:db/id (:account req))))}
@@ -49,7 +42,7 @@
                                           {:entity/domain [:domain/name]}]) ...]
                      :in $ ?terms ?org
                      :where
-                     [?board :board/org ?org]
+                     [?board :board/owner ?org]
                      [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]]
                    q
                    [:entity/id org])
@@ -62,7 +55,7 @@
                                             {:project/board [:entity/id]}]) ...]
                      :in $ ?terms ?org
                      :where
-                     [?board :board/org ?org]
+                     [?board :board/owner ?org]
                      [?project :project/board ?board]
                      [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]]
                    q
@@ -81,8 +74,8 @@
 
 (defn new!
   [{:keys [account]} _ org]
-  (let [org (-> (dl/new-entity org :org :by (:db/id account))
-                conform)
+  (let [org    (-> (dl/new-entity org :org :by (:db/id account))
+                   conform)
         member (-> {:member/entity  org
                     :member/account (:db/id account)
                     :member/roles   #{:role/owner}}
