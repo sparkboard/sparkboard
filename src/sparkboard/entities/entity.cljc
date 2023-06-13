@@ -24,10 +24,10 @@
                         :account/display-name :entity/title
                         :account/photo :image/logo}))
 
-(defn route [{:as e :entity/keys [kind id]} key]
+(defn href [{:as e :entity/keys [kind id]} key]
   (when e
     (let [tag (keyword (name kind) (name key))]
-      (routes/path-for tag kind id))))
+      (routes/href tag kind id))))
 
 #?(:cljs
    (ui/defview card

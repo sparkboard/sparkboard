@@ -23,7 +23,7 @@
            [:a.contents {:href (routes/entity entity :read)}
             [:img.h-10.w-10
              {:src (ui/asset-src logo :logo)}]])
-         [:a.contents {:href (routes/entity entity :read)} [:h3 title]]] 
+         [:a.contents {:href (routes/entity entity :read)} [:h3 title]]]
         (concat children [[account/header:account]])))
 
 (ui/defview read [params]
@@ -33,12 +33,12 @@
                   entity/description
                   image/logo
                   image/background]} (:data params)
-          q (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
+          q      (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
           result (when q (ws/once [:org/search (assoc params :q q)]))]
       [:div
        (entity-header org
                       [:a.inline-flex.items-center {:class "hover:text-txt/60"
-                                                    :href  (entity/route org :org/edit)}
+                                                    :href  (entity/href org :org/edit)}
                        [icons/settings]]
                       #_[:div
 
@@ -46,9 +46,8 @@
                                                                    title "?"))
                                        (routes/POST :org/delete params))}]
                       [ui/filter-field ?q {:loading? (:loading? result)}]
-                      [:a.btn.btn-light {:href (routes/path-for :board/new
-                                                                {:account      (db/get :env/account :entity/id)
-                                                                 :query-params {:org (:entity/id org)}})} (tr :tr/new-board)])
+                      [:a.btn.btn-light {:href (routes/href :board/new
+                                                            {:query-params {:org (:entity/id org)}})} (tr :tr/new-board)])
 
        [:div.p-body.whitespace-pre
         "This is the landing page for an organization. Its purpose is to provide a quick overview of the organization and list its boards.
@@ -64,14 +63,14 @@
 
        (if (seq q)
          (for [[kind results] (dissoc (:value result) :q)
-               :when          (seq results)]
+               :when (seq results)]
            [:<>
             [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
             [:div.card-grid (map entity/card results)]])
          [:div.card-grid (map entity/card (:board/_org org))])])))
 
 (ui/defview edit [{:as params org :data}]
-  (forms/with-form [!org (u/keep-changes org 
+  (forms/with-form [!org (u/keep-changes org
                                          {:entity/id          (:entity/id org)
                                           :entity/title       (?title :label (tr :tr/title))
                                           :entity/description (?description :label (tr :tr/description))
@@ -100,20 +99,18 @@
 
 (ui/defview new [params]
   (forms/with-form [!org (u/prune
-                          {:entity/title ?title
-                           :entity/domain ?domain})
+                           {:entity/title  ?title
+                            :entity/domain ?domain})
                     :required [?title ?domain]]
-    [:<>
-     (account/header params)
-     [:form
-      {:class     ui/form-classes
-       :on-submit (fn [e]
-                    (.preventDefault e)
-                    (ui/with-submission [result (routes/POST [:org/new params] @!org)
-                                         :form !org]
-                      (routes/set-path! :org/read {:org (:entity/id result)})))}
-      [:h2.text-2xl (tr :tr/new-org)]
-      (ui/show-field ?title {:label (tr :tr/title)})
-      (domain/show-domain-field ?domain)
-      (ui/show-field-messages !org)
-      [ui/submit-form !org (tr :tr/create)]]]))
+    [:form
+     {:class     ui/form-classes
+      :on-submit (fn [e]
+                   (.preventDefault e)
+                   (ui/with-submission [result (routes/POST [:org/new params] @!org)
+                                        :form !org]
+                     (routes/set-path! :org/read {:org (:entity/id result)})))}
+     [:h2.text-2xl (tr :tr/new-org)]
+     (ui/show-field ?title {:label (tr :tr/title)})
+     (domain/show-domain-field ?domain)
+     (ui/show-field-messages !org)
+     [ui/submit-form !org (tr :tr/create)]]))

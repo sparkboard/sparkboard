@@ -87,6 +87,7 @@
         font-feature-settings: "rlig" 1, "calt" 1;
     }
 }
+
 @layer utilities {
     .px-body {
         @apply px-2 sm:px-6
@@ -99,6 +100,7 @@
     .p-body {
         @apply p-2 sm:p-6
     }
+
     .mx-body {
         @apply mx-2 sm:mx-6
     }
@@ -110,17 +112,21 @@
     .m-body {
         @apply m-2 sm:m-6
     }
+
     .rotate-4s {
         animation: rotation 4s infinite linear;
     }
+
     .rotate-3s {
         animation: rotation 3s infinite linear;
     }
+
     .rotate-2s {
         animation: rotation 2s infinite linear;
     }
-      
+
 }
+
 @layer components {
 
     .gap-body {
@@ -136,9 +142,9 @@
         flex w-full rounded-lg px-3 py-2
 
         bg-back
-        border border-txt focus:border-2 outline-none
-        
-        text-sm ring-offset-back placeholder:text-muted-txt
+        outline outline-1 outline-txt focus:outline-2
+
+        text-sm  placeholder:text-muted-txt
         disabled:cursor-not-allowed disabled:opacity-50
     }
 
@@ -183,21 +189,24 @@
         outline-2
         outline-offset-0
     }
+
     .entity-header {
         @apply
-         bg-muted border-b border-secondary px-body gap-3 flex h-16 p-3 items-stretch
+        bg-muted border-b border-secondary px-body gap-3 flex h-16 p-3 items-stretch
     }
- 
+
     .entity-header h3 {
         @apply items-center hidden sm:inline-flex flex-grow
     }
+
     .card-grid {
-        @apply 
-         grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
-         gap-body text-card-txt p-body divide-y sm:divide-none
+        @apply
+        grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
+        gap-body text-card-txt p-body divide-y sm:divide-none
     }
+
     .loading-bar {
-        background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0),rgba(255, 255, 255, 0), rgb(84 157 255),rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));
+        background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0), rgb(84 157 255), rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));
         background-size: 200% 100%;
         animation: gradient 3s infinite;
         animation-fill-mode: forwards;
@@ -209,19 +218,48 @@
 
 }
 
-  @keyframes rotation {
+@keyframes rotation {
     0% {
-      transform: rotate(0deg);
+        transform: rotate(0deg);
     }
     100% {
-      transform: rotate(360deg);
+        transform: rotate(360deg);
     }
-  }
+}
+
 @keyframes gradient {
     0% {
         background-position: 0 0;
     }
     100% {
         background-position: -200% 0;
+    }
+}
+
+.animate-appear {
+    animation: animateAppear 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-content {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 450px;
+    max-height: 85vh;
+    padding: 25px;
+    animation: animateAppear 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dialog-content:focus {
+    outline: none;
+}
+
+@keyframes animateAppear {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
     }
 }

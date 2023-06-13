@@ -73,5 +73,8 @@
 
 (comment
  (path->map "/whatever?x=1")
- (merge-query "/whatever?x=1" {:x "2"}))
+ (-> (merge-query "/whatever?x=1" {:x "2/3"})
+     :path
+     path->map
+     ))
 

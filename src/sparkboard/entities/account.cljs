@@ -40,21 +40,21 @@
       (into [{:sub?    true
               :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/path-for :account/sign-in)} (tr :tr/sign-in)]))
+     {:href (routes/href :account/sign-in)} (tr :tr/sign-in)]))
 
 (defn header [params & children]
   [:div.entity-header
    [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-    {:href (routes/path-for :account/read
-                            {:account (or (:account params)
-                                          (db/get :env/account :entity/id))})} (tr :tr/my-stuff)]
+    {:href (routes/href :account/read
+                        {:account (or (:account params)
+                                      (db/get :env/account :entity/id))})} (tr :tr/my-stuff)]
    children
    [header:account]])
 
 (ui/defview new-menu [params]
-  (radix/dropdown-menu {:trigger [:div.btn.btn-primary (tr :tr/new) "..."]}
-                       [{:on-click #(routes/set-path! :board/new params)} (tr :tr/board)]
-                       [{:on-click #(routes/set-path! :org/new params)} (tr :tr/org)]))
+  (radix/dropdown-menu {:trigger [:div.btn.btn-primary (tr :tr/new) (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4")]}
+                       [{:on-select #(routes/set-path! :board/new params)} (tr :tr/board)]
+                       [{:on-select #(routes/set-path! :org/new params)} (tr :tr/org)]))
 
 (ui/defview read [{:as params :keys [data]}]
   (let [!tab (h/use-state (tr :tr/recent))]
@@ -97,7 +97,7 @@
   (v/x
     [:a.btn.btn-light
      {:class "w-full h-10 text-zinc-500 text-sm"
-      :href  (routes/path-for :oauth2.google/launch)}
+      :href  (routes/href :oauth2.google/launch)}
      [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]))
 
 (defn account:sign-in-terms []

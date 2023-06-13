@@ -65,8 +65,9 @@
                                                        :view  `account/read})
                                            "/orgs" (E :account/orgs {:query `account/orgs-query})}
        "/o"                               {"/new"                 (E :org/new
-                                                                     {:view `org/new
-                                                                      :POST `org/new!})
+                                                                     {:target :modal
+                                                                      :view   `org/new
+                                                                      :POST   `org/new!})
                                            ["/" [bidi/uuid :org]] {""          (E :org/read
                                                                                   {:query `org/read-query
                                                                                    :view  `org/read})
@@ -79,17 +80,18 @@
                                                                    "/search"   (E :org/search
                                                                                   {:query `org/search-query})}}
        "/b"                               {"/new"                   (E :board/new
-                                                                       {:view `board/new
-                                                                        :POST `board/new!})
-                                           ["/" [bidi/uuid :board]] {""             (E :board/read
-                                                                                       {:query `board/read-query
-                                                                                        :view  `board/read})
-                                                                     "/register"    (E :board/register
-                                                                                       {:view `board/register
-                                                                                        :POST `board/register!})}}
-       ["/p"]                             {"/new" (E :project/new
-                                                     {:view `project/new
-                                                      :POST `project/new!})
+                                                                       {:target :modal
+                                                                        :view   `board/new
+                                                                        :POST   `board/new!})
+                                           ["/" [bidi/uuid :board]] {""          (E :board/read
+                                                                                    {:query `board/read-query
+                                                                                     :view  `board/read})
+                                                                     "/register" (E :board/register
+                                                                                    {:view `board/register
+                                                                                     :POST `board/register!})}}
+       ["/p"]                             {"/new"                     (E :project/new
+                                                                         {:view `project/new
+                                                                          :POST `project/new!})
                                            ["/" [bidi/uuid :project]] (E :project/read
                                                                          {:query `project/read-query
                                                                           :view  `project/read})}
@@ -106,17 +108,16 @@
           (:query-params options)
           (-> (query-params/merge-query (:query-params options)) :path)))
 
+(def match-path
+  "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
+  ;; memoize
+  (fn [path]
+    (impl/match-route routes (path-for path))))
+
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
-
     (let [tag (keyword (name kind) (name key))]
       (path-for tag kind id))))
-
-
-(defn match-path
-  "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
-  [path]
-  (impl/match-route routes (path-for path)))
 
 (comment
   (sparkboard.impl.routes/resolve-endpoint
@@ -129,18 +130,33 @@
    (do
 
      (defn set-location! [location]
-       (db/transact! [[:db/retractEntity :env/location]
-                      (assoc location :db/id :env/location)]))
+       (let [modal    (-> location :params :query-params :modal)
+             location (cond-> location modal (assoc :modal (impl/match-route routes modal)))]
+         (db/transact! [[:db/retractEntity :env/location]
+                        (assoc location :db/id :env/location)])))
 
-     (defonce history (pushy/pushy set-location! #(u/guard (#'impl/match-route routes %) :view)))
+     (defonce history (pushy/pushy set-location! (partial impl/match-route routes)))
+
+     (defn merge-query [params]
+       (:path (query-params/merge-query (:path (db/get :env/location :params)) params)))
 
      (defn merge-query! [params]
-       (let [{:keys [path query-params]} (query-params/merge-query (db/get :env/location :path) params)]
-         (pushy/set-token! history path)
-         query-params))
+       (pushy/set-token! history (merge-query params)))
+
+     (defn href [route & args]
+       (let [path  (apply path-for route args)
+             match (match-path path)]
+         (if (= :modal (:target match))
+           (merge-query {:modal path})
+           path)))
+
+     (defn set-modal! [route]
+       (merge-query! {:modal (some-> route path-for)}))
+
+     (defn close-modal! [] (merge-query! {:modal nil}))
 
      (defn set-path! [& args]
-       (pushy/set-token! history (apply path-for args)))))
+       (js/setTimeout #(pushy/set-token! history (apply href args)) 0))))
 
 (defn breadcrumb [path] (impl/breadcrumb routes path))
 

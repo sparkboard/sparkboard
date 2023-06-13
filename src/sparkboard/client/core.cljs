@@ -8,6 +8,7 @@
             [sparkboard.client.scratch]
             [sparkboard.entities.domain :as domain]
             [sparkboard.i18n :refer [tr]]
+            [sparkboard.views.radix :as radix]
             [sparkboard.routes :as routes]
             [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]                ;; extends `ratom` reactivity
@@ -16,11 +17,16 @@
             [yawn.root :as root]))
 
 (ui/defview root []
-  (let [{:as match :keys [view]} (db/get :env/location)]
+  (let [{:as match :keys [view modal]} (db/get :env/location)]
     [:div.w-full.font-sans
      [:Suspense {:fallback "ROUGH spinner"}
-      (when view
-        (ui/show-match match))]]))
+
+      (ui/show-match match)
+
+      (radix/dialog {:props/root {:open           (boolean modal)
+                                  :on-open-change #(when-not %
+                                                     (routes/set-modal! nil))}}
+                    (ui/show-match modal))]]))
 
 (defonce !react-root (delay (root/create :web (root))))
 

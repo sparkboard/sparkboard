@@ -24,31 +24,29 @@
                                 :board/owner   [:entity/id (uuid (?owner :init (or (some-> params :query-params :org)
                                                                                    (str (db/get :env/account :entity/id)))))]})
                       :required [?title ?domain]]
-      [:<>
-       (account/header params)
-       [:form
-        {:class     ui/form-classes
-         :on-submit (fn [^js e]
-                      (.preventDefault e)
-                      (ui/with-submission [result (routes/POST :board/new @!board)
-                                           :form !board]
-                        (routes/set-path! :org/read {:org (:entity/id result)})))}
-        [:h2.text-2xl (tr :tr/new-board)]
+      [:form
+       {:class     ui/form-classes
+        :on-submit (fn [^js e]
+                     (.preventDefault e)
+                     (ui/with-submission [result (routes/POST :board/new @!board)
+                                          :form !board]
+                       (routes/set-path! :org/read {:org (:entity/id result)})))}
+       [:h2.text-2xl (tr :tr/new-board)]
 
-        [:div.flex.flex-col.gap-2
-         [ui/input-label {} (tr :tr/owner)]
-         (->> owners
-              (map (fn [{:keys [entity/id entity/title image/logo]}]
-                     (v/x [radix/select-item (str id) [:div.flex.gap-2
-                                                       [:img.w-5.h-5.rounded-sm {:src (ui/asset-src logo :logo)}]
-                                                       title]])))
-              (apply radix/select-menu {:value           @?owner
-                                        :on-value-change (partial reset! ?owner)}))]
+       [:div.flex.flex-col.gap-2
+        [ui/input-label {} (tr :tr/owner)]
+        (->> owners
+             (map (fn [{:keys [entity/id entity/title image/logo]}]
+                    (v/x [radix/select-item {:value (str id)
+                                             :text title
+                                             :icon [:img.w-5.h-5.rounded-sm {:src (ui/asset-src logo :logo)}]}])))
+             (apply radix/select-menu {:value           @?owner
+                                       :on-value-change (partial reset! ?owner)}))]
 
-        (ui/show-field ?title {:label (tr :tr/title)})
-        (domain/show-domain-field ?domain)
-        (ui/show-field-messages !board)
-        [ui/submit-form !board (tr :tr/create)]]])))
+       (ui/show-field ?title {:label (tr :tr/title)})
+       (domain/show-domain-field ?domain)
+       (ui/show-field-messages !board)
+       [ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
@@ -77,15 +75,15 @@
      [:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
      (into [:ul]
            (map (fn [proj]
-                  [:li [:a {:href (routes/path-for :project/read {:project (:entity/id proj)})}
+                  [:li [:a {:href (routes/href :project/read {:project (:entity/id proj)})}
                         (:entity/title proj)]]))
            (:project/_board board))]
     [:div.rough-tab                                         ;; members
-     [:a {:href (routes/path-for :board/register params)} (tr :tr/new-member)]
+     [:a {:href (routes/href :board/register params)} (tr :tr/new-member)]
      (into [:ul]
            (map (fn [member]
                   [:li
-                   [:a {:href (routes/path-for :member/read {:member (:entity/id member)})}
+                   [:a {:href (routes/href :member/read {:member (:entity/id member)})}
                     (:member/name member)]]))
            (:member/_board board))]
     [:div.rough-tab {:name  "I18n"                          ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25

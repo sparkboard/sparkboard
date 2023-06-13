@@ -1,5 +1,6 @@
 (ns sparkboard.views.radix
-  (:require ["@radix-ui/react-dropdown-menu" :as dm]
+  (:require ["@radix-ui/react-dialog" :as dialog]
+            ["@radix-ui/react-dropdown-menu" :as dm]
             ["@radix-ui/react-select" :as sel]
             [sparkboard.icons :as icons]
             [yawn.view :as v]))
@@ -29,10 +30,10 @@
 (defn menu-item [props & children]
   (let [checks?   (contains? props :selected)
         selected? (:selected props)]
-    (v/x [:div (v/props {:class         [(menu-item-classes selected?)
-                                         (when checks? "pl-8")]
-                         :data-selected (:selected props false)}
-                        (dissoc props :selected))
+    (v/x [:el dm/Item (v/props {:class         [(menu-item-classes selected?)
+                                                (when checks? "pl-8")]
+                                :data-selected (:selected props false)}
+                               (dissoc props :selected))
           (when checks?
             [:span.absolute.inset-y-0.left-0.flex.items-center.pl-2.text-txt.inline-flex
              {:class         "data-[selected=false]:hidden"
@@ -55,13 +56,13 @@
             (map (fn [[props & children]]
                    (if (:trigger props)
                      (apply dropdown-menu (assoc props :sub? true) children)
-                     [menu-item props children]))
+                     (into [menu-item props] children)))
                  children))]]))
 
 (defn select-menu [{:as props :keys [placeholder]} & children]
   (v/x
-    [:el sel/Root (v/props (dissoc props :trigger :placeholder))
-     [:el.form-text.flex.outline-none sel/Trigger
+    [:el sel/Root (v/props {:tabindex 0} (dissoc props :trigger :placeholder))
+     [:el.form-text.flex sel/Trigger
       [:el sel/Value {:placeholder placeholder}]
       [:div.flex-grow]
       [:el sel/Icon (icons/chevron-down "w-5 h-5")]]
@@ -74,10 +75,26 @@
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))
 (def select-group (v/from-element :el sel/Group))
+
 (v/defview select-item
   {:key (fn [value _] value)}
-  [value text]
+  [{:keys [value text icon]}]
   (v/x [:el sel/Item {:class (menu-item-classes false)
-                      :value value}
-        [:el sel/ItemText text]
+                      :value value
+                      :text-value text}
+        [:el sel/ItemText [:div.flex.gap-2 icon text]]
         [:el sel/ItemIndicator]]))
+
+(defn dialog [{:props/keys [root
+                            content]} & body]
+  (v/x
+    [:el dialog/Root (v/props root)
+     [:el dialog/Portal
+      [:el dialog/Overlay
+       {:class "inset-0 fixed bg-back/80 animate-appear"}]
+      [:el.dialog-content.bg-back.rounded-lg.shadow-lg dialog/Content
+       (v/props content)
+       body]]])
+  )
+(defn dialog-close [el]
+  (v/x [:el dialog/Close {:as-child true} el]))
