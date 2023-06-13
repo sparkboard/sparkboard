@@ -61,21 +61,15 @@
                    q
                    [:entity/id org])})
 
-(defn conform [org]
-  (-> org
-      (domain/conform-and-validate)
-      (validate/assert (-> (mu/optional-keys :org/as-map)
-                           (mu/assoc :entity/domain (mu/optional-keys :domain/as-map))))))
-
 (defn edit! [{:keys [account]} params org]
-  (let [org (conform (assoc org :entity/id (:org params)))]
+  (let [org (entity/conform (assoc org :entity/id (:org params)) :org/as-map)]
     (db/transact! [org])
     {:body org}))
 
 (defn new!
   [{:keys [account]} _ org]
   (let [org    (-> (dl/new-entity org :org :by (:db/id account))
-                   conform)
+                   (entity/conform :org/as-map))
         member (-> {:member/entity  org
                     :member/account (:db/id account)
                     :member/roles   #{:role/owner}}

@@ -12,7 +12,7 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(defn lang-menu-content-2 []
+(defn lang-menu-content []
   (let [current-locale (i/current-locale)
         on-select      (fn [v]
                          (p/do (routes/POST :account/set-locale v)
@@ -29,27 +29,7 @@
                                                    classes]}
    (apply radix/dropdown-menu
           {:trigger [icons/languages "w-5 h-5"]}
-          (lang-menu-content-2))])
-
-(defn icon:plus [& [classes]]
-  (v/x
-    [:svg {:xmlns   "http://www.w3.org/2000/svg"
-           :viewBox "0 0 20 20"
-           :fill    "currentColor"
-           :class   classes}
-     [:path
-      {:d
-       "M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"}]]))
-
-(defn icon:ellipsis-h [& [classes]]
-  (v/x
-    [:svg {:xmlns   "http://www.w3.org/2000/svg"
-           :viewBox "0 0 20 20"
-           :fill    "currentColor"
-           :class   classes}
-     [:path
-      {:d
-       "M3 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM8.5 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM15.5 8.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"}]]))
+          (lang-menu-content))])
 
 (ui/defview header:account []
   (if-let [account (db/get :env/account)]
@@ -58,20 +38,23 @@
       [{:on-click #(routes/set-path! :home)} (tr :tr/home)]
       [{:on-click #(routes/set-path! :account/logout)} (tr :tr/logout)]
       (into [{:sub?    true
-              :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content-2)))
+              :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for :account/sign-in)} (tr :tr/sign-in)]))
 
 (defn header [params & children]
   [:div.entity-header
-   [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center {:href (routes/path-for :account/read params)} (tr :tr/my-stuff)]
+   [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
+    {:href (routes/path-for :account/read
+                            {:account (or (:account params)
+                                          (db/get :env/account :entity/id))})} (tr :tr/my-stuff)]
    children
    [header:account]])
 
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:trigger [:div.btn.btn-primary (tr :tr/new) "..."]}
-                       [{:on-click #(routes/set-path! :account/new-board params)} (tr :tr/board)]
-                       [{:on-click #(routes/set-path! :account/new-org params)} (tr :tr/org)]))
+                       [{:on-click #(routes/set-path! :board/new params)} (tr :tr/board)]
+                       [{:on-click #(routes/set-path! :org/new params)} (tr :tr/org)]))
 
 (ui/defview read [{:as params :keys [data]}]
   (let [!tab (h/use-state (tr :tr/recent))]

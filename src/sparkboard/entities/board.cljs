@@ -3,6 +3,7 @@
             [promesa.core :as p]
             [sparkboard.entities.account :as account]
             [sparkboard.entities.domain :as domain]
+            [sparkboard.entities.entity :as entity]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
@@ -13,18 +14,15 @@
             [yawn.view :as v]))
 
 (ui/defview new [{:as params :keys [route]}]
-  (let [orgs (ws/use-query [:account/orgs params])
+  (let [orgs (ws/use-query [:account/orgs {:account (db/get :env/account :entity/id)}])
         owners (->> (:value orgs)
                     (map #(select-keys % [:entity/id :entity/title :image/logo]))
-                    (cons (let [{:keys [entity/id account/display-name account/photo]} (db/get :env/account)]
-                            {:entity/id    id
-                             :entity/title (tr :tr/personal-account [display-name])
-                             :image/logo   photo})))]
+                    (cons (entity/account-as-entity (db/get :env/account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
                                 :entity/domain ?domain
-                                :board/owner   (uuid (?owner :init (or (some-> params :query-params :org)
-                                                                       (str (db/get :env/account :entity/id)))))})
+                                :board/owner   [:entity/id (uuid (?owner :init (or (some-> params :query-params :org)
+                                                                                   (str (db/get :env/account :entity/id)))))]})
                       :required [?title ?domain]]
       [:<>
        (account/header params)
@@ -32,7 +30,7 @@
         {:class     ui/form-classes
          :on-submit (fn [^js e]
                       (.preventDefault e)
-                      (ui/with-submission [result (routes/POST [:board/new params] @!board)
+                      (ui/with-submission [result (routes/POST :board/new @!board)
                                            :form !board]
                         (routes/set-path! :org/read {:org (:entity/id result)})))}
         [:h2.text-2xl (tr :tr/new-board)]
@@ -45,7 +43,7 @@
                                                        [:img.w-5.h-5.rounded-sm {:src (ui/asset-src logo :logo)}]
                                                        title]])))
               (apply radix/select-menu {:value           @?owner
-                                        :on-value-change #(do (prn :on-value-change) (reset! ?owner %))}))]
+                                        :on-value-change (partial reset! ?owner)}))]
 
         (ui/show-field ?title {:label (tr :tr/title)})
         (domain/show-domain-field ?domain)

@@ -60,42 +60,39 @@
 
        "/domain-availability"             (E :domain/availability
                                              {:GET `domain/availability})
-       ["/a/" [bidi/uuid :account]]       {""           (E :account/read
-                                                           {:query `account/read-query
-                                                            :view  `account/read})
-                                           "/orgs"      (E :account/orgs {:query `account/orgs-query})
-                                           "/new-org"   (E :account/new-org
-                                                           {:view `org/new
-                                                            :POST `org/new!})
-                                           "/new-board" (E :account/new-board
-                                                           {:view `board/new
-                                                            :POST `board/new!})}
-       "/o"                               {["/" [bidi/uuid :org]] {""           (E :org/read
-                                                                                   {:query `org/read-query
-                                                                                    :view  `org/read})
-                                                                   "/settings"  (E :org/edit
-                                                                                   {:view  `org/edit
-                                                                                    :query `org/edit-query
-                                                                                    :POST  `org/edit!})
-                                                                   "/delete"    (E :org/delete
-                                                                                   {:POST `org/delete!})
-                                                                   "/new-board" (E :org/new-board
-                                                                                   {:view `board/new
-                                                                                    :POST `board/new!})
-                                                                   "/search"    (E :org/search
-                                                                                   {:query `org/search-query})}}
-       ["/b/" [bidi/uuid :board]]         {""             (E :board/read
-                                                             {:query `board/read-query
-                                                              :view  `board/read})
-                                           "/new-project" (E :project/new
-                                                             {:view `project/new
-                                                              :POST `project/new!})
-                                           "/register"    (E :board/register
-                                                             {:view `board/register
-                                                              :POST `board/register!})}
-       ["/p/" [bidi/uuid :project]]       {"" (E :project/read
-                                                 {:query `project/read-query
-                                                  :view  `project/read})}
+       ["/a/" [bidi/uuid :account]]       {""      (E :account/read
+                                                      {:query `account/read-query
+                                                       :view  `account/read})
+                                           "/orgs" (E :account/orgs {:query `account/orgs-query})}
+       "/o"                               {"/new"                 (E :org/new
+                                                                     {:view `org/new
+                                                                      :POST `org/new!})
+                                           ["/" [bidi/uuid :org]] {""          (E :org/read
+                                                                                  {:query `org/read-query
+                                                                                   :view  `org/read})
+                                                                   "/settings" (E :org/edit
+                                                                                  {:view  `org/edit
+                                                                                   :query `org/edit-query
+                                                                                   :POST  `org/edit!})
+                                                                   "/delete"   (E :org/delete
+                                                                                  {:POST `org/delete!})
+                                                                   "/search"   (E :org/search
+                                                                                  {:query `org/search-query})}}
+       "/b"                               {"/new"                   (E :board/new
+                                                                       {:view `board/new
+                                                                        :POST `board/new!})
+                                           ["/" [bidi/uuid :board]] {""             (E :board/read
+                                                                                       {:query `board/read-query
+                                                                                        :view  `board/read})
+                                                                     "/register"    (E :board/register
+                                                                                       {:view `board/register
+                                                                                        :POST `board/register!})}}
+       ["/p"]                             {"/new" (E :project/new
+                                                     {:view `project/new
+                                                      :POST `project/new!})
+                                           ["/" [bidi/uuid :project]] (E :project/read
+                                                                         {:query `project/read-query
+                                                                          :view  `project/read})}
        ["/m/" [bidi/uuid :member]]        {"" (E :member/read
                                                  {:view  `member/read
                                                   :query `member/read-query})}}])

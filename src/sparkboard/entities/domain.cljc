@@ -1,6 +1,5 @@
 (ns sparkboard.entities.domain
-  (:require [applied-science.js-interop :as j]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
@@ -31,11 +30,11 @@
   [entity]
   {:pre [(:entity/id entity)]}
   (if (:entity/domain entity)
-    (let [entity (u/update-some-paths entity [:entity/domain :domain/name] qualify-domain)
+    (let [entity          (u/update-some-paths entity [:entity/domain :domain/name] qualify-domain)
           existing-domain (when-let [name (-> entity :entity/domain :domain/name)]
                             (db/entity [:domain/name name]))]
       (if (empty? existing-domain)
-        entity ;; upsert new domain entry
+        entity                                              ;; upsert new domain entry
         (let [existing-id (-> existing-domain :entity/_domain first :entity/id)]
           (if (= existing-id (:entity/id entity))
             ;; no-op, domain is already pointing at this entity

@@ -129,6 +129,7 @@
                                                   (? :entity/locale-suggestions)
                                                   (? :entity/social-feed)
                                                   (? :entity/deleted-at)
+                                                  (? :entity/created-by)
 
                                                   (? :board/custom-css)
                                                   (? :board/custom-js)
@@ -161,7 +162,7 @@
                            :entity/kind
                            :collection/boards
                            :entity/title
-                           :entity/domain
+                           (? :entity/domain)
                            (? :image/logo)
                            (? :image/background)]}})
 
@@ -182,11 +183,13 @@
    :domain/name   (merge {:doc "A complete domain name, eg a.b.com"}
                          unique-string-id)
    :domain/owner  (ref :one)
-   :entity/domain (merge (ref :one)
+   :entity/domain (merge (ref :one :domain/as-map)
                          s/unique-value)
+   :entity/_domain {s- [:map {:closed true} :entity/id]}
    :domain/as-map (merge (ref :one)
                          {s- [:map {:closed true}
                               :domain/name
+                              (? :entity/_domain)
                               (? :domain/url)
                               (? :domain/owner)]})})
 

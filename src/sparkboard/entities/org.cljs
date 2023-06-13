@@ -46,7 +46,7 @@
                                                                    title "?"))
                                        (routes/POST :org/delete params))}]
                       [ui/filter-field ?q {:loading? (:loading? result)}]
-                      [:a.btn.btn-light {:href (routes/path-for :account/new-board
+                      [:a.btn.btn-light {:href (routes/path-for :board/new
                                                                 {:account      (db/get :env/account :entity/id)
                                                                  :query-params {:org (:entity/id org)}})} (tr :tr/new-board)])
 
@@ -109,7 +109,7 @@
       {:class     ui/form-classes
        :on-submit (fn [e]
                     (.preventDefault e)
-                    (ui/with-submission [result (routes/POST [:account/new-org params] @!org)
+                    (ui/with-submission [result (routes/POST [:org/new params] @!org)
                                          :form !org]
                       (routes/set-path! :org/read {:org (:entity/id result)})))}
       [:h2.text-2xl (tr :tr/new-org)]
