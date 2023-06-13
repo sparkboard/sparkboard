@@ -6,15 +6,18 @@
    [ring.util.response :as ring.response]
    [sparkboard.transit :as transit]
    [sparkboard.views.layouts :as layouts]
-   [clojure.java.io :as io])
+   [clojure.java.io :as io]
+   [sparkboard.server.env :as env])
   (:import (java.time Instant)))
 
 (defn static-path [prefix path]
-  (str path "?v=" (or (-> (str prefix path)
-                          io/resource
-                          assets/try-slurp
-                          assets/md5)
-                      (.toEpochMilli (Instant/now)))))
+  (str path "?v=" (if (= "dev" (env/config :env))
+                    (str (random-uuid))
+                    (or (-> (str prefix path)
+                            io/resource
+                            assets/try-slurp
+                            assets/md5)
+                        (.toEpochMilli (Instant/now))))))
 
 (defn page [content]
   (-> {:body (str (html/html-page {:title "Sparkboard"

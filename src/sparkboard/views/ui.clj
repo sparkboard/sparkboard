@@ -34,10 +34,5 @@
          (let [~result result#]
            ~@body)))))
 
-(defmacro x [& args]
-  (let [args (wrap-tr args)]
-    `(do ~@(butlast args)
-         (~'yawn.view/x ~(last args)))))
-
 (defmacro with-form [bindings & body]
   (inside-out.macros/with-form* &form &env {} bindings [`(v/x (do ~@body))]))

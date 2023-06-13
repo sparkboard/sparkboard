@@ -25,90 +25,87 @@
 
 (def ENTITY-ID [bidi/uuid :entity/id])
 
-(r/redef !routes
+(def routes
   "Route definitions.
   :view     - symbol pointing to a (client) view for the single-page app
   :query    - symbol pointing to a (server) function providing data for the route
   :POST     - symbol pointing to a (server) function accepting [req, params & body]
   :GET      - symbol pointing to a (server) function accepting a request map"
-  (r/reaction
-    ["" {"/"                                (E :home {:public true
-                                                      :view   `account/home})
-         "/ws"                              (E :websocket {:public true
-                                                           :GET    'sparkboard.server.core/ws-handler})
-         "/upload"                          (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
-         ["/assets/" [bidi/uuid :asset/id]] (E :asset/serve {:public true
-                                                             :GET    'sparkboard.assets/serve-asset})
-         ["/documents/" :file/name]         (E :markdown/file
-                                               {:GET    'sparkboard.server.core/serve-markdown
-                                                :public true})
-         "/slack/"                          {"invite-offer"  (E :slack/invite-offer
-                                                                {:view `slack.client/invite-offer})
-                                             "link-complete" (E :slack/link-complete
-                                                                {:view `slack.client/link-complete})}
-         "/login"                           (E :account/sign-in {:view    `account/account:sign-in
-                                                                 :header? false
-                                                                 :POST    'sparkboard.server.accounts/login!
-                                                                 :public  true})
-         "/logout"                          (E :account/logout {:GET    'sparkboard.server.accounts/logout
-                                                                :public true})
-         "/locale/set"                      (E :account/set-locale {:POST 'sparkboard.i18n/set-locale!})
-         "/oauth2"                          {"/google" {"/launch"   (E :oauth2.google/launch {})
-                                                        "/callback" (E :oauth2.google/callback {})
-                                                        "/landing"  (E :oauth2.google/landing
-                                                                       {:public true
-                                                                        :GET    'sparkboard.server.accounts/google-landing})}}
+  ["" {"/"                                (E :home {:public true
+                                                    :view   `account/home})
+       "/ws"                              (E :websocket {:public true
+                                                         :GET    'sparkboard.server.core/ws-handler})
+       "/upload"                          (E :asset/upload {:POST 'sparkboard.assets/upload-handler})
+       ["/assets/" [bidi/uuid :asset/id]] (E :asset/serve {:public true
+                                                           :GET    'sparkboard.assets/serve-asset})
+       ["/documents/" :file/name]         (E :markdown/file
+                                             {:GET    'sparkboard.server.core/serve-markdown
+                                              :public true})
+       "/slack/"                          {"invite-offer"  (E :slack/invite-offer
+                                                              {:view `slack.client/invite-offer})
+                                           "link-complete" (E :slack/link-complete
+                                                              {:view `slack.client/link-complete})}
+       "/login"                           (E :account/sign-in {:view    `account/account:sign-in
+                                                               :header? false
+                                                               :POST    'sparkboard.server.accounts/login!
+                                                               :public  true})
+       "/logout"                          (E :account/logout {:GET    'sparkboard.server.accounts/logout
+                                                              :public true})
+       "/locale/set"                      (E :account/set-locale {:POST 'sparkboard.i18n/set-locale!})
+       "/oauth2"                          {"/google" {"/launch"   (E :oauth2.google/launch {})
+                                                      "/callback" (E :oauth2.google/callback {})
+                                                      "/landing"  (E :oauth2.google/landing
+                                                                     {:public true
+                                                                      :GET    'sparkboard.server.accounts/google-landing})}}
 
-         "/domain-availability"             (E :domain/availability
-                                               {:GET `domain/availability})
-         ["/a/" [bidi/uuid :account]]       {"" (E :account/read
-                                                   {:query `account/read-query
-                                                    :view  `account/read-view})
-                                             "/orgs" (E :account/orgs {:query `account/orgs-query})
-                                             "/new-org" (E :account/new-org 
+       "/domain-availability"             (E :domain/availability
+                                             {:GET `domain/availability})
+       ["/a/" [bidi/uuid :account]]       {""           (E :account/read
+                                                           {:query `account/read-query
+                                                            :view  `account/read})
+                                           "/orgs"      (E :account/orgs {:query `account/orgs-query})
+                                           "/new-org"   (E :account/new-org
                                                            {:view `org/new
                                                             :POST `org/new!})
-                                             "/new-board" (E :account/new-board 
-                                                             {:view `board/new 
-                                                              :POST `board/new!})}
-         "/o"                               {["/" [bidi/uuid :org]] {""           (E :org/read
-                                                                                     {:query `org/read-query
-                                                                                      :view  `org/read})
-                                                                     "/settings"  (E :org/edit
-                                                                                     {:view  `org/edit
-                                                                                      :query `org/edit-query
-                                                                                      :POST  `org/edit!})
-                                                                     "/delete"    (E :org/delete
-                                                                                     {:POST `org/delete!})
-                                                                     "/new-board" (E :org/new-board
-                                                                                     {:view `board/new
-                                                                                      :POST `board/new!})
-                                                                     "/search"    (E :org/search
-                                                                                     {:query `org/search-query})}}
-         ["/b/" [bidi/uuid :board]]         {""             (E :board/read
-                                                               {:query `board/read-query
-                                                                :view  `board/read})
-                                             "/new-project" (E :project/new
-                                                               {:view `project/new
-                                                                :POST `project/new!})
-                                             "/register"    (E :board/register
-                                                               {:view `board/register
-                                                                :POST `board/register!})}
-         ["/p/" [bidi/uuid :project]]       {"" (E :project/read
-                                                   {:query `project/read-query
-                                                    :view  `project/read})}
-         ["/m/" [bidi/uuid :member]]        {"" (E :member/read
-                                                   {:view  `member/read
-                                                    :query `member/read-query})}}]))
-
+                                           "/new-board" (E :account/new-board
+                                                           {:view `board/new
+                                                            :POST `board/new!})}
+       "/o"                               {["/" [bidi/uuid :org]] {""           (E :org/read
+                                                                                   {:query `org/read-query
+                                                                                    :view  `org/read})
+                                                                   "/settings"  (E :org/edit
+                                                                                   {:view  `org/edit
+                                                                                    :query `org/edit-query
+                                                                                    :POST  `org/edit!})
+                                                                   "/delete"    (E :org/delete
+                                                                                   {:POST `org/delete!})
+                                                                   "/new-board" (E :org/new-board
+                                                                                   {:view `board/new
+                                                                                    :POST `board/new!})
+                                                                   "/search"    (E :org/search
+                                                                                   {:query `org/search-query})}}
+       ["/b/" [bidi/uuid :board]]         {""             (E :board/read
+                                                             {:query `board/read-query
+                                                              :view  `board/read})
+                                           "/new-project" (E :project/new
+                                                             {:view `project/new
+                                                              :POST `project/new!})
+                                           "/register"    (E :board/register
+                                                             {:view `board/register
+                                                              :POST `board/register!})}
+       ["/p/" [bidi/uuid :project]]       {"" (E :project/read
+                                                 {:query `project/read-query
+                                                  :view  `project/read})}
+       ["/m/" [bidi/uuid :member]]        {"" (E :member/read
+                                                 {:view  `member/read
+                                                  :query `member/read-query})}}])
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
-  (let [routes ()])
   (cond-> (cond (string? route) route
-                (keyword? route) (bidi/path-for @!routes route options)
-                (vector? route) (apply bidi/path-for @!routes route)
-                :else (bidi/path-for @!routes route options))
+                (keyword? route) (bidi/path-for routes route options)
+                (vector? route) (apply bidi/path-for routes route)
+                :else (bidi/path-for routes route options))
           (:query-params options)
           (-> (query-params/merge-query (:query-params options)) :path)))
 
@@ -122,7 +119,7 @@
 (defn match-path
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
   [path]
-  (impl/match-route @!routes (path-for path)))
+  (impl/match-route routes (path-for path)))
 
 (comment
   (sparkboard.impl.routes/resolve-endpoint
@@ -138,7 +135,7 @@
        (db/transact! [[:db/retractEntity :env/location]
                       (assoc location :db/id :env/location)]))
 
-     (defonce history (pushy/pushy set-location! #(u/guard (#'impl/match-route @!routes %) :view)))
+     (defonce history (pushy/pushy set-location! #(u/guard (#'impl/match-route routes %) :view)))
 
      (defn merge-query! [params]
        (let [{:keys [path query-params]} (query-params/merge-query (db/get :env/location :path) params)]
@@ -148,12 +145,12 @@
      (defn set-path! [& args]
        (pushy/set-token! history (apply path-for args)))))
 
-(defn breadcrumb [path] (impl/breadcrumb @!routes path))
+(defn breadcrumb [path] (impl/breadcrumb routes path))
 
 (defn path->route [path]
   (cond-> path
           (string? path)
-          (->> (impl/match-route @!routes) :route)))
+          (->> (impl/match-route routes) :route)))
 
 #?(:cljs
    (defn POST [route body]
@@ -172,7 +169,7 @@
 
 #?(:cljs
    (defn GET [route & args]
-     
+
      (-> (apply path-for route args)
          (js/fetch (j/lit {:headers {"Accept"       "application/transit+json"
                                      "Content-type" "application/transit+json"}

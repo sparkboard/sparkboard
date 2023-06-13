@@ -55,11 +55,10 @@
   "Log requests (log/info) and errors (log/error)"
   [f]
   (let [handle-e (fn [req e]
-                   (if (env/config :dev.logging/tap?)       ;; configured in .local.config.edn
-                     (log/error (ex-message e) e)
-                     (log/error (ex-message e)
-                                (ex-data e)
-                                (ex-cause e)))
+                   (tap> e)
+                   (log/error (ex-message e)
+                              (ex-data e)
+                              (ex-cause e))
                    (let [{:as   data
                           :keys [wrap-response]
                           :or   {wrap-response identity}} (ex-data e)]

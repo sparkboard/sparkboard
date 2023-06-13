@@ -7,7 +7,7 @@
 (def menu-root (v/from-element :el dm/Root))
 (def menu-sub-root (v/from-element :el dm/Sub))
 (def menu-portal (v/from-element :el dm/Portal))
-(def menu-content-classes (v/classes ["rounded bg-popover text-popover-txt "
+(def menu-content-classes (v/classes ["rounded bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
                                       "focus:outline-none z-50"
                                       "text-sm gap-1 py-1"]))
@@ -19,10 +19,11 @@
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-2 py-1 rounded mx-1 relative "
+  (str "block px-2 py-1 rounded mx-1 relative text-sm hover:outline-0  "
        (if selected?
-         "font-bold"
-         "cursor-pointer hover:bg-primary hover:text-primary-txt")))
+         "text-txt/50 cursor-default "
+         (str "cursor-pointer hover:bg-primary/5 "
+              "data-[highlighted]:bg-primary/5 data-[highlighted]:outline-none"))))
 
 
 (defn menu-item [props & children]
@@ -57,18 +58,18 @@
                      [menu-item props children]))
                  children))]]))
 
-(defn select-menu [{:as props :keys [trigger]} & children]
+(defn select-menu [{:as props :keys [placeholder]} & children]
   (v/x
-    [:el sel/Root (v/props (dissoc props :trigger))
-     [:el.form-text.flex sel/Trigger
-      [:el sel/Value {:placeholder "Select an organization..."}]
+    [:el sel/Root (v/props (dissoc props :trigger :placeholder))
+     [:el.form-text.flex.outline-none sel/Trigger
+      [:el sel/Value {:placeholder placeholder}]
       [:div.flex-grow]
       [:el sel/Icon (icons/chevron-down "w-5 h-5")]]
      [:el sel/Portal
-      [:el.bg-back.rounded-lg.shadow sel/Content
-       [:el sel/ScrollUpButton "Up"]
+      [:el.bg-back.rounded-lg.shadow.border.border-txt.border-2.py-1 sel/Content
+       [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto w-4 h-4")]
        (into [:el sel/Viewport {}] children)
-       [:el sel/ScrollDownButton "Down"]]]]))
+       [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto w-4 h-4")]]]]))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))

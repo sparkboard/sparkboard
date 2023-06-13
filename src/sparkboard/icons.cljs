@@ -2,17 +2,18 @@
   (:require [yawn.view :as v]))
 
 (defn arrow-back [& [class-name]]
-  [:svg {:xmlns "http://www.w3.org/2000/svg"
-         :viewBox "0 0 20 20"
-         :fill "currentColor"
-         :className class-name}
-   [:g {:clipPath "url(#clip0_9_2121)"}
-    [:path
-     {:fillRule "evenodd"
-      :d
-      "M10 18a8 8 0 100-16 8 8 0 000 16zm3.25-7.25a.75.75 0 000-1.5H8.66l2.1-1.95a.75.75 0 10-1.02-1.1l-3.5 3.25a.75.75 0 000 1.1l3.5 3.25a.75.75 0 001.02-1.1l-2.1-1.95h4.59z"
-      :clipRule "evenodd"}]]
-   [:defs [:clipPath#clip0_9_2121 [:path {:d "M0 0h20v20H0z"}]]]])
+  (v/x
+    [:svg {:xmlns     "http://www.w3.org/2000/svg"
+           :viewBox   "0 0 20 20"
+           :fill      "currentColor"
+           :className class-name}
+     [:g {:clipPath "url(#clip0_9_2121)"}
+      [:path
+       {:fillRule "evenodd"
+        :d
+        "M10 18a8 8 0 100-16 8 8 0 000 16zm3.25-7.25a.75.75 0 000-1.5H8.66l2.1-1.95a.75.75 0 10-1.02-1.1l-3.5 3.25a.75.75 0 000 1.1l3.5 3.25a.75.75 0 001.02-1.1l-2.1-1.95h4.59z"
+        :clipRule "evenodd"}]]
+     [:defs [:clipPath#clip0_9_2121 [:path {:d "M0 0h20v20H0z"}]]]]))
 
 (defn settings [& [class-name]]
   (v/x
@@ -31,16 +32,17 @@
        :clipRule "evenodd"}]]))
 
 (defn search [classes]
-  (v/x [:svg.pointer-events-none.h-6.w-6.fill-slate-400
-        {:xmlns "http://www.w3.org/2000/svg"
-         :class classes}
-        [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
+  (v/x
+    [:svg.pointer-events-none.h-6.w-6.fill-slate-400
+     {:xmlns "http://www.w3.org/2000/svg"
+      :class classes}
+     [:path {:d "M20.47 21.53a.75.75 0 1 0 1.06-1.06l-1.06 1.06Zm-9.97-4.28a6.75 6.75 0 0 1-6.75-6.75h-1.5a8.25 8.25 0 0 0 8.25 8.25v-1.5ZM3.75 10.5a6.75 6.75 0 0 1 6.75-6.75v-1.5a8.25 8.25 0 0 0-8.25 8.25h1.5Zm6.75-6.75a6.75 6.75 0 0 1 6.75 6.75h1.5a8.25 8.25 0 0 0-8.25-8.25v1.5Zm11.03 16.72-5.196-5.197-1.061 1.06 5.197 5.197 1.06-1.06Zm-4.28-9.97c0 1.864-.755 3.55-1.977 4.773l1.06 1.06A8.226 8.226 0 0 0 18.75 10.5h-1.5Zm-1.977 4.773A6.727 6.727 0 0 1 10.5 17.25v1.5a8.226 8.226 0 0 0 5.834-2.416l-1.061-1.061Z"}]]))
 
 (defn languages [& [classes]]
   (v/x
-    [:svg {:xmlns "http://www.w3.org/2000/svg"
-           :viewBox "0 0 20 20"
-           :fill "currentColor"
+    [:svg {:xmlns     "http://www.w3.org/2000/svg"
+           :viewBox   "0 0 20 20"
+           :fill      "currentColor"
            :className classes}
      [:path
       {:d
@@ -52,9 +54,16 @@
        :clipRule "evenodd"}]]))
 
 (defn checkmark [& [classes]]
-  [:svg {:class classes :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
-   [:path {:fill-rule "evenodd" :d "M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" :clip-rule "evenodd"}]])
+  (v/x
+    [:svg {:class classes :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
+     [:path {:fill-rule "evenodd" :d "M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" :clip-rule "evenodd"}]]))
 
 (defn chevron-down [& [classes]]
-  [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :class classes}
-   [:path {:fillRule "evenodd" :d "M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" :clipRule "evenodd"}]])
+  (v/x
+    [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor" :class classes}
+     [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M19.5 8.25l-7.5 7.5-7.5-7.5"}]]))
+
+(defn chevron-up [& [classes]]
+  (v/x
+    [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :strokeWidth "{1.5}" :stroke "currentColor" :class classes}
+     [:path {:strokeLinecap "round" :strokeLinejoin "round" :d "M4.5 15.75l7.5-7.5 7.5 7.5"}]]))

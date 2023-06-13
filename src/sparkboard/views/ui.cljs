@@ -89,11 +89,11 @@
 
 (defn auto-submit-handler [?field]
   (fn [& _]
-    (let [!form  (->> (iterate forms/parent ?field)
-                      ( take-while identity)
-                      last)]
+    (let [!form (->> (iterate forms/parent ?field)
+                     (take-while identity)
+                     last)]
       (when-let [submit! (:auto-submit !form)]
-        (forms/watch-promise ?field 
+        (forms/watch-promise ?field
                              (u/p-when (forms/valid?+ !form)
                                        (submit! @!form)))))))
 
@@ -112,14 +112,14 @@
     (doseq [f fs] (apply f args))))
 
 (defn text-props [?field]
-  {:id        (field-id ?field)
-   :value     (or @?field "")
-   :on-change (fn [e]
-                (js/console.log (.. e -target -checked))
-                ((forms/change-handler ?field) e))
-   :on-blur   (compseq (forms/blur-handler ?field)
-                       (auto-submit-handler ?field))
-   :on-focus  (forms/focus-handler ?field)
+  {:id          (field-id ?field)
+   :value       (or @?field "")
+   :on-change   (fn [e]
+                  (js/console.log (.. e -target -checked))
+                  ((forms/change-handler ?field) e))
+   :on-blur     (compseq (forms/blur-handler ?field)
+                         (auto-submit-handler ?field))
+   :on-focus    (forms/focus-handler ?field)
    :on-key-down #(when (= "Enter" (.-key ^js %))
                    ((auto-submit-handler ?field) %))})
 
@@ -133,7 +133,7 @@
     [input-label {:for (field-id ?field)} label]))
 
 (defn show-postfix [?field props]
-  (when-let [postfix (or (:postfix props) 
+  (when-let [postfix (or (:postfix props)
                          (:postfix (meta ?field))
                          (and (:loading? ?field)
                               [icons/loading "w-4 h-4 text-txt/40"]))]
@@ -193,11 +193,11 @@
 
 (defn show-field [?field & [props]]
   (let [props (v/merge-props (:props (meta ?field)) props)
-        el (:el props text-field)]
+        el    (:el props text-field)]
     (el ?field (dissoc props :el))))
 
 (defn filter-field [?field & [attrs]]
-  (let [loading? (or (:loading? ?field) (:loading? attrs))
+  (let [loading?     (or (:loading? ?field) (:loading? attrs))
         icon-classes "h-4 w-4 text-txt/40"]
     [:div.flex.relative.items-stretch
      [:input.form-text.pr-9 (v/props (text-props ?field)
@@ -239,13 +239,13 @@
       fallback)))
 
 (defview image-field [?field]
-  (let [src (asset-src @?field :card)
-        loading? (:loading? ?field)
+  (let [src            (asset-src @?field :card)
+        loading?       (:loading? ?field)
         !selected-blob (h/use-state nil)
-        thumbnail (use-loaded-image src @!selected-blob)]
+        thumbnail      (use-loaded-image src @!selected-blob)]
     [:div.flex.flex-col.gap-3.relative.shadow-sm.border.p-3.rounded-lg
      (when loading?
-           [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
+       [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
      (show-label ?field)
      [:label.block.w-32.h-32.relative.rounded.cursor-pointer.flex.items-center.justify-center
       (v/props {:class ["border-primary/20 bg-back"
@@ -254,24 +254,24 @@
                (when thumbnail
                  {:class "bg-contain bg-no-repeat bg-center shadow-inner"
                   :style {:background-image (css-url thumbnail)}}))
-      
+
       (when-not thumbnail
         (upload-icon "w-6 h-6 m-auto"))
-      
+
       [:input.hidden
        {:id        (field-id ?field)
         :type      "file"
         :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
-        :on-change (compseq 
-                    (fn [e]
-                      (forms/touch! ?field)
-                      (when-let [file (j/get-in e [:target :files 0])]
-                        (reset! !selected-blob (js/URL.createObjectURL file))
-                        (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
-                                                                             (.append "files" file)))
-                                          :form ?field]
-                          (reset! ?field asset)
-                          ((auto-submit-handler ?field))))))}]]
+        :on-change (compseq
+                     (fn [e]
+                       (forms/touch! ?field)
+                       (when-let [file (j/get-in e [:target :files 0])]
+                         (reset! !selected-blob (js/URL.createObjectURL file))
+                         (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
+                                                                              (.append "files" file)))
+                                           :form ?field]
+                           (reset! ?field asset)
+                           ((auto-submit-handler ?field))))))}]]
      (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
@@ -305,8 +305,8 @@
 (defn use-promise
   "Returns a {:loading?, :error, :value} map for a promise (which should be memoized)"
   [promise]
-  (let [!result (h/use-state {:loading? true})
-        !unmounted? (h/use-ref false)
+  (let [!result         (h/use-state {:loading? true})
+        !unmounted?     (h/use-ref false)
         !latest-promise (h/use-ref promise)]
     (h/use-effect (constantly #(reset! !unmounted? true)))
     (h/use-effect (fn []
@@ -325,11 +325,11 @@
   "Given a match, shows the view, loading bar, and/or error message.
    - adds :data to params when a :query is provided"
   [{:keys [view query params]}]
-  (let [view-result (use-promise
-                      (h/use-memo #(cond (not (instance? lazy/Loadable view)) view
-                                         (lazy/ready? view) @view
-                                         :else (lazy/load view))
-                                  [view]))
+  (let [view-result  (use-promise
+                       (h/use-memo #(cond (not (instance? lazy/Loadable view)) view
+                                          (lazy/ready? view) @view
+                                          :else (lazy/load view))
+                                   [view]))
         query-result (when query
                        (ws/watch (:route params)))
         {:as                 result
@@ -344,11 +344,11 @@
 (defn use-debounced-value
   "Caches value for `wait` milliseconds after last change."
   [value wait]
-  (let [!state (h/use-state value)
-        !mounted (h/use-ref false)
-        !timeout (h/use-ref nil)
+  (let [!state    (h/use-state value)
+        !mounted  (h/use-ref false)
+        !timeout  (h/use-ref nil)
         !cooldown (h/use-ref false)
-        cancel #(some-> @!timeout js/clearTimeout)]
+        cancel    #(some-> @!timeout js/clearTimeout)]
     (h/use-effect
       (fn []
         (when @!mounted
@@ -378,8 +378,8 @@
 (def primary-button :button.btn.btn-primary.px-6.py-3.self-start)
 
 (v/defview submit-form [!form label]
-  [primary-button {:type "submit"
-              :disabled  (not (forms/submittable? !form))}
+  [primary-button {:type     "submit"
+                   :disabled (not (forms/submittable? !form))}
    label])
 
 

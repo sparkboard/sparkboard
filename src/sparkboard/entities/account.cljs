@@ -73,7 +73,7 @@
                        [{:on-click #(routes/set-path! :account/new-board params)} (tr :tr/board)]
                        [{:on-click #(routes/set-path! :account/new-org params)} (tr :tr/org)]))
 
-(ui/defview read-view [{:as params :keys [data]}]
+(ui/defview read [{:as params :keys [data]}]
   (let [!tab (h/use-state (tr :tr/recent))]
     (ui/with-form [?pattern (when ?filter (str "(?i)" ?filter))]
       (let [show-results (fn [title results]
@@ -90,7 +90,7 @@
          (header params)
 
          ;; tabs
-         [:div.mt-6.flex.items-stretch.px-body.gap-2
+         [:div.mt-6.flex.items-stretch.px-body.gap-2.h-10
           (->> [(tr :tr/recent)
                 (tr :tr/all)]
                (map (fn [k]
@@ -111,14 +111,14 @@
 
 
 (defn account:sign-in-with-google []
-  (ui/x
+  (v/x
     [:a.btn.btn-light
      {:class "w-full h-10 text-zinc-500 text-sm"
       :href  (routes/path-for :oauth2.google/launch)}
      [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]))
 
 (defn account:sign-in-terms []
-  (ui/x
+  (v/x
     [:p.px-8.text-center.text-sm {:class "text-txt/70"} (tr :tr/sign-in-agree-to)
      [:a.gray-link {:href "/documents/terms-of-service"} (tr :tr/tos)] ","
      [:a.gray-link {:target "_blank"
@@ -165,13 +165,10 @@
 
 (ui/defview account:sign-in [params]
   [:div.h-screen.flex.flex-col
-
+   [header:lang "absolute top-0 right-0 p-4"]
    [:div.flex.flex-col.flex-grow.items-center.max-w-sm.mt-10.relative.mt-24.mx-auto
     {:class ["bg-secondary rounded-t-lg border-t border-r border-l border-txt/05"]}
-    [:div.w-full.p-3.flex.items-end
-     [:div.flex-grow]
-     [header:lang "absolute top-2 right-2"]]
-    [:h1.text-3xl.font-medium.text-center.mt-2.mb-6 (tr :tr/welcome)]
+    [:h1.text-3xl.font-medium.text-center.my-6 (tr :tr/welcome)]
     [account:sign-in-form params]]])
 
 (ui/defview redirect [to]

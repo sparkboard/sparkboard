@@ -45,7 +45,7 @@
                                                        [:img.w-5.h-5.rounded-sm {:src (ui/asset-src logo :logo)}]
                                                        title]])))
               (apply radix/select-menu {:value           @?owner
-                                        :on-value-change #(reset! ?owner %)}))]
+                                        :on-value-change #(do (prn :on-value-change) (reset! ?owner %))}))]
 
         (ui/show-field ?title {:label (tr :tr/title)})
         (domain/show-domain-field ?domain)
