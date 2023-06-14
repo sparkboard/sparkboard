@@ -2,6 +2,7 @@
   (:require ["@radix-ui/react-dialog" :as dialog]
             ["@radix-ui/react-dropdown-menu" :as dm]
             ["@radix-ui/react-select" :as sel]
+            ["@radix-ui/react-tabs" :as tabs]
             [sparkboard.icons :as icons]
             [yawn.view :as v]))
 
@@ -79,8 +80,8 @@
 (v/defview select-item
   {:key (fn [value _] value)}
   [{:keys [value text icon]}]
-  (v/x [:el sel/Item {:class (menu-item-classes false)
-                      :value value
+  (v/x [:el sel/Item {:class      (menu-item-classes false)
+                      :value      value
                       :text-value text}
         [:el sel/ItemText [:div.flex.gap-2 icon text]]
         [:el sel/ItemIndicator]]))
@@ -91,10 +92,22 @@
     [:el dialog/Root (v/props root)
      [:el dialog/Portal
       [:el dialog/Overlay
-       {:class "inset-0 fixed backdrop-blur animate-appear bg-back/40"}]
-      [:el.dialog-content.bg-back.rounded-lg.shadow-lg dialog/Content
-       (v/props content)
-       body]]])
-  )
-(defn dialog-close [el]
-  (v/x [:el dialog/Close {:as-child true} el]))
+       {:class "inset-0 fixed backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid place-items-center sm:p-4 "}
+       [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none dialog/Content
+        (v/props {:class "min-w-[300px]"} content)
+        body
+        [:el.outline-none.contents dialog/Close [:div.p-2.absolute.top-0.right-0.z-10 (icons/close "w-5 h-5")]]]]]]))
+
+(def tab-root tabs/Root)
+(def tab-list tabs/List)
+(def tab-content tabs/Content)
+(def tab-trigger tabs/Trigger)
+#_(defn tabs [& sections]
+  (v/x
+    [:el tabs/Root
+     (into [:el tabs/List]
+           (map-indexed (fn [i [trigger _]]
+                          (v/x [tabs/Trigger {:value i} trigger])) sections))
+     (into [:el tabs/Content]
+           (map-indexed (fn [i [trigger _]]
+                          (v/x [tabs/Content {:value i} trigger])) sections))]))

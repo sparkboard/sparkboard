@@ -71,26 +71,32 @@
                               (reset! !tab %))]
         [:<>
          (header params)
+         [:el radix/tab-root {:value           @!tab
+                              :on-value-change (partial reset! !tab)}
+          ;; tabs
+          [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
+           [:el.contents radix/tab-list
+            (->> [(tr :tr/recent)
+                  (tr :tr/all)]
+                 (map (fn [k]
+                        [:el.flex.items-center radix/tab-trigger
+                         {:value k
+                          :class ["focus:outline-black px-1 border-b-2"
+                                  (if (= k tab)
+                                    "cursor-default border-b-2 border-primary"
+                                    "text-txt/50 hover:border-primary/10 cursor-pointer border-transparent")]} k]))
+                 (into [:<>]))]
+           [:div.flex-grow]
+           [ui/filter-field ?filter]
+           [new-menu params]]
 
-         ;; tabs
-         [:div.mt-6.flex.items-stretch.px-body.gap-2.h-10
-          (->> [(tr :tr/recent)
-                (tr :tr/all)]
-               (map (fn [k]
-                      [:div.flex.items-center
-                       {:on-click #(select-tab! k)
-                        :class    (when-not (= k tab) "text-txt/50 hover:underline cursor-pointer")} k]))
-               (into [:<>]))
-          [:div.flex-grow]
-          [ui/filter-field ?filter]
-          [new-menu params]]
 
-         (if (= tab (tr :tr/recent))
-           (show-results nil (:recents data))
-           [:<>
-            (show-results (tr :tr/orgs) (:org data))
-            (show-results (tr :tr/boards) (:board data))
-            (show-results (tr :tr/projects) (:project data))])]))))
+          [:el.outline-none radix/tab-content {:value (tr :tr/recent)}
+           [show-results nil (:recents data)]]
+          [:el.outline-none radix/tab-content {:value (tr :tr/all)}
+           [show-results (tr :tr/orgs) (:org data)]
+           [show-results (tr :tr/boards) (:board data)]
+           [show-results (tr :tr/projects) (:project data)]]]]))))
 
 
 (defn account:sign-in-with-google []
