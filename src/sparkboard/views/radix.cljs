@@ -91,7 +91,7 @@
     [:el dialog/Root (v/props root)
      [:el dialog/Portal
       [:el dialog/Overlay
-       {:class "inset-0 fixed bg-back/80 animate-appear"}]
+       {:class "inset-0 fixed backdrop-blur animate-appear bg-back/40"}]
       [:el.dialog-content.bg-back.rounded-lg.shadow-lg dialog/Content
        (v/props content)
        body]]])

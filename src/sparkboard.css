@@ -251,6 +251,7 @@
     padding: 25px;
     animation: animateAppear 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 .dialog-content:focus {
     outline: none;
 }
@@ -263,3 +264,4 @@
         opacity: 1;
     }
 }
+
