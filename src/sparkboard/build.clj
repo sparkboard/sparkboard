@@ -15,11 +15,11 @@
   {:shadow.build/stage :flush}
   [state]
   (defonce _tsc (bp/process
-                 {:in :inherit
-                  :out :inherit
-                  :err :inherit
-                  :shutdown bp/destroy-tree}
-                 "npx tailwindcss -w -i src/sparkboard.css -o resources/public/sparkboard.css"))
+                  {:in       :inherit
+                   :out      :inherit
+                   :err      :inherit
+                   :shutdown bp/destroy-tree}
+                  "npx tailwindcss -w -i src/sparkboard.css -o resources/public/sparkboard.css"))
   state)
 
 (defn tailwind-release!
@@ -30,8 +30,8 @@
 
 
 (comment
- (start)
- (clerk/clear-cache!))
+  (start)
+  (clerk/clear-cache!))
 
 (defn aot [_]
   (require 'sparkboard.server.core)
@@ -41,7 +41,7 @@
   (let [deps (clojure.edn/read-string (slurp "deps.edn"))]
     ((requiring-resolve 'uberdeps.api/package) deps "target/sparkboard.jar"
      {:main-class "sparkboard.server.core"
-      :aliases [:datalevin]})))
+      :aliases    [:datalevin]})))
 
 
 (comment
@@ -50,7 +50,7 @@
 
 
 
- ;; DATA IMPORT - copies to ./.db
+  ;; DATA IMPORT - copies to ./.db
   (one-time/fetch-mongodb)
   (one-time/fetch-firebase)
   (one-time/fetch-accounts)
@@ -70,7 +70,7 @@
            '[sparkboard.server.env :as env]
            '[sparkboard.schema :as sb.schema])
 
- ;; reset db (may break fulltext index?)
+  ;; reset db (may break fulltext index?)
   (do
     (dl/clear sd/conn)
     (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
@@ -81,14 +81,14 @@
     (def entities (one-time/all-entities))
 
 
-   ;; transact schema
+    ;; transact schema
     (db/merge-schema! sb.schema/sb-schema)
-   ;; upsert lookup refs
+    ;; upsert lookup refs
     (db/transact! (mapcat sb.schema/unique-keys entities))
-   ;; transact entities
+    ;; transact entities
     (db/transact! (one-time/all-entities)))
 
- ;; add entities, print and stop if one fails
+  ;; add entities, print and stop if one fails
   (doseq [e entities]
     (try (db/transact! [e])
          (catch Exception e!
@@ -99,12 +99,11 @@
   (one-time/explain-errors!)
 
   (->> entities
-       (filter (partial 
-                one-time/contains-somewhere? #uuid "add545dd-2c20-3d45-944f-aaf3448b74a1")))
+       (filter (partial
+                 one-time/contains-somewhere? #uuid "add545dd-2c20-3d45-944f-aaf3448b74a1")))
 
 
   *e
-
 
   )
 

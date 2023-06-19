@@ -3,7 +3,7 @@
             [sparkboard.views.ui :as ui]))
 
 (ui/defview read [{{:member/keys [tags ad-hoc-tags account]} :data}]
-  (let [{:account/keys [display-name photo]} account]
+  (let [{:keys [:account/display-name :image/avatar]} account]
     [:div
      [:h1 display-name]
      (when-let [tags (seq (concat tags ad-hoc-tags))]
@@ -12,4 +12,4 @@
               (map (fn [{:tag/keys [label background-color]}]
                      [:li {:style (when background-color {:background-color background-color})} label]))
               tags)])
-     (when photo [:img {:src (ui/asset-src photo :card)}])]))
+     (when avatar [:img {:src (ui/asset-src avatar :card)}])]))

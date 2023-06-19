@@ -6,7 +6,9 @@
             [sparkboard.entities.entity :as entity]
             [sparkboard.entities.member :as member]
             [sparkboard.util :as u]
-            [sparkboard.validate :as validate]))
+            [sparkboard.validate :as validate]
+            [re-db.reactive :as r]
+            [re-db.hooks :as hooks]))
 
 (defn delete!
   "Mutation fn. Retracts organization by given org-id."
@@ -19,47 +21,41 @@
 
 (defn edit-query [params]
   ;; all the settings that can be changed
-  (db/pull `[ ~@entity/fields] 
+  (db/pull `[~@entity/fields]
            [:entity/id (:org params)]))
 
-(defn read-query 
-  {:authorize (fn [req params] 
+(defn read-query
+  {:authorize (fn [req params]
                 (member/read-and-log! (:org params) (:db/id (:account req))))}
   [params]
   (db/pull `[~@entity/fields
-             {:board/_org ~entity/fields}]
+             {:board/_owner ~entity/fields}]
            (dl/resolve-id (:org params))))
 
-(defn search-query [{:as         params 
-                     :keys       [org]
-                     {:keys [q]} :query-params}]
-  {:q        q
-   :boards   (dl/q '[:find [(pull ?board [:entity/id
-                                          :entity/title
-                                          :entity/kind
-                                          :image/logo
-                                          :image/backgrouond
-                                          {:entity/domain [:domain/name]}]) ...]
-                     :in $ ?terms ?org
-                     :where
-                     [?board :board/owner ?org]
-                     [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]]
-                   q
-                   [:entity/id org])
-   :projects (dl/q '[:find [(pull ?project [:entity/id
-                                            :entity/title
-                                            :entity/kind
-                                            :entity/description
-                                            :image/logo
-                                            :image/backgrouond
-                                            {:project/board [:entity/id]}]) ...]
-                     :in $ ?terms ?org
-                     :where
-                     [?board :board/owner ?org]
-                     [?project :project/board ?board]
-                     [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]]
-                   q
-                   [:entity/id org])})
+(defn search-query [{:as   params
+                     :keys [org q]}]
+  (when q
+    {:q        q
+     :boards   (dl/q (u/template
+                       [:find [(pull ?board ~entity/fields) ...]
+                        :in $ ?terms ?org
+                        :where
+                        [?board :board/owner ?org]
+                        [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]])
+                     q
+                     [:entity/id org])
+     :projects (->> (dl/q (u/template
+                            [:find [(pull ?project [~@entity/fields
+                                                    :project/sticky?
+                                                    {:project/board [:entity/id]}]) ...]
+                             :in $ ?terms ?org
+                             :where
+                             [?board :board/owner ?org]
+                             [?project :project/board ?board]
+                             [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]])
+                          q
+                          [:entity/id org])
+                    (remove :project/sticky?))}))
 
 (defn edit! [{:keys [account]} params org]
   (let [org (entity/conform (assoc org :entity/id (:org params)) :org/as-map)]

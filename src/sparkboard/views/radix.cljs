@@ -98,10 +98,24 @@
         body
         [:el.outline-none.contents dialog/Close [:div.p-2.absolute.top-0.right-0.z-10 (icons/close "w-5 h-5")]]]]]]))
 
-(def tab-root tabs/Root)
-(def tab-list tabs/List)
-(def tab-content tabs/Content)
-(def tab-trigger tabs/Trigger)
+(def tab-root (v/from-element :el tabs/Root))
+(def tab-list (v/from-element :el.contents tabs/List))
+(def tab-content (v/from-element :el.outline-none tabs/Content))
+(def tab-trigger (v/from-element :el tabs/Trigger {:class ["px-1 border-b-2 border-transparent text-txt/50"
+                                                           "data-[state=active]:cursor-pointer"
+                                                           "data-[state=active]:border-primary"
+                                                           "data-[state=active]:text-txt"
+                                                           "data-[state=inactive]:hover:border-primary/10"
+                                                           ]}))
+
+(defn show-tab-list [tabs]
+  [tab-list
+   (->> tabs
+        (map (fn [{title :title}]
+               [tab-trigger
+                {:value title
+                 :class "flex items-center"} title]))
+        (into [:<>]))])
 #_(defn tabs [& sections]
   (v/x
     [:el tabs/Root

@@ -75,8 +75,9 @@
    (defn watch [query-vec]
      (let [query-vec (if (keyword? query-vec)
                        [query-vec {}]
-                       query-vec)]
-       (if (:query (routes/match-path query-vec))
+                       query-vec)
+           match (routes/match-path query-vec)]
+       (if (:query match)
          @(sync/$query @channel query-vec)
          {:error "Query not found"}))))
 

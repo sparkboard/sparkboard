@@ -339,7 +339,7 @@
       (if (= [kind id-string] [:site "account"])
         {:domain/url "https://account.sparkboard.com"}
         (when-not (missing-uuid? uuid)
-          {:entity/_domain {:entity/id uuid}})))))
+          {:entity/_domain [{:entity/id uuid}]})))))
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 
@@ -350,7 +350,7 @@
           Date/from))
 
 (defn parse-image-urls [m a urls]
-  (let [image-k #(case % "logo" :image/logo
+  (let [image-k #(case % "logo" :image/avatar
                          "logoLarge" :image/logo-large
                          "footer" :image/footer
                          "background" :image/background
@@ -759,11 +759,11 @@
                                                                     (assoc-some-value {}
                                                                                       :entity/id account-id
                                                                                       :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
-                                                                                      :account/photo (when-let [src (or (some-> (:picture most-recent-member-doc)
-                                                                                                                                (u/guard #(not (str/starts-with? % "/images"))))
-                                                                                                                        (:photoUrl account)
-                                                                                                                        (:photoUrl provider))]
-                                                                                                       (assets/link-asset src))
+                                                                                      :image/avatar (when-let [src (or (some-> (:picture most-recent-member-doc)
+                                                                                                                               (u/guard #(not (str/starts-with? % "/images"))))
+                                                                                                                       (:photoUrl account)
+                                                                                                                       (:photoUrl provider))]
+                                                                                                      (assets/link-asset src))
                                                                                       :account/display-name (:name most-recent-member-doc)
                                                                                       :account/email (:email account)
                                                                                       :account/email-verified? (:emailVerified account)

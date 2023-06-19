@@ -18,18 +18,18 @@
             [sparkboard.icons :as icons])
   (:require-macros [sparkboard.views.ui :refer [defview with-submission]]))
 
-(def variants {:logo {:op "bound" :width 200 :height 200}
-               :card {:op "bound" :width 600}
-               :page {:op "bound" :width 1200}})
+(def variants {:avatar {:op "bound" :width 200 :height 200}
+               :card   {:op "bound" :width 600}
+               :page   {:op "bound" :width 1200}})
 
 (defn asset-src [asset variant]
   (when asset
     (str "/assets/" (:asset/id asset)
          (some-> (variants variant) query-params/query-string))))
 
-(defn filtered [?pattern]
-  (filter (if @?pattern
-            #(re-find (re-pattern @?pattern) (:entity/title %))
+(defn filtered [match-text]
+  (filter (if match-text
+            #(re-find (re-pattern (str "(?i)" match-text)) (:entity/title %))
             identity)))
 
 (defn pprinted [x]
@@ -197,15 +197,18 @@
     (el ?field (dissoc props :el))))
 
 (defn filter-field [?field & [attrs]]
-  (let [loading?     (or (:loading? ?field) (:loading? attrs))
-        icon-classes "h-4 w-4 text-txt/40"]
+  (let [loading? (or (:loading? ?field) (:loading? attrs))]
     [:div.flex.relative.items-stretch
      [:input.form-text.pr-9 (v/props (text-props ?field)
-                                     )]
-     [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
-      (if loading?
-        (icons/loading [icon-classes "rotate-3s"])
-        (icons/search icon-classes))]]))
+                                     {:on-key-down #(when (= "Escape" (.-key ^js %))
+                                                      (reset! ?field nil))})]
+     [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-2
+      {:class "text-txt/40"}
+      (cond loading? (icons/loading "w-4 h-4 rotate-3s")
+            (seq @?field) [:div.contents.cursor-pointer
+                           {:on-click #(reset! ?field nil)}
+                           (icons/close "w-5 h-5")]
+            :else (icons/search "w-5 h-5"))]]))
 
 (defn error-view [{:keys [error]}]
   (when error

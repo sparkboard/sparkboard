@@ -114,7 +114,7 @@
                                                   :board/owner
                                                   :board/registration-open?
 
-                                                  (? :image/logo)
+                                                  (? :image/avatar)
                                                   (? :image/logo-large)
                                                   (? :image/footer)
                                                   (? :image/background)
@@ -163,7 +163,7 @@
                            :collection/boards
                            :entity/title
                            (? :entity/domain)
-                           (? :image/logo)
+                           (? :image/avatar)
                            (? :image/background)]}})
 
 (def sb-discussion
@@ -285,7 +285,6 @@
    :account/last-sign-in        {s- 'inst?}
    :account/password-hash       {s- :string}
    :account/password-salt       {s- :string}
-   :account/photo               (ref :one :asset/as-map)
    :account/locale              {s- :i18n/locale}
    :account/as-map              {s- [:map {:closed true}
                                      :entity/id
@@ -297,7 +296,7 @@
                                      (? :account/display-name)
                                      (? :account/password-hash)
                                      (? :account/password-salt)
-                                     (? :account/photo)
+                                     (? :image/avatar)
                                      (? :account.provider.google/sub)]}})
 
 ;; validation for endpoints
@@ -464,7 +463,7 @@
                                     :entity/title
                                     :entity/kind
                                     :entity/created-by
-                                    (? :image/logo)
+                                    (? :image/avatar)
                                     (? :image/background)
                                     (? :image/sub-header)
                                     (? :org/show-org-tab?)
@@ -740,7 +739,7 @@
                                                 :asset.variant/provider]}
 
 
-   :image/logo                             (ref :one :asset/as-map)
+   :image/avatar                           (ref :one :asset/as-map)
    :image/logo-large                       (ref :one :asset/as-map)
    :image/footer                           (ref :one :asset/as-map)
    :image/background                       (ref :one :asset/as-map)

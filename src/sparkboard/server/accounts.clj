@@ -80,7 +80,7 @@
                    :entity/id
                    :account/display-name
                    :account/email
-                   {:account/photo [:asset/id]}
+                   {:image/avatar [:asset/id]}
                    :account/locale])
 (defn account-cookie [id expires]
   {:value (t/write id)
@@ -177,13 +177,13 @@
         now (java.util.Date.)]
     [(merge
       ;; backfill account info (do not overwrite current data)
-      (-> {:entity/created-at now
+      (-> {:entity/created-at           now
            :account.provider.google/sub (:sub provider-info)
-           :account/display-name (:name provider-info)
-           :account/email (:email provider-info)
-           :account/email-verified? (:email_verified provider-info)
-           :account/photo (some-> (:picture provider-info) (assets/link-asset))
-           :account/locale (some-> (:locale provider-info) (str/split #"-") first)}
+           :account/display-name        (:name provider-info)
+           :account/email               (:email provider-info)
+           :account/email-verified?     (:email_verified provider-info)
+           :image/avatar                (some-> (:picture provider-info) (assets/link-asset))
+           :account/locale              (some-> (:locale provider-info) (str/split #"-") first)}
           (filter-vals some?))
       existing
       ;; last-sign-in can overwrite existing data

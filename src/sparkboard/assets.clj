@@ -26,6 +26,7 @@
          (dl/entity [:asset.provider.s3/endpoint+bucket-name ((juxt :s3/endpoint :s3/bucket-name)
                                                               (:s3 env/config))])))
 
+(defn provider? [x] (:asset.provider/type x))
 
 (defn link-asset
   "Return a database entitiy for an asset that is an external link"
@@ -64,7 +65,7 @@
                   :content-length size}))
 
 (defn upload-to-provider! [{:as upload :keys [provider object-key size content-type stream]}]
-  {:pre [provider
+  {:pre [(provider? provider)
          (string? object-key)
          (<= size (* 20 1000 1000))
          (string? content-type)
@@ -106,12 +107,14 @@
 (defn find-or-create-variant!
   "Returns an asset.variant entity."
   [provider query-params]
+  {:pre [(provider? provider)]}
   (let [param-string (images/param-string query-params)
         lookup-ref [:asset.variant/provider+params [(:db/id provider) param-string]]]
     (or (dl/entity lookup-ref)
         (do (dl/transact! [(-> #:asset.variant{:provider     (:db/id provider)
                                                :param-string param-string}
-                               (validate/assert :asset.variant/as-map))])
+                               (validate/assert :asset.variant/as-map)
+                               (assoc :db/id -1))])
             (dl/entity lookup-ref)))))
 
 (defn ensure-content-type!

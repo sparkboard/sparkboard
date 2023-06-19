@@ -20,9 +20,9 @@
              :board/registration-open?
              {:board/owner [~@entity/fields
                             :org/show-org-tab?]}
-
              {:project/_board ~entity/fields}
-             {:member/_board ~entity/fields}]
+             {:member/_entity [~@entity/fields
+                               {:member/account ~entity/account-as-entity-fields}]}]
            [:entity/id (:board params)]))
 
 (defn authorize-edit! [board account-id]

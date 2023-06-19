@@ -4,6 +4,7 @@
             [sparkboard.util :as u]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
+            [re-db.hooks :as hooks]
             [sparkboard.query-params :as query-params]
             [shadow.lazy #?(:clj :as-alias :cljs :as) lazy])
   #?(:cljs (:require-macros sparkboard.impl.routes)))
@@ -47,20 +48,10 @@
 
 #?(:clj
    (defn memo-fn-var [query-var]
-     (or (::memo (meta query-var))
-         (do
-           (alter-meta! query-var assoc ::memo
-                        (let [f @query-var
-                              fmemo (memo/memoize
-                                      (fn [& args#]
-                                        (r/reaction (apply f args#))))]
-                          (add-watch query-var ::query-fn
-                                     (fn [_ _ _ f]
-                                       (memo/reset-fn! fmemo
-                                                       (fn [& args]
-                                                         (r/reaction (apply f args))))))
-                          fmemo))
-           (::memo (meta query-var))))))
+     (memo/fn-memo [& args]
+       (r/reaction
+         (let [f (hooks/use-deref query-var)]
+           (apply f args))))))
 
 (defn dequote [form]
   (if (and (seq? form) (= 'quote (first form)))

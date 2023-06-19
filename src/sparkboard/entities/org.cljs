@@ -14,27 +14,23 @@
 
 (defn entity-header [{:as   entity
                       :keys [entity/title
-                             entity/description
-                             image/logo
-                             image/background]} & children]
+                             image/avatar]} & children]
   (into [:div.entity-header
-         {:style {:background-image (ui/css-url (ui/asset-src background :page))}}
-         (when logo
+
+         (when avatar
            [:a.contents {:href (routes/entity entity :read)}
             [:img.h-10.w-10
-             {:src (ui/asset-src logo :logo)}]])
+             {:src (ui/asset-src avatar :avatar)}]])
          [:a.contents {:href (routes/entity entity :read)} [:h3 title]]]
         (concat children [[account/header:account]])))
 
 (ui/defview read [params]
   (forms/with-form [_ ?q]
     (let [{:as   org
-           :keys [entity/title
-                  entity/description
-                  image/logo
-                  image/background]} (:data params)
+           :keys [entity/description]} (:data params)
           q      (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
-          result (when q (ws/once [:org/search (assoc params :q q)]))]
+          result (ws/use-query [:org/search {:org (:org params)
+                                             :q q}])]
       [:div
        (entity-header org
                       [:a.inline-flex.items-center {:class "hover:text-txt/60"
@@ -57,17 +53,15 @@
          
          "
         ]
-
        [:div.p-body (ui/show-prose description)]
        [ui/error-view result]
-
        (if (seq q)
          (for [[kind results] (dissoc (:value result) :q)
                :when (seq results)]
            [:<>
             [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
             [:div.card-grid (map entity/card results)]])
-         [:div.card-grid (map entity/card (:board/_org org))])])))
+         [:div.card-grid (map entity/card (:board/_owner org))])])))
 
 (ui/defview edit [{:as params org :data}]
   (forms/with-form [!org (u/keep-changes org
@@ -75,7 +69,7 @@
                                           :entity/title       (?title :label (tr :tr/title))
                                           :entity/description (?description :label (tr :tr/description))
                                           :entity/domain      ?domain
-                                          :image/logo         (?logo :label (tr :tr/image.logo))
+                                          :image/avatar       (?logo :label (tr :tr/image.logo))
                                           :image/background   (?background :label (tr :tr/image.background))})
                     :validators {?domain [domain/domain-valid-string
                                           (domain/domain-availability-validator)]}

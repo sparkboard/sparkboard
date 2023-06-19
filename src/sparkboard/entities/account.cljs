@@ -34,7 +34,7 @@
 (ui/defview header:account []
   (if-let [account (db/get :env/account)]
     (radix/dropdown-menu
-      {:trigger [:div.flex.items-center [:img.rounded-full.h-8.w-8 {:src (ui/asset-src (:account/photo account) :logo)}]]}
+      {:trigger [:div.flex.items-center [:img.rounded-full.h-8.w-8 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
       [{:on-click #(routes/set-path! :home)} (tr :tr/home)]
       [{:on-click #(routes/set-path! :account/logout)} (tr :tr/logout)]
       (into [{:sub?    true
@@ -57,46 +57,42 @@
                        [{:on-select #(routes/set-path! :org/new params)} (tr :tr/org)]))
 
 (ui/defview read [{:as params :keys [data]}]
-  (let [!tab (h/use-state (tr :tr/recent))]
-    (ui/with-form [?pattern (when ?filter (str "(?i)" ?filter))]
-      (let [show-results (fn [title results]
-                           (when-let [results (seq (sequence (ui/filtered ?pattern) results))]
-                             [:div.mt-6 {:key title}
-                              (when title [:div.px-body.font-medium title [:hr.mt-2.sm:hidden]])
-                              (into [:div.card-grid]
-                                    (map entity/card)
-                                    results)]))
-            tab          (if @?pattern (tr :tr/search) @!tab)
-            select-tab!  #(do (reset! ?filter nil)
-                              (reset! !tab %))]
-        [:<>
-         (header params)
-         [:el radix/tab-root {:value           @!tab
-                              :on-value-change (partial reset! !tab)}
-          ;; tabs
-          [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
-           [:el.contents radix/tab-list
-            (->> [(tr :tr/recent)
-                  (tr :tr/all)]
-                 (map (fn [k]
-                        [:el.flex.items-center radix/tab-trigger
-                         {:value k
-                          :class ["focus:outline-black px-1 border-b-2"
-                                  (if (= k tab)
-                                    "cursor-default border-b-2 border-primary"
-                                    "text-txt/50 hover:border-primary/10 cursor-pointer border-transparent")]} k]))
-                 (into [:<>]))]
-           [:div.flex-grow]
-           [ui/filter-field ?filter]
-           [new-menu params]]
+  (let [!tab    (h/use-state (tr :tr/recent))
+        ?filter (h/use-callback (forms/field))]
+
+    [:<>
+     (header params)
+     [radix/tab-root {:value           @!tab
+                      :on-value-change (partial reset! !tab)}
+      ;; tabs
+      [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
+       [radix/tab-list
+        (->> [(tr :tr/recent)
+              (tr :tr/all)]
+             (map (fn [k]
+                    [radix/tab-trigger
+                     {:value k
+                      :class "flex items-center"} k]))
+             (into [:<>]))]
+       [:div.flex-grow]
+       [ui/filter-field ?filter]
+       [new-menu params]]
 
 
-          [:el.outline-none radix/tab-content {:value (tr :tr/recent)}
-           [show-results nil (:recents data)]]
-          [:el.outline-none radix/tab-content {:value (tr :tr/all)}
-           [show-results (tr :tr/orgs) (:org data)]
-           [show-results (tr :tr/boards) (:board data)]
-           [show-results (tr :tr/projects) (:project data)]]]]))))
+      [radix/tab-content {:value (tr :tr/recent)}
+       [entity/show-filtered-results {:q  @?filter
+                                      :title   nil
+                                      :results (:recents data)}]]
+      [radix/tab-content {:value (tr :tr/all)}
+       [entity/show-filtered-results {:q  @?filter
+                                      :title   (tr :tr/orgs)
+                                      :results (:org data)}]
+       [entity/show-filtered-results {:q  @?filter
+                                      :title   (tr :tr/boards)
+                                      :results (:board data)}]
+       [entity/show-filtered-results {:q  @?filter
+                                      :title   (tr :tr/projects)
+                                      :results (:project data)}]]]]))
 
 
 (defn account:sign-in-with-google []

@@ -111,9 +111,7 @@
                             public
                             GET
                             POST]} (routes/match-path uri)
-          params (-> params 
-                     (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
-                     (u/assoc-some :account (:account req)))
+          params  (u/assoc-seq params :query-params (update-keys (:query-params req) keyword))
           method (:request-method req)
           authed? (:account req)]
       (cond

@@ -33,7 +33,7 @@
 (ui/defview read [{project :data}]
   [:div
    [:h1 (:entity/title project)]
-   [:blockquote (:entity/description project)]
+   (ui/show-prose (:entity/description project))
    (when-let [badges (:project/badges project)]
      [:section [:h3 (tr :tr/badges)]
       (into [:ul]

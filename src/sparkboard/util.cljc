@@ -1,5 +1,6 @@
 (ns sparkboard.util
-  (:require [clojure.string :as str]
+  (:require #?(:clj [backtick])
+            [clojure.string :as str]
             [promesa.core :as p])
   #?(:cljs (:require-macros sparkboard.util)))
 
@@ -70,3 +71,6 @@
   `(p/let [result# ~test]
      (when result# 
        ~@body)))
+
+(defmacro template [x]
+  `(~'backtick/template ~x))

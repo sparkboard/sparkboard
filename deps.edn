@@ -6,11 +6,11 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.12"}
         io.github.mhuebert/re-db {#_#_:local/root "../re-db"
-                                  :git/sha "c7bebd8ad8eb91e036b624246cbb7c4a0f35c62a"}
+                                  :git/sha "cff0d00fcb9ebe780d30e01dc25ec99deb8f7f6d"}
         io.github.mhuebert/yawn {#_#_:local/root "../yawn"
                                  :git/sha "8f506c78bb3d9c1c489fe8f2fb601a6566641d22"}
         io.github.mhuebert/inside-out {#_#_:local/root "../inside-out"
-                                       :git/sha "e0b37b301428a486937c63ef148a8272ea44733e"}
+                                       :git/sha "bb1e0b9652da5c6966ca6dc7c36b99dc09322c93"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}
@@ -29,6 +29,7 @@
         amazonica/amazonica {:mvn/version "0.3.134"}
         com.sksamuel.scrimage/scrimage-core {:mvn/version "4.0.34"}
         com.sksamuel.scrimage/scrimage-webp {:mvn/version "4.0.34"}
+        backtick/backtick {:mvn/version "0.3.4"}
 
         ;; logging
         com.taoensso/timbre {:mvn/version "4.10.0"}

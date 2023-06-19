@@ -11,12 +11,13 @@
             [sparkboard.websockets :as ws]
             [re-db.api :as db]
             [sparkboard.views.radix :as radix]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [yawn.hooks :as h]))
 
 (ui/defview new [{:as params :keys [route]}]
   (let [orgs (ws/use-query [:account/orgs {:account (db/get :env/account :entity/id)}])
         owners (->> (:value orgs)
-                    (map #(select-keys % [:entity/id :entity/title :image/logo]))
+                    (map #(select-keys % [:entity/id :entity/title :image/avatar]))
                     (cons (entity/account-as-entity (db/get :env/account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
@@ -36,10 +37,10 @@
        [:div.flex.flex-col.gap-2
         [ui/input-label {} (tr :tr/owner)]
         (->> owners
-             (map (fn [{:keys [entity/id entity/title image/logo]}]
+             (map (fn [{:keys [entity/id entity/title image/avatar]}]
                     (v/x [radix/select-item {:value (str id)
                                              :text title
-                                             :icon [:img.w-5.h-5.rounded-sm {:src (ui/asset-src logo :logo)}]}])))
+                                             :icon [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}])))
              (apply radix/select-menu {:value           @?owner
                                        :on-value-change (partial reset! ?owner)}))]
 
@@ -62,33 +63,40 @@
       (tr :tr/register)]]))
 
 (ui/defview read [{:as params board :data}]
-  [:<>
-   [:h1 (:entity/title board)]
-   [:p (-> board :entity/domain :domain/name)]
-   [:blockquote
-    [ui/safe-html (-> board
-                      :entity/description
-                      :prose/string)]]
-   ;; TODO - tabs
-   [:div.rough-tabs {:class "w-100"}
-    [:div.rough-tab                                         ;; projects
-     [:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
-     (into [:ul]
-           (map (fn [proj]
-                  [:li [:a {:href (routes/href :project/read {:project (:entity/id proj)})}
-                        (:entity/title proj)]]))
-           (:project/_board board))]
-    [:div.rough-tab                                         ;; members
-     [:a {:href (routes/href :board/register params)} (tr :tr/new-member)]
-     (into [:ul]
-           (map (fn [member]
-                  [:li
-                   [:a {:href (routes/href :member/read {:member (:entity/id member)})}
-                    (:member/name member)]]))
-           (:member/_board board))]
-    [:div.rough-tab {:name  "I18n"                          ;; FIXME any spaces in the tab name cause content to break; I suspect a bug in `with-props`. DAL 2023-01-25
-                     :class "db"}
-     [:ul                                                   ;; i18n stuff
-      [:li "suggested locales:" (str (:entity/locale-suggestions board))]
-      [:li "default locale:" (str (:i18n/default-locale board))]
-      [:li "extra-translations:" (str (:i18n/locale-dicts board))]]]]])
+  (let [!tab (h/use-state (tr :tr/projects))
+        ?filter (h/use-state nil)
+        tabs [{:title   (tr :tr/projects)
+               :content [entity/show-filtered-results {:results (:project/_board board)}]}
+              {:title   (tr :tr/members)
+               :content [entity/show-filtered-results {:results (->> (:member/_entity board) (map #(merge (:member/account %) %)))}]}]]
+    [:<>
+     [:h1 (:entity/title board)]
+     [:p (-> board :entity/domain :domain/name)]
+
+     ;; TODO new project
+     #_[:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
+     [:blockquote
+      [ui/safe-html (-> board
+                        :entity/description
+                        :prose/string)]]
+
+     [radix/tab-root {:value           @!tab
+                      :on-value-change (partial reset! !tab)}
+      ;; tabs
+      [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
+       [radix/show-tab-list tabs]
+       [:div.flex-grow]
+       [ui/filter-field ?filter]]
+
+      (for [{:keys [title content]} tabs]
+        [radix/tab-content {:value title} content])]
+
+
+
+     ]))
+
+(comment
+  [:ul                                                 ;; i18n stuff
+   [:li "suggested locales:" (str (:entity/locale-suggestions board))]
+   [:li "default locale:" (str (:i18n/default-locale board))]
+   [:li "extra-translations:" (str (:i18n/locale-dicts board))]])

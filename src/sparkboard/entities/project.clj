@@ -9,7 +9,7 @@
   {:authorize (fn [req params]
                 (member/read-and-log! (:project params) (:db/id (:account req))))}
   [params]
-  (db/pull `[~@entity/fields] [:entity/id (:project params)]))
+  (db/pull `[~@entity/fields :project/sticky?] [:entity/id (:project params)]))
 
 (defn new! [req params project]
   (validate/assert project [:map {:closed true} :entity/title])

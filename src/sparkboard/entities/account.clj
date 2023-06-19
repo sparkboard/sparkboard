@@ -13,19 +13,19 @@
                                                     {:member/entity [:entity/id
                                                                      :entity/kind
                                                                      :entity/title
-                                                                     {:image/logo [:asset/link
-                                                                                   :asset/id
-                                                                                   {:asset/provider [:s3/bucket-host]}]}
+                                                                     {:image/avatar [:asset/link
+                                                                                     :asset/id
+                                                                                     {:asset/provider [:s3/bucket-host]}]}
                                                                      {:image/background [:asset/link
                                                                                          :asset/id
                                                                                          {:asset/provider [:s3/bucket-host]}]}]}]}]
-                              [:entity/id (:account params)])
-                     :member/_account
-                     (map  #(lift-key % :member/entity)))
-        recents (->> entities
-                     (filter :member/last-visited)
-                     (sort-by :member/last-visited #(compare %2 %1))
-                     (take 8))]
+                               [:entity/id (:account params)])
+                      :member/_account
+                      (map #(lift-key % :member/entity)))
+        recents  (->> entities
+                      (filter :member/last-visited)
+                      (sort-by :member/last-visited #(compare %2 %1))
+                      (take 8))]
     (->> entities
          (group-by :entity/kind)
          (merge {:recents recents}))))
