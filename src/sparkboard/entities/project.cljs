@@ -30,7 +30,7 @@
   (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
   )
 
-(ui/defview read [{project :data}]
+(ui/defview read [{project :query-result}]
   [:div
    [:h1 (:entity/title project)]
    (ui/show-prose (:entity/description project))

@@ -2,6 +2,11 @@ Sparkboard
 (WIP)
 ----
 
+```
+bb dev
+```
+[localhost:3000](http://localhost:3000)
+
 Contents:
 
 - A [Google Pub/Sub](https://cloud.google.com/pubsub/docs/overview) subscription consumer in `org.sparkboard/migration/pubsub`. See [sparkboard/mongo-oplog-pubsub](https://github.com/sparkboard/mongodb-oplog-pubsub) for source code of the mongodb->Pub/Sub process that is feeding data into this subscription.

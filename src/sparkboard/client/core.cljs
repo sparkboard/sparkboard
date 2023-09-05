@@ -16,8 +16,9 @@
             [vendor.pushy.core :as pushy]
             [yawn.root :as root]))
 
-(ui/defview root []
-  (let [{:as match :keys [view modal]} (db/get :env/location)]
+(ui/defview root
+  []
+  (let [{:as match :keys [modal]} (db/get :env/location)]
     [:div.w-full.font-sans
      [:Suspense {:fallback "ROUGH spinner"}
 

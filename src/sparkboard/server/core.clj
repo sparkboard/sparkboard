@@ -62,13 +62,13 @@
                    (let [{:as   data
                           :keys [wrap-response]
                           :or   {wrap-response identity}} (ex-data e)]
-                     (wrap-response 
-                      (if (data-req? req)
-                        (or (:response data)
-                            {:status (:code data 500)
-                             :body {:error (or (:message data)
-                                               (ex-message e))}})
-                        (server.html/error e data)))))]
+                     (wrap-response
+                       (if (data-req? req)
+                         (or (:response data)
+                             {:status (:code data 500)
+                              :body   {:error (or (:message data)
+                                                  (ex-message e))}})
+                         (server.html/error e data)))))]
     (fn [req]
       (log/info :req req)
       (try (let [res (f req)]
@@ -95,41 +95,48 @@
 
 #_(memo/clear-memo! $resolve-ref)
 
-(defn serve-markdown [_ {:keys [file/name]}]
+(defn serve-markdown
+  {:public true}
+  [_ {:keys [file/name]}]
   (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
 (defn authorize! [f req params]
-  (when-let [authorize (:authorize (meta f))]
-    (authorize req params)))
+  (if-let [authorize (:authorize (meta f))]
+    (authorize req params)
+    params))
 
 
 (def route-handler
   (fn [{:as req :keys [uri]}]
-    (let [{:as match :keys [view
-                            query
+    (let [{:as match :keys [VIEW
+                            QUERY
                             params
-                            public
                             GET
                             POST]} (routes/match-path uri)
-          params  (u/assoc-seq params :query-params (update-keys (:query-params req) keyword))
-          method (:request-method req)
-          authed? (:account req)]
+          params  (-> params
+                      (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
+                      (u/assoc-some :body (:body-params req (:body req))))
+          method  (:request-method req)
+          handler (cond (and (= method :get) GET) GET
+                        (and (= method :post) POST) POST
+                        (and QUERY (data-req? req)) (comp ring.http/ok
+                                                          QUERY
+                                                          (fn [req params] params)))
+          params  (authorize! handler req params)]
+      (when
+        (and (not (:account req))
+             (not (:public (meta handler)))
+             (not (:public match)))
+        (throw (ex-info "Unauthorized" {:uri    uri
+                                        :match  match
+                                        :status 401})))
       (cond
 
-        (and (not authed?) (not public)) (throw (ex-info "Unauthorized" {:uri uri
-                                                                         :match match
-                                                                         :status 401}))
+        handler (handler req params)
 
-        (and GET (= method :get)) (do (authorize! GET req params)
-                                      (GET req params))
-        (and POST (= method :post)) (do (authorize! POST req params) 
-                                        (POST req params (:body-params req (:body req))))
-        (and query (data-req? req)) (do (authorize! query req params)
-                                        (some-> (query params) ring.http/ok))
-        
-        view (server.html/app-page
-              {:tx [(assoc env/client-config :db/id :env/config)
-                    (assoc (:account req) :db/id :env/account)]})
+        VIEW (server.html/app-page
+               {:tx [(assoc env/client-config :db/id :env/config)
+                     (assoc (:account req) :db/id :env/account)]})
 
         ;; query fns return reactions which must be wrapped in HTTP response maps
         :else (ring.http/not-found "Not found")))))
@@ -143,22 +150,28 @@
       (println e)
       {:error (ex-message e)})))
 
-(defn resolve-query [[_ params :as qvec]]
-  (let [{[_ matched-params] :route :keys [$query query] :as match} (routes/match-path qvec)
-        context (meta qvec)]
-    (when (::sync/watch context)
-      (authorize! query context (:params match)))
+(defn resolve-query [qvec]
+  (let [{[_ matched-params] :route :keys [$query QUERY] :as match} (routes/match-path qvec)
+        context (meta qvec)
+        params  (merge {}
+                       (cond->> (:params match)
+                                (::sync/watch context)
+                                (authorize! QUERY context))
+                       matched-params)]
     (when $query
-      ($txs ($query (merge {} params matched-params))))))
+      ($txs ($query params)))))
 
 (def ws-options {:handlers (merge (sync/query-handlers resolve-query)
                                   {::sync/once
+                                   ;; TODO what is this and how do I handle params...
                                    (fn [{:keys [channel]} qvec]
-                                     (let [{:keys [query]} (routes/match-path qvec)]
+                                     (let [{:keys [QUERY]} (routes/match-path qvec)]
                                        (sync/send channel
-                                                  (sync/wrap-result qvec {:value (apply query (rest qvec))}))))})})
+                                                  (sync/wrap-result qvec {:value (apply QUERY (rest qvec))}))))})})
 
-(defn ws-handler [req _]
+(defn ws-handler
+  {:public true}
+  [req _]
   (#'ws/handle-ws-request ws-options req))
 
 (def handler
@@ -168,13 +181,13 @@
                         (-> #'route-handler
                             i18n/wrap-i18n
                             accounts/wrap-accounts
-                            impl/wrap-query-params            ;; required for accounts (oauth2)
+                            impl/wrap-query-params          ;; required for accounts (oauth2)
                             multipart/wrap-multipart-params
                             wrap-log
                             ring.cookies/wrap-cookies
                             (muu.middleware/wrap-format muuntaja)
-                            (cond-> 
-                             (= "staging" (env/config :env))
+                            (cond->
+                              (= "staging" (env/config :env))
                               (basic-auth/wrap-basic-authentication (fn [_user pass]
                                                                       (when (= pass (env/config :basic-auth/password))
                                                                         "admin"))))))))
@@ -199,10 +212,11 @@
   (when (not= "dev" (env/config :env))                      ;; using shadow-cljs server in dev
     (nrepl/start!)))
 
-(defn -main []
+(defn -main [& [port]]
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
   (fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
+                       port
                        3000)))
 
 (comment                                                    ;;; Webserver control panel

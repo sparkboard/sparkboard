@@ -196,7 +196,7 @@
     }
 
     .entity-header h3 {
-        @apply items-center hidden sm:inline-flex flex-grow
+        @apply items-center hidden sm:inline-flex
     }
 
     .card-grid {

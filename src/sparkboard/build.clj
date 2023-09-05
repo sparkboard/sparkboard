@@ -7,9 +7,9 @@
 
 (defn start
   {:shadow/requires-server true}
-  []
+  [port]
   ((requiring-resolve 'shadow.cljs.devtools.api/watch) :web)
-  ((requiring-resolve 'sparkboard.server.core/-main)))
+  ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
 
 (defn tailwind-dev!
   {:shadow.build/stage :flush}

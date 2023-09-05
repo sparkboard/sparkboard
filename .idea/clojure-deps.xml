@@ -5,6 +5,7 @@
       <set>
         <option value="clerk" />
         <option value="dev" />
+        <option value="local" />
         <option value="test" />
         <option value="uberdeps" />
       </set>

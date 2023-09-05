@@ -56,7 +56,7 @@
                        [{:on-select #(routes/set-path! :board/new params)} (tr :tr/board)]
                        [{:on-select #(routes/set-path! :org/new params)} (tr :tr/org)]))
 
-(ui/defview read [{:as params :keys [data]}]
+(ui/defview read [{:as params :keys [query-result]}]
   (let [!tab    (h/use-state (tr :tr/recent))
         ?filter (h/use-callback (forms/field))]
 
@@ -82,17 +82,17 @@
       [radix/tab-content {:value (tr :tr/recent)}
        [entity/show-filtered-results {:q  @?filter
                                       :title   nil
-                                      :results (:recents data)}]]
+                                      :results (:recents query-result)}]]
       [radix/tab-content {:value (tr :tr/all)}
        [entity/show-filtered-results {:q  @?filter
                                       :title   (tr :tr/orgs)
-                                      :results (:org data)}]
+                                      :results (:org query-result)}]
        [entity/show-filtered-results {:q  @?filter
                                       :title   (tr :tr/boards)
-                                      :results (:board data)}]
+                                      :results (:board query-result)}]
        [entity/show-filtered-results {:q  @?filter
                                       :title   (tr :tr/projects)
-                                      :results (:project data)}]]]]))
+                                      :results (:project query-result)}]]]]))
 
 
 (defn account:sign-in-with-google []
@@ -148,13 +148,16 @@
        [account:sign-in-with-google]
        [account:sign-in-terms]])))
 
-(ui/defview account:sign-in [params]
+(ui/defview account:sign-in
+  {:header? false }
+  [params]
   [:div.h-screen.flex.flex-col
    [header:lang "absolute top-0 right-0 p-4"]
    [:div.flex.flex-col.flex-grow.items-center.max-w-sm.mt-10.relative.mt-24.mx-auto
     {:class ["bg-secondary rounded-t-lg border-t border-r border-l border-txt/05"]}
     [:h1.text-3xl.font-medium.text-center.my-6 (tr :tr/welcome)]
     [account:sign-in-form params]]])
+
 
 (ui/defview redirect [to]
   (h/use-effect #(routes/set-path! to)))

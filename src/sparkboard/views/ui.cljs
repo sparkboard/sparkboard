@@ -265,16 +265,15 @@
        {:id        (field-id ?field)
         :type      "file"
         :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
-        :on-change (compseq
-                     (fn [e]
-                       (forms/touch! ?field)
-                       (when-let [file (j/get-in e [:target :files 0])]
-                         (reset! !selected-blob (js/URL.createObjectURL file))
-                         (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
-                                                                              (.append "files" file)))
-                                           :form ?field]
-                           (reset! ?field asset)
-                           ((auto-submit-handler ?field))))))}]]
+        :on-change (fn [e]
+                     (forms/touch! ?field)
+                     (when-let [file (j/get-in e [:target :files 0])]
+                       (reset! !selected-blob (js/URL.createObjectURL file))
+                       (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
+                                                                            (.append "files" file)))
+                                         :form ?field]
+                         (reset! ?field asset)
+                         ((auto-submit-handler ?field)))))}]]
      (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
@@ -327,22 +326,22 @@
 (defn show-match
   "Given a match, shows the view, loading bar, and/or error message.
    - adds :data to params when a :query is provided"
-  [{:keys [view query params]}]
+  [{:keys [VIEW QUERY params]}]
   (let [view-result  (use-promise
-                       (h/use-memo #(cond (not (instance? lazy/Loadable view)) view
-                                          (lazy/ready? view) @view
-                                          :else (lazy/load view))
-                                   [view]))
-        query-result (when query
+                       (h/use-memo #(cond (not (instance? lazy/Loadable VIEW)) VIEW
+                                          (lazy/ready? VIEW) @VIEW
+                                          :else (lazy/load VIEW))
+                                   [VIEW]))
+        query-result (when QUERY
                        (ws/watch (:route params)))
-        {:as                 result
-         [view query params] :value} (-> [view-result query-result {:value params}]
-                                         merge-async
-                                         ws/use-cached-result)]
+        {:as                  result
+         [view result params] :value} (-> [view-result query-result {:value params}]
+                                          merge-async
+                                          ws/use-cached-result)]
     [:<>
      [show-async-status result]
      (when view
-       [view (assoc params :data query)])]))
+       [view (assoc params :query-result result)])]))
 
 (defn use-debounced-value
   "Caches value for `wait` milliseconds after last change."

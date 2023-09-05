@@ -35,7 +35,7 @@
    (defn href [{:as e :entity/keys [kind id]} key]
      (when e
        (let [tag (keyword (name kind) (name key))]
-         (routes/href tag kind id)))))
+         (routes/href tag (keyword (str (name kind) "-id")) id)))))
 
 #?(:cljs
    (ui/defview card

@@ -8,14 +8,17 @@
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
             [sparkboard.views.ui :as ui]
+            [sparkboard.views.entity :as views.entity]
             [sparkboard.websockets :as ws]
             [re-db.api :as db]
             [sparkboard.views.radix :as radix]
             [yawn.view :as v]
             [yawn.hooks :as h]))
 
-(ui/defview new [{:as params :keys [route]}]
-  (let [orgs (ws/use-query [:account/orgs {:account (db/get :env/account :entity/id)}])
+(ui/defview new
+  {:target :modal}
+  [{:as params :keys [route]}]
+  (let [orgs (ws/use-query [:account/orgs])
         owners (->> (:value orgs)
                     (map #(select-keys % [:entity/id :entity/title :image/avatar]))
                     (cons (entity/account-as-entity (db/get :env/account))))]
@@ -31,7 +34,7 @@
                      (.preventDefault e)
                      (ui/with-submission [result (routes/POST :board/new @!board)
                                           :form !board]
-                       (routes/set-path! :org/read {:org (:entity/id result)})))}
+                       (routes/set-path! :org/read {:org-id (:entity/id result)})))}
        [:h2.text-2xl (tr :tr/new-board)]
 
        [:div.flex.flex-col.gap-2
@@ -62,7 +65,11 @@
                                 res))}
       (tr :tr/register)]]))
 
-(ui/defview read [{:as params board :data}]
+(ui/defview read:public [{:as params board :query-result}]
+  [:div.p-body (ui/show-prose (:entity/description board))]
+  )
+
+(ui/defview read:signed-in [{:as params board :query-result}]
   (let [!tab (h/use-state (tr :tr/projects))
         ?filter (h/use-state nil)
         tabs [{:title   (tr :tr/projects)
@@ -70,15 +77,13 @@
               {:title   (tr :tr/members)
                :content [entity/show-filtered-results {:results (->> (:member/_entity board) (map #(merge (:member/account %) %)))}]}]]
     [:<>
-     [:h1 (:entity/title board)]
-     [:p (-> board :entity/domain :domain/name)]
+     [views.entity/header board
+      [views.entity/edit-btn board]
+      ]
 
      ;; TODO new project
      #_[:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
-     [:blockquote
-      [ui/safe-html (-> board
-                        :entity/description
-                        :prose/string)]]
+
 
      [radix/tab-root {:value           @!tab
                       :on-value-change (partial reset! !tab)}
@@ -94,6 +99,14 @@
 
 
      ]))
+
+(ui/defview read [{:as params board :query-result}]
+  (if (db/get :env/account)
+    [read:signed-in params]
+    [read:public params]))
+
+(ui/defview edit [{:as params board :query-result}]
+  [:pre 1 (ui/pprinted board)])
 
 (comment
   [:ul                                                 ;; i18n stuff

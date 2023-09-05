@@ -260,7 +260,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 #?(:clj
    (defn set-locale!
      {:POST :i18n/locale}
-     [req _params locale]
+     [req {locale :body}]
      (tap> (vector :set-locale locale (some? (:account req))))
      (vd/assert locale :i18n/locale)
      (if (:account req)

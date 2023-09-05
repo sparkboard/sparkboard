@@ -4,6 +4,9 @@
             [sparkboard.datalevin :as dl]
             [re-db.api :as db]))
 
+(defn membership-id [entity-id account-id]
+  (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]]))
+
 (defn read-query [params]
   (dissoc (db/pull '[*
                      {:member/tags [*]}]
@@ -12,8 +15,7 @@
 
 (defn read-and-log! 
   ([entity-id account-id]
-   (when-let [id (and account-id
-                      (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]]))] 
+   (when-let [id (and account-id (membership-id entity-id account-id))]
      (read-and-log! {:member id})))
   ([params]
    (when-let [member (dl/pull '[:db/id 

@@ -77,7 +77,7 @@
                                       content-type
                                       stream)))
 
-(defn upload-handler [req _ _]
+(defn upload-handler [req _]
   (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
     (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]
                {:message "File size must be less than 20MB."})
@@ -180,7 +180,9 @@
         (dl/transact! [[:db/add (:db/id asset) :asset/variants (:db/id variant)]])
         (variant-link asset variant)))))
 
-(defn serve-asset [req {:keys [asset/id query-params]}]
+(defn serve-asset
+  {:public true}
+  [req {:keys [asset/id query-params]}]
   (if-let [asset (some-> (dl/entity [:asset/id id])
                          (u/guard (complement :asset/link-failed?)))]
     (resp/redirect

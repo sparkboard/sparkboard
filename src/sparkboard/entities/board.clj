@@ -5,17 +5,19 @@
             [sparkboard.datalevin :as dl]
             [sparkboard.entities.domain :as domain]
             [sparkboard.entities.entity :as entity]
+            [sparkboard.util :as u]
             [sparkboard.validate :as validate]
             [sparkboard.entities.member :as member]))
 
-(defn register! [req params registration-data]
+(defn register! [req {:as params registration-data :body}]
   ;; create membership
   )
 
 (defn read-query
   {:authorize (fn [req params]
-                (member/read-and-log! (:board params) (:db/id (:account req))))}
-  [params]
+                (member/read-and-log! (:board-id params) (:db/id (:account req)))
+                params)}
+  [{:keys [board-id]}]
   (db/pull `[~@entity/fields
              :board/registration-open?
              {:board/owner [~@entity/fields
@@ -23,7 +25,7 @@
              {:project/_board ~entity/fields}
              {:member/_entity [~@entity/fields
                                {:member/account ~entity/account-as-entity-fields}]}]
-           [:entity/id (:board params)]))
+           [:entity/id board-id]))
 
 (defn authorize-edit! [board account-id]
   (validate/assert board [:map [:board/owner
@@ -39,16 +41,25 @@
                                        ;; account is admin of board's org
                                        (entity/can-edit? owner-id account-id))))]]]))
 
-(defn edit! [{:keys [account]} params board]
-  (let [board (entity/conform (assoc board :entity/id (:board params)) :board/as-map)]
+(defn edit! [{:keys [account]} {:keys [board-id] board :body}]
+  (let [board (entity/conform (assoc board :entity/id board-id) :board/as-map)]
     (authorize-edit! board (:db/id account))
     (db/transact! [board])
     {:body board}))
 
-
+(defn edit-query
+  {:authorize (fn [req {:as params :keys [board-id]}]
+                (authorize-edit! (dl/entity [:entity/id board-id])
+                                 (:db/id (:account req)))
+                params)}
+  [{:keys [board-id]}]
+  (db/pull (u/template
+             [*
+              ~@entity/fields])
+           [:entity/id board-id]))
 
 (defn new!
-  [{:keys [account]} _ board]
+  [{:keys [account]} {board :body}]
   ;; TODO
   ;; confirm that owner is account, or account is admin of org
   (let [board  (-> (dl/new-entity board :board :by (:db/id account))

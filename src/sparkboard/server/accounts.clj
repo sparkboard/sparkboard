@@ -114,7 +114,9 @@
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))
 
-(defn logout [_ _]
+(defn logout
+  {:public true}
+  [_ _]
   (-> (ring.response/redirect (routes/path-for :home))
       (res:logout)))
 
@@ -130,9 +132,10 @@
 
 (defn login!
   "POST handler. Returns 200/OK with account data if successful."
-  [_req _params {:as account
-                 :keys [account/email
-                        account/password]}]
+  {:public true}
+  [_req {{:as account
+          :keys [account/email
+                 account/password]} :body}]
 
   (vd/assert account [:map
                       [:account/password [:string {:min 8}]]
@@ -220,7 +223,9 @@
       (String. StandardCharsets/US_ASCII)
       (json/parse-string keyword)))
 
-(defn google-landing [{:keys [oauth2/access-tokens]} _]
+(defn google-landing
+  {:public true}
+  [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)
         public-key (-> id-token id-token-header :kid google-public-key)
         url "https://www.googleapis.com/oauth2/v3/userinfo"

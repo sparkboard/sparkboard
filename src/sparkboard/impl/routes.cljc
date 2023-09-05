@@ -1,6 +1,7 @@
 (ns sparkboard.impl.routes
   (:require [bidi.bidi :as bidi]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [sparkboard.util :as u]
             [re-db.memo :as memo]
             [re-db.reactive :as r]
@@ -66,13 +67,13 @@
                         sym))
         wrap-requiring-resolve (fn [s] `(requiring-resolve ~s))]
     (if (:ns &env)
-      (u/update-some endpoint {:view (fn [v] `(lazy/loadable ~(resolve-sym (second v))))})
+      (u/update-some endpoint {:VIEW (fn [v] `(lazy/loadable ~(resolve-sym (second v))))})
       (-> endpoint
-          (u/update-some {:query wrap-requiring-resolve
-                          :GET wrap-requiring-resolve
-                          :POST wrap-requiring-resolve})
-          (cond-> (:query endpoint)
-                  (assoc :$query `(memo-fn-var (requiring-resolve ~(:query endpoint)))))))))
+          (u/update-some {:QUERY wrap-requiring-resolve
+                          :GET   wrap-requiring-resolve
+                          :POST  wrap-requiring-resolve})
+          (cond-> (:QUERY endpoint)
+                  (assoc :$query `(memo-fn-var (requiring-resolve ~(:QUERY endpoint)))))))))
 
 (defmacro E
   ;; wraps :view keys with lazy/loadable (and resolves aliases, with :as-alias support)
@@ -80,3 +81,11 @@
   `(~'bidi.bidi/tag
     (delay (resolve-endpoint ~endpoint))
     ~tag))
+
+(defmacro wrap-endpoints [routes]
+  (walk/postwalk (fn [x]
+                   (if (and (map? x)
+                            (:id x))
+                     `(E ~(:id x) ~x)
+                     x))
+                 routes))

@@ -6,12 +6,13 @@
             [sparkboard.validate :as validate]))
 
 (defn read-query 
-  {:authorize (fn [req params]
-                (member/read-and-log! (:project params) (:db/id (:account req))))}
-  [params]
-  (db/pull `[~@entity/fields :project/sticky?] [:entity/id (:project params)]))
+  {:authorize (fn [req {:as params :keys [project-id]}]
+                (member/read-and-log! project-id (:db/id (:account req)))
+                params)}
+  [{:keys [project-id]}]
+  (db/pull `[~@entity/fields :project/sticky?] [:entity/id project-id]))
 
-(defn new! [req params project]
+(defn new! [req {:as params project :body}]
   (validate/assert project [:map {:closed true} :entity/title])
   ;; auth: user is member of board & board allows members to create projects
   (db/transact! [(-> project

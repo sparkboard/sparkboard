@@ -2,7 +2,7 @@
   (:require [sparkboard.i18n :refer [tr]]
             [sparkboard.views.ui :as ui]))
 
-(ui/defview read [{{:member/keys [tags ad-hoc-tags account]} :data}]
+(ui/defview read [{{:member/keys [tags ad-hoc-tags account]} :query-result}]
   (let [{:keys [:account/display-name :image/avatar]} account]
     [:div
      [:h1 display-name]
