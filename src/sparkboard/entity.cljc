@@ -1,7 +1,7 @@
-(ns sparkboard.entities.entity
+(ns sparkboard.entity
   (:require [clojure.set :as set]
             [malli.util :as mu]
-            [sparkboard.entities.domain :as domain]
+            [sparkboard.domains :as domains]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
             [sparkboard.validate :as validate]
@@ -38,28 +38,36 @@
          (routes/href tag (keyword (str (name kind) "-id")) id)))))
 
 #?(:cljs
-   (ui/defview card
+   (ui/defview card:compact
      {:key :entity/id}
      [{:as   entity
        :keys [entity/title image/avatar]}]
      [:a.flex.relative
-      {:href  (routes/entity entity :read)
+      {:href  (try (routes/href (routes/entity entity :read))
+                   (catch js/Error e
+                     (js/console.error e)
+                     (prn :ERROR entity :read)))
        :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
                "overflow-hidden rounded-lg"
                "h-12 sm:h-16 bg-card text-card-txt border border-white"]}
-      [:div.flex-none
-       (v/props
-         (merge {:class ["w-12 sm:w-16"
-                         "bg-no-repeat sm:bg-secondary bg-center bg-contain"]}
-                (when avatar
-                  {:style {:background-image (ui/css-url (ui/asset-src avatar :avatar))}})))]
+      (when avatar
+        [:div.flex-none
+         (v/props
+           (merge {:class ["w-12 sm:w-16"
+                           "bg-no-repeat sm:bg-secondary bg-center bg-contain"]}
+                  (when avatar
+                    {:style {:background-image (ui/css-url (ui/asset-src avatar :avatar))}})))])
       [:div.flex.items-center.px-3.leading-snug
        [:div.line-clamp-2 title]]]))
+
+#?(:cljs
+   (ui/defview card:pprinted [x]
+     [:pre.flex.text-sm.overflow-scroll (ui/pprinted x)]))
 
 #?(:clj
    (defn conform [m schema]
      (-> m
-         (domain/conform-and-validate)
+         (domains/conform-and-validate)
          (validate/assert (-> (mu/optional-keys schema)
                               (mu/assoc :entity/domain (mu/optional-keys :domain/as-map)))))))
 
@@ -79,5 +87,5 @@
        [:div.mt-6 {:key title}
         (when title [:div.px-body.font-medium title [:hr.mt-2.sm:hidden]])
         (into [:div.card-grid]
-              (map card)
+              (map card:compact)
               results)])))

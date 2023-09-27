@@ -1,4 +1,4 @@
-(ns sparkboard.entities.domain
+(ns sparkboard.domains
   (:require [clojure.string :as str]
             [inside-out.forms :as forms]
             [promesa.core :as p]
@@ -7,6 +7,12 @@
             [sparkboard.routes :as routes]
             [sparkboard.views.ui :as ui]
             [sparkboard.util :as u]))
+
+(defn normalize-domain [domain]
+  (-> domain
+      (str/lower-case)
+      (str/replace #"[\s-]+" "-")
+      (str/replace #"[^a-z0-9-]+" "")))
 
 (defn qualify-domain [domain]
   (when domain
@@ -18,7 +24,9 @@
   (when domain
     (str/replace domain #"\.sparkboard\.com$" "")))
 
-(defn availability [req {:as foo {:keys [domain]} :query-params}]
+(defn availability
+  {:endpoint/route {:get ["/domain-availability"]}}
+  [req {:as foo {:keys [domain]} :query-params}]
   (let [domain (qualify-domain domain)]
     {:body {:available?
             (and (re-matches #"^[a-z0-9-.]+$" domain)
@@ -61,7 +69,7 @@
            (when (not= (:init field) v)
              (when-let [v (:domain/name v)]
                (when (>= (count v) 3)
-                 (p/let [res (routes/GET :domain/availability :query-params {:domain v})]
+                 (p/let [res (routes/GET `availability :query-params {:domain v})]
                    (if (:available? res)
                      (forms/message :info
                                     [:span.text-green-500.font-bold (tr :tr/available)])
@@ -75,8 +83,8 @@
      (ui/show-field ?domain {:label         (tr :tr/domain-name)
                              :auto-complete "off"
                              :spell-check   false
-                             :placeholder   (or (:placeholder ?domain) "<your-subdomain>")
+                             :placeholder   (or (:placeholder ?domain) )
                              :postfix       [:span.text-sm.text-gray-500 ".sparkboard.com"]
                              :on-change     (fn [^js e]
-                                              (reset! ?domain {:domain/name (qualify-domain (.. e -target -value))}))
+                                              (reset! ?domain {:domain/name (qualify-domain (normalize-domain (.. e -target -value)))}))
                              :value         (or (unqualify-domain (:domain/name @?domain)) "")})))

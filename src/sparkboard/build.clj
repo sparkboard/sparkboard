@@ -1,15 +1,38 @@
 (ns sparkboard.build
   (:require [babashka.process :as bp]
+            [clojure.java.io :as io]
+            [clojure.pprint :refer [pprint]]
             [clojure.repl.deps :as deps]
             [clojure.pprint :refer [pprint]]
             [re-db.api :as db]
+            [sparkboard.routes :as routes]
+            [sparkboard.transit :as t]
+            [sparkboard.server.core]
             [sparkboard.migration.one-time :as one-time]))
+
+(comment
+  (require '[shadow.cljs.devtools.api :as shadow])
+  (shadow/get-build-config :web)
+  (shadow/compile :web)
+  )
 
 (defn start
   {:shadow/requires-server true}
   [port]
   ((requiring-resolve 'shadow.cljs.devtools.api/watch) :web)
   ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
+
+(defn spit-changed [path s]
+  (when (not= s (some-> (io/resource path) slurp))
+    (spit path s)))
+
+(defn spit-endpoints!
+  {:shadow.build/stage :flush}
+  [state]
+  (spit-changed "resources/public/js/sparkboard-views.transit.json"
+                (t/write
+                  (routes/view-endpoints (:compiler-env state))))
+  state)
 
 (defn tailwind-dev!
   {:shadow.build/stage :flush}

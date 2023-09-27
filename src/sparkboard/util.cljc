@@ -74,3 +74,7 @@
 
 (defmacro template [x]
   `(~'backtick/template ~x))
+
+(defn lift-key [m k]
+  (merge (dissoc m k)
+         (get m k)))

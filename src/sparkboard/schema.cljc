@@ -517,7 +517,7 @@
                                s-    :string}
    :project/admin-description {:doc "A description field only writable by an admin"
                                s-   :prose/as-map}
-   :project/inactive?         {:doc "Marks a project inactive, hidden."
+   :entity/archived?          {:doc "Marks a project inactive, hidden."
                                s-   :boolean}
    :project/sticky?           {:doc "Show project with border at top of project list"
                                s-   :boolean}
@@ -525,6 +525,7 @@
                                    :entity/id
                                    :entity/kind
                                    :project/board
+                                   (? :entity/archived?)
                                    (? :entity/field-entries)
                                    (? :entity/video)
                                    (? :entity/created-by)
@@ -541,7 +542,6 @@
                                    (? :project/badges)
                                    (? :project/number)
                                    (? :project/admin-description)
-                                   (? :project/inactive?)
                                    (? :project/sticky?)
                                    (? :project/open-requests)
                                    (? :entity/description)
@@ -549,8 +549,8 @@
 
 (def sb-requests
   {:request/text {:doc "Free text description of the request"
-                  s- :string}
-   :request/map {s- [:map {:closed true} :request/text]}})
+                  s-   :string}
+   :request/map  {s- [:map {:closed true} :request/text]}})
 
 (def sb-slack
   {:slack.app/bot-token                     {s- :string},

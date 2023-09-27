@@ -1,23 +1,25 @@
 (ns sparkboard.websockets
   (:require #?(:clj [org.httpkit.server :as httpkit])
             #?(:cljs [yawn.hooks :as h :refer [use-deref]])
+            [clojure.pprint :refer [pprint]]
             [applied-science.js-interop :as j]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
-            [sparkboard.routes :as routes]))
+            [sparkboard.routes :as routes]
+            [sparkboard.util :as u]))
 
 (def default-options
   "Websocket config fallbacks"
-  {:pack transit/pack
+  {:pack   transit/pack
    :unpack transit/unpack
-   :path "/ws"})
+   :path   "/ws"})
 
 #?(:clj
    (defn handle-ws-request [options req]
      (let [{:as options :keys [pack unpack handlers]} (merge default-options options)]
        (if (= :get (:request-method req))
-         (let [!ch (atom nil)
-               channel {:!ch !ch
+         (let [!ch     (atom nil)
+               channel {:!ch        !ch
                         ::sync/send (fn [message]
                                       (if (some-> @!ch httpkit/open?)
                                         (httpkit/send! @!ch (pack message))
@@ -25,12 +27,12 @@
                context {:channel channel
                         :account (:account req)}]
            (httpkit/as-channel req
-                               {:init (partial reset! !ch)
-                                :on-open sync/on-open
+                               {:init       (partial reset! !ch)
+                                :on-open    sync/on-open
                                 :on-receive (fn [ch message]
                                               (sync/handle-message handlers context (unpack message)))
-                                :on-close (fn [ch status]
-                                            (sync/on-close channel))}))
+                                :on-close   (fn [ch status]
+                                              (sync/on-close channel))}))
          {:status 400}))))
 
 #?(:cljs
@@ -43,13 +45,13 @@
      "
      [& {:as options}]
      (let [{:keys [url port path pack unpack handlers]} (merge default-options options)
-           !ws (atom nil)
+           !ws     (atom nil)
            channel {:!last-message (atom nil)
-                    :ws !ws
-                    ::sync/send (fn [message]
-                                  (let [^js ws @!ws]
-                                    (when (= 1 (.-readyState ws))
-                                      (.send ws (pack message)))))}
+                    :ws            !ws
+                    ::sync/send    (fn [message]
+                                     (let [^js ws @!ws]
+                                       (when (= 1 (.-readyState ws))
+                                         (.send ws (pack message)))))}
            context (assoc options :channel channel)
            init-ws (fn init-ws []
                      (let [ws (js/WebSocket. (or url (str "ws://localhost:" port path)))]
@@ -68,26 +70,31 @@
 
 #?(:cljs
    (def channel
-     (delay (connect {:port 3000
+     (delay (connect {:port     3000
                       :handlers (sync/result-handlers)}))))
 
-#?(:cljs
-   (defn watch [[id params]]
-     (let [query-vec [id (or params {})]
-           match (routes/match-path query-vec)]
-       (if (:QUERY match)
-         @(sync/$query @channel query-vec)
-         {:error "Query not found"}))))
+(defn normalize-vec [[id params]] [id (or params {})])
 
 #?(:cljs
-   (defn once [[id params]]
-     (let [qvec [id (or params {})]]
-       (if (:QUERY (routes/match-path qvec))
+   (defn subscribe [qvec]
+     (if (routes/by-tag (first qvec) :query)
+       (let [qvec (normalize-vec qvec)]
+         @(sync/$query @channel qvec))
+       {:error (str "client subscription: " (first qvec) " is not a query endpoint.")})))
+
+(comment
+  (routes/by-tag 'sparkboard.views.org/db:read :query)
+  @routes/!tags)
+
+#?(:cljs
+   (defn once [qvec]
+     (if (routes/by-tag (first qvec) :query)
+       (let [qvec (normalize-vec qvec)]
          (or (sync/read-result qvec)
              (do (sync/start-loading! qvec)
                  (sync/send @channel [::sync/once qvec])
-                 (sync/read-result qvec)))
-         (delay {:error "Query not found"})))))
+                 (sync/read-result qvec))))
+       (delay {:error "Query not found"}))))
 
 #?(:cljs
    (defn use-cached-result [{:as result :keys [loading? value]}]
@@ -101,8 +108,23 @@
        (assoc result :value @!last-value))))
 
 #?(:cljs
-   (def use-query (comp use-cached-result watch)))
+   (def use-query (comp use-cached-result subscribe)))
+
+#?(:cljs
+   (defn use-query! [qvec]
+     (let [{:keys [value error loading?]} (use-query qvec)]
+       (cond error (throw (ex-info error {:query qvec}))
+             loading? (throw loading?)
+             :else value))))
 
 #?(:cljs
    (defn send [message]
      (sync/send @channel message)))
+
+#?(:cljs
+   (defn pull [expr id]
+     ['sparkboard.endpoints/pull {:id   id
+                                  :expr expr}]))
+
+#?(:cljs
+   (def pull! (comp use-query! pull)))

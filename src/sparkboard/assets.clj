@@ -77,7 +77,9 @@
                                       content-type
                                       stream)))
 
-(defn upload-handler [req _]
+(defn upload!
+  {:endpoint {:post ["/upload"]}}
+  [req _]
   (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
     (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]
                {:message "File size must be less than 20MB."})
@@ -109,7 +111,7 @@
   [provider query-params]
   {:pre [(provider? provider)]}
   (let [param-string (images/param-string query-params)
-        lookup-ref [:asset.variant/provider+params [(:db/id provider) param-string]]]
+        lookup-ref   [:asset.variant/provider+params [(:db/id provider) param-string]]]
     (or (dl/entity lookup-ref)
         (do (dl/transact! [(-> #:asset.variant{:provider     (:db/id provider)
                                                :param-string param-string}
@@ -171,7 +173,7 @@
       (variant-link asset variant)
       (let [asset-stream (url-stream (asset-link asset))
             {:keys [bytes content-type]} (images/format asset-stream query-params)
-            variant (find-or-create-variant! @!default-provider query-params)]
+            variant      (find-or-create-variant! @!default-provider query-params)]
         (upload-to-provider! {:provider     @!default-provider
                               :object-key   (str (:asset/id asset) "_" param-string)
                               :size         (count bytes)
@@ -181,7 +183,8 @@
         (variant-link asset variant)))))
 
 (defn serve-asset
-  {:public true}
+  {:endpoint         {:get ["/assets/" ['uuid :asset/id]]}
+   :endpoint/public? true}
   [req {:keys [asset/id query-params]}]
   (if-let [asset (some-> (dl/entity [:asset/id id])
                          (u/guard (complement :asset/link-failed?)))]

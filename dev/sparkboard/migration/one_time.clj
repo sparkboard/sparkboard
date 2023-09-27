@@ -887,7 +887,7 @@
                                                  (rename :discussion/posts))
                                        :boardId rm
                                        ::always (remove-when (comp empty? :discussion/posts))]
-              :project/as-map         [::defaults {:project/inactive? false}
+              :project/as-map         [::defaults {:entity/archived? false}
 
                                        ::always (remove-when :entity/deleted-at)
                                        ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
@@ -908,7 +908,7 @@
                                        :number (rename :project/number)
                                        :badges (& (xf (partial mapv (partial hash-map :badge/label)))
                                                   (rename :project/badges)) ;; should be ref
-                                       :active (& (xf not) (rename :project/inactive?))
+                                       :active (& (xf not) (rename :entity/archived?))
                                        :approved (rename :project/approved?)
                                        :ready (rename :project/team-complete?)
                                        :members (&

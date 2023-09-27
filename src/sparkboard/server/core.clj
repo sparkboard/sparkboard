@@ -5,7 +5,6 @@
   (:gen-class)
   (:require [clj-time.coerce]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [hiccup.util]
             [markdown.core :as md]
             [muuntaja.core :as m]
@@ -26,7 +25,9 @@
             [ring.middleware.multipart-params :as multipart]
             [ring.util.request]
             [ring.util.response :as ring.response]
+            [sparkboard.assets :as assets]
             [sparkboard.datalevin :as datalevin]
+            [sparkboard.domains :as domain]
             [sparkboard.impl.server :as impl]
             [sparkboard.i18n :as i18n]
             [sparkboard.log]
@@ -36,11 +37,23 @@
             [sparkboard.server.env :as env]
             [sparkboard.server.html :as server.html]
             [sparkboard.server.nrepl :as nrepl]
+
+            [sparkboard.endpoints]
+            [sparkboard.views.account]
+            [sparkboard.views.board]
+            [sparkboard.views.member]
+            [sparkboard.views.org]
+            [sparkboard.views.project]
+
+
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
+            [sparkboard.transit :as t]
             [sparkboard.websockets :as ws]
             [sparkboard.util :as u]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [shadow.resource]
+            [sparkboard.impl.routes :as impl.routes]))
 
 (def muuntaja
   ;; Note: the `:body` BytesInputStream will be present but decode/`slurp` to an
@@ -70,9 +83,9 @@
                                                   (ex-message e))}})
                          (server.html/error e data)))))]
     (fn [req]
-      (log/info :req req)
+      #_(log/info :req req)
       (try (let [res (f req)]
-             (log/info :res res)
+             #_(log/info :res res)
              res)
            (catch Exception e (handle-e req e))
            (catch java.lang.AssertionError e (handle-e req e))))))
@@ -95,52 +108,24 @@
 
 #_(memo/clear-memo! $resolve-ref)
 
-(defn serve-markdown
-  {:public true}
+(defn document
+  {:endpoint {:get ["/documents/" :file/name]}
+   :endpoint/tag 'document
+   :endpoint/public? true}
   [_ {:keys [file/name]}]
   (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "documents/" name ".md"))))))
 
 (defn authorize! [f req params]
+  (when
+    (and (not (:endpoint/public? (meta f)))
+         (not (:account req)))
+    (throw (ex-info "Unauthorized" {:uri      [(:request-method req) (:uri req)]
+                                    :endpoint (meta f)
+                                    :status   401})))
+
   (if-let [authorize (:authorize (meta f))]
     (authorize req params)
     params))
-
-
-(def route-handler
-  (fn [{:as req :keys [uri]}]
-    (let [{:as match :keys [VIEW
-                            QUERY
-                            params
-                            GET
-                            POST]} (routes/match-path uri)
-          params  (-> params
-                      (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
-                      (u/assoc-some :body (:body-params req (:body req))))
-          method  (:request-method req)
-          handler (cond (and (= method :get) GET) GET
-                        (and (= method :post) POST) POST
-                        (and QUERY (data-req? req)) (comp ring.http/ok
-                                                          QUERY
-                                                          (fn [req params] params)))
-          params  (authorize! handler req params)]
-      (when
-        (and (not (:account req))
-             (not (:public (meta handler)))
-             (not (:public match)))
-        (throw (ex-info "Unauthorized" {:uri    uri
-                                        :match  match
-                                        :status 401})))
-      (cond
-
-        handler (handler req params)
-
-        VIEW (server.html/app-page
-               {:tx [(assoc env/client-config :db/id :env/config)
-                     (assoc (:account req) :db/id :env/account)]})
-
-        ;; query fns return reactions which must be wrapped in HTTP response maps
-        :else (ring.http/not-found "Not found")))))
-
 
 (memo/defn-memo $txs [ref]
   (r/catch
@@ -150,31 +135,69 @@
       (println e)
       {:error (ex-message e)})))
 
-(defn resolve-query [qvec]
-  (let [{[_ matched-params] :route :keys [$query QUERY] :as match} (routes/match-path qvec)
-        context (meta qvec)
-        params  (merge {}
-                       (cond->> (:params match)
-                                (::sync/watch context)
-                                (authorize! QUERY context))
-                       matched-params)]
-    (when $query
-      ($txs ($query params)))))
+(def make-$query
+  (memoize
+    (fn [fn-var]
+      (impl.routes/memo-fn-var fn-var))))
+
+(defn resolve-query [[id params :as qvec]]
+  (let [endpoint (routes/by-tag id :query)
+        _         (assert endpoint (str "resolve: " id " is not a query endpoint"))
+        query-var (-> endpoint :endpoint/sym requiring-resolve)
+        context   (meta qvec)
+        params    (merge {}
+                         (cond->> params
+                                  (::sync/watch context)
+                                  (authorize! query-var context))
+                         params)
+        $query    (make-$query query-var)]
+    ($txs ($query params))))
+
+(comment
+  (resolve-query ['sparkboard.views.org/db:read {}])
+  (routes/by-tag 'sparkboard.views.org/db:read :query)
+  @routes/!routes)
 
 (def ws-options {:handlers (merge (sync/query-handlers resolve-query)
                                   {::sync/once
                                    ;; TODO what is this and how do I handle params...
                                    (fn [{:keys [channel]} qvec]
-                                     (let [{:keys [QUERY]} (routes/match-path qvec)]
+                                     (let [match    (routes/match-path qvec)
+                                           query-fn (-> match :match/endpoints :query :endpoint/sym requiring-resolve)]
                                        (sync/send channel
-                                                  (sync/wrap-result qvec {:value (apply QUERY (rest qvec))}))))})})
+                                                  (sync/wrap-result qvec {:value (apply query-fn (rest qvec))}))))})})
 
-(defn ws-handler
-  {:public true}
+(defn websocket
+  {:endpoint {:get ["/ws"]}
+   :endpoint/public? true}
   [req _]
   (#'ws/handle-ws-request ws-options req))
 
-(def handler
+(defn spa-handler [req _params]
+  (server.html/app-page
+    {:tx [(assoc env/client-config :db/id :env/config)
+          (assoc (:account req) :db/id :env/account)]}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Routes
+
+(def route-handler
+  (fn [{:as req :keys [uri request-method]}]
+    (let [{:as         match
+           :match/keys [endpoints params]} (routes/match-path uri)]
+      (if-let [{:keys [endpoint/sym]} (get endpoints request-method)]
+        (let [handler (requiring-resolve sym)
+              params  (-> params
+                          (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
+                          (u/assoc-some :body (:body-params req (:body req))))]
+          (handler req (authorize! handler req params)))
+        (if (:view endpoints)
+          (server.html/app-page
+            {:tx [(assoc env/client-config :db/id :env/config)
+                  (assoc (:account req) :db/id :env/account)]})
+          (ring.http/not-found "Not found"))))))
+
+(def app-handler
   (delay
     (impl/join-handlers (serve-static "public")
                         slack.server/handlers
@@ -192,8 +215,6 @@
                                                                       (when (= pass (env/config :basic-auth/password))
                                                                         "admin"))))))))
 
-
-
 (defonce the-server
          (atom nil))
 
@@ -205,8 +226,11 @@
   "Setup fn.
   Starts HTTP server, stopping existing HTTP server first if necessary."
   [port]
+  (routes/init-endpoints!
+    (concat (routes/clj-endpoints)
+            (t/read (slurp (io/resource "public/js/sparkboard-views.transit.json")))))
   (stop-server!)
-  (reset! the-server (httpkit/run-server (fn [req] (@handler req))
+  (reset! the-server (httpkit/run-server (fn [req] (@app-handler req))
                                          {:port                 port
                                           :legacy-return-value? false}))
   (when (not= "dev" (env/config :env))                      ;; using shadow-cljs server in dev
@@ -222,4 +246,16 @@
 (comment                                                    ;;; Webserver control panel
   (-main)
 
-  (restart-server! 3000))
+  @routes/!routes
+  (routes/match-path (str "/o/" (random-uuid)))
+
+  (routes/path-for 'sparkboard.views.account/db:read)
+  (routes/match-path (str "/o/" (random-uuid)))
+  (routes/match-path (str "/ws"))
+
+
+  @routes/!tags
+  (routes/by-tag 'sparkboard.views.org/db:read
+                 :query)
+  (restart-server! 3000)
+  )

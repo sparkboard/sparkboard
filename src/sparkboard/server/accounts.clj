@@ -1,5 +1,5 @@
 (ns sparkboard.server.accounts
-  (:require [buddy.core.keys :as buddy.keys] 
+  (:require [buddy.core.keys :as buddy.keys]
             [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
             [clj-http.client :as http]
@@ -8,7 +8,7 @@
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
             [sparkboard.server.env :as env]
-            [re-db.api :as db] 
+            [re-db.api :as db]
             [ring.middleware.oauth2 :as oauth2]
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
@@ -38,34 +38,34 @@
 
 (defn hash-password [password]
   (let [signer-bytes
-        (-> (:base64-signer-key hash-config)
-            (.getBytes StandardCharsets/US_ASCII)
-            Base64/decodeBase64)
+                    (-> (:base64-signer-key hash-config)
+                        (.getBytes StandardCharsets/US_ASCII)
+                        Base64/decodeBase64)
         base64-salt (generate-salt 16)]
     {:account/password-salt base64-salt
      :account/password-hash (-> (FirebaseScrypt/hashWithSalt
-                                 password
-                                 base64-salt
-                                 (:base64-salt-separator hash-config)
-                                 (:rounds hash-config)
-                                 (:mem-cost hash-config))
+                                  password
+                                  base64-salt
+                                  (:base64-salt-separator hash-config)
+                                  (:rounds hash-config)
+                                  (:mem-cost hash-config))
                                 (->> (FirebaseScrypt/encrypt signer-bytes))
                                 Base64/encodeBase64
                                 (String. StandardCharsets/US_ASCII))}))
 
 (defn password-valid? [{:account/keys [password-hash password-salt]} password]
   (try (FirebaseScrypt/check
-        password
-        password-hash
-        password-salt
-        (:base64-salt-separator hash-config)
-        (:base64-signer-key hash-config)
-        (:rounds hash-config)
-        (:mem-cost hash-config))
+         password
+         password-hash
+         password-salt
+         (:base64-salt-separator hash-config)
+         (:base64-signer-key hash-config)
+         (:rounds hash-config)
+         (:mem-cost hash-config))
        (catch Exception e (throw (ex-info "Error checking password" {:status 401} e)))))
 
 (comment
- (password-valid? (hash-password "abba") "abba"))
+  (password-valid? (hash-password "abba") "abba"))
 
 ;; todo
 ;; - registration screen (new accounts)
@@ -83,11 +83,11 @@
                    {:image/avatar [:asset/id]}
                    :account/locale])
 (defn account-cookie [id expires]
-  {:value (t/write id)
+  {:value     (t/write id)
    :http-only true
-   :path "/"
-   :secure (= (env/config :env) "prod")
-   :expires expires})
+   :path      "/"
+   :secure    (= (env/config :env) "prod")
+   :expires   expires})
 
 (defn res:logout [res]
   (assoc-in res [:cookies "account-id"]
@@ -97,11 +97,11 @@
 
 (defn account-not-found! [account-id]
   (throw
-   (ex-info (str "Account not found: " account-id)
-            {:status 401
-             :wrap-response res:logout
-             :title (tr :tr/account-not-found)
-             :detail (str {:account-id account-id})})))
+    (ex-info (str "Account not found: " account-id)
+             {:status        401
+              :wrap-response res:logout
+              :title         (tr :tr/account-not-found)
+              :detail        (str {:account-id account-id})})))
 
 (defn wrap-account-lookup [handler]
   (fn [req]
@@ -115,9 +115,10 @@
                                  (account-not-found! account-id) nil)))))))
 
 (defn logout
-  {:public true}
+  {:endpoint         {:get ["/logout"]}
+   :endpoint/public? true}
   [_ _]
-  (-> (ring.response/redirect (routes/path-for :home))
+  (-> (ring.response/redirect (routes/path-for 'sparkboard.views.account/home))
       (res:logout)))
 
 (defn res:login [res account-id]
@@ -132,8 +133,9 @@
 
 (defn login!
   "POST handler. Returns 200/OK with account data if successful."
-  {:public true}
-  [_req {{:as account
+  {:endpoint         {:post ["/login"]}
+   :endpoint/public? true}
+  [_req {{:as   account
           :keys [account/email
                  account/password]} :body}]
 
@@ -142,55 +144,55 @@
                       [:account/email [:re #"^[^@]+@[^@]+$"]]])
 
   (let [account-entity (not-empty (db/get [:account/email email]))
-        _ (vd/assert account-entity
-                     [:map {:error/message (tr :tr/account-not-found)}
-                      [:account/password-hash [:string]]
-                      [:account/password-salt [:string]]]
-                     {:code 401})
-        _ (when-not account-entity (account-not-found! [:account/email email]))
-        _ (when (or (not (:account/password-hash account-entity))
-                    (not (:account/password-salt account-entity)))
-            ;; TODO start password-reset flow
-            (throw (ex-info (tr :tr/account-requires-password-reset)
-                            {:account/email email
-                             :status 401})))]
+        _              (vd/assert account-entity
+                                  [:map {:error/message (tr :tr/account-not-found)}
+                                   [:account/password-hash [:string]]
+                                   [:account/password-salt [:string]]]
+                                  {:code 401})
+        _              (when-not account-entity (account-not-found! [:account/email email]))
+        _              (when (or (not (:account/password-hash account-entity))
+                                 (not (:account/password-salt account-entity)))
+                         ;; TODO start password-reset flow
+                         (throw (ex-info (tr :tr/account-requires-password-reset)
+                                         {:account/email email
+                                          :status        401})))]
     (if (password-valid? account-entity password)
       (res:login {:status 200} [:account/email email])
       (throw (ex-info "Invalid password" {:account/email email
-                                          :status 401})))))
+                                          :status        401})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Oauth2 authentication
 
 (def oauth2-config {:google
-                    {:client-id (-> env/config :oauth.google/client-id)
-                     :client-secret (-> env/config :oauth.google/client-secret)
-                     :scopes ["profile openid email"]
-                     :authorize-uri "https://accounts.google.com/o/oauth2/v2/auth"
+                    {:client-id        (-> env/config :oauth.google/client-id)
+                     :client-secret    (-> env/config :oauth.google/client-secret)
+                     :scopes           ["profile openid email"]
+                     :authorize-uri    "https://accounts.google.com/o/oauth2/v2/auth"
                      :access-token-uri "https://accounts.google.com/o/oauth2/token"
-                     :launch-uri (routes/path-for [:oauth2.google/launch])
-                     :redirect-uri (routes/path-for [:oauth2.google/callback])
-                     :landing-uri (routes/path-for [:oauth2.google/landing])}})
+                     :launch-uri       "/oauth2/google/launch"
+                     :redirect-uri     "/oauth2/google/callback"
+                     :landing-uri      "/oauth2/google/landing"}})
 
 (defn filter-vals [m pred]
   (into {} (filter (comp pred val) m)))
 
 (defn google-account-tx [account-id provider-info]
   (let [existing (not-empty (db/pull '[*] account-id))
-        now (java.util.Date.)]
+        now      (java.util.Date.)]
     [(merge
-      ;; backfill account info (do not overwrite current data)
-      (-> {:entity/created-at           now
-           :account.provider.google/sub (:sub provider-info)
-           :account/display-name        (:name provider-info)
-           :account/email               (:email provider-info)
-           :account/email-verified?     (:email_verified provider-info)
-           :image/avatar                (some-> (:picture provider-info) (assets/link-asset))
-           :account/locale              (some-> (:locale provider-info) (str/split #"-") first)}
-          (filter-vals some?))
-      existing
-      ;; last-sign-in can overwrite existing data
-      {:account/last-sign-in now})]))
+       ;; backfill account info (do not overwrite current data)
+       (-> {:entity/created-at           now
+            :account.provider.google/sub (:sub provider-info)
+            :account/display-name        (:name provider-info)
+            :account/email               (:email provider-info)
+            :account/email-verified?     (:email_verified provider-info)
+            :image/avatar                (some-> (:picture provider-info) (assets/link-asset))
+            :account/locale              (some-> (:locale provider-info) (str/split #"-") first)}
+           (filter-vals some?))
+       existing
+       ;; last-sign-in can overwrite existing data
+       {:account/last-sign-in now})]))
 
 (defn fetch-google-public-keys
   "Returns map of {kid, java.security.PublicKey} for google's current oauth2 public certs"
@@ -201,8 +203,8 @@
       (json/parse-string keyword)
       :keys
       (->>
-       (map (juxt :kid buddy.keys/jwk->public-key))
-       (into {}))))
+        (map (juxt :kid buddy.keys/jwk->public-key))
+        (into {}))))
 
 (let [!cache (atom nil)]
   (defn google-public-key
@@ -224,19 +226,20 @@
       (json/parse-string keyword)))
 
 (defn google-landing
-  {:public true}
+  {:endpoint         {:get ["/oauth2/" "google/" "landing"]}
+   :endpoint/public? true}
   [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)
-        public-key (-> id-token id-token-header :kid google-public-key)
-        url "https://www.googleapis.com/oauth2/v3/userinfo"
-        sub (:sub (jwt/unsign id-token public-key {:alg :rs256
-                                                   :iss "accounts.google.com"}))
-        account-id [:account.provider.google/sub sub]
+        public-key    (-> id-token id-token-header :kid google-public-key)
+        url           "https://www.googleapis.com/oauth2/v3/userinfo"
+        sub           (:sub (jwt/unsign id-token public-key {:alg :rs256
+                                                             :iss "accounts.google.com"}))
+        account-id    [:account.provider.google/sub sub]
         provider-info (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}})
                           :body
                           (json/parse-string keyword))]
     (db/transact! (google-account-tx account-id provider-info))
-    (-> (ring.response/redirect (routes/path-for [:home]))
+    (-> (ring.response/redirect (routes/path-for 'sparkboard.views.account/home))
         (res:login account-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -246,7 +249,7 @@
   (-> f
       (wrap-account-lookup)
       (oauth2/wrap-oauth2 oauth2-config)
-      (ring.session/wrap-session {:store (ring.session.cookie/cookie-store
-                                          {:key (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
-                                           :readers {'clj-time/date-time clj-time.coerce/from-string}})
+      (ring.session/wrap-session {:store        (ring.session.cookie/cookie-store
+                                                  {:key     (byte-array (get env/config :webserver.cookie/key (repeatedly 16 (partial rand-int 10))))
+                                                   :readers {'clj-time/date-time clj-time.coerce/from-string}})
                                   :cookie-attrs {:http-only true :secure (= (env/config :env) "prod")}})))

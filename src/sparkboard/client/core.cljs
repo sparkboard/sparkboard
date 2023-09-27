@@ -6,7 +6,7 @@
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sparkboard.client.scratch]
-            [sparkboard.entities.domain :as domain]
+            [sparkboard.domains :as domain]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.views.radix :as radix]
             [sparkboard.routes :as routes]
@@ -14,14 +14,52 @@
             [sparkboard.transit :as transit]                ;; extends `ratom` reactivity
             [sparkboard.views.ui :as ui]
             [vendor.pushy.core :as pushy]
-            [yawn.root :as root]))
+            [yawn.root :as root]
+
+    ;; side-effecting: include endpoints in the build
+            [sparkboard.views.board]
+            [sparkboard.views.account]
+            [sparkboard.views.board]
+            [sparkboard.views.member]
+            [sparkboard.views.org]
+            [sparkboard.views.project]
+            [shadow.cljs.modern :refer [defclass]]
+            [clojure.pprint :refer [pprint]]))
+
+(defclass ErrorBoundary
+  (extends react/Component)
+  (constructor [this props] (super props))
+  Object
+  (componentDidCatch [this error info]
+                     (js/console.error error)
+                     (js/console.log (j/get info :componentStack)))
+  (render [this]
+          (if-let [e (j/get-in this [:state :error])]
+            ((j/get-in this [:props :fallback]) e)
+            (j/get-in this [:props :children]))))
+
+(j/!set ErrorBoundary "getDerivedStateFromError"
+        (fn [error]
+          (js/console.error error)
+          #js {:error error}))
+
+(ui/defview dev-info [{:as match :keys [modal]}]
+  (into [:div.p-2.relative.flex.gap-2 {:style {:z-index 9000}}
+         (for [info [(some-> match :view :endpoint/tag str)
+                     (when-let [modal-tag (some-> modal :view :endpoint/tag str)]
+                       [:span [:span.font-bold "modal: "] modal-tag])]
+               :when info]
+           [:div.rounded.bg-gray-100.inline-block.px-2.py-1.text-sm.text-gray-600.relative
+            info])]))
 
 (ui/defview root
   []
-  (let [{:as match :keys [modal]} (db/get :env/location)]
+  (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
     [:div.w-full.font-sans
-     [:Suspense {:fallback "ROUGH spinner"}
-
+     [:el ErrorBoundary
+      {:fallback (fn [e]
+                   (str "Error: " (ex-message e)))}
+      (dev-info match)
       (ui/show-match match)
 
       (radix/dialog {:props/root {:open           (boolean modal)
@@ -33,9 +71,6 @@
 
 (defn render []
   (root/render @!react-root (root)))
-
-(defn ^:dev/after-load start-router []
-  (pushy/start! routes/history))
 
 (defn read-env! []
   (doseq [{:keys [tx schema]} (->> (js/document.querySelectorAll (str "[type='application/re-db']"))
@@ -65,14 +100,16 @@
 (defn init []
   (read-env!)
   (firebase/init)
-  (start-router)
+  (routes/init-endpoints! (routes/client-endpoints))
   (init-forms)
   (render))
 
 (comment
+  @routes/!routes
   (db/transact! [[:db/retractEntity :test]])
   (db/transact! [#_{:db/id :a :b 1}
                  {:db/id :test3 :a :b}
                  {:db/id :test2}])
   (:test2 (:eav @(db/conn)))
   )
+

@@ -1,14 +1,19 @@
 (ns sparkboard.views.ui
   (:require ["@radix-ui/react-dropdown-menu" :as dm]
+            ["markdown-it" :as md]
+            ["linkify-element" :as linkify-element]
             [applied-science.js-interop :as j]
             [clojure.pprint :refer [pprint]]
             [inside-out.forms :as forms]
             [inside-out.macros]
             [promesa.core :as p]
+            [re-db.api :as db]
             [re-db.react]
             [shadow.lazy :as lazy]
             [sparkboard.client.sanitize :as sanitize]
+            [sparkboard.i18n :as i]
             [sparkboard.util :as u]
+            [sparkboard.views.radix :as radix]
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
@@ -17,6 +22,21 @@
             [sparkboard.i18n :refer [tr]]
             [sparkboard.icons :as icons])
   (:require-macros [sparkboard.views.ui :refer [defview with-submission]]))
+
+(defonce ^js Markdown (md))
+
+(defn show-markdown [source]
+  (let [!ref (h/use-ref)]
+    (h/use-effect (fn []
+                    (when-let [el @!ref]
+                      (j/log el)
+                      (-> el
+                          (j/!set :innerHTML (.render Markdown source))
+                          (linkify-element))))
+                  [@!ref])
+    (v/x [:div {:class                   "prose markdown-prose"
+                :ref !ref
+                :dangerouslySetInnerHTML #js{:__html ""}}])))
 
 (def variants {:avatar {:op "bound" :width 200 :height 200}
                :card   {:op "bound" :width 600}
@@ -28,9 +48,11 @@
          (some-> (variants variant) query-params/query-string))))
 
 (defn filtered [match-text]
-  (filter (if match-text
-            #(re-find (re-pattern (str "(?i)" match-text)) (:entity/title %))
-            identity)))
+  (comp
+    (remove :entity/archived?)
+    (filter (if match-text
+              #(re-find (re-pattern (str "(?i)" match-text)) (:entity/title %))
+              identity))))
 
 (defn pprinted [x]
   [:pre-wrap (with-out-str (pprint x))])
@@ -41,7 +63,7 @@
   (when m
     (case format
       :prose.format/html [sanitize/safe-html string]
-      :prose.format/markdown string)))
+      :prose.format/markdown [show-markdown string])))
 
 (defn css-url [s] (str "url(" s ")"))
 
@@ -66,20 +88,21 @@
 (def invalid-text-color "red")
 (def invalid-bg-color "light-pink")
 
-(defn loader [& [class]]
-  (v/x
-    [:div.flex.items-center.justify-left
-     [:svg.animate-spin
-      {:xmlns   "http://www.w3.org/2000/svg"
-       :fill    "none"
-       :viewBox "0 0 24 24"
-       :class   class}
-      [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
-      [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]]))
+(defn loading:spinner [& [class]]
+  (let [class (or class "h-4 w-4 text-blue-600 ml-2")]
+    (v/x
+      [:div.flex.items-center.justify-left
+       [:svg.animate-spin
+        {:xmlns   "http://www.w3.org/2000/svg"
+         :fill    "none"
+         :viewBox "0 0 24 24"
+         :class   class}
+        [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
+        [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]])))
 
 (defview view-message [{:keys [type content]}]
   (case type
-    :in-progress (loader " h-4 w-4 text-blue-600 ml-2")
+    :in-progress (loading:spinner " h-4 w-4 text-blue-600 ml-2")
     [:div
      {:style (case type
                (:error :invalid) {:color            invalid-text-color
@@ -323,25 +346,15 @@
                   [promise])
     @!result))
 
-(defn show-match
+(defview show-match
   "Given a match, shows the view, loading bar, and/or error message.
    - adds :data to params when a :query is provided"
-  [{:keys [VIEW QUERY params]}]
-  (let [view-result  (use-promise
-                       (h/use-memo #(cond (not (instance? lazy/Loadable VIEW)) VIEW
-                                          (lazy/ready? VIEW) @VIEW
-                                          :else (lazy/load VIEW))
-                                   [VIEW]))
-        query-result (when QUERY
-                       (ws/watch (:route params)))
-        {:as                  result
-         [view result params] :value} (-> [view-result query-result {:value params}]
-                                          merge-async
-                                          ws/use-cached-result)]
-    [:<>
-     [show-async-status result]
+  [{:as match :match/keys [endpoints params route]}]
+  [:Suspense {:fallback (loading:spinner "w-4 h-4 absolute top-2 right-2")}
+   (if-let [view (-> endpoints :view :endpoint/view)]
      (when view
-       [view (assoc params :query-result result)])]))
+       [view params])
+     (pr-str match))])
 
 (defn use-debounced-value
   "Caches value for `wait` milliseconds after last change."
@@ -384,4 +397,50 @@
                    :disabled (not (forms/submittable? !form))}
    label])
 
+(defn header-btn [icon href]
+  [:a.inline-flex.items-center {:class "hover:text-txt/60"
+                                :href  href}
+   icon])
 
+(defn lang-menu-content []
+  (let [current-locale (i/current-locale)
+        on-select      (fn [v]
+                         (p/do (routes/POST :account/set-locale v)
+                               (js/window.location.reload)))]
+    (map (fn [lang]
+           (let [selected (= lang current-locale)]
+             [{:selected selected
+               :on-click (when-not selected #(on-select lang))}
+              (get-in i/dict [lang :meta/lect])]))
+         (keys i/dict))))
+
+(defview header:lang [classes]
+  [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
+                                                   classes]}
+   (apply radix/dropdown-menu
+          {:trigger [icons/languages "w-5 h-5"]}
+          (lang-menu-content))])
+
+(defview header:account []
+  (if-let [account (db/get :env/account)]
+    (radix/dropdown-menu
+      {:trigger [:div.flex.items-center [:img.rounded-full.h-8.w-8 {:src (asset-src (:image/avatar account) :avatar)}]]}
+      [{:on-click #(routes/set-path! 'sparkboard.views.account/home)} (tr :tr/home)]
+      [{:on-click #(routes/set-path! 'sparkboard.server.accounts/logout)} (tr :tr/logout)]
+      (into [{:sub?    true
+              :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))
+    [:a.btn.btn-transp.px-3.py-1.h-7
+     {:href (routes/href 'sparkboard.views.account/sign-in)} (tr :tr/sign-in)]))
+
+(defn entity-header [{:as   entity
+                      :keys [entity/title
+                             image/avatar]} & children]
+  (let [entity-href (routes/entity entity :read)]
+    (into [:div.entity-header
+           (when avatar
+             [:a.contents {:href entity-href}
+              [:img.h-10.w-10
+               {:src (asset-src avatar :avatar)}]])
+           [:a.contents {:href entity-href} [:h3 title]]
+           [:div.flex-grow]]
+          (concat children [[header:account]]))))

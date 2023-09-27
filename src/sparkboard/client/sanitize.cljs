@@ -6,23 +6,24 @@
            (goog.html.sanitizer.HtmlSanitizer Builder)))
 
 (def !Sanitizer (delay
-                 (-> (Builder.)
-                     (.withCustomNetworkRequestUrlPolicy SafeUrl.sanitize)
-                     (.allowCssStyles)
-                     (.build))))
+                  (-> (Builder.)
+                      (.withCustomNetworkRequestUrlPolicy SafeUrl.sanitize)
+                      (.allowCssStyles)
+                      (.build))))
 
 
 (v/defview safe-html [html]
   (let [!el (hooks/use-ref)]
     (hooks/use-effect
-     (fn []
-       (when-let [^js el @!el]
-         (doto el
-           (.. -firstChild remove)
-           (.appendChild (or (some->> html
-                                      (.sanitizeToDomNode ^js @!Sanitizer)
-                                      linkify-element)
-                             (js/document.createElement "div"))))))
-     [@!el html])
-    [:div {:ref !el
-           :dangerouslySetInnerHTML {:__html "<div>X</div>"}}]))
+      (fn []
+        (when-let [^js el @!el]
+          (doto el
+            (.. -firstChild remove)
+            (.appendChild (or (some->> html
+                                       (.sanitizeToDomNode ^js @!Sanitizer)
+                                       linkify-element)
+                              (js/document.createElement "div"))))))
+      [@!el html])
+    [:div.contents
+     {:ref                     !el
+      :dangerouslySetInnerHTML {:__html ""}}]))

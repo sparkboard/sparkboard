@@ -1,125 +1,187 @@
 (ns sparkboard.routes
-  (:refer-clojure :exclude [uuid])
-  (:require #?(:cljs ["react" :as react])
-            #?(:cljs [shadow.lazy :as lazy])
-            #?(:cljs [vendor.pushy.core :as pushy])
-            #?(:cljs [yawn.view :as v])
-            #?(:cljs [yawn.hooks :as hooks])
+  (:require #?(:cljs [vendor.pushy.core :as pushy])
+            #?(:cljs ["react" :as react])
+            #?(:clj [cljs.analyzer.api :as ana])
+            [bidi.bidi :as bidi]
             [applied-science.js-interop :as j]
-            [bidi.bidi :as bidi :refer [uuid]]
+            [clojure.string :as str]
             [sparkboard.transit :as t]
             [re-db.api :as db]
-            [sparkboard.client.slack :as-alias slack.client]
             [sparkboard.query-params :as query-params]
-            [sparkboard.entities.board :as-alias board]
-            [sparkboard.entities.domain :as-alias domain]
-            [sparkboard.entities.member :as-alias member]
-            [sparkboard.entities.org :as-alias org]
-            [sparkboard.entities.project :as-alias project]
-            [sparkboard.entities.account :as-alias account]
             [sparkboard.http :as http]
-            [sparkboard.util :as u]
-            [sparkboard.impl.routes :as impl :refer [E wrap-endpoints]])
+            [sparkboard.impl.routes :as impl]
+            [shadow.resource]
+            [clojure.walk :as walk]
+            [sparkboard.util :as u])
   #?(:cljs (:require-macros [sparkboard.routes])))
 
-(def ENTITY-ID [uuid :entity/id])
+(comment
+  (shadow.cljs.devtools.api/get-worker :web)
+  )
 
-(def routes
-  "Route definitions.
-  :view     - symbol pointing to a (client) view for the single-page app
-  :query    - symbol pointing to a (server) function providing data for the route
-  :POST     - symbol pointing to a (server) function accepting [req, params & body]
-  :GET      - symbol pointing to a (server) function accepting a request map"
-  (wrap-endpoints
-    ["" {"/"                           {:id   :home
-                                        :public true
-                                        :VIEW `account/home}
-         "/ws"                         {:id  :websocket
-                                        :GET 'sparkboard.server.core/ws-handler}
-         "/upload"                     {:id   :asset/upload
-                                        :POST 'sparkboard.assets/upload-handler}
-         ["/assets/" [uuid :asset/id]] {:id  :asset/serve
-                                        :GET 'sparkboard.assets/serve-asset}
-         ["/documents/" :file/name]    {:id  :markdown/file
-                                        :GET 'sparkboard.server.core/serve-markdown}
-         "/slack/"                     {"invite-offer"  {:id   :slack/invite-offer
-                                                         :VIEW `slack.client/invite-offer}
-                                        "link-complete" {:id   :slack/link-complete
-                                                         :VIEW `slack.client/link-complete}}
-         "/login"                      {:id   :account/sign-in
-                                        :public true
-                                        :VIEW `account/account:sign-in
-                                        :POST 'sparkboard.server.accounts/login!}
-         "/logout"                     {:id  :account/logout
-                                        :GET 'sparkboard.server.accounts/logout}
-         "/locale/set"                 {:id   :account/set-locale
-                                        :POST 'sparkboard.i18n/set-locale!}
-         "/oauth2"                     {"/google" {"/launch"   {:id :oauth2.google/launch}
-                                                   "/callback" {:id :oauth2.google/callback}
-                                                   "/landing"  {:id  :oauth2.google/landing
-                                                                :GET 'sparkboard.server.accounts/google-landing}}}
+(defrecord EndpointsMatch [tags endpoints]
+  bidi/Matched
+  (resolve-handler [this m]
+    ;; called when matching a path to a route
+    (bidi/succeed nil (assoc m :endpoints endpoints)))
+  (unresolve-handler [this m]
+    (when (contains? tags (:handler m)) ""))
 
-         "/domain-availability"        {:id  :domain/availability
-                                        :GET `domain/availability}
-         "/orgs"                       {:id    :account/orgs
-                                        :QUERY `account/orgs-query}
-         "/account"                    {:id    :account/read
-                                        :VIEW  `account/read
-                                        :QUERY `account/read-query}
-         "/o"                          {"/new"               {:id   :org/new
-                                                              :VIEW `org/new
-                                                              :POST `org/new!}
-                                        ["/" [uuid :org-id]] {""
-                                                              {:id    :org/read
-                                                               :VIEW  `org/read
-                                                               :QUERY `org/read-query}
-                                                              "/settings"
-                                                              {:id    :org/edit
-                                                               :VIEW  `org/edit
-                                                               :QUERY `org/edit-query
-                                                               :POST  `org/edit!}
-                                                              "/delete"
-                                                              {:id   :org/delete
-                                                               :POST `org/delete!}
-                                                              "/search"
-                                                              {:id    :org/search
-                                                               :QUERY `org/search-query}}}
-         "/b"                          {"/new"
-                                        {:id   :board/new
-                                         :VIEW `board/new
-                                         :POST `board/new!}
-                                        ["/" [uuid :board-id]] {""
-                                                                {:id    :board/read
-                                                                 :QUERY `board/read-query
-                                                                 :VIEW  `board/read}
-                                                                "/settings"
-                                                                {:id    :board/edit
-                                                                 :VIEW  `board/edit
-                                                                 :QUERY `board/edit-query
-                                                                 :POST  `board/edit!}
-                                                                "/register"
-                                                                {:id   :board/register
-                                                                 :VIEW `board/register
-                                                                 :POST `board/register!}}}
-         ["/p"]                        {"/new"
-                                        {:id   :project/new
-                                         :VIEW `project/new
-                                         :POST `project/new!}
-                                        ["/" [uuid :project-id]]
-                                        {:id    :project/read
-                                         :VIEW  `project/read
-                                         :QUERY `project/read-query}}
-         ["/m/" [uuid :member-id]]     {""
-                                        {:id    :member/read
-                                         :VIEW  `member/read
-                                         :QUERY `member/read-query}}}]))
+  bidi/RouteSeq
+  (gather [this context]
+    [(bidi/map->Route (assoc context :endpoints endpoints))]))
+
+(defonce !routes (atom ["" {}]))
+(defonce !tags (atom {}))
+(defn by-tag [id method] (get-in @!tags [id method]))
+
+(defn merge-or-return-endpoint [acc x]
+  (cond (nil? acc) (->EndpointsMatch #{(:endpoint/tag x)}
+                                     {(:endpoint/method x) x})
+        (instance? EndpointsMatch acc) (let [endpoints (assoc (:endpoints acc)
+                                                         (:endpoint/method x)
+                                                         x)]
+                                         (->EndpointsMatch (into #{} (map :endpoint/tag) (vals endpoints))
+                                                           endpoints))
+        (map? acc) (update acc "" merge-or-return-endpoint x)))
+
+(defn assoc-in-route
+  [m [k & ks] v]
+  (let [m (if (instance? EndpointsMatch m)
+            {"" m}
+            m)
+        k (if (or (keyword? k)
+                  (and (vector? k)
+                       (= bidi/uuid (first k))))
+            [k]
+            k)]
+    (if ks
+      (assoc m k (assoc-in-route (get m k) ks v))
+      (update m k merge-or-return-endpoint v))))
+(comment
+  (let [r (-> {}
+              (assoc-in-route ["/o/" [bidi/uuid :org-id] "/settings"] {:endpoint/method :view
+                                                                       :endpoint/tag    'foo.settings})
+              (assoc-in-route ["/o/" [bidi/uuid :org-id]] {:endpoint/method :view
+                                                           :endpoint/tag    'foo.view})
+              (assoc-in-route ["/o/" [bidi/uuid :org-id]] {:endpoint/method :read
+                                                           :endpoint/tag    'foo.read})
+              )]
+    [(bidi/path-for ["" r] 'foo.settings {:org-id (random-uuid)})
+     (bidi/path-for ["" r] 'foo.view {:org-id (random-uuid)})]
+    ))
+
+(defn select-keys-by [m selector]
+  (reduce-kv (fn [out k v]
+               (if (and (keyword? k) (selector k))
+                 (assoc out k v)
+                 out))
+             {}
+             m))
+
+(defn endpoint-maps [sym meta]
+  ;; endpoint-map may include
+  ;; - :query true
+  ;; - :fn true
+  ;; - :get [..route]
+  ;; - :post [..route]
+  ;; - :view [..route]
+
+  #_[{:endpoint/method :get
+      :endpoint/route  []
+      :endpoint/sym    ...
+      :endpoint/tag    ...}]
+  (let [endpoint {:endpoint/sym sym
+                  :endpoint/tag (or (:endpoint/tag meta) sym)}
+        methods  (:endpoint meta)]
+    (concat (for [method [:get :post :view]
+                  :let [route (get methods method)]
+                  :when route]
+              (cond-> (assoc endpoint
+                        :endpoint/method method
+                        :endpoint/route (walk/postwalk-replace {''uuid 'uuid} route))
+                      (= method :view)
+                      (merge (select-keys-by meta #(= "view" (namespace %))))))
+            (for [method [:query :fn]
+                  :when (get methods method)]
+              (assoc endpoint
+                :endpoint/method method)))))
+
+#?(:clj
+   (defn clj-endpoints []
+     ;; https://github.com/thheller/shadow-experiments/blob/f5617079ad6fe553b612505047b258036cf85eb8/src/main/shadow/experiments/archetype/website.clj#L19
+     (into []
+           (comp (filter #(str/starts-with? (name (ns-name %)) "sparkboard."))
+                 (mapcat (comp vals ns-publics))
+                 (filter (comp :endpoint meta))
+                 (mapcat #(endpoint-maps (symbol %) (meta %))))
+           (all-ns))))
+
+(comment
+  (clj-endpoints))
+
+#?(:clj
+   (defn view-endpoints [cljs-env]
+     (into []
+           (comp (filter #(str/starts-with? (str (key %)) "sparkboard.views"))
+                 (mapcat (comp vals :defs val))
+                 (filter (comp :view
+                               :endpoint
+                               :meta))
+                 (mapcat #(endpoint-maps (:name %) (:meta %))))
+           (:cljs.analyzer/namespaces cljs-env))))
+
+#?(:cljs (do
+           (defonce !history (atom nil))
+
+           (def set-location!
+             (fn [location]
+               (let [location (if-let [modal (-> location :match/params :query-params :modal)]
+                                (assoc location :modal (impl/match-route @!routes modal))
+                                location)]
+                 (db/transact! [[:db/retractEntity :env/location]
+                                (assoc location :db/id :env/location)]))))))
+
+(defn endpoints->routes [endpoints]
+  (->> endpoints
+       (filter :endpoint/route)
+       (reduce (fn [routes endpoint]
+                 (assoc-in-route routes
+                                 (walk/postwalk-replace {'uuid bidi/uuid}
+                                                        (:endpoint/route endpoint))
+                                 endpoint))
+               {})))
+
+(defn endpoints->tags [endpoints]
+  (->> endpoints
+       (filter (comp #{:query :fn} :endpoint/method))
+       (reduce (fn [out endpoint]
+                 (assoc-in out
+                           [(:endpoint/tag endpoint) (:endpoint/method endpoint)]
+                           endpoint))
+               {})))
+
+(defn init-endpoints! [endpoints]
+  (reset! !tags (endpoints->tags endpoints))
+  (reset! !routes ["" (endpoints->routes endpoints)])
+  #?(:cljs
+     (do (reset! !history (pushy/pushy set-location! (partial impl/match-route @!routes)))
+         (pushy/start! @!history))))
+
+(def ENTITY-ID [bidi/uuid :entity/id])
+
+(defn dequote [id]
+  (if (and (list? id) (= 'quote (first id)))
+    (second id)
+    id))
+
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
   (cond-> (cond (string? route) route
-                (keyword? route) (bidi/path-for routes route options)
-                (vector? route) (apply bidi/path-for routes route)
-                :else (bidi/path-for routes route options))
+                (keyword? route) (bidi/path-for @!routes route options)
+                (vector? route) (apply bidi/path-for @!routes (update route 0 dequote))
+                :else (bidi/path-for @!routes route options))
           (:query-params options)
           (-> (query-params/merge-query (:query-params options)) :path)))
 
@@ -127,43 +189,38 @@
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
   ;; memoize
   (fn [path]
-    (impl/match-route routes (path-for path))))
+    (impl/match-route @!routes (path-for path))))
+
+(comment
+  @!routes
+  (path-for 'sparkboard.views.board/read)
+  (path-for 'sparkboard.views.org/read {:org-id (random-uuid)})
+  (match-path "/"))
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
-    (let [tag (keyword (name kind) (name key))]
-      (path-for tag (keyword (str (name kind) "-id")) id))))
+    (let [tag    (symbol (str "sparkboard.views." (name kind)) (name key))
+          params {(keyword (str (name kind) "-id")) id}
+          path   (path-for tag params)]
+      path)))
 
-(comment
-  (sparkboard.impl.routes/resolve-endpoint
-    {:QUERY `org/list-query
-     :VIEW  `org/list-view
-     })
-  (match-path "/o/index"))
+(defn merge-query [params]
+  (:path (query-params/merge-query
+           (db/get :env/location :match/path)
+           params)))
+
+(defn href [route & args]
+  (let [path  (apply path-for route args)
+        match (match-path path)]
+    (if (= :modal (-> match :match/endpoints :view :endpoint/view meta :view/target))
+      (merge-query {:modal path})
+      path)))
 
 #?(:cljs
    (do
 
-     (defn set-location! [location]
-       (let [modal    (-> location :params :query-params :modal)
-             location (cond-> location modal (assoc :modal (impl/match-route routes modal)))]
-         (db/transact! [[:db/retractEntity :env/location]
-                        (assoc location :db/id :env/location)])))
-
-     (defonce history (pushy/pushy set-location! (partial impl/match-route routes)))
-
-     (defn merge-query [params]
-       (:path (query-params/merge-query (:path (db/get :env/location :params)) params)))
-
      (defn merge-query! [params]
-       (pushy/set-token! history (merge-query params)))
-
-     (defn href [route & args]
-       (let [path  (apply path-for route args)
-             match (match-path path)]
-         (if (= :modal (:target (meta (:VIEW match))))
-           (merge-query {:modal path})
-           path)))
+       (pushy/set-token! @!history (merge-query params)))
 
      (defn set-modal! [route]
        (merge-query! {:modal (some-> route path-for)}))
@@ -171,14 +228,14 @@
      (defn close-modal! [] (merge-query! {:modal nil}))
 
      (defn set-path! [& args]
-       (js/setTimeout #(pushy/set-token! history (apply href args)) 0))))
+       (js/setTimeout #(pushy/set-token! @!history (apply href args)) 0))))
 
-(defn breadcrumb [path] (impl/breadcrumb routes path))
+(defn breadcrumb [path] (impl/breadcrumb @!routes path))
 
 (defn path->route [path]
   (cond-> path
           (string? path)
-          (->> (impl/match-route routes) :route)))
+          (->> (impl/match-route @!routes) :route)))
 
 #?(:cljs
    (defn POST [route body]
@@ -206,3 +263,19 @@
 
 (defn tag [tag endpoint]
   (bidi/tag (delay endpoint) tag))
+
+#?(:clj
+   (defmacro client-endpoints []
+     (->> (concat (clj-endpoints)
+                  (view-endpoints @(ana/current-state)))
+          (mapv #(-> (dissoc % :endpoint/sym)
+                     (cond-> (= :view (:endpoint/method %))
+                             (assoc :endpoint/view (:endpoint/sym %)))
+                     (update :endpoint/tag (fn [sym] `'~sym))
+                     (update :endpoint/route
+                             (partial walk/postwalk-replace {'uuid  'bidi.bidi/uuid
+                                                             ''uuid 'bidi.bidi/uuid})))))))
+
+(comment
+  @!tags
+  (sparkboard.routes/client-endpoints))

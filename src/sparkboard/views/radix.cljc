@@ -1,8 +1,8 @@
 (ns sparkboard.views.radix
-  (:require ["@radix-ui/react-dialog" :as dialog]
-            ["@radix-ui/react-dropdown-menu" :as dm]
-            ["@radix-ui/react-select" :as sel]
-            ["@radix-ui/react-tabs" :as tabs]
+  (:require #?(:cljs ["@radix-ui/react-dialog" :as dialog])
+            #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
+            #?(:cljs ["@radix-ui/react-select" :as sel])
+            #?(:cljs ["@radix-ui/react-tabs" :as tabs])
             [sparkboard.icons :as icons]
             [yawn.view :as v]))
 
@@ -111,9 +111,9 @@
 (defn show-tab-list [tabs]
   [tab-list
    (->> tabs
-        (map (fn [{title :title}]
+        (map (fn [{:keys [title value]}]
                [tab-trigger
-                {:value title
+                {:value value
                  :class "flex items-center"} title]))
         (into [:<>]))])
 #_(defn tabs [& sections]

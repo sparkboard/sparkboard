@@ -63,9 +63,6 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/tags                            {:en "Tags"
                                           :fr "Mots clés"
                                           :es "Etiquetas"},
-     :tr/my-stuff                        {:en "My stuff"
-                                          :fr "Mes trucs"
-                                          :es "Mis cosas"},
      :tr/sign-in                         {:en "Sign in"
                                           :fr "Connexion"
                                           :es "Iniciar sesión"},
@@ -142,6 +139,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/new-board                       {:en "New board"
                                           :fr "Nouveau tableau"
                                           :es "Nuevo tablero"}
+     :tr/support-project                 {:en "Support this project"
+                                          :fr "Soutenez ce projet"
+                                          :es "Apoyar este proyecto"}
      :tr/tag                             {:en "Tag"
                                           :fr "Mot-clé"
                                           :es "Etiqueta"}
@@ -259,7 +259,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 
 #?(:clj
    (defn set-locale!
-     {:POST :i18n/locale}
+     {:endpoint/route {:post ["/locale/" "set"]}
+      :malli/in       :i18n/locale}
      [req {locale :body}]
      (tap> (vector :set-locale locale (some? (:account req))))
      (vd/assert locale :i18n/locale)

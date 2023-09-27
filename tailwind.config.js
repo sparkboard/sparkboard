@@ -8,6 +8,10 @@ module.exports = {
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",
                 back: "hsl(var(--back))",
+                badge: {
+                    DEFAULT: "hsl(var(--badge))",
+                    txt: "hsl(var(--badge-txt))",
+                },
                 txt: {
                     DEFAULT: "hsl(var(--txt))",
                     faded: "hsl(var(--txt) / 70%)"
@@ -48,12 +52,12 @@ module.exports = {
             },
             keyframes: {
                 "accordion-down": {
-                    from: { height: 0 },
-                    to: { height: "var(--radix-accordion-content-height)" },
+                    from: {height: 0},
+                    to: {height: "var(--radix-accordion-content-height)"},
                 },
                 "accordion-up": {
-                    from: { height: "var(--radix-accordion-content-height)" },
-                    to: { height: 0 },
+                    from: {height: "var(--radix-accordion-content-height)"},
+                    to: {height: 0},
                 },
             },
             animation: {

@@ -10,7 +10,7 @@
                    (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
                    (def env (:env options :staging))
                    (def app (:app options (apps env))))
-         server (shell "yarn shadow-cljs server")
+         server (shell "yarn shadow-cljs server -A:dev:nio:local")
          compile-scrypt (do (shell "mkdir -p classes")
                             ;; compile SCRYPT (for password hashing)
                             (when-not (fs/exists? "classes/com")

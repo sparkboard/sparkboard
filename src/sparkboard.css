@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+
+    .prose a {
+        @apply font-normal underline decoration-2 decoration-primary/30 hover:decoration-primary/50 text-primary
+    }
     h3 {
         @apply text-lg font-semibold leading-6
     }
@@ -39,6 +43,10 @@
         --ring: 215 20.2% 65.1%;
 
         --radius: 0.5rem;
+        /* dark red */
+        --badge: 0 63% 31%;
+        /* white */
+        --badge-txt: 0 0% 95%;
     }
 
     /* @media (prefers-color-scheme: dark) {
