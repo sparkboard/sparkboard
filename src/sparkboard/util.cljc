@@ -1,7 +1,10 @@
 (ns sparkboard.util
   (:require #?(:clj [backtick])
             [clojure.string :as str]
-            [promesa.core :as p])
+            [promesa.core :as p]
+            [re-db.hooks :as hooks]
+            [re-db.memo :as memo]
+            [re-db.reactive :as r])
   #?(:cljs (:require-macros sparkboard.util)))
 
 (defn guard [x f]
@@ -60,7 +63,7 @@
                (if (= v (get old k))
                  (dissoc m k)
                  (assoc m k v))) {} new))
-  
+
 (defn select-as [m kmap]
   (reduce-kv (fn [out k as]
                (if (contains? m k)
@@ -69,7 +72,7 @@
 
 (defmacro p-when [test & body]
   `(p/let [result# ~test]
-     (when result# 
+     (when result#
        ~@body)))
 
 (defmacro template [x]
@@ -78,3 +81,15 @@
 (defn lift-key [m k]
   (merge (dissoc m k)
          (get m k)))
+
+(defn dequote [id]
+  (if (and (list? id) (= 'quote (first id)))
+    (second id)
+    id))
+
+#?(:clj
+   (defn memo-fn-var [query-var]
+     (memo/fn-memo [& args]
+       (r/reaction
+         (let [f (hooks/use-deref query-var)]
+           (apply f args))))))

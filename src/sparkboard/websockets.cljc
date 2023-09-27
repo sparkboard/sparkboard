@@ -83,7 +83,7 @@
        {:error (str "client subscription: " (first qvec) " is not a query endpoint.")})))
 
 (comment
-  (routes/by-tag 'sparkboard.views.org/db:read :query)
+  (routes/by-tag 'sparkboard.app.org/db:read :query)
   @routes/!tags)
 
 #?(:cljs
@@ -123,8 +123,8 @@
 
 #?(:cljs
    (defn pull [expr id]
-     ['sparkboard.endpoints/pull {:id   id
-                                  :expr expr}]))
+     ['sparkboard.server.core/pull {:id   id
+                                    :expr expr}]))
 
 #?(:cljs
    (def pull! (comp use-query! pull)))

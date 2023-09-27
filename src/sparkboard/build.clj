@@ -89,14 +89,14 @@
 
   (require '[sparkboard.migration.one-time :as one-time]
            '[datalevin.core :as dl]
-           '[sparkboard.datalevin :as sd]
+           '[sparkboard.server.datalevin :as sd]
            '[sparkboard.server.env :as env]
            '[sparkboard.schema :as sb.schema])
 
   ;; reset db (may break fulltext index?)
   (do
     (dl/clear sd/conn)
-    (alter-var-root #'sparkboard.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
+    (alter-var-root #'sparkboard.server.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
     (alter-var-root #'re-db.api/*conn* (constantly sd/conn)))
 
   (do

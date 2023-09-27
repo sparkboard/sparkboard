@@ -1,16 +1,16 @@
-(ns sparkboard.views.account
+(ns sparkboard.app.account
   (:require #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
-            #?(:cljs [sparkboard.views.radix :as radix])
+            #?(:cljs [sparkboard.ui.radix :as radix])
             #?(:cljs [yawn.hooks :as h])
             [inside-out.forms :as forms]
             [promesa.core :as p]
-            [sparkboard.icons :as icons]
+            [sparkboard.ui.icons :as icons]
             [re-db.api :as db]
             [sparkboard.entity :as entity]
             [sparkboard.i18n :as i :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
-            [sparkboard.views.ui :as ui]
+            [sparkboard.ui :as ui]
             [sparkboard.websockets :as ws]
             [yawn.view :as v]))
 
@@ -19,14 +19,14 @@
          display-name :account/display-name} (db/get :env/account)]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href 'sparkboard.views.account/read {:account-id account-id})} display-name]
+      {:href (routes/href 'sparkboard.app.account/read {:account-id account-id})} display-name]
      child
      [ui/header:account]]))
 
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:trigger [:div.btn.btn-primary (tr :tr/new) (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4")]}
-                       [{:on-select #(routes/set-path! 'sparkboard.views.board/new params)} (tr :tr/board)]
-                       [{:on-select #(routes/set-path! 'sparkboard.views.org/new params)} (tr :tr/org)]))
+                       [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                       [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
 
 #?(:clj
    (defn account:orgs
@@ -129,7 +129,7 @@
                     :href   "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]))
 
 (comment
-  (p/-> (routes/POST `sparkboard.views.account/sign-in
+  (p/-> (routes/POST `sparkboard.app.account/sign-in
                      {:account/email    ""
                       :account/password "123123123"})
         js/console.log))
@@ -184,5 +184,5 @@
   [params]
   (if-let [account-id (db/get :env/account :entity/id)]
     #_[:a.btn.btn-primary.m-10.p-10 {:href (routes/path-for :org/index)} "Org/Index"]
-    (redirect (routes/path-for 'sparkboard.views.account/read {:account-id account-id}))
-    (redirect (routes/path-for 'sparkboard.views.account/sign-in params))))
+    (redirect (routes/path-for 'sparkboard.app.account/read {:account-id account-id}))
+    (redirect (routes/path-for 'sparkboard.app.account/sign-in params))))

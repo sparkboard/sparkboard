@@ -9,11 +9,28 @@
             [re-db.api :as db]
             [sparkboard.query-params :as query-params]
             [sparkboard.http :as http]
-            [sparkboard.impl.routes :as impl]
             [shadow.resource]
             [clojure.walk :as walk]
             [sparkboard.util :as u])
   #?(:cljs (:require-macros [sparkboard.routes])))
+
+(defn normalize-slashes [path]
+  ;; remove trailing /'s, but ensure path starts with /
+  (-> path
+      (cond-> (and (> (count path) 1) (str/ends-with? path "/"))
+              (subs 0 (dec (count path))))
+      (u/ensure-prefix "/")))
+
+(defn match-path* [routes path]
+  (when-let [path (some-> path normalize-slashes)]
+    (let [{:as m :keys [route-params endpoints]} (bidi/match-route routes path)
+          params (-> (or route-params {})
+                     (u/assoc-some :query-params (not-empty (query-params/path->map path))))]
+      (if m
+        {:match/endpoints endpoints
+         :match/path      path
+         :match/params    params}
+        (prn :no-match! path)))))
 
 (comment
   (shadow.cljs.devtools.api/get-worker :web)
@@ -34,6 +51,13 @@
 (defonce !routes (atom ["" {}]))
 (defonce !tags (atom {}))
 (defn by-tag [id method] (get-in @!tags [id method]))
+
+(defn breadcrumb
+  ([path] (breadcrumb @!routes path))
+  ([routes path]
+   (->> (iteration #(second (re-find #"(.*)/.*$" (or % "")))
+                   :initk path)
+        (keep (comp :route (partial match-path* routes))))))
 
 (defn merge-or-return-endpoint [acc x]
   (cond (nil? acc) (->EndpointsMatch #{(:endpoint/tag x)}
@@ -137,7 +161,7 @@
            (def set-location!
              (fn [location]
                (let [location (if-let [modal (-> location :match/params :query-params :modal)]
-                                (assoc location :modal (impl/match-route @!routes modal))
+                                (assoc location :modal (match-path* @!routes modal))
                                 location)]
                  (db/transact! [[:db/retractEntity :env/location]
                                 (assoc location :db/id :env/location)]))))))
@@ -161,45 +185,40 @@
                            endpoint))
                {})))
 
-(defn init-endpoints! [endpoints]
-  (reset! !tags (endpoints->tags endpoints))
-  (reset! !routes ["" (endpoints->routes endpoints)])
-  #?(:cljs
-     (do (reset! !history (pushy/pushy set-location! (partial impl/match-route @!routes)))
-         (pushy/start! @!history))))
-
-(def ENTITY-ID [bidi/uuid :entity/id])
-
-(defn dequote [id]
-  (if (and (list? id) (= 'quote (first id)))
-    (second id)
-    id))
-
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
   (cond-> (cond (string? route) route
                 (keyword? route) (bidi/path-for @!routes route options)
-                (vector? route) (apply bidi/path-for @!routes (update route 0 dequote))
+                (vector? route) (apply bidi/path-for @!routes (update route 0 u/dequote))
                 :else (bidi/path-for @!routes route options))
           (:query-params options)
           (-> (query-params/merge-query (:query-params options)) :path)))
 
-(def match-path
+(def match-route
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
   ;; memoize
   (fn [path]
-    (impl/match-route @!routes (path-for path))))
+    (match-path* @!routes (path-for path))))
+
+(defn init-endpoints! [endpoints]
+  (reset! !tags (endpoints->tags endpoints))
+  (reset! !routes ["" (endpoints->routes endpoints)])
+  #?(:cljs
+     (do (reset! !history (pushy/pushy set-location! match-route))
+         (pushy/start! @!history))))
+
+(def ENTITY-ID [bidi/uuid :entity/id])
 
 (comment
   @!routes
-  (path-for 'sparkboard.views.board/read)
-  (path-for 'sparkboard.views.org/read {:org-id (random-uuid)})
-  (match-path "/"))
+  (path-for 'sparkboard.app.board/read)
+  (path-for 'sparkboard.app.org/read {:org-id (random-uuid)})
+  (match-route "/"))
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
-    (let [tag    (symbol (str "sparkboard.views." (name kind)) (name key))
+    (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
           params {(keyword (str (name kind) "-id")) id}
           path   (path-for tag params)]
       path)))
@@ -211,7 +230,7 @@
 
 (defn href [route & args]
   (let [path  (apply path-for route args)
-        match (match-path path)]
+        match (match-route path)]
     (if (= :modal (-> match :match/endpoints :view :endpoint/view meta :view/target))
       (merge-query {:modal path})
       path)))
@@ -230,12 +249,10 @@
      (defn set-path! [& args]
        (js/setTimeout #(pushy/set-token! @!history (apply href args)) 0))))
 
-(defn breadcrumb [path] (impl/breadcrumb @!routes path))
-
 (defn path->route [path]
   (cond-> path
           (string? path)
-          (->> (impl/match-route @!routes) :route)))
+          (->> (match-path* @!routes) :route)))
 
 #?(:cljs
    (defn POST [route body]

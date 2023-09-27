@@ -6,23 +6,23 @@
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sparkboard.client.scratch]
-            [sparkboard.domains :as domain]
+            [sparkboard.app.domains :as domain]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.views.radix :as radix]
+            [sparkboard.ui.radix :as radix]
             [sparkboard.routes :as routes]
             [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]                ;; extends `ratom` reactivity
-            [sparkboard.views.ui :as ui]
+            [sparkboard.ui :as ui]
             [vendor.pushy.core :as pushy]
             [yawn.root :as root]
 
     ;; side-effecting: include endpoints in the build
-            [sparkboard.views.board]
-            [sparkboard.views.account]
-            [sparkboard.views.board]
-            [sparkboard.views.member]
-            [sparkboard.views.org]
-            [sparkboard.views.project]
+            [sparkboard.app.board]
+            [sparkboard.app.account]
+            [sparkboard.app.board]
+            [sparkboard.app.member]
+            [sparkboard.app.org]
+            [sparkboard.app.project]
             [shadow.cljs.modern :refer [defclass]]
             [clojure.pprint :refer [pprint]]))
 

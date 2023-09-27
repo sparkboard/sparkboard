@@ -1,4 +1,4 @@
-(ns sparkboard.views.ui
+(ns sparkboard.ui
   (:require [yawn.view :as v]
             [clojure.walk :as walk]
             [inside-out.macros]))

@@ -1,4 +1,4 @@
-(ns sparkboard.cloudflare-mailer
+(ns sparkboard.server.cloudflare-mailer
   (:require [clj-http.client :as http]
             [sparkboard.server.env :as env]
             [sparkboard.js-convert :refer [clj->json json->clj]]

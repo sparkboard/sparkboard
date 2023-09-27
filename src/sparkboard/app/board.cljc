@@ -1,21 +1,21 @@
-(ns sparkboard.views.board
-  (:require #?(:clj [sparkboard.datalevin :as dl])
-            #?(:cljs [sparkboard.views.radix :as radix])
+(ns sparkboard.app.board
+  (:require #?(:clj [sparkboard.server.datalevin :as dl])
+            #?(:cljs [sparkboard.ui.radix :as radix])
             #?(:cljs [yawn.hooks :as h])
             [inside-out.forms :as forms]
             [promesa.core :as p]
+            [sparkboard.app.member :as member]
             [sparkboard.validate :as validate]
-            [sparkboard.domains :as domain]
+            [sparkboard.app.domains :as domain]
             [sparkboard.entity :as entity]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.icons :as icons]
+            [sparkboard.ui.icons :as icons]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
-            [sparkboard.views.ui :as ui]
+            [sparkboard.ui :as ui]
             [sparkboard.websockets :as ws]
             [re-db.api :as db]
-            [yawn.view :as v]
-            [sparkboard.endpoints #?(:cljs :as-alias :clj :as) endpoints]))
+            [yawn.view :as v]))
 
 #?(:clj
    (defn board:register!
@@ -28,7 +28,7 @@
    (defn db:read
      {:endpoint  {:query ["/b/" ['uuid :board-id]]}
       :authorize (fn [req params]
-                   (endpoints/member:read-and-log! (:board-id params) (:db/id (:account req)))
+                   (member/member:read-and-log! (:board-id params) (:db/id (:account req)))
                    params)}
      [{:keys [board-id]}]
      (db/pull `[~@entity/fields
@@ -97,7 +97,7 @@
   {:endpoint    {:view ["/b/" "new"]}
    :view/target :modal}
   [{:as params :keys [route]}]
-  (let [owners (->> (ws/use-query! ['sparkboard.views.account/account:orgs])
+  (let [owners (->> (ws/use-query! ['sparkboard.app.account/account:orgs])
                     (cons (entity/account-as-entity (db/get :env/account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
@@ -159,7 +159,7 @@
     [:<>
      [ui/entity-header board
       [ui/header-btn [icons/settings]
-       (routes/path-for 'sparkboard.views.board/edit params)]
+       (routes/path-for 'sparkboard.app.board/edit params)]
       ]
 
      ;; TODO new project

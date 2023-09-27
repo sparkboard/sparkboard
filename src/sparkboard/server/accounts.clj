@@ -14,7 +14,7 @@
             [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.response :as ring.response]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.assets :as assets])
+            [sparkboard.server.assets :as assets])
   (:import [com.smartmovesystems.hashcheck FirebaseScrypt]
            [org.apache.commons.codec.binary Base64]
            [java.nio.charset StandardCharsets]))
@@ -118,7 +118,7 @@
   {:endpoint         {:get ["/logout"]}
    :endpoint/public? true}
   [_ _]
-  (-> (ring.response/redirect (routes/path-for 'sparkboard.views.account/home))
+  (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account/home))
       (res:logout)))
 
 (defn res:login [res account-id]
@@ -239,7 +239,7 @@
                           :body
                           (json/parse-string keyword))]
     (db/transact! (google-account-tx account-id provider-info))
-    (-> (ring.response/redirect (routes/path-for 'sparkboard.views.account/home))
+    (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account/home))
         (res:login account-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,9 +1,9 @@
-(ns sparkboard.views.radix
+(ns sparkboard.ui.radix
   (:require #?(:cljs ["@radix-ui/react-dialog" :as dialog])
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
-            [sparkboard.icons :as icons]
+            [sparkboard.ui.icons :as icons]
             [yawn.view :as v]))
 
 (def menu-root (v/from-element :el dm/Root))

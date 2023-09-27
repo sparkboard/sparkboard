@@ -1,4 +1,4 @@
-(ns sparkboard.icons
+(ns sparkboard.ui.icons
   (:require [yawn.view :as v]))
 
 (defn arrow-back [& [class-name]]

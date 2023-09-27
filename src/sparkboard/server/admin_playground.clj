@@ -5,7 +5,7 @@
             [sparkboard.server.env :as env]
             [datalevin.core :as d]
             [re-db.api :as db]
-            [sparkboard.datalevin :as dl :refer [conn]])
+            [sparkboard.server.datalevin :as dl :refer [conn]])
   (:import [java.time LocalDateTime
                       ZoneId
                       Instant]))

@@ -1,4 +1,4 @@
-(ns sparkboard.datalevin
+(ns sparkboard.server.datalevin
   (:require [datalevin.core :as dl]
             [re-db.api :as db]
             [re-db.integrations.datalevin]

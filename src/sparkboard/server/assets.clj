@@ -1,9 +1,9 @@
-(ns sparkboard.assets
+(ns sparkboard.server.assets
   (:require [amazonica.aws.s3 :as s3]
             [clj-http.client :as http]
             [clojure.java.io :as io]
             [ring.util.response :as resp]
-            [sparkboard.datalevin :as dl]
+            [sparkboard.server.datalevin :as dl]
             [sparkboard.server.env :as env]
             [sparkboard.server.images :as images]
             [sparkboard.util :as u]

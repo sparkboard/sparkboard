@@ -1,4 +1,4 @@
-(ns sparkboard.views.ui
+(ns sparkboard.ui
   (:require ["@radix-ui/react-dropdown-menu" :as dm]
             ["markdown-it" :as md]
             ["linkify-element" :as linkify-element]
@@ -13,15 +13,15 @@
             [sparkboard.client.sanitize :as sanitize]
             [sparkboard.i18n :as i]
             [sparkboard.util :as u]
-            [sparkboard.views.radix :as radix]
+            [sparkboard.ui.radix :as radix]
             [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
             [sparkboard.routes :as routes]
             [sparkboard.query-params :as query-params]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.icons :as icons])
-  (:require-macros [sparkboard.views.ui :refer [defview with-submission]]))
+            [sparkboard.ui.icons :as icons])
+  (:require-macros [sparkboard.ui :refer [defview with-submission]]))
 
 (defonce ^js Markdown (md))
 
@@ -425,12 +425,12 @@
   (if-let [account (db/get :env/account)]
     (radix/dropdown-menu
       {:trigger [:div.flex.items-center [:img.rounded-full.h-8.w-8 {:src (asset-src (:image/avatar account) :avatar)}]]}
-      [{:on-click #(routes/set-path! 'sparkboard.views.account/home)} (tr :tr/home)]
+      [{:on-click #(routes/set-path! 'sparkboard.app.account/home)} (tr :tr/home)]
       [{:on-click #(routes/set-path! 'sparkboard.server.accounts/logout)} (tr :tr/logout)]
       (into [{:sub?    true
               :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/href 'sparkboard.views.account/sign-in)} (tr :tr/sign-in)]))
+     {:href (routes/href 'sparkboard.app.account/sign-in)} (tr :tr/sign-in)]))
 
 (defn entity-header [{:as   entity
                       :keys [entity/title

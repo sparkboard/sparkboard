@@ -1,30 +1,51 @@
 (ns sparkboard.slack.server
   "HTTP routes for Slack integration"
   (:require
-   [bidi.bidi]
-   [bidi.ring]
-   [clojure.java.io :as io]
-   [clojure.string :as str]
-   [cognitect.transit :as transit]
-   [lambdaisland.uri :as uri]
-   [sparkboard.slack.firebase.jvm :as fire-jvm]
-   [sparkboard.server.env :as env]
-   [sparkboard.impl.server :refer [wrap-sparkboard-verify]]
-   [sparkboard.slack.db :as slack.db]
-   [sparkboard.slack.oauth :as slack-oauth]
-   [sparkboard.slack.requests :as slack]
-   [sparkboard.slack.screens :as screens]
-   [sparkboard.slack.urls :as urls]
-   [ring.middleware.defaults]
-   [ring.middleware.format]
-   [ring.util.http-response :as ring.http]
-   [taoensso.timbre :as log]
-   [sparkboard.js-convert :refer [json->clj]]
-   [sparkboard.slack.api :as slack.api]
-   [sparkboard.slack.view :as v])
+    [bidi.bidi]
+    [bidi.ring]
+    [clojure.java.io :as io]
+    [clojure.string :as str]
+    [cognitect.transit :as transit]
+    [lambdaisland.uri :as uri]
+    [sparkboard.slack.firebase.jvm :as fire-jvm]
+    [sparkboard.server.env :as env]
+    [sparkboard.slack.db :as slack.db]
+    [sparkboard.slack.firebase.tokens :as fire-tokens]
+    [sparkboard.slack.oauth :as slack-oauth]
+    [sparkboard.slack.requests :as slack]
+    [sparkboard.slack.screens :as screens]
+    [sparkboard.slack.urls :as urls]
+    [ring.middleware.defaults]
+    [ring.middleware.format]
+    [ring.util.http-response :as ring.http]
+    [taoensso.timbre :as log]
+    [sparkboard.js-convert :refer [json->clj]]
+    [sparkboard.slack.api :as slack.api]
+    [sparkboard.slack.view :as v])
   (:import (javax.crypto Mac)
            (javax.crypto.spec SecretKeySpec)
            (org.apache.commons.codec.binary Hex)))
+
+(defn req-auth-token [req]
+  (or (some-> (:headers req) (get "authorization") (str/replace #"^Bearer: " ""))
+      (-> req :params :token)))
+
+(defn wrap-sparkboard-verify
+  "must be a Sparkboard server request"
+  [f & claims-checks]
+  (fn [req]
+    (let [token        (req-auth-token req)
+          claims       (some-> token (fire-tokens/decode))
+          check-claims (or (some->> claims-checks seq (apply every-pred)) (constantly true))]
+      (if (check-claims claims)
+        (f (assoc req :auth/token-claims claims))
+        (do
+          (log/warn "Sparkboard token verification failed." {:uri    (:uri req)
+                                                             :claims claims
+                                                             :token  token})
+          {:status  401
+           :headers {"Content-Type" "text/plain"}
+           :body    "Invalid token"})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Individual/second-tier handlers

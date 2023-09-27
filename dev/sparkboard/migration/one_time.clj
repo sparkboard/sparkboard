@@ -10,13 +10,13 @@
             [jsonista.core :as json]
             [malli.core :as m]
             [malli.generator :as mg]
-            [sparkboard.datalevin :as sb.dl :refer [conn]]
+            [sparkboard.server.datalevin :as sb.dl :refer [conn]]
             [sparkboard.schema :as sschema]
             [sparkboard.server.env :as env]
             [re-db.api :as db]
             [re-db.triplestore :as ts]
             [sparkboard.util :as u]
-            [sparkboard.assets :as assets])
+            [sparkboard.server.assets :as assets])
   (:import (java.lang Integer)
            (java.util Date)))
 
@@ -1186,7 +1186,7 @@
 
   ;; XXX delete `./.db/datalevin` dir
 
-  ;; (on my machine, the next line fails if I don't re-eval `sparkboard.datalevin` here)
+  ;; (on my machine, the next line fails if I don't re-eval `sparkboard.server.datalevin` here)
 
 
   ;; transact schema

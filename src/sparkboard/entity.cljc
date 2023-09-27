@@ -1,13 +1,13 @@
 (ns sparkboard.entity
   (:require [clojure.set :as set]
             [malli.util :as mu]
-            [sparkboard.domains :as domains]
+            [sparkboard.app.domains :as domains]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
             [sparkboard.validate :as validate]
-            [sparkboard.views.ui :as ui]
+            [sparkboard.ui :as ui]
             [yawn.view :as v]
-            #?(:clj [sparkboard.datalevin :as dl])))
+            #?(:clj [sparkboard.server.datalevin :as dl])))
 
 ;; common entity fields
 (def fields [:entity/id

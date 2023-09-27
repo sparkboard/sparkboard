@@ -1,11 +1,11 @@
-(ns sparkboard.domains
+(ns sparkboard.app.domains
   (:require [clojure.string :as str]
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
-            [sparkboard.views.ui :as ui]
+            [sparkboard.ui :as ui]
             [sparkboard.util :as u]))
 
 (defn normalize-domain [domain]

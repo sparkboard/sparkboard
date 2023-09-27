@@ -5,7 +5,7 @@
    [mhuebert.cljs-static.assets :as assets]
    [ring.util.response :as ring.response]
    [sparkboard.transit :as transit]
-   [sparkboard.views.layouts :as layouts]
+   [sparkboard.app.layouts :as layouts]
    [clojure.java.io :as io]
    [sparkboard.server.env :as env])
   (:import (java.time Instant)))
