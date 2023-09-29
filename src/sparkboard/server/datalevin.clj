@@ -30,7 +30,7 @@
 
 (defn entity-in-org?
   "Predicate fn, handy for search. Truthy iff given entity `ent` is within the organization identified by ID `oid`."
-     ;; FIXME this may be a dead-end approach. consider implementing with datalog rules. however, also consider design ramifications of `search` instead of `q`.
+  ;; FIXME this may be a dead-end approach. consider implementing with datalog rules. however, also consider design ramifications of `search` instead of `q`.
   [org-id ent]
   (case (:entity/kind ent)
     :org (= org-id (:entity/id ent))
@@ -39,7 +39,7 @@
     :project (= org-id (:project/board ent))
     false))
 
-(def squuid  dl/squuid)
+(def squuid dl/squuid)
 
 (defn now [] (java.util.Date.))
 
@@ -75,7 +75,7 @@
                     :notification "aa"
                     :tag          "ab"
                     :tag-spec     "ac"
-                    :thread       "ad"
+                    :chat         "ad"
                     :message      "ae"
                     :roles        "af"
                     :account      "b0"

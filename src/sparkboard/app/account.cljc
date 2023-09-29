@@ -9,10 +9,33 @@
             [sparkboard.entity :as entity]
             [sparkboard.i18n :as i :refer [tr]]
             [sparkboard.routes :as routes]
-            [sparkboard.util :as u]
             [sparkboard.ui :as ui]
+            [sparkboard.util :as u]
             [sparkboard.websockets :as ws]
+            [sparkboard.schema :as sch :refer [?]]
             [yawn.view :as v]))
+
+(sch/register!
+  {:account/email               sch/unique-string-id
+   :account/email-verified?     {:malli/schema :boolean}
+   :account/display-name        {:malli/schema :string}
+   :account.provider.google/sub sch/unique-string-id
+   :account/last-sign-in        {:malli/schema 'inst?}
+   :account/password-hash       {:malli/schema :string}
+   :account/password-salt       {:malli/schema :string}
+   :account/locale              {:malli/schema :i18n/locale}
+   :account/as-map              {:malli/schema [:map {:closed true}
+                                                :entity/id
+                                                :account/email
+                                                :account/email-verified?
+                                                :entity/created-at
+                                                (? :account/locale)
+                                                (? :account/last-sign-in)
+                                                (? :account/display-name)
+                                                (? :account/password-hash)
+                                                (? :account/password-salt)
+                                                (? :image/avatar)
+                                                (? :account.provider.google/sub)]}})
 
 (ui/defview header [child]
   (let [{account-id   :entity/id
@@ -138,32 +161,32 @@
   (ui/with-form [!account {:account/email    (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
-    (let [!step (h/use-state :email)]
-      [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-sm.px-4
-       {:on-submit (fn [^js e]
-                     (.preventDefault e)
-                     (case @!step
-                       :email (do (reset! !step :password)
-                                  (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
-                       :password (p/let [res (routes/POST :account/sign-in @!account)]
-                                   (js/console.log "res" res)
-                                   (prn :res res))))}
+                (let [!step (h/use-state :email)]
+                  [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-sm.px-4
+                   {:on-submit (fn [^js e]
+                                 (.preventDefault e)
+                                 (case @!step
+                                   :email (do (reset! !step :password)
+                                              (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
+                                   :password (p/let [res (routes/POST :account/sign-in @!account)]
+                                               (js/console.log "res" res)
+                                               (prn :res res))))}
 
 
-       [:div.flex.flex-col.gap-2
-        (ui/show-field ?email)
-        (when (= :password @!step)
-          (ui/show-field ?password {:id "account-password"}))
-        (str (forms/visible-messages !account))
-        [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
-         (tr :tr/sign-in)]]
+                   [:div.flex.flex-col.gap-2
+                    (ui/show-field ?email)
+                    (when (= :password @!step)
+                      (ui/show-field ?password {:id "account-password"}))
+                    (str (forms/visible-messages !account))
+                    [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
+                     (tr :tr/sign-in)]]
 
-       [:div.relative
-        [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
-        [:div.relative.flex.justify-center.text-xs.uppercase
-         [:span.bg-secondary.px-2.text-muted-txt (tr :tr/or)]]]
-       [account:sign-in-with-google]
-       [account:sign-in-terms]])))
+                   [:div.relative
+                    [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+                    [:div.relative.flex.justify-center.text-xs.uppercase
+                     [:span.bg-secondary.px-2.text-muted-txt (tr :tr/or)]]]
+                   [account:sign-in-with-google]
+                   [account:sign-in-terms]])))
 
 (ui/defview sign-in
   {:endpoint {:view ["/login"]}}

@@ -105,7 +105,7 @@
 
 
     ;; transact schema
-    (db/merge-schema! sb.schema/sb-schema)
+    (db/merge-schema! @sb.schema/!schema)
     ;; upsert lookup refs
     (db/transact! (mapcat sb.schema/unique-keys entities))
     ;; transact entities

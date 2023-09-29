@@ -1,10 +1,12 @@
 (ns sparkboard.util
+  (:refer-clojure :exclude [ref])
   (:require #?(:clj [backtick])
             [clojure.string :as str]
             [promesa.core :as p]
             [re-db.hooks :as hooks]
             [re-db.memo :as memo]
-            [re-db.reactive :as r])
+            [re-db.reactive :as r]
+            [re-db.schema :as s])
   #?(:cljs (:require-macros sparkboard.util)))
 
 (defn guard [x f]

@@ -147,7 +147,7 @@
 #?(:clj
    (defn view-endpoints [cljs-env]
      (into []
-           (comp (filter #(str/starts-with? (str (key %)) "sparkboard.views"))
+           (comp (filter #(str/starts-with? (str (key %)) "sparkboard.app"))
                  (mapcat (comp vals :defs val))
                  (filter (comp :view
                                :endpoint

@@ -81,7 +81,7 @@
    [(< ?year 2017)]
    :in $ ?helper]
 
-Here are all the identifiers in our schema: " (keys schema/sb-schema) ". Here is the query in english: "
+Here are all the identifiers in our schema: " (keys @schema/!schema) ". Here is the query in english: "
                   s))
       (doto (-> ((juxt :model cost :usage)) println))
       :choices first :message :content read-string

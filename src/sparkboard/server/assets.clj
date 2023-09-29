@@ -182,17 +182,4 @@
         (dl/transact! [[:db/add (:db/id asset) :asset/variants (:db/id variant)]])
         (variant-link asset variant)))))
 
-(defn serve-asset
-  {:endpoint         {:get ["/assets/" ['uuid :asset/id]]}
-   :endpoint/public? true}
-  [req {:keys [asset/id query-params]}]
-  (if-let [asset (some-> (dl/entity [:asset/id id])
-                         (u/guard (complement :asset/link-failed?)))]
-    (resp/redirect
-      (or
-        (variant-link! asset query-params)
-        (asset-link asset))
-      301)
-    (resp/not-found "Asset not found")))
-
 

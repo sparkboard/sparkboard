@@ -6,25 +6,16 @@
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sparkboard.client.scratch]
-            [sparkboard.app.domains :as domain]
+            [sparkboard.app.domain :as domain]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.radix :as radix]
             [sparkboard.routes :as routes]
             [sparkboard.slack.firebase :as firebase]
-            [sparkboard.transit :as transit]                ;; extends `ratom` reactivity
+            [sparkboard.transit :as transit]
             [sparkboard.ui :as ui]
-            [vendor.pushy.core :as pushy]
             [yawn.root :as root]
-
-    ;; side-effecting: include endpoints in the build
-            [sparkboard.app.board]
-            [sparkboard.app.account]
-            [sparkboard.app.board]
-            [sparkboard.app.member]
-            [sparkboard.app.org]
-            [sparkboard.app.project]
-            [shadow.cljs.modern :refer [defclass]]
-            [clojure.pprint :refer [pprint]]))
+            [sparkboard.app]                                ;; includes all endpoints
+            [shadow.cljs.modern :refer [defclass]]))
 
 (defclass ErrorBoundary
   (extends react/Component)
@@ -55,7 +46,7 @@
 (ui/defview root
   []
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
-    [:div.w-full.font-sans
+    [:div.w-full.font-sansa
      [:el ErrorBoundary
       {:fallback (fn [e]
                    (str "Error: " (ex-message e)))}
@@ -80,7 +71,7 @@
 
 (defn ^:dev/after-load init-forms []
   #_(when k
-      (let [validator (some-> schema/sb-schema (get k) :malli/schema malli-validator)]
+      (let [validator (some-> @schema/!schema (get k) :malli/schema malli-validator)]
         (cond-> (k field-meta)
                 validator
                 (update :validators conj validator))))

@@ -1,7 +1,7 @@
 (ns sparkboard.entity
   (:require [clojure.set :as set]
             [malli.util :as mu]
-            [sparkboard.app.domains :as domains]
+            [sparkboard.app.domain :as domains]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
             [sparkboard.validate :as validate]

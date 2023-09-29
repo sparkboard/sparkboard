@@ -1,4 +1,4 @@
-(ns sparkboard.app.layouts)
+(ns sparkboard.ui.layouts)
 
 (defn two-col [left & right]
   [:div.grid.grid-cols-1.md:grid-cols-2.h-screen

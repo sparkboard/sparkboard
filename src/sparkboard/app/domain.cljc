@@ -1,12 +1,29 @@
-(ns sparkboard.app.domains
+(ns sparkboard.app.domain
   (:require [clojure.string :as str]
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
+            [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.ui :as ui]
             [sparkboard.util :as u]))
+
+(sch/register!
+  {:domain/url     {s- :http/url}
+   :domain/name    (merge {:doc "A complete domain name, eg a.b.com"}
+                          sch/unique-string-id)
+   :domain/owner   (sch/ref :one)
+   :entity/domain  (merge (sch/ref :one :domain/as-map)
+                          sch/unique-value)
+   :entity/_domain {s- [:map {:closed true} :entity/id]}
+   :domain/as-map  (merge (sch/ref :one)
+                          {s- [:map {:closed true}
+                               :domain/name
+                               (? :entity/_domain)
+                               (? :domain/url)
+                               (? :domain/owner)]})})
+
 
 (defn normalize-domain [domain]
   (-> domain
@@ -83,7 +100,7 @@
      (ui/show-field ?domain {:label         (tr :tr/domain-name)
                              :auto-complete "off"
                              :spell-check   false
-                             :placeholder   (or (:placeholder ?domain) )
+                             :placeholder   (or (:placeholder ?domain))
                              :postfix       [:span.text-sm.text-gray-500 ".sparkboard.com"]
                              :on-change     (fn [^js e]
                                               (reset! ?domain {:domain/name (qualify-domain (normalize-domain (.. e -target -value)))}))

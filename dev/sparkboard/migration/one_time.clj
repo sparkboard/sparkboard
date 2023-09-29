@@ -27,11 +27,11 @@
 ;; Alpine: apk add --update-cache mongodb-tools
 
 (defn role-kw [role-name]
-  (case role-name 
-    "editor" :role/collaborator 
+  (case role-name
+    "editor" :role/collaborator
     "collaborator" :role/collaborator
-    "admin" :role/admin 
-    "owner" :role/owner 
+    "admin" :role/admin
+    "owner" :role/owner
     "member" nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,24 +58,24 @@
 
 (def MONGODB_URI (-> env/config :prod :mongodb/readonly-uri))
 
-(def mongo-colls {:member/as-map "users"
-                  :account/as-map "users"
-                  :ballot/as-map "users"
+(def mongo-colls {:member/as-map       "users"
+                  :account/as-map      "users"
+                  :ballot/as-map       "users"
                   :notification/as-map "notificationschemas"
-                  :project/as-map "projectschemas"
-                  :discussion/as-map "discussionschemas"
-                  :thread/as-map "threadschemas"
+                  :project/as-map      "projectschemas"
+                  :discussion/as-map   "discussionschemas"
+                  :chat/as-map         "threadschemas"
                   })
 
-(def firebase-colls {:org/as-map "org"
-                     :board/as-map "settings"
-                     :domain/as-map "domain"
-                     :collection/as-map "collection"
-                     :roles/as-map "roles"
-                     :slack.user/as-map "slack-user"
-                     :slack.team/as-map "slack-team"
+(def firebase-colls {:org/as-map             "org"
+                     :board/as-map           "settings"
+                     :domain/as-map          "domain"
+                     :collection/as-map      "collection"
+                     :roles/as-map           "roles"
+                     :slack.user/as-map      "slack-user"
+                     :slack.team/as-map      "slack-team"
                      :slack.broadcast/as-map "slack-broadcast"
-                     :slack.channel/as-map "slack-channel"})
+                     :slack.channel/as-map   "slack-channel"})
 
 (def colls (vec (concat (keys mongo-colls)
                         (keys firebase-colls))))
@@ -174,20 +174,20 @@
 
 (def to-uuid
   (memoize
-   (fn [kind s]
-     (let [s (:$oid s s)]
-       (cond (uuid? s) (do (assert (= kind (sb.dl/uuid->kind s))
-                                   (str "wrong kind" kind " " s " "))
-                           s)
-             (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sb.dl/uuid->kind (second s)))
-                                                              (throw (ex-info (str "unexpected uuid kind: " kind " " s " ")
-                                                                              {:expected-kind kind
-                                                                               :actual-kind (sb.dl/uuid->kind (second s))
-                                                                               :s s
-                                                                               })))
-                                                            (second s))
-             (string? s) (sb.dl/to-uuid kind s)
-             :else (throw (ex-info "Invalid UUID" {:s s :kind kind})))))))
+    (fn [kind s]
+      (let [s (:$oid s s)]
+        (cond (uuid? s) (do (assert (= kind (sb.dl/uuid->kind s))
+                                    (str "wrong kind" kind " " s " "))
+                            s)
+              (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sb.dl/uuid->kind (second s)))
+                                                               (throw (ex-info (str "unexpected uuid kind: " kind " " s " ")
+                                                                               {:expected-kind kind
+                                                                                :actual-kind   (sb.dl/uuid->kind (second s))
+                                                                                :s             s
+                                                                                })))
+                                                             (second s))
+              (string? s) (sb.dl/to-uuid kind s)
+              :else (throw (ex-info "Invalid UUID" {:s s :kind kind})))))))
 
 (defn composite-uuid [kind & ss]
   (to-uuid kind (->> ss
@@ -239,21 +239,21 @@
                         (some->> v (uuid-ref kind)))))))
 
 (def unique-ids-from
-  (memoize 
-   (fn [coll-k]
-     (into #{} (comp (mapcat sschema/unique-keys)
-                     (map (comp val first))) (coll-entities coll-k)))))
+  (memoize
+    (fn [coll-k]
+      (into #{} (comp (mapcat sschema/unique-keys)
+                      (map (comp val first))) (coll-entities coll-k)))))
 
 (defn missing-entity? [coll-k ref]
-  (let [kind (keyword (namespace coll-k))
+  (let [kind   (keyword (namespace coll-k))
         coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)]
     (and ref
          (not ((unique-ids-from coll-k) (to-uuid kind ref))))))
 
 (defn missing-uuid? [the-uuid]
-  (let [kind (sb.dl/uuid->kind the-uuid)
+  (let [kind   (sb.dl/uuid->kind the-uuid)
         coll-k (keyword (name kind) "as-map")]
-    (not (contains? (unique-ids-from coll-k) the-uuid))) )
+    (not (contains? (unique-ids-from coll-k) the-uuid))))
 
 (defn keep-entity [coll-k]
   (fn [m a v]
@@ -288,16 +288,16 @@
   ([changes] (keep (partial change-keys changes)))
   ([changes doc]
 
-   (let [changes (->> changes flatten (keep identity) (partition 2))
-         prepare (->> changes
-                      (keep (fn [[k v]] (when (= ::prepare k) v)))
-                      (apply comp))
-         defaults (->> changes
-                       (keep (fn [[k v]] (when (= ::defaults k) v)))
-                       (apply merge))
-         changes (remove (comp #{::prepare
-                                 ::defaults} first) changes)
-         doc (prepare doc)
+   (let [changes       (->> changes flatten (keep identity) (partition 2))
+         prepare       (->> changes
+                            (keep (fn [[k v]] (when (= ::prepare k) v)))
+                            (apply comp))
+         defaults      (->> changes
+                            (keep (fn [[k v]] (when (= ::defaults k) v)))
+                            (apply merge))
+         changes       (remove (comp #{::prepare
+                                       ::defaults} first) changes)
+         doc           (prepare doc)
          apply-changes (fn [doc]
 
                          (some->> (reduce (fn [m [a f]]
@@ -308,7 +308,7 @@
                                                   (f m a v)
                                                   (dissoc m a)))
                                               (catch Exception e
-                                                (clojure.pprint/pprint {:a a
+                                                (clojure.pprint/pprint {:a   a
                                                                         :doc m})
                                                 (throw e))))
                                           doc
@@ -323,10 +323,10 @@
   (let [[_ etype id-string] (re-find #"sparkboard[._]([^:]+):(.*)" s)
         kind (keyword etype)
         kind ({:user :account} kind kind)]
-    {:kind kind
-     :uuid (to-uuid kind id-string)
+    {:kind      kind
+     :uuid      (to-uuid kind id-string)
      :id-string id-string
-     :ref (uuid-ref kind id-string)}))
+     :ref       (uuid-ref kind id-string)}))
 
 (defn parse-domain-target [s]
   ;; TODO - domains that point to URLs should be "owned" by someone
@@ -334,7 +334,7 @@
     {:domain/url (-> (subs s 9)
                      (str/replace "%3A" ":")
                      (str/replace "%2F" "/"))}
-    
+
     (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id s)]
       (if (= [kind id-string] [:site "account"])
         {:domain/url "https://account.sparkboard.com"}
@@ -356,9 +356,9 @@
                          "background" :image/background
                          "subHeader" :image/sub-header)]
     (reduce-kv (fn [m k url]
-              (assoc m (image-k k) (assets/link-asset url)))
-            (dissoc m a)
-            urls)))
+                 (assoc m (image-k k) (assets/link-asset url)))
+               (dissoc m a)
+               urls)))
 
 (defn parse-field-type [t]
   (case t "image" :field.type/images
@@ -385,11 +385,11 @@
 
 (defn video-value [v]
   (when (and v (not (str/blank? v)))
-    (cond (re-find #"vimeo" v) {:video/type :video.type/vimeo-url
+    (cond (re-find #"vimeo" v) {:video/type  :video.type/vimeo-url
                                 :video/value v}
-          (re-find #"youtube" v) {:video/type :video.type/youtube-url
+          (re-find #"youtube" v) {:video/type  :video.type/youtube-url
                                   :video/value v}
-          :else {:video/type :video.type/youtube-id
+          :else {:video/type  :video.type/youtube-id
                  :video/value v})))
 
 (defn parse-fields [managed-by-k to-k]
@@ -400,24 +400,24 @@
       (let [managed-by (managed-by-k m)]
         (try
           (reduce (fn [m k]
-                    (let [field-id (composite-uuid :field
-                                                   (to-uuid :board managed-by)
-                                                   (to-uuid :field (subs (name k) 6)))
-                          target-id (:entity/id m)
-                          v (m k)
-                          field-type (:field/type (@!all-fields field-id))
+                    (let [field-id    (composite-uuid :field
+                                                      (to-uuid :board managed-by)
+                                                      (to-uuid :field (subs (name k) 6)))
+                          target-id   (:entity/id m)
+                          v           (m k)
+                          field-type  (:field/type (@!all-fields field-id))
                           ;; NOTE - we ignore fields that do not have a spec
                           entry-value (when field-type
                                         (case field-type
                                           :field.type/images (let [v (cond-> v (string? v) vector)]
                                                                (u/guard (into [] (map (partial hash-map :image/url) v)) seq))
                                           :field.type/link-list {:link-list/items (mapv #(rename-keys % {:label :text
-                                                                                                         :url :url}) v)}
+                                                                                                         :url   :url}) v)}
                                           :field.type/select {:select/value v}
                                           :field.type/prose (prose v)
                                           :field.type/video (video-value v)
                                           (throw (Exception. (str "Field type not found "
-                                                                  {:field/type field-type
+                                                                  {:field/type    field-type
                                                                    :field-spec/id field-id
                                                                    })))))]
                       (-> (dissoc m k)
@@ -427,7 +427,7 @@
                                     ;; question, how to have uniqueness
                                     ;; based on tuple of [field-spec/id, field/target]
                                     (fnil conj [])
-                                    {:field-entry/id (composite-uuid :entry target-id field-id)
+                                    {:field-entry/id    (composite-uuid :entry target-id field-id)
                                      :field-entry/value [field-type entry-value]
                                      :field-entry/field [:field/id field-id]})))))
                   m
@@ -435,7 +435,7 @@
           (catch Exception e
             (clojure.pprint/pprint
               {:managed-by [managed-by-k (managed-by-k m)]
-               :m m})
+               :m          m})
             (throw e))))
       m)))
 
@@ -461,10 +461,10 @@
   (delay (into {}
                (for [[board-id {:strs [tags]}] (read-coll :board/as-map)
                      :let [board-id (to-uuid :board board-id)
-                           tags (->> (update-vals tags #(update % "label" (fn [l]
-                                                                            (or l (get % "name")))))
-                                     (filter #(get (val %) "label"))
-                                     (into {}))]]
+                           tags     (->> (update-vals tags #(update % "label" (fn [l]
+                                                                                (or l (get % "name")))))
+                                         (filter #(get (val %) "label"))
+                                         (into {}))]]
                  [board-id (-> (merge (zipmap (map #(str/lower-case (get % "label")) (vals tags))
                                               (keys tags))
                                       (zipmap (map str/lower-case (keys tags))
@@ -797,7 +797,7 @@
                                        :salt rm
                                        :hash rm
                                        :passwordResetToken rm
-                                       :email rm                     ;; in account
+                                       :email rm            ;; in account
                                        :account rm
                                        :_id (fn [m a v]
                                               (-> m
@@ -904,7 +904,7 @@
                                        ::always (parse-fields :project/board :entity/field-entries)
                                        :lastModifiedBy (& (xf member->account-uuid)
                                                           (uuid-ref-as :account :entity/modified-by))
-                                       :tags rm                     ;; no longer used - fields instead
+                                       :tags rm             ;; no longer used - fields instead
                                        :number (rename :project/number)
                                        :badges (& (xf (partial mapv (partial hash-map :badge/label)))
                                                   (rename :project/badges)) ;; should be ref
@@ -939,7 +939,7 @@
                                        :sticky (rename :project/sticky?)
                                        :demoVideo (& (xf video-value)
                                                      (rename :entity/video))
-                                       :discussion rm               ;; unused
+                                       :discussion rm       ;; unused
                                        ]
               :notification/as-map    [::defaults {:notification/emailed? false}
                                        ::always (fn [m]
@@ -968,7 +968,7 @@
                                                 (xf member->account-uuid)
                                                 (uuid-ref-as :account :notification/account))
                                        :message (& (xf :body)
-                                                   (rename :notification/thread.message.text)
+                                                   (rename :notification/chat.new-message.text)
                                                    )
                                        :comment (& (xf :id)
                                                    (uuid-ref-as :comment :notification/post.comment))
@@ -981,44 +981,44 @@
                                                     (-> m
                                                         (dissoc :type :targetId :targetPath)
                                                         (merge (case type
-                                                                 "newMember" {:notification/type :notification.type/new-project-member}
-                                                                 "newMessage" {:notification/type   :notification.type/new-thread-message
-                                                                               :notification/thread (uuid-ref :thread (get-oid targetId))}
-                                                                 "newPost" {:notification/type :notification.type/new-discussion-post}
-                                                                 "newComment" {:notification/type :notification.type/new-post-comment})))))
+                                                                 "newMember" {:notification/type :notification.type/project.new-member}
+                                                                 "newMessage" {:notification/type :notification.type/chat.new-message
+                                                                               :notification/chat (uuid-ref :chat (get-oid targetId))}
+                                                                 "newPost" {:notification/type :notification.type/discussion.new-post}
+                                                                 "newComment" {:notification/type :notification.type/discussion.new-comment})))))
                                        ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
                                                                   (not (:notification/account %))
-                                                                  (missing-entity? :thread/as-map (:notification/thread %))
+                                                                  (missing-entity? :chat/as-map (:notification/chat %))
                                                                   (missing-entity? :post/as-map (:notification/post %))
                                                                   (missing-entity? :discussion/as-map (:notification/discussion %))))
                                        :notification/board rm
 
                                        ]
-              :thread/as-map          [:_id (partial id-with-timestamp :thread)
+              :chat/as-map            [:_id (partial id-with-timestamp :chat)
                                        :participantIds (& (xf #(let [out (member->account-uuid %)]
                                                                  (when (= (count out) (count %))
                                                                    out)))
-                                                          (uuid-ref-as :account :thread/members))
-                                       ::always (remove-when (complement :thread/members))
+                                                          (uuid-ref-as :account :chat/members))
+                                       ::always (remove-when (complement :chat/members))
                                        :createdAt (& (xf parse-mongo-date)
                                                      (rename :entity/created-at))
                                        :readBy (& (xf #(map name (keys %)))
                                                   (xf member->account-uuid)
-                                                  (uuid-ref-as :account :thread/read-by)) ;; change to a set of has-unread?
+                                                  (uuid-ref-as :account :chat/read-by)) ;; change to a set of has-unread?
                                        :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
 
                                        ;; TODO - :messages
                                        :messages (& (xf (partial change-keys [:_id (partial id-with-timestamp :message)
                                                                               :createdAt rm
-                                                                              :body (rename :thread.message/text)
+                                                                              :body (rename :chat.message/text)
                                                                               :senderId (& (xf member->account-uuid)
                                                                                            (uuid-ref-as :account :entity/created-by))
                                                                               :senderData rm
                                                                               ::always (remove-when (comp str/blank?
-                                                                                                          :thread.message/text))]))
-                                                    (rename :thread/messages))
+                                                                                                          :chat.message/text))]))
+                                                    (rename :chat/messages))
                                        :boardId rm
-                                       ::always (remove-when (comp empty? :thread/messages))]
+                                       ::always (remove-when (comp empty? :chat/messages))]
               ::mongo                 [:deleted (& (xf (fn [x] (when x deletion-time)))
                                                    (rename :entity/deleted-at))
                                        ::always (remove-when :entity/deleted-at)
@@ -1126,15 +1126,14 @@
            (change-keys (changes-for k))))))
 
 (defn register-schema! []
-  (reset! sschema/!registry (merge (m/default-schemas)
-                                   (update-vals sschema/sb-schema :malli/schema))))
+  (sschema/install-malli-schemas!))
 
 (defn explain-errors! []
   (register-schema!)
   (->> colls
        (mapcat (fn [k]
                  (for [entity (coll-entities k)
-                       :let [schema (@sschema/!registry k)
+                       :let [schema (@sschema/!malli-registry k)
                              _      (when-not schema
                                       (prn :NO_SCHEMA))]
                        :when (not (m/validate schema entity))]
@@ -1154,18 +1153,17 @@
         (mapcat coll-entities)
         colls))
 
-(def reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys sschema/sb-schema)))
-
-(def flatten-entities-xf
+(defn flatten-entities-xf []
   "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
-  (mapcat (fn [doc]
-            (cons (apply dissoc doc reverse-ks)
-                  (mapcat doc reverse-ks)))))
+  (let [reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys @sschema/!schema))]
+    (mapcat (fn [doc]
+              (cons (apply dissoc doc reverse-ks)
+                    (mapcat doc reverse-ks))))))
 
 (defn all-entities
   "Flat list of all entities (no inline nesting)" []
   (into []
-        flatten-entities-xf
+        (flatten-entities-xf)
         (root-entities)))
 
 (defn contains-somewhere?
@@ -1192,7 +1190,7 @@
   ;; transact schema
 
   (def entities (all-entities))
-  (db/merge-schema! sschema/sb-schema)
+  (db/merge-schema! @sschema/!schema)
   ;; "upsert" lookup refs
   (db/transact! (mapcat sschema/unique-keys entities))
   (db/transact! entities)
@@ -1233,10 +1231,10 @@
 
   ;; try validating generated docs
   (check-docs
-    (mapv mg/generate (vals sschema/entity-schemas)))
+    (mapv mg/generate (vals @sschema/!entity-schemas)))
 
   ;; generate examples for every schema entry
-  (mapv (juxt identity mg/generate) (vals sschema/entity-schemas))
+  (mapv (juxt identity mg/generate) (vals @sschema/!entity-schemas))
 
   (clojure.core/time (count (root-entities)))
 
