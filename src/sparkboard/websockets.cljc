@@ -6,7 +6,8 @@
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
             [sparkboard.routes :as routes]
-            [sparkboard.util :as u]))
+            [sparkboard.util :as u])
+  #?(:cljs (:require-macros sparkboard.websockets)))
 
 (def default-options
   "Websocket config fallbacks"
@@ -77,10 +78,7 @@
 
 #?(:cljs
    (defn subscribe [qvec]
-     (if (routes/by-tag (first qvec) :query)
-       (let [qvec (normalize-vec qvec)]
-         @(sync/$query @channel qvec))
-       {:error (str "client subscription: " (first qvec) " is not a query endpoint.")})))
+     @(sync/$query @channel (normalize-vec qvec))))
 
 (comment
   (routes/by-tag 'sparkboard.app.org/db:read :query)
@@ -128,3 +126,21 @@
 
 #?(:cljs
    (def pull! (comp use-query! pull)))
+
+#?(:clj
+   (defn op-impl [env op name args]
+     (let [[name doc params argv body] (u/parse-defn-args name args)
+           fqn (symbol (str *ns*) (str name))]
+       (if (:ns env)
+         `(defn ~name [params#] (ws/use-query! ['~fqn params#]))
+         `(defn ~name
+            ~@(when doc [doc])
+            ~(assoc-in params [:endpoint op] true)
+            ~argv
+            ~@body)))))
+#?(:clj
+   (defmacro defquery [name & args]
+     (op-impl &env :query name args)))
+#?(:clj
+   (defmacro defx [name & args]
+     (op-impl &env :effect name args)))

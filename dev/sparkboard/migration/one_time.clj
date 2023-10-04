@@ -147,6 +147,7 @@
             :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
 
+
 (def !members-raw
   (delay (into []
                (remove #(or (:deleted %)
@@ -164,20 +165,29 @@
                   (sb.dl/to-uuid :account (:firebaseAccount member))]))
           @!members-raw)))
 
+(def !member-id->board-id
+  (delay
+    (into {}
+          (map (fn [member]
+                 [(-> member :_id :$oid)
+                  (-> member :boardId)]))
+          @!members-raw)))
+
 (defn member->account-uuid [member-id]
   ;; member-id (mongo userId) to account-uuid,
-  ;; pre-filtered: returns nil for missing members 
-  (let [member-id (get-oid member-id)]
-    (if (coll? member-id)
-      (into (empty member-id) (keep member->account-uuid) member-id)
-      (@!member-id->account-uuid (get-oid member-id)))))
+  ;; pre-filtered: returns nil for missing members
+  (if (sequential? member-id)
+    (into (empty member-id)
+          (keep #(-> % get-oid (@!member-id->account-uuid)))
+          member-id)
+    (@!member-id->account-uuid (get-oid member-id))))
 
 (def to-uuid
   (memoize
     (fn [kind s]
       (let [s (:$oid s s)]
         (cond (uuid? s) (do (assert (= kind (sb.dl/uuid->kind s))
-                                    (str "wrong kind" kind " " s " "))
+                                    (str "wrong kind. expected " kind, "got " (sb.dl/uuid->kind s) ". id: " s))
                             s)
               (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sb.dl/uuid->kind (second s)))
                                                                (throw (ex-info (str "unexpected uuid kind: " kind " " s " ")
@@ -779,7 +789,8 @@
                                                                               board-id   (to-uuid :board boardId)
                                                                               account-id (member->account-uuid _id)]
                                                                         :when account-id]
-                                                                    {:ballot/account (uuid-ref :account account-id)
+                                                                    {:ballot/key     (str/join "+" [board-id account-id project-id])
+                                                                     :ballot/account (uuid-ref :account account-id)
                                                                      :ballot/board   (uuid-ref :board board-id)
                                                                      :ballot/project (uuid-ref :project project-id)})))))
                                        ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
@@ -856,7 +867,7 @@
 
                                        :followers (&
                                                     (xf member->account-uuid)
-                                                    (uuid-ref-as ::account :discussion/followers))
+                                                    (uuid-ref-as :account :discussion/followers))
                                        :parent (uuid-ref-as :project :discussion/project)
                                        ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
                                        :posts (& (xf
@@ -995,11 +1006,15 @@
 
                                        ]
               :chat/as-map            [:_id (partial id-with-timestamp :chat)
+                                       ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+                                       ::always (fn [m]
+                                                  (assoc m :chat/entity (uuid-ref :board (@!member-id->board-id
+                                                                                           (get-oid (first (:participantIds m)))))))
                                        :participantIds (& (xf #(let [out (member->account-uuid %)]
                                                                  (when (= (count out) (count %))
                                                                    out)))
-                                                          (uuid-ref-as :account :chat/members))
-                                       ::always (remove-when (complement :chat/members))
+                                                          (uuid-ref-as :account :chat/participants))
+                                       ::always (remove-when (complement :chat/participants))
                                        :createdAt (& (xf parse-mongo-date)
                                                      (rename :entity/created-at))
                                        :readBy (& (xf #(map name (keys %)))
@@ -1010,15 +1025,27 @@
                                        ;; TODO - :messages
                                        :messages (& (xf (partial change-keys [:_id (partial id-with-timestamp :message)
                                                                               :createdAt rm
-                                                                              :body (rename :chat.message/text)
+                                                                              ::always (remove-when (comp str/blank? :body))
+                                                                              :body (& (xf prose)
+                                                                                       (rename :chat.message/content))
                                                                               :senderId (& (xf member->account-uuid)
                                                                                            (uuid-ref-as :account :entity/created-by))
-                                                                              :senderData rm
-                                                                              ::always (remove-when (comp str/blank?
-                                                                                                          :chat.message/text))]))
+                                                                              :senderData rm]))
                                                     (rename :chat/messages))
                                        :boardId rm
-                                       ::always (remove-when (comp empty? :chat/messages))]
+                                       ::always (fn [m]
+                                                  (let [read-by (:chat/read-by m)]
+                                                    (-> m
+                                                        (update :chat/messages
+                                                                (fn [messages]
+                                                                  (mapv #(assoc % :chat.message/read-by read-by) messages)))
+                                                        (dissoc :chat/read-by))))
+                                       ::always (remove-when (comp empty? :chat/messages))
+                                       ::always (remove-when (comp nil? :chat/entity))
+                                       ::always (fn [{:as m :keys [chat/participants chat/entity]}]
+                                                  (assoc m :chat/key (->> (cons entity (sort participants))
+                                                                          (map second)
+                                                                          (str/join "+"))))]
               ::mongo                 [:deleted (& (xf (fn [x] (when x deletion-time)))
                                                    (rename :entity/deleted-at))
                                        ::always (remove-when :entity/deleted-at)
@@ -1125,11 +1152,8 @@
       (->> (read-coll k)
            (change-keys (changes-for k))))))
 
-(defn register-schema! []
-  (sschema/install-malli-schemas!))
-
 (defn explain-errors! []
-  (register-schema!)
+  (sschema/install-malli-schemas!)
   (->> colls
        (mapcat (fn [k]
                  (for [entity (coll-entities k)
@@ -1174,6 +1198,7 @@
     @!found))
 
 (comment
+  (first (map :chat/key (coll-entities :chat/as-map)))
   (coll? {})
 
   (take 2 (all-entities))

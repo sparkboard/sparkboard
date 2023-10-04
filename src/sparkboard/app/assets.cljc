@@ -2,8 +2,10 @@
   (:require #?(:clj [ring.util.response :as resp])
             #?(:clj [sparkboard.server.assets :as assets])
             #?(:clj [sparkboard.server.datalevin :as dl])
+            [bidi.bidi :as bidi]
             [sparkboard.schema :as sch :refer [s- ?]]
-            [sparkboard.util :as u]))
+            [sparkboard.util :as u]
+            [malli.core :as m]))
 
 (sch/register!
   {:asset/provider                         (sch/ref :one :asset.provider/as-map)
@@ -16,7 +18,7 @@
                                                 :s3/bucket-name
                                                 :s3/bucket-host]}
 
-   :s3/bucket-name                         sch/unique-string-id
+   :s3/bucket-name                         sch/unique-id-str
    :s3/bucket-host                         {s- :string}
    :s3/endpoint                            {s- :string}
 
@@ -58,16 +60,18 @@
    :image/sub-header                       (sch/ref :one :asset/as-map)})
 
 (comment
+
+  (sch/install-malli-schemas!)
   (m/explain :asset/as-map {:src            ""
                             :asset/id       (random-uuid)
                             :asset/provider :asset.provider/s3}))
 
 #?(:clj
    (defn serve-asset
-     {:endpoint         {:get ["/assets/" ['uuid :asset/id]]}
+     {:endpoint         {:get ["/assets/" :asset/id]}
       :endpoint/public? true}
      [req {:keys [asset/id query-params]}]
-     (if-let [asset (some-> (dl/entity [:asset/id id])
+     (if-let [asset (some-> (dl/entity [:asset/id (bidi/uuid id)])
                             (u/guard (complement :asset/link-failed?)))]
        (resp/redirect
          (or

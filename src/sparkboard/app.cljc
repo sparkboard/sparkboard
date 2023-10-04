@@ -15,4 +15,7 @@
             [sparkboard.app.org]
             [sparkboard.app.project]
             [sparkboard.app.social-feed]
-            [sparkboard.app.vote]))
+            [sparkboard.app.vote]
+            [sparkboard.transit :as t]))
+
+(def client-endpoints (t/read (shadow.resource/inline "public/js/sparkboard-views.transit.json")))

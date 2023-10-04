@@ -2,6 +2,7 @@
   (:require #?(:clj [sparkboard.app.member :as member])
             #?(:clj [sparkboard.server.datalevin :as dl])
             [promesa.core :as p]
+            [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.schema :as sch :refer [s- ?]]
@@ -13,6 +14,10 @@
             [yawn.view :as v]
             [sparkboard.ui.radix :as radix]))
 
+(comment
+  (first (db/where [:project/badges]))
+  db/*conn*
+  )
 (sch/register!
   (merge
 
@@ -71,13 +76,13 @@
 
 #?(:clj
    (defn db:new!
-     {:endpoint {:post ["/p/new"]}}
-     [req {:as params project :body}]
+     {:endpoint {:post ["/p/new"]}
+      :prepare [az/with-account-id!]}
+     [req {:keys [account-id] project :body}]
      (validate/assert project [:map {:closed true} :entity/title])
-     ;; auth: user is member of board & board allows members to create projects
      (db/transact! [(-> project
-                        (assoc :project/board [:entity/id (:entity/id params)])
-                        (dl/new-entity :project :by (:db/id (:account req))))])
+                        ;; Auth: board allows projects to be created by current user (must be a member)
+                        (dl/new-entity :project :by account-id))])
      ;; what to return?
      {:status 201}
      ))
@@ -113,22 +118,21 @@
 
 #?(:clj
    (defn db:read
-     {:endpoint  {:query ["/p/" ['uuid :project-id]]}
-      :authorize (fn [req {:as params :keys [project-id]}]
-                   (member/member:read-and-log! project-id (:db/id (:account req)))
-                   params)}
+     {:endpoint {:query true}
+      :prepare  [az/with-account-id
+                 (member/member:log-visit! :project-id)]}
      [{:keys [project-id]}]
      (db/pull `[{:project/board ~entity/fields}
                 ~@entity/fields
                 :project/sticky?]
-              [:entity/id project-id])))
+              project-id)))
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
 (def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
 
 (ui/defview read
-  {:endpoint    {:view ["/p/" ['uuid :project-id]]}
+  {:endpoint    {:view ["/p/" ['entity/id :project-id]]}
    :view/target :modal}
   [params]
   (let [{:as           project
@@ -138,7 +142,7 @@
          :project/keys [board
                         badges]} (ws/pull! [:*
                                             {:project/board entity/fields}]
-                                           [:entity/id (:project-id params)])]
+                                           (:project-id params))]
     [:<>
      #_[ui/entity-header board]
      [:div.p-body.flex.flex-col.gap-2

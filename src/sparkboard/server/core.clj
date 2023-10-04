@@ -28,12 +28,13 @@
             [ring.middleware.multipart-params :as multipart]
             [ring.util.request]
             [ring.util.response :as ring.response]
+            [sparkboard.schema :as sch]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.i18n :as i18n]
             [sparkboard.log]
             [sparkboard.routes :as routes]
             [sparkboard.app]                                ;; includes all endpoints
-            [sparkboard.server.accounts :as accounts]
+            [sparkboard.server.account :as accounts]
             [sparkboard.server.env :as env]
             [sparkboard.server.html :as server.html]
             [sparkboard.server.nrepl :as nrepl]
@@ -121,17 +122,21 @@
   [_ {:keys [file/name]}]
   (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "sparkboard/documents/" name ".md"))))))
 
+(defn prepare! [fs req params]
+  (cond (nil? fs) params
+        (sequential? fs) (reduce (fn [params f]
+                                   (f req params)) params fs)
+        :else (fs req params)))
+
 (defn authorize! [f req params]
   (when
     (and (not (:endpoint/public? (meta f)))
          (not (:account req)))
     (throw (ex-info "Unauthorized" {:uri      [(:request-method req) (:uri req)]
                                     :endpoint (meta f)
-                                    :status   401})))
+                                    :code     401})))
 
-  (if-let [authorize (:authorize (meta f))]
-    (authorize req params)
-    params))
+  (prepare! (:prepare (meta f)) req params))
 
 (memo/defn-memo $txs [ref]
   (r/catch
@@ -182,7 +187,9 @@
 (defn spa-handler [req _params]
   (server.html/app-page
     {:tx [(assoc env/client-config :db/id :env/config)
-          (assoc (:account req) :db/id :env/account)]}))
+          (assoc (:account req)
+            :db/id :env/account
+            :account-id [:entity/id (:entity/id (:account req))])]}))
 
 (defn pull
   {:endpoint {:query ["/pull"]}}
@@ -197,18 +204,23 @@
 (def route-handler
   (fn [{:as req :keys [uri request-method]}]
     (let [{:as         match
-           :match/keys [endpoints params]} (routes/match-route uri)]
-      (if-let [{:keys [endpoint/sym]} (get endpoints request-method)]
-        (let [handler (requiring-resolve sym)
-              params  (-> params
-                          (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
-                          (u/assoc-some :body (:body-params req (:body req))))]
-          (handler req (authorize! handler req params)))
-        (if (:view endpoints)
-          (server.html/app-page
-            {:tx [(assoc env/client-config :db/id :env/config)
-                  (assoc (:account req) :db/id :env/account)]})
-          (ring.http/not-found "Not found"))))))
+           :match/keys [endpoints params]} (routes/match-route uri)
+          {:as endpoint :keys [endpoint/sym]} (get endpoints request-method)]
+      (prn request-method uri (or sym (when (:view endpoints) :view)))
+      (or (and endpoint
+               (#{:get :post} request-method)
+               (let [handler (requiring-resolve sym)
+                     params  (-> params
+                                 (u/assoc-seq :query-params (update-keys (:query-params req) keyword))
+                                 (u/assoc-some :body (:body-params req (:body req))))]
+                 (handler req (authorize! handler req params))))
+          (when (:view endpoints)
+            (server.html/app-page
+              {:tx [(assoc env/client-config :db/id :env/config)
+                    (assoc (:account req)
+                      :db/id :env/account
+                      :account-id [:entity/id (:entity/id (:account req))])]}))
+          (ring.http/not-found "Not found")))))
 
 (def app-handler
   (delay
@@ -217,7 +229,7 @@
                    (-> #'route-handler
                        i18n/wrap-i18n
                        accounts/wrap-accounts
-                       wrap-query-params               ;; required for accounts (oauth2)
+                       wrap-query-params                    ;; required for accounts (oauth2)
                        multipart/wrap-multipart-params
                        wrap-log
                        ring.cookies/wrap-cookies
@@ -239,9 +251,8 @@
   "Setup fn.
   Starts HTTP server, stopping existing HTTP server first if necessary."
   [port]
-  (routes/init-endpoints!
-    (concat (routes/clj-endpoints)
-            (t/read (slurp (io/resource "public/js/sparkboard-views.transit.json")))))
+  (sch/install-malli-schemas!)
+  (routes/init-endpoints! (routes/endpoints))
   (stop-server!)
   (reset! the-server (httpkit/run-server (fn [req] (@app-handler req))
                                          {:port                 port

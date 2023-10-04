@@ -1,4 +1,4 @@
-(ns sparkboard.server.accounts
+(ns sparkboard.server.account
   (:require [buddy.core.keys :as buddy.keys]
             [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
@@ -114,27 +114,18 @@
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))
 
-(defn logout
-  {:endpoint         {:get ["/logout"]}
-   :endpoint/public? true}
+(defn logout!
   [_ _]
   (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account/home))
       (res:logout)))
 
 (defn res:login [res account-id]
-  (-> res
-      (assoc-in [:cookies "account-id"]
-                (account-cookie account-id
-                                (str (java.util.Date. (+ (System/currentTimeMillis) (* 1000 60 60 24 14))))))
-      ;; TODO
-      ;; - verify that this value is encoded properly somewhere,
-      ;; - in client, set this into :env/account
-      (assoc :body {:account (db/pull pull-account account-id)})))
+  (assoc-in res [:cookies "account-id"]
+            (account-cookie account-id
+                            (str (java.util.Date. (+ (System/currentTimeMillis) (* 1000 60 60 24 14)))))))
 
 (defn login!
   "POST handler. Returns 200/OK with account data if successful."
-  {:endpoint         {:post ["/login"]}
-   :endpoint/public? true}
   [_req {{:as   account
           :keys [account/email
                  account/password]} :body}]
@@ -226,8 +217,6 @@
       (json/parse-string keyword)))
 
 (defn google-landing
-  {:endpoint         {:get ["/oauth2/" "google/" "landing"]}
-   :endpoint/public? true}
   [{:keys [oauth2/access-tokens]} _]
   (let [{:keys [token id-token]} (:google access-tokens)
         public-key    (-> id-token id-token-header :kid google-public-key)

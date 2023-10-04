@@ -35,9 +35,9 @@
                                   {s- [:sequential
                                        (conj db-id nesting-schema)]}))))
 
-(def unique-string-id (merge s/unique-id
-                             s/string
-                             {s- :string}))
+(def unique-id-str (merge s/unique-id
+                          s/string
+                          {s- :string}))
 
 (def unique-uuid (merge s/unique-id
                         s/uuid
@@ -98,8 +98,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; For bulk data import
 
-(def !schema (atom {}))
-(def !malli-registry (atom (m/default-schemas)))
+(defonce !schema (atom {}))
+(defonce !malli-registry (atom (m/default-schemas)))
 
 ;; validation for endpoints
 ;; - annotate endpoint functions with malli schema for :in and :out
@@ -195,3 +195,4 @@
      :http/image-url {s- [:re #"(?i)https?://.+\..+\.(?:jpg|png|jpeg|gif|webp)$"]}
      :html/color     {s- :string}
      :email          {s- [:re {:error/message "should be a valid email"} #"^[^@]+@[^@]+$"]}}))
+

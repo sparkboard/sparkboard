@@ -1,19 +1,21 @@
 (ns sparkboard.server.datalevin
-  (:require [datalevin.core :as dl]
-            [re-db.api :as db]
-            [re-db.integrations.datalevin]
-            [sparkboard.server.env :as env]))
+  #?(:clj (:require [datalevin.core :as dl]
+                    [re-db.integrations.datalevin]
+                    [sparkboard.server.env :as env]
+                    [re-db.api :as db])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
 
 
-(do
-  (def conn (dl/get-conn (env/db-path "datalevin") {}))
-  (alter-var-root #'db/*conn* (constantly conn)))
+#?(:clj
+   (do
+     (def conn (dl/get-conn (env/db-path "datalevin") {}))
+     (alter-var-root #'db/*conn* (constantly conn))))
 
 
-(def entity? datalevin.entity/entity?)
+#?(:clj
+   (def entity? datalevin.entity/entity?))
 
 (comment
 
@@ -39,25 +41,41 @@
     :project (= org-id (:project/board ent))
     false))
 
-(def squuid dl/squuid)
+#?(:clj
+   (def squuid dl/squuid))
 
-(defn now [] (java.util.Date.))
+(defn now [] #?(:clj (java.util.Date.)
+                :cljs (js/Date.)))
 
-(defn q [query & inputs]
-  (apply dl/q query @conn inputs))
+#?(:clj
+   (defn q [query & inputs]
+     (apply dl/q query @conn inputs)))
 
-(defn pull [expr id] (dl/pull @conn expr id))
-(defn entid [id] (dl/entid @conn id))
+#?(:clj
+   (defn pull [expr id] (dl/pull @conn expr id)))
 
-(defn resolve-id [id] (entid (if (uuid? id)
-                               [:entity/id id]
-                               id)))
+(defn wrap-id [id]
+  (if (uuid? id)
+    [:entity/id id]
+    id))
 
-(defn entity [id] (dl/entity @conn id))
+(defn unwrap-id [id]
+  (if (vector? id)
+    (second id)
+    id))
 
+#?(:clj
+   (defn entid [id] (dl/entid @conn id)))
 
-(defn transact! [txs]
-  (dl/transact! conn txs))
+#?(:clj
+   (defn resolve-id [id] (entid (wrap-id id))))
+
+#?(:clj
+   (defn entity [id] (dl/entity @conn (resolve-id id))))
+
+#?(:clj
+   (defn transact! [txs]
+     (dl/transact! conn txs)))
 
 (defn to-ref [m id-key] [id-key (id-key m)])
 (def asset-ref #(to-ref % :asset/id))
@@ -93,19 +111,19 @@
 (defn kind->prefix [kind]
   (or (kind->prefix* kind) (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))))
 
+#?(:clj
+   (defn to-uuid [kind s]
+     (java.util.UUID/fromString (str (kind->prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
 
-(defn to-uuid [kind s]
-  (java.util.UUID/fromString (str (kind->prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2))))
+#?(:clj
+   (defn new-uuid [kind]
+     (java.util.UUID/fromString (str (kind->prefix kind)
+                                     (subs (str (random-uuid)) 2)))))
 
-
-(defn new-uuid [kind]
-  (java.util.UUID/fromString (str (kind->prefix kind)
-                                  (subs (str (random-uuid)) 2))))
-
-
-(defn new-entity [m kind & {:keys [by]}]
-  (-> m
-      (merge #:entity{:id         (new-uuid kind)
-                      :created-at (now)
-                      :kind       kind})
-      (cond-> by (assoc :entity/created-by by))))
+#?(:clj
+   (defn new-entity [m kind & {:keys [by]}]
+     (-> m
+         (merge #:entity{:id         (new-uuid kind)
+                         :created-at (now)
+                         :kind       kind})
+         (cond-> by (assoc :entity/created-by by)))))

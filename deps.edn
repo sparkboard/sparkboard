@@ -4,7 +4,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.12.0-alpha4"}
 
         ;; v2
-        datalevin/datalevin {:mvn/version "0.8.12"}
+        datalevin/datalevin {:mvn/version "0.8.19"}
         io.github.mhuebert/re-db {:git/sha "1f1113d6a7d155c5ebe972a3380a892ef3bc31bd"}
         io.github.mhuebert/yawn {:git/sha "6064626e6a67333ad4876f73d2b1f3b3da00660f"}
         io.github.mhuebert/inside-out {:git/sha "bb1e0b9652da5c6966ca6dc7c36b99dc09322c93"}
@@ -64,7 +64,7 @@
         mhuebert/triple {:mvn/version "0.1.0"}
         net.cgrand/macrovich {:mvn/version "0.2.1"}
         reagent/reagent {:mvn/version "1.1.1"}
-        thheller/shadow-cljs {:mvn/version "2.25.4"}
+        thheller/shadow-cljs {:mvn/version "2.25.7"}
         net.clojars.wkok/openai-clojure {:mvn/version "0.5.0"}}
  :aliases
  {:uberjar {:exec-fn sparkboard.build/uberjar}

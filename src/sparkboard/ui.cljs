@@ -35,7 +35,7 @@
                           (linkify-element))))
                   [@!ref])
     (v/x [:div {:class                   "prose markdown-prose"
-                :ref !ref
+                :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
 
 (def variants {:avatar {:op "bound" :width 200 :height 200}
@@ -295,8 +295,8 @@
                        (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
                                                                             (.append "files" file)))
                                          :form ?field]
-                         (reset! ?field asset)
-                         ((auto-submit-handler ?field)))))}]]
+                                        (reset! ?field asset)
+                                        ((auto-submit-handler ?field)))))}]]
      (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
@@ -351,7 +351,7 @@
    - adds :data to params when a :query is provided"
   [{:as match :match/keys [endpoints params route]}]
   [:Suspense {:fallback (loading:spinner "w-4 h-4 absolute top-2 right-2")}
-   (if-let [view (-> endpoints :view :endpoint/view)]
+   (if-let [view (-> endpoints :view :endpoint/sym (@routes/!views))]
      (when view
        [view params])
      (pr-str match))])
@@ -444,3 +444,6 @@
            [:a.contents {:href entity-href} [:h3 title]]
            [:div.flex-grow]]
           (concat children [[header:account]]))))
+
+(defview redirect [to]
+  (h/use-effect #(routes/set-path! to)))

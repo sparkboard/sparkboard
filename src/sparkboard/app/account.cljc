@@ -1,25 +1,28 @@
 (ns sparkboard.app.account
-  (:require #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
-            #?(:cljs [sparkboard.ui.radix :as radix])
-            #?(:cljs [yawn.hooks :as h])
-            [inside-out.forms :as forms]
-            [promesa.core :as p]
-            [sparkboard.ui.icons :as icons]
-            [re-db.api :as db]
-            [sparkboard.entity :as entity]
-            [sparkboard.i18n :as i :refer [tr]]
-            [sparkboard.routes :as routes]
-            [sparkboard.ui :as ui]
-            [sparkboard.util :as u]
-            [sparkboard.websockets :as ws]
-            [sparkboard.schema :as sch :refer [?]]
-            [yawn.view :as v]))
+  (:require
+    #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
+    #?(:cljs [sparkboard.ui.radix :as radix])
+    #?(:cljs [yawn.hooks :as h])
+    #?(:clj [sparkboard.server.account :as account])
+    [inside-out.forms :as forms]
+    [promesa.core :as p]
+    [re-db.api :as db]
+    [sparkboard.authorize :as az]
+    [sparkboard.entity :as entity]
+    [sparkboard.i18n :refer [tr]]
+    [sparkboard.routes :as routes]
+    [sparkboard.schema :as sch :refer [?]]
+    [sparkboard.ui :as ui]
+    [sparkboard.ui.icons :as icons]
+    [sparkboard.util :as u]
+    [sparkboard.websockets :as ws]
+    [yawn.view :as v]))
 
 (sch/register!
-  {:account/email               sch/unique-string-id
+  {:account/email               sch/unique-id-str
    :account/email-verified?     {:malli/schema :boolean}
    :account/display-name        {:malli/schema :string}
-   :account.provider.google/sub sch/unique-string-id
+   :account.provider.google/sub sch/unique-id-str
    :account/last-sign-in        {:malli/schema 'inst?}
    :account/password-hash       {:malli/schema :string}
    :account/password-salt       {:malli/schema :string}
@@ -38,7 +41,7 @@
                                                 (? :account.provider.google/sub)]}})
 
 (ui/defview header [child]
-  (let [{account-id   :entity/id
+  (let [{:keys        [account-id]
          display-name :account/display-name} (db/get :env/account)]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
@@ -51,52 +54,50 @@
                        [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
                        [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
 
-#?(:clj
-   (defn account:orgs
-     {:endpoint  {:query ["/orgs"]}
-      :authorize (fn [req params]
-                   ;; TODO if no account, fail unauthenticated
-                   (assoc params :account-id (-> req :account :entity/id)))}
-     [{:keys [account-id]}]
-     (into []
-           (comp (map :member/entity)
-                 (filter (comp #{:org} :entity/kind))
-                 (map (db/pull entity/fields)))
-           (db/where [[:member/account [:entity/id account-id]]]))))
 
-#?(:clj
-   (defn db:read
-     {:endpoint  {:query ["/account"]}
-      :authorize (fn [req params]
-                   (assoc params :account-id (-> req :account :entity/id)))}
-     [{:as params :keys [account-id]}]
-     ;; TODO, ensure that the account in params is the same as the logged in user
-     (let [entities (->> (db/pull '[{:member/_account [:member/roles
-                                                       :member/last-visited
-                                                       {:member/entity [:entity/id
-                                                                        :entity/kind
-                                                                        :entity/title
-                                                                        {:image/avatar [:asset/link
-                                                                                        :asset/id
-                                                                                        {:asset/provider [:s3/bucket-host]}]}
-                                                                        {:image/background [:asset/link
-                                                                                            :asset/id
-                                                                                            {:asset/provider [:s3/bucket-host]}]}]}]}]
-                                  [:entity/id account-id])
-                         :member/_account
-                         (map #(u/lift-key % :member/entity)))
-           recents  (->> entities
-                         (filter :member/last-visited)
-                         (sort-by :member/last-visited #(compare %2 %1))
-                         (take 8))]
-       (merge {:recents recents}
-              (group-by :entity/kind entities)))))
+(ws/defquery db:account-orgs
+  {:endpoint {:query true}
+   :prepare  az/with-account-id!}
+  [{:keys [account-id]}]
+  (into []
+        (comp (map :member/entity)
+              (filter (comp #{:org} :entity/kind))
+              (map (db/pull entity/fields)))
+        (db/where [[:member/account account-id]])))
+
+
+(ws/defquery db:all
+  {:endpoint {:query true}
+   :prepare  az/with-account-id!}
+  [{:keys [account-id]}]
+  (->> (db/pull '[{:member/_account [:member/roles
+                                     :member/last-visited
+                                     {:member/entity [:entity/id
+                                                      :entity/kind
+                                                      :entity/title
+                                                      {:image/avatar [:asset/link
+                                                                      :asset/id
+                                                                      {:asset/provider [:s3/bucket-host]}]}
+                                                      {:image/background [:asset/link
+                                                                          :asset/id
+                                                                          {:asset/provider [:s3/bucket-host]}]}]}]}]
+                account-id)
+       :member/_account
+       (map #(u/lift-key % :member/entity))))
+
+(ws/defquery db:recents
+  {:endpoint {:query true}
+   :prepare  az/with-account-id!}
+  [params]
+  (->> (db:all params)
+       (filter :member/last-visited)
+       (sort-by :member/last-visited #(compare %2 %1))
+       (take 8)))
 
 (ui/defview read
-  {:endpoint {:view ["/account"]}}
+  {:route "/account"}
   [_]
-  (let [account-id (db/get :env/account :entity/id)
-        query-data (ws/use-query! [`db:read {:account-id account-id}])
+  (let [account-id (db/get :env/account :account-id)
         !tab       (h/use-state (tr :tr/recent))
         ?filter    (h/use-callback (forms/field))]
     [:<>
@@ -119,19 +120,23 @@
 
 
       [radix/tab-content {:value (tr :tr/recent)}
-       [entity/show-filtered-results {:q       @?filter
-                                      :title   nil
-                                      :results (:recents query-data)}]]
+       (when (= @!tab (tr :tr/recent))
+         [entity/show-filtered-results {:q       @?filter
+                                        :title   nil
+                                        :results (db:recents {})}])]
       [radix/tab-content {:value (tr :tr/all)}
-       [entity/show-filtered-results {:q       @?filter
-                                      :title   (tr :tr/orgs)
-                                      :results (:org query-data)}]
-       [entity/show-filtered-results {:q       @?filter
-                                      :title   (tr :tr/boards)
-                                      :results (:board query-data)}]
-       [entity/show-filtered-results {:q       @?filter
-                                      :title   (tr :tr/projects)
-                                      :results (:project query-data)}]]]]))
+       (when (= @!tab (tr :tr/all))
+         (let [{:keys [org board project]} (group-by :entity/kind (db:all {}))]
+           [:<>
+            [entity/show-filtered-results {:q       @?filter
+                                           :title   (tr :tr/orgs)
+                                           :results org}]
+            [entity/show-filtered-results {:q       @?filter
+                                           :title   (tr :tr/boards)
+                                           :results board}]
+            [entity/show-filtered-results {:q       @?filter
+                                           :title   (tr :tr/projects)
+                                           :results project}]]))]]]))
 
 
 (defn account:sign-in-with-google []
@@ -161,35 +166,35 @@
   (ui/with-form [!account {:account/email    (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
-                (let [!step (h/use-state :email)]
-                  [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-sm.px-4
-                   {:on-submit (fn [^js e]
-                                 (.preventDefault e)
-                                 (case @!step
-                                   :email (do (reset! !step :password)
-                                              (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
-                                   :password (p/let [res (routes/POST :account/sign-in @!account)]
-                                               (js/console.log "res" res)
-                                               (prn :res res))))}
+    (let [!step (h/use-state :email)]
+      [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-sm.px-4
+       {:on-submit (fn [^js e]
+                     (.preventDefault e)
+                     (case @!step
+                       :email (do (reset! !step :password)
+                                  (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
+                       :password (p/let [res (routes/POST 'sparkboard.server.account/login! @!account)]
+                                   (js/console.log "res" res)
+                                   (prn :res res))))}
 
 
-                   [:div.flex.flex-col.gap-2
-                    (ui/show-field ?email)
-                    (when (= :password @!step)
-                      (ui/show-field ?password {:id "account-password"}))
-                    (str (forms/visible-messages !account))
-                    [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
-                     (tr :tr/sign-in)]]
+       [:div.flex.flex-col.gap-2
+        (ui/show-field ?email)
+        (when (= :password @!step)
+          (ui/show-field ?password {:id "account-password"}))
+        (str (forms/visible-messages !account))
+        [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
+         (tr :tr/sign-in)]]
 
-                   [:div.relative
-                    [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
-                    [:div.relative.flex.justify-center.text-xs.uppercase
-                     [:span.bg-secondary.px-2.text-muted-txt (tr :tr/or)]]]
-                   [account:sign-in-with-google]
-                   [account:sign-in-terms]])))
+       [:div.relative
+        [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+        [:div.relative.flex.justify-center.text-xs.uppercase
+         [:span.bg-secondary.px-2.text-muted-txt (tr :tr/or)]]]
+       [account:sign-in-with-google]
+       [account:sign-in-terms]])))
 
 (ui/defview sign-in
-  {:endpoint {:view ["/login"]}}
+  {:route "/login"}
   [params]
   [:div.h-screen.flex.flex-col
    [ui/header:lang "absolute top-0 right-0 p-4"]
@@ -198,14 +203,31 @@
     [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
     [account:sign-in-form params]]])
 
-
-(ui/defview redirect [to]
-  (h/use-effect #(routes/set-path! to)))
-
 (ui/defview home
-  {:endpoint {:view ["/"]}}
+  {:route "/"}
   [params]
-  (if-let [account-id (db/get :env/account :entity/id)]
+  (if-let [account-id (db/get :env/account :account-id)]
     #_[:a.btn.btn-primary.m-10.p-10 {:href (routes/path-for :org/index)} "Org/Index"]
-    (redirect (routes/path-for 'sparkboard.app.account/read {:account-id account-id}))
-    (redirect (routes/path-for 'sparkboard.app.account/sign-in params))))
+    (ui/redirect (routes/path-for 'sparkboard.app.account/read {:account-id account-id}))
+    (ui/redirect (routes/path-for 'sparkboard.app.account/sign-in params))))
+
+#?(:clj
+   (defn login!
+     {:endpoint         {:post ["/login"]}
+      :endpoint/public? true}
+     [req params]
+     (account/login! req params)))
+
+#?(:clj
+   (defn logout!
+     {:endpoint         {:get ["/logout"]}
+      :endpoint/public? true}
+     [req params]
+     (account/logout! req params)))
+
+#?(:clj
+   (defn google-landing
+     {:endpoint         {:get ["/oauth2/" "google/" "landing"]}
+      :endpoint/public? true}
+     [req params]
+     (account/google-landing req params)))

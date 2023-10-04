@@ -12,7 +12,7 @@
 (sch/register!
   {:domain/url     {s- :http/url}
    :domain/name    (merge {:doc "A complete domain name, eg a.b.com"}
-                          sch/unique-string-id)
+                          sch/unique-id-str)
    :domain/owner   (sch/ref :one)
    :entity/domain  (merge (sch/ref :one :domain/as-map)
                           sch/unique-value)

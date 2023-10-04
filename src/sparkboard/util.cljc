@@ -78,7 +78,7 @@
        ~@body)))
 
 (defmacro template [x]
-  `(~'backtick/template ~x))
+  (backtick/quote-fn backtick/resolve-symbol x))
 
 (defn lift-key [m k]
   (merge (dissoc m k)
@@ -95,3 +95,14 @@
        (r/reaction
          (let [f (hooks/use-deref query-var)]
            (apply f args))))))
+
+#?(:clj
+   (defn parse-defn-args [name args]
+     (let [[doc args] (if (string? (first args))
+                        [(first args) (rest args)]
+                        [nil args])
+           [options args] (if (map? (first args))
+                           [(first args) (rest args)]
+                           [nil args])
+           [argv body] [(first args) (rest args)]]
+       [name doc options argv body])))

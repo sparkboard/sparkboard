@@ -1,6 +1,7 @@
 (ns sparkboard.app.org
   (:require #?(:clj [sparkboard.app.member :as member])
             #?(:clj [sparkboard.server.datalevin :as dl])
+            [sparkboard.authorize :as az]
             [inside-out.forms :as forms]
             [sparkboard.app.domain :as domain]
             [sparkboard.entity :as entity]
@@ -37,92 +38,84 @@
                                     (? :org/default-board-template)
                                     (? :entity/created-at)]}})
 
-#?(:clj
-   (defn db:delete!
-     "Mutation fn. Retracts organization by given org-id."
-     {:endpoint {:post ["/o/" ['uuid :org-id] "/delete"]}}
-     [_req {:keys [org-id]}]
-     ;; auth: user is admin of org
-     ;; todo: retract org and all its boards, projects, etc.?
-     (db/transact! [[:db.fn/retractEntity [:entity/id org-id]]])
-     {:body ""}))
+(ws/defx db:delete!
+         "Mutation fn. Retracts organization by given org-id."
+         {:endpoint {:post ["/o/" ['entity/id :org-id] "/delete"]}}
+         [_req {:keys [org-id]}]
+         ;; auth: user is admin of org
+         ;; todo: retract org and all its boards, projects, etc.?
+         (db/transact! [[:db.fn/retractEntity org-id]])
+         {:body ""})
 
-#?(:clj
-   (defn db:edit
-     {:endpoint {:query ["/o/" ['uuid :org-id] "/settings"]}}
-     [{:keys [org-id]}]
-     ;; all the settings that can be changed
-     (db/pull `[~@entity/fields]
-              [:entity/id org-id])))
+(ws/defquery db:edit
+  [{:keys [org-id]}]
+  ;; all the settings that can be changed
+  (db/pull `[~@entity/fields]
+           org-id))
 
-#?(:clj
-   (defn db:read
-     {:endpoint  {:query ["/o/" ['uuid :org-id]]}
-      :authorize (fn [req {:as params :keys [org-id]}]
-                   (member/member:read-and-log! org-id (:db/id (:account req)))
-                   ;; TODO make sure user has permission?
-                   params)}
-     [{:as params :keys [org-id]}]
-     (db/pull `[~@entity/fields
-                {:board/_owner ~entity/fields}]
-              (dl/resolve-id org-id))))
+(ws/defquery db:read
+  {:prepare [az/with-account-id!
+             (member/member:log-visit! :org-id)]}
+  [{:keys [org-id]}]
+  (db/pull `[~@entity/fields
+             {:board/_owner ~entity/fields}]
+           (dl/resolve-id org-id)))
 
-#?(:clj
-   (defn db:search
-     {:endpoint {:query ["/o/" ['uuid :org-id] "/search"]}}
-     [{:as   params
-       :keys [org-id q]}]
-     (when q
-       {:q        q
-        :boards   (dl/q (u/template
-                          [:find [(pull ?board ~entity/fields) ...]
-                           :in $ ?terms ?org
-                           :where
-                           [?board :board/owner ?org]
-                           [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]])
-                        q
-                        [:entity/id org-id])
-        :projects (->> (dl/q (u/template
-                               [:find [(pull ?project [~@entity/fields
-                                                       :project/sticky?
-                                                       {:project/board [:entity/id]}]) ...]
-                                :in $ ?terms ?org
-                                :where
-                                [?board :board/owner ?org]
-                                [?project :project/board ?board]
-                                [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]])
-                             q
-                             [:entity/id org-id])
-                       (remove :project/sticky?))})))
+(ws/defquery db:search
+  {:endpoint {:query true}}
+  [{:as   params
+    :keys [org-id q]}]
+  (when q
+    {:q        q
+     :boards   (dl/q (u/template
+                       [:find [(pull ?board ~entity/fields) ...]
+                        :in $ ?terms ?org
+                        :where
+                        [?board :board/owner ?org]
+                        [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]])
+                     q
+                     org-id)
+     :projects (->> (dl/q (u/template
+                            [:find [(pull ?project [~@entity/fields
+                                                    :project/sticky?
+                                                    {:project/board [:entity/id]}]) ...]
+                             :in $ ?terms ?org
+                             :where
+                             [?board :board/owner ?org]
+                             [?project :project/board ?board]
+                             [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]])
+                          q
+                          org-id)
+                    (remove :project/sticky?))}))
 
-#?(:clj
-   (defn db:edit!
-     {:endpoint {:post ["/o/" ['uuid :org-id] "/settings"]}}
-     [{:keys [account]} {:keys [org-id]
-                         org   :body}]
-     (let [org (entity/conform (assoc org :entity/id org-id) :org/as-map)]
-       (db/transact! [org])
-       {:body org})))
 
-#?(:clj
-   (defn db:new!
-     {:endpoint {:post ["/o/" "new"]}}
-     [{:keys [account]} {org :body}]
-     (let [org    (-> (dl/new-entity org :org :by (:db/id account))
-                      (entity/conform :org/as-map))
-           member (-> {:member/entity  org
-                       :member/account (:db/id account)
-                       :member/roles   #{:role/owner}}
-                      (dl/new-entity :member))]
-       (db/transact! [member])
-       {:body org})))
+(ws/defquery db:edit!
+  {:endpoint {:post ["/o/" ['entity/id :org-id] "/settings"]}}
+  [{:keys [account]} {:keys [org-id]
+                      org   :body}]
+  (let [org (entity/conform (assoc org :entity/id org-id) :org/as-map)]
+    (db/transact! [org])
+    {:body org}))
+
+
+(ws/defquery db:new!
+  {:endpoint {:post ["/o/" "new"]}}
+  [{:keys [account]} {org :body}]
+  (let [org    (-> (dl/new-entity org :org :by (:db/id account))
+                   (entity/conform :org/as-map))
+        member (-> {:member/entity  org
+                    :member/account (:db/id account)
+                    :member/roles   #{:role/owner}}
+                   (dl/new-entity :member))]
+    (db/transact! [member])
+    {:body org}))
 
 (ui/defview read
-  {:endpoint {:view ["/o/" ['uuid :org-id]]}}
+  {:endpoint {:view ["/o/" ['entity/id :org-id]]}}
   [params]
   (forms/with-form [_ ?q]
     (let [{:as   org
-           :keys [entity/description]} (ws/use-query! ['sparkboard.app.org/db:read params])
+           :keys [entity/description]} (db:read params)
           q      (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
           result (ws/use-query ['sparkboard.app.org/db:search {:org-id (:org-id params)
                                                                :q      q}])]
@@ -157,7 +150,7 @@
          [:div.card-grid (map entity/card:compact (:board/_owner org))])])))
 
 (ui/defview edit
-  {:endpoint {:view ["/o/" ['uuid :org-id] "/settings"]}}
+  {:endpoint {:view ["/o/" ['entity/id :org-id] "/settings"]}}
   [{:as params :keys [org-id]}]
   (let [org (ws/use-query! '[sparkboard.app.org/db:edit params])]
     (forms/with-form [!org (u/keep-changes org

@@ -6,7 +6,8 @@
             [re-db.api :as db]
             [sparkboard.slack.firebase :as firebase]
             [yawn.hooks :as hooks :refer [use-deref]]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [sparkboard.ui :as ui]))
 
 (def db (delay (.database firebase/app)))
 
@@ -25,8 +26,8 @@
 (def section :section.center.mw6.pa3.sans-serif.lh-copy)
 (def button :a.br3.bg-blue.pa3.white.no-underline.b.mv3.db.tc)
 
-(v/defview invite-offer
-  {:endpoint {:view ["/slack/" "invite-offer"]}}
+(ui/defview invite-offer
+  {:route ["/slack/" "invite-offer"]}
   [{{:keys [custom-token
             team-id
             invite-link
@@ -69,8 +70,8 @@
                                                                                :tab  "home"}))}
              "Sparkboard home tab"] " to link your account so that you can use Slack and Sparkboard together."]])])]))
 
-(v/defview link-complete
-  {:endpoint {:view ["/slack/" "link-complete"]}}
+(ui/defview link-complete
+  {:route ["/slack/" "link-complete"]}
   [{{:keys [slack sparkboard]} :query-params}]
   [section
    [:h1.tc "Thanks!"]

@@ -10,11 +10,11 @@
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.radix :as radix]
             [sparkboard.routes :as routes]
-            [sparkboard.slack.firebase :as firebase]
+            [sparkboard.slack.firebase  :as firebase]
             [sparkboard.transit :as transit]
             [sparkboard.ui :as ui]
             [yawn.root :as root]
-            [sparkboard.app]                                ;; includes all endpoints
+            [sparkboard.app :as app]                                 ;; includes all endpoints
             [shadow.cljs.modern :refer [defclass]]))
 
 (defclass ErrorBoundary
@@ -35,22 +35,22 @@
           #js {:error error}))
 
 (ui/defview dev-info [{:as match :keys [modal]}]
-  (into [:div.p-2.relative.flex.gap-2 {:style {:z-index 9000}}
-         (for [info [(some-> match :view :endpoint/tag str)
-                     (when-let [modal-tag (some-> modal :view :endpoint/tag str)]
-                       [:span [:span.font-bold "modal: "] modal-tag])]
-               :when info]
-           [:div.rounded.bg-gray-100.inline-block.px-2.py-1.text-sm.text-gray-600.relative
-            info])]))
+  (into [:div.p-2.relative.flex.gap-2 {:style {:z-index 9000}}]
+        (for [info [(some-> match :match/endpoints :view :endpoint/tag str)
+                    (when-let [modal-tag (some-> modal :view :endpoint/tag str)]
+                      [:span [:span.font-bold "modal: "] modal-tag])]
+              :when info]
+          [:div.rounded.bg-gray-100.inline-block.px-2.py-1.text-sm.text-gray-600.relative
+           info])))
 
 (ui/defview root
   []
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
     [:div.w-full.font-sansa
+     (dev-info match)
      [:el ErrorBoundary
       {:fallback (fn [e]
                    (str "Error: " (ex-message e)))}
-      (dev-info match)
       (ui/show-match match)
 
       (radix/dialog {:props/root {:open           (boolean modal)
@@ -88,10 +88,13 @@
                                      (domain/domain-availability-validator)]}})
   )
 
+(defn ^:dev/after-load init-endpoints! []
+  (routes/init-endpoints! app/client-endpoints))
+
 (defn init []
   (read-env!)
   (firebase/init)
-  (routes/init-endpoints! (routes/client-endpoints))
+  (init-endpoints!)
   (init-forms)
   (render))
 

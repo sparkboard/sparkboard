@@ -2,6 +2,7 @@
   (:require #?(:clj [sparkboard.server.datalevin :as dl])
             #?(:cljs [sparkboard.ui.radix :as radix])
             #?(:cljs [yawn.hooks :as h])
+            [sparkboard.authorize :as az]
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [sparkboard.app.member :as member]
@@ -111,24 +112,23 @@
                                                   (? :webhook/subscriptions)]}})
 #?(:clj
    (defn board:register!
-     {:endpoint {:post ["/b/" ['uuid :board-id] "/register"]}}
+     {:endpoint {:post ["/b/" ['entity/id :board-id] "/register"]}}
      [req {:as params registration-data :body}]
      ;; create membership
      ))
 
 #?(:clj
    (defn db:read
-     {:endpoint  {:query ["/b/" ['uuid :board-id]]}
-      :authorize (fn [req params]
-                   (member/member:read-and-log! (:board-id params) (:db/id (:account req)))
-                   params)}
+     {:endpoint {:query true}
+      :prepare  [az/with-account-id
+                 (member/member:log-visit! :board-id)]}
      [{:keys [board-id]}]
      (db/pull `[~@entity/fields
                 :board/registration-open?
                 {:board/owner [~@entity/fields :org/show-org-tab?]}
                 {:project/_board [~@entity/fields :* :entity/archived?]}
                 {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
-              [:entity/id board-id])))
+              board-id)))
 
 
 
@@ -142,14 +142,14 @@
                                           ;; board is owned by this account
                                           (= account-id owner-id)
                                           ;; account is editor of this board (existing)
-                                          (when-let [existing-board (dl/entity [:entity/id (:entity/id board)])]
+                                          (when-let [existing-board (dl/entity (:entity/id board))]
                                             (entity/can-edit? (:db/id existing-board) account-id))
                                           ;; account is admin of board's org
                                           (entity/can-edit? owner-id account-id))))]]])))
 
 #?(:clj
    (defn db:edit!
-     {:endpoint {:post ["/b/" ['uuid :board-id] "/edit"]}}
+     {:endpoint {:post ["/b/" ['entity/id :board-id] "/edit"]}}
      [{:keys [account]} {:keys [board-id] board :body}]
      (let [board (entity/conform (assoc board :entity/id board-id) :board/as-map)]
        (db:authorize-edit! board (:db/id account))
@@ -158,16 +158,17 @@
 
 #?(:clj
    (defn db:edit
-     {:endpoint  {:query ["/b/" ['uuid :board-id] "/edit"]}
-      :authorize (fn [req {:as params :keys [board-id]}]
-                   (db:authorize-edit! (dl/entity [:entity/id board-id])
-                                       (:db/id (:account req)))
-                   params)}
+     {:endpoint {:query true}
+      :prepare  [az/with-account-id!
+                 (fn [_ {:as params :keys [board-id account-id]}]
+                   (db:authorize-edit! (dl/entity board-id)
+                                       account-id)
+                   params)]}
      [{:keys [board-id]}]
      (db/pull (u/template
                 [*
                  ~@entity/fields])
-              [:entity/id board-id])))
+              board-id)))
 
 #?(:clj
    (defn db:new!
@@ -189,12 +190,12 @@
   {:endpoint    {:view ["/b/" "new"]}
    :view/target :modal}
   [{:as params :keys [route]}]
-  (let [owners (->> (ws/use-query! ['sparkboard.app.account/account:orgs])
+  (let [owners (->> (ws/use-query! ['sparkboard.app.account/db:account-orgs])
                     (cons (entity/account-as-entity (db/get :env/account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
                                 :entity/domain ?domain
-                                :board/owner   [:entity/id (uuid (?owner :init (or (some-> params :query-params :org)
+                                :board/owner   [:entity/id (uuid (?owner :init (or (-> params :query-params :org)
                                                                                    (str (db/get :env/account :entity/id)))))]})
                       :required [?title ?domain]]
       [:form
@@ -222,7 +223,7 @@
        [ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
-  {:endpoint {:view ["/b/" ['uuid :board-id] "/register"]}}
+  {:endpoint {:view ["/b/" ['entity/id :board-id] "/register"]}}
   [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
                 [:div
@@ -272,7 +273,7 @@
          [entity/show-filtered-results {:results entities}]])]]))
 
 (ui/defview read
-  {:endpoint {:view ["/b/" ['uuid :board-id]]}}
+  {:endpoint {:view ["/b/" ['entity/id :board-id]]}}
   [params]
   (if (db/get :env/account)
     [read:signed-in params]
@@ -283,7 +284,7 @@
     [:pre (ui/pprinted board)]))
 
 (ui/defview read:tab
-  {:endpoint {:view ["/b/" ['uuid :board-id] "/" :board/tab]}}
+  {:endpoint {:view ["/b/" ['entity/id :board-id] "/" :board/tab]}}
   [params]
   (case (:board/tab params)
     "settings"

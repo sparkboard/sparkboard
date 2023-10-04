@@ -4,11 +4,13 @@
             [clojure.pprint :refer [pprint]]
             [clojure.repl.deps :as deps]
             [clojure.pprint :refer [pprint]]
+            [clojure.walk :as walk]
             [re-db.api :as db]
             [sparkboard.routes :as routes]
             [sparkboard.transit :as t]
             [sparkboard.server.core]
-            [sparkboard.migration.one-time :as one-time]))
+            [sparkboard.migration.one-time :as one-time]
+            [sparkboard.util :as u]))
 
 (comment
   (require '[shadow.cljs.devtools.api :as shadow])
@@ -23,15 +25,20 @@
   ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
 
 (defn spit-changed [path s]
-  (when (not= s (some-> (io/resource path) slurp))
+  (when-not (= s (some-> (io/file path) slurp))
     (spit path s)))
 
 (defn spit-endpoints!
   {:shadow.build/stage :flush}
   [state]
-  (spit-changed "resources/public/js/sparkboard-views.transit.json"
-                (t/write
-                  (routes/view-endpoints (:compiler-env state))))
+  (let [view-endpoints (->> (routes/view-endpoints (:compiler-env state))
+                            (map #(u/update-some % {:endpoint/route (partial walk/postwalk-replace {''entity/id 'entity/id})})))]
+    (spit-changed "resources/public/js/sparkboard-views.transit.json"
+                  (t/write view-endpoints))
+    (routes/init-endpoints! (-> (merge (group-by :endpoint/tag (routes/endpoints))
+                                       (group-by :endpoint/tag view-endpoints))
+                                (update-vals first)
+                                vals)))
   state)
 
 (defn tailwind-dev!
@@ -102,7 +109,6 @@
   (do
 
     (def entities (one-time/all-entities))
-
 
     ;; transact schema
     (db/merge-schema! @sb.schema/!schema)

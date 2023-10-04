@@ -77,18 +77,18 @@
 
 #?(:clj
    (defn db:read
-     {:endpoint {:query ["/m/" ['uuid :member-id]]}}
+     {:endpoint {:query true}}
      [params]
      (dissoc (db/pull `[:*
                         {:member/tags [:*]}
                         {:member/account [~@entity/fields
                                           :account/display-name]}]
-                      [:entity/id (:member-id params)])
+                      (:member-id params))
              :member/password)))
 
 (ui/defview read
   {:view/target :modal
-   :endpoint {:view ["/m/" ['uuid :member-id]]}}
+   :endpoint    {:view ["/m/" ['entity/id :member-id]]}}
   [params]
   (let [{:as          member
          :member/keys [tags
@@ -113,15 +113,15 @@
      (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
 
 #?(:clj
-   (defn member:read-and-log!
-     ([entity-id account-id]
-      (when-let [id (and account-id (membership-id entity-id account-id))]
-        (member:read-and-log! {:member id})))
-     ([params]
-      (when-let [member (dl/pull '[:db/id
-                                   :member/last-visited]
-                                 (dl/resolve-id (:member params)))]
-        (db/transact! [[:db/add (:db/id member) :member/last-visited
-                        (-> (time/offset-date-time)
-                            time/instant
-                            Date/from)]])))))
+   (defn member:log-visit! [entity-key]
+     (fn [_ {:as params :keys [account-id]}]
+       (when-let [id (and account-id
+                          (membership-id (entity-key params) account-id))]
+         (when-let [member (dl/pull '[:db/id
+                                      :member/last-visited]
+                                    (dl/resolve-id id))]
+           (db/transact! [[:db/add id :member/last-visited
+                           (-> (time/offset-date-time)
+                               time/instant
+                               Date/from)]])))
+       params)))

@@ -5,7 +5,7 @@
   {:slack.app/bot-token                     {s- :string},
    :slack.app/bot-user-id                   {s- :string},
    :slack.app/id                            {s- :string}
-   :slack.broadcast/id                      sch/unique-string-id
+   :slack.broadcast/id                      sch/unique-id-str
    :slack.broadcast/response-channel-id     (merge {:doc "Channel containing replies to a broadcast"
                                                     s-   :string}
                                                    sch/string),
@@ -15,21 +15,21 @@
    :slack.broadcast/slack.team              (sch/ref :one)
    :slack.broadcast/text                    {s- :string}
 
-   :slack.broadcast.reply/id                sch/unique-string-id
+   :slack.broadcast.reply/id                sch/unique-id-str
    :slack.broadcast.reply/text              {s- :string}
    :slack.broadcast.reply/channel-id        {:doc ""
                                              s-   :string}
    :slack.broadcast.reply/slack.user        (sch/ref :one)
    :slack.broadcast/slack.broadcast.replies (sch/ref :many :slack.broadcast.reply/as-map)
    :slack.broadcast/slack.user              (sch/ref :one)
-   :slack.channel/id                        sch/unique-string-id
+   :slack.channel/id                        sch/unique-id-str
    :slack.channel/project                   (sch/ref :one),
    :slack.channel/slack.team                (sch/ref :one),
    :slack.team/board                        (merge (sch/ref :one)
                                                    {:doc "The sparkboard connected to this slack team"}),
    :slack.team/custom-messages              {s-   [:map {:closed true} :slack.team/custom-welcome-message],
                                              :doc "Custom messages for a Slack integration"},
-   :slack.team/id                           sch/unique-string-id
+   :slack.team/id                           sch/unique-id-str
    :slack.team/invite-link                  {s-   :string,
                                              :doc "Invitation link that allows a new user to sign up for a Slack team. (Typically expires every 30 days.)"},
    :slack.team/name                         {s- :string},
@@ -40,7 +40,7 @@
                                                    :slack.app/bot-token]},
    :slack.team/custom-welcome-message       {s-   :string,
                                              :doc "A message sent to each user that joins the connected workspace (slack team). It should prompt the user to connect their account."},
-   :slack.user/id                           sch/unique-string-id
+   :slack.user/id                           sch/unique-id-str
    :slack.user/slack.team                   (sch/ref :one),
    :slack.user/firebase-account-id          {s- :string}
 

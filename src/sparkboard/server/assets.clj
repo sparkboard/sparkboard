@@ -3,6 +3,7 @@
             [clj-http.client :as http]
             [clojure.java.io :as io]
             [ring.util.response :as resp]
+            [sparkboard.authorize :as az]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.server.env :as env]
             [sparkboard.server.images :as images]
@@ -29,7 +30,7 @@
 (defn provider? [x] (:asset.provider/type x))
 
 (defn link-asset
-  "Return a database entitiy for an asset that is an external link"
+  "Return a database entity for an asset that is an external link"
   [url]
   {:asset/id   (dl/to-uuid :asset url)
    :asset/link url})
@@ -78,8 +79,9 @@
                                       stream)))
 
 (defn upload!
-  {:endpoint {:post ["/upload"]}}
-  [req _]
+  {:endpoint {:post ["/upload"]}
+   :prepare [az/with-account-id!]}
+  [req {:keys [account-id]}]
   (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
     (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]
                {:message "File size must be less than 20MB."})
@@ -98,7 +100,7 @@
                                  :size              size
                                  :content-type      content-type
                                  :entity/created-at (java.util.Date.)
-                                 :entity/created-by [:entity/id (:entity/id (:account req))]}
+                                 :entity/created-by account-id}
                          (validate/assert :asset/as-map))])
       {:status 200
        :body   {:asset/id asset-id}})))
