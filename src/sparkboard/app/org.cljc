@@ -10,6 +10,7 @@
             [sparkboard.routes :as routes]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.util :as u]
+            [sparkboard.ui.header :as header]
             [sparkboard.ui :as ui]
             [sparkboard.websockets :as ws]
             [re-db.api :as db]))
@@ -120,16 +121,16 @@
           result (ws/use-query ['sparkboard.app.org/db:search {:org-id (:org-id params)
                                                                :q      q}])]
       [:div
-       (ui/entity-header org
-                         [ui/header-btn [icons/settings]
-                          (routes/path-for 'sparkboard.app.org/edit params)]
-                         #_[:div
-                            {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                                      title "?"))
-                                          (routes/POST :org/delete params))}]
-                         [ui/filter-field ?q {:loading? (:loading? result)}]
-                         [:a.btn.btn-light {:href (routes/href 'sparkboard.app.board/new
-                                                               {:query-params {:org-id (:entity/id org)}})} (tr :tr/new-board)])
+       (header/entity org
+         [header/btn {:icon [icons/settings]
+                      :href (routes/path-for 'sparkboard.app.org/edit params)}]
+         #_[:div
+            {:on-click #(when (js/window.confirm (str "Really delete organization "
+                                                      title "?"))
+                          (routes/POST :org/delete params))}]
+         [ui/filter-field ?q {:loading? (:loading? result)}]
+         [:a.btn.btn-light {:href (routes/href 'sparkboard.app.board/new
+                                               {:query-params {:org-id (:entity/id org)}})} (tr :tr/new-board)])
 
        [:div.p-body.whitespace-pre
         "This is the landing page for an organization. Its purpose is to provide a quick overview of the organization and list its boards.
@@ -165,7 +166,7 @@
                       :init org
                       :form/auto-submit #(routes/POST [:org/edit params] %)]
       [:<>
-       (ui/entity-header org)
+       (header/entity org)
 
        [:div {:class ui/form-classes}
 

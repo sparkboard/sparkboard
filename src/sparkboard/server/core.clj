@@ -129,12 +129,14 @@
         :else (fs req params)))
 
 (defn authorize! [f req params]
-  (when
-    (and (not (:endpoint/public? (meta f)))
-         (not (:account req)))
-    (throw (ex-info "Unauthorized" {:uri      [(:request-method req) (:uri req)]
-                                    :endpoint (meta f)
-                                    :code     401})))
+
+  (let [m (meta f)
+        authorized? (or (:endpoint/public? m)
+                        (:account req))]
+    (when-not authorized?
+      (throw (ex-info "Unauthorized" {:uri      [(:request-method req) (:uri req)]
+                                      :endpoint (meta f)
+                                      :code     401}))))
 
   (prepare! (:prepare (meta f)) req params))
 
@@ -184,13 +186,6 @@
   [req _]
   (#'ws/handle-ws-request ws-options req))
 
-(defn spa-handler [req _params]
-  (server.html/app-page
-    {:tx [(assoc env/client-config :db/id :env/config)
-          (assoc (:account req)
-            :db/id :env/account
-            :account-id [:entity/id (:entity/id (:account req))])]}))
-
 (defn pull
   {:endpoint {:query ["/pull"]}}
   ;; TODO
@@ -206,7 +201,6 @@
     (let [{:as         match
            :match/keys [endpoints params]} (routes/match-route uri)
           {:as endpoint :keys [endpoint/sym]} (get endpoints request-method)]
-      (prn request-method uri (or sym (when (:view endpoints) :view)))
       (or (and endpoint
                (#{:get :post} request-method)
                (let [handler (requiring-resolve sym)
@@ -219,7 +213,7 @@
               {:tx [(assoc env/client-config :db/id :env/config)
                     (assoc (:account req)
                       :db/id :env/account
-                      :account-id [:entity/id (:entity/id (:account req))])]}))
+                      :account-id (sch/wrap-id (:entity/id (:account req))))]}))
           (ring.http/not-found "Not found")))))
 
 (def app-handler

@@ -10,6 +10,7 @@
             [jsonista.core :as json]
             [malli.core :as m]
             [malli.generator :as mg]
+            [sparkboard.schema :as sch]
             [sparkboard.server.datalevin :as sb.dl :refer [conn]]
             [sparkboard.schema :as sschema]
             [sparkboard.server.env :as env]
@@ -1017,9 +1018,7 @@
                                        ::always (remove-when (complement :chat/participants))
                                        :createdAt (& (xf parse-mongo-date)
                                                      (rename :entity/created-at))
-                                       :readBy (& (xf #(map name (keys %)))
-                                                  (xf member->account-uuid)
-                                                  (uuid-ref-as :account :chat/read-by)) ;; change to a set of has-unread?
+
                                        :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
 
                                        ;; TODO - :messages
@@ -1032,19 +1031,27 @@
                                                                                            (uuid-ref-as :account :entity/created-by))
                                                                               :senderData rm]))
                                                     (rename :chat/messages))
+                                       :readBy (fn [m a v]
+                                                 (-> m
+                                                     (dissoc a)
+                                                     (assoc :chat/read-last
+                                                            (let [last-id (->> (:chat/messages m)
+                                                                               (sort-by :entity/created-at)
+                                                                               last
+                                                                               :entity/id)]
+                                                              (into {}
+                                                                    (comp (filter val)
+                                                                          (keep (fn [[k v]]
+                                                                                  (when v
+                                                                                    [(member->account-uuid (name k))
+                                                                                     last-id]))))
+                                                                    v)))))
                                        :boardId rm
-                                       ::always (fn [m]
-                                                  (let [read-by (:chat/read-by m)]
-                                                    (-> m
-                                                        (update :chat/messages
-                                                                (fn [messages]
-                                                                  (mapv #(assoc % :chat.message/read-by read-by) messages)))
-                                                        (dissoc :chat/read-by))))
                                        ::always (remove-when (comp empty? :chat/messages))
                                        ::always (remove-when (comp nil? :chat/entity))
                                        ::always (fn [{:as m :keys [chat/participants chat/entity]}]
                                                   (assoc m :chat/key (->> (cons entity (sort participants))
-                                                                          (map second)
+                                                                          (map sch/unwrap-id)
                                                                           (str/join "+"))))]
               ::mongo                 [:deleted (& (xf (fn [x] (when x deletion-time)))
                                                    (rename :entity/deleted-at))

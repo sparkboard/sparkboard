@@ -13,6 +13,7 @@
     [sparkboard.routes :as routes]
     [sparkboard.schema :as sch :refer [?]]
     [sparkboard.ui :as ui]
+    [sparkboard.ui.header :as header]
     [sparkboard.ui.icons :as icons]
     [sparkboard.util :as u]
     [sparkboard.websockets :as ws]
@@ -47,7 +48,7 @@
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
       {:href (routes/href 'sparkboard.app.account/read {:account-id account-id})} display-name]
      child
-     [ui/header:account]]))
+     [header/account]]))
 
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:trigger [:div.btn.btn-primary (tr :tr/new) (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4")]}
@@ -92,51 +93,45 @@
   (->> (db:all params)
        (filter :member/last-visited)
        (sort-by :member/last-visited #(compare %2 %1))
-       (take 8)))
+       (into #{} (comp (take 10)
+                       (map :entity/id)))))
 
 (ui/defview read
   {:route "/account"}
   [_]
   (let [account-id (db/get :env/account :account-id)
         !tab       (h/use-state (tr :tr/recent))
-        ?filter    (h/use-callback (forms/field))]
+        ?filter    (h/use-callback (forms/field))
+        recent-ids (db:recents {})
+        all        (db:all {})
+        {all     false
+         recents true} (when recent-ids
+                         (group-by (comp boolean recent-ids :entity/id) all))]
     [:<>
      (header nil)
      [radix/tab-root {:value           @!tab
                       :on-value-change (partial reset! !tab)}
       ;; tabs
       [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
-       [radix/tab-list
-        (->> [(tr :tr/recent)
-              (tr :tr/all)]
-             (map (fn [k]
-                    [radix/tab-trigger
-                     {:value k
-                      :class "flex items-center"} k]))
-             (into [:<>]))]
        [:div.flex-grow]
        [ui/filter-field ?filter]
        [new-menu {:account-id account-id}]]
 
+      [entity/show-filtered-results {:q @?filter
+                                     :title (tr :tr/recent)
+                                     :results recents}]
 
-      [radix/tab-content {:value (tr :tr/recent)}
-       (when (= @!tab (tr :tr/recent))
+      (let [{:keys [org board project]} (group-by :entity/kind all)]
+        [:<>
          [entity/show-filtered-results {:q       @?filter
-                                        :title   nil
-                                        :results (db:recents {})}])]
-      [radix/tab-content {:value (tr :tr/all)}
-       (when (= @!tab (tr :tr/all))
-         (let [{:keys [org board project]} (group-by :entity/kind (db:all {}))]
-           [:<>
-            [entity/show-filtered-results {:q       @?filter
-                                           :title   (tr :tr/orgs)
-                                           :results org}]
-            [entity/show-filtered-results {:q       @?filter
-                                           :title   (tr :tr/boards)
-                                           :results board}]
-            [entity/show-filtered-results {:q       @?filter
-                                           :title   (tr :tr/projects)
-                                           :results project}]]))]]]))
+                                        :title   (tr :tr/projects)
+                                        :results project}]
+         [entity/show-filtered-results {:q       @?filter
+                                        :title   (tr :tr/boards)
+                                        :results board}]
+         [entity/show-filtered-results {:q       @?filter
+                                        :title   (tr :tr/orgs)
+                                        :results org}]])]]))
 
 
 (defn account:sign-in-with-google []
@@ -197,19 +192,19 @@
   {:route "/login"}
   [params]
   [:div.h-screen.flex.flex-col
-   [ui/header:lang "absolute top-0 right-0 p-4"]
+   [header/lang "absolute top-0 right-0 p-4"]
    [:div.flex.flex-col.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
     {:class ["bg-secondary rounded-lg border border-txt/05"]}
     [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
     [account:sign-in-form params]]])
 
 (ui/defview home
-  {:route "/"}
+  {:route "/"
+   :endpoint/public? true}
   [params]
   (if-let [account-id (db/get :env/account :account-id)]
-    #_[:a.btn.btn-primary.m-10.p-10 {:href (routes/path-for :org/index)} "Org/Index"]
-    (ui/redirect (routes/path-for 'sparkboard.app.account/read {:account-id account-id}))
-    (ui/redirect (routes/path-for 'sparkboard.app.account/sign-in params))))
+    (read {:account-id account-id})
+    (sign-in params)))
 
 #?(:clj
    (defn login!

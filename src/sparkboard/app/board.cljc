@@ -10,6 +10,7 @@
             [sparkboard.app.domain :as domain]
             [sparkboard.entity :as entity]
             [sparkboard.i18n :refer [tr]]
+            [sparkboard.ui.header :as header]
             [sparkboard.ui.icons :as icons]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
@@ -250,9 +251,9 @@
         tabs        [["projects" (tr :tr/projects) (:project/_board board)]
                      ["members" (tr :tr/members) (->> (:member/_entity board) (map #(merge (:member/account %) %)))]]]
     [:<>
-     [ui/entity-header board
-      [ui/header-btn [icons/settings]
-       (routes/path-for 'sparkboard.app.board/edit params)]
+     [header/entity board
+      [header/btn {:icon [icons/settings]
+                   :href (routes/path-for 'sparkboard.app.board/edit params)}]
       ]
 
      ;; TODO new project

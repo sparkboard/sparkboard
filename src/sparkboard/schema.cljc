@@ -6,6 +6,16 @@
             [re-db.schema :as s]
             [sparkboard.util :as u]))
 
+(defn wrap-id [id]
+  (if (uuid? id)
+    [:entity/id id]
+    id))
+
+(defn unwrap-id [id]
+  (if (vector? id)
+    (second id)
+    id))
+
 (def s- :malli/schema)
 
 (defn string-lookup-ref [ks]

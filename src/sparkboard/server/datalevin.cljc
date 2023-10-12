@@ -1,6 +1,7 @@
 (ns sparkboard.server.datalevin
   #?(:clj (:require [datalevin.core :as dl]
                     [re-db.integrations.datalevin]
+                    [sparkboard.schema :as sch]
                     [sparkboard.server.env :as env]
                     [re-db.api :as db])))
 
@@ -54,21 +55,11 @@
 #?(:clj
    (defn pull [expr id] (dl/pull @conn expr id)))
 
-(defn wrap-id [id]
-  (if (uuid? id)
-    [:entity/id id]
-    id))
-
-(defn unwrap-id [id]
-  (if (vector? id)
-    (second id)
-    id))
-
 #?(:clj
    (defn entid [id] (dl/entid @conn id)))
 
 #?(:clj
-   (defn resolve-id [id] (entid (wrap-id id))))
+   (defn resolve-id [id] (entid (sch/wrap-id id))))
 
 #?(:clj
    (defn entity [id] (dl/entity @conn (resolve-id id))))
