@@ -188,7 +188,7 @@
        {:body board})))
 
 (ui/defview new
-  {:endpoint    {:view ["/b/" "new"]}
+  {:route       ["/b/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
   (let [owners (->> (ws/use-query! ['sparkboard.app.account/db:account-orgs])
@@ -224,7 +224,7 @@
        [ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
-  {:endpoint {:view ["/b/" ['entity/id :board-id] "/register"]}}
+  {:route ["/b/" ['entity/id :board-id] "/register"]}
   [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
                 [:div
@@ -274,7 +274,7 @@
          [entity/show-filtered-results {:results entities}]])]]))
 
 (ui/defview read
-  {:endpoint {:view ["/b/" ['entity/id :board-id]]}}
+  {:route ["/b/" ['entity/id :board-id]]}
   [params]
   (if (db/get :env/account)
     [read:signed-in params]
@@ -285,7 +285,7 @@
     [:pre (ui/pprinted board)]))
 
 (ui/defview read:tab
-  {:endpoint {:view ["/b/" ['entity/id :board-id] "/" :board/tab]}}
+  {:route ["/b/" ['entity/id :board-id] "/" :board/tab]}
   [params]
   (case (:board/tab params)
     "settings"

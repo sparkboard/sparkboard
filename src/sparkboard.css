@@ -4,6 +4,12 @@
 
 @layer base {
 
+    .prose {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        color: inherit !important;
+    }
+
     .prose a {
         @apply font-normal underline decoration-2 decoration-primary/30 hover:decoration-primary/50 text-primary
     }

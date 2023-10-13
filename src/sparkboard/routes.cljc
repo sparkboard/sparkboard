@@ -203,6 +203,21 @@
                  (mapcat #(endpoint-maps (:name %) (:meta %))))
            (:cljs.analyzer/namespaces cljs-env))))
 
+#?(:clj
+   (defmacro register-route [name {:keys [alias-of route]}]
+     `(do
+        ~(if alias-of
+           `(defn ~name {:endpoint {:view ~route}} [& args#] (prn :foo) (apply ~alias-of args#))
+           (do (swap! (ana/current-state) assoc-in [:cljs.analyzer/namespaces
+                                                    (symbol (str *ns*))
+                                                    :defs
+                                                    name
+                                                    :meta
+                                                    :endpoint
+                                                    :view] route)
+               nil))
+        (swap! sparkboard.routes/!views assoc '~(symbol (str *ns*) (str name)) ~(or alias-of name)))))
+
 #?(:cljs (do
            (defonce !history (atom nil))
 
@@ -302,7 +317,6 @@
 #?(:cljs
    (defn POST [route body]
      (let [path (path-for route)]
-       (tap> [:POST path body])
        (-> (js/fetch path
                      (if (instance? js/FormData body)
                        (j/lit {:method  "POST"

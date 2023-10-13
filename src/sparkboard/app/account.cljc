@@ -104,9 +104,7 @@
         ?filter    (h/use-callback (forms/field))
         recent-ids (db:recents {})
         all        (db:all {})
-        {all     false
-         recents true} (when recent-ids
-                         (group-by (comp boolean recent-ids :entity/id) all))]
+        recents    (filter (comp recent-ids :entity/id) all)]
     [:<>
      (header nil)
      [radix/tab-root {:value           @!tab
@@ -117,8 +115,8 @@
        [ui/filter-field ?filter]
        [new-menu {:account-id account-id}]]
 
-      [entity/show-filtered-results {:q @?filter
-                                     :title (tr :tr/recent)
+      [entity/show-filtered-results {:q       @?filter
+                                     :title   (tr :tr/recent)
                                      :results recents}]
 
       (let [{:keys [org board project]} (group-by :entity/kind all)]
@@ -199,7 +197,7 @@
     [account:sign-in-form params]]])
 
 (ui/defview home
-  {:route "/"
+  {:route            "/"
    :endpoint/public? true}
   [params]
   (if-let [account-id (db/get :env/account :account-id)]

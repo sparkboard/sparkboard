@@ -35,7 +35,7 @@
           #js {:error error}))
 
 (ui/defview dev-info [{:as match :keys [modal]}]
-  (into [:div.p-2.relative.flex.gap-2 {:style {:z-index 9000}}]
+  (into [:div.p-2.flex.gap-2.fixed.top-0.right-0 {:style {:z-index 9000}}]
         (for [info [(some-> match :match/endpoints :view :endpoint/tag str)
                     (when-let [modal-tag (some-> modal :view :endpoint/tag str)]
                       [:span [:span.font-bold "modal: "] modal-tag])]
@@ -47,7 +47,7 @@
   []
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
     [:div.w-full.font-sansa
-     (dev-info match)
+     #_(dev-info match)
      [:el ErrorBoundary
       {:fallback (fn [e]
                    (str "Error: " (ex-message e)))}

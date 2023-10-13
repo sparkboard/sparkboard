@@ -20,7 +20,7 @@
      :entity/title              {:doc         "Title of entity, for card/header display."
                                  s-           :string
                                  :db/fulltext true}
-     :entity/kind               {s- [:enum :board :org :collection :member :project]}
+     :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message]}
      :entity/description        {:doc         "Description of an entity (for card/header display)"
                                  s-           :prose/as-map
                                  :db/fulltext true}

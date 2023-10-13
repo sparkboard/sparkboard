@@ -16,18 +16,15 @@
 
 (defmacro defview [name & args]
   (let [[name doc options argv body] (u/parse-defn-args name args)
-        options (cond-> options
-                        (:route options)
-                        (-> (dissoc :route)
-                            (assoc-in [:endpoint :view] (:route options))))
-        args    (concat (keep identity [doc options argv])
-                        body)]
+        args (concat (keep identity [doc options argv])
+                     body)]
     (if (:ns &env)
       `(do ~(v/defview:impl
               {:wrap-expr (fn [expr] `(~'re-db.react/use-derefs ~expr))}
               name
               args)
-           (swap! sparkboard.routes/!views assoc  '~(symbol (str *ns*) (str name)) ~name))
+           ~(when (:route options)
+              `(sparkboard.routes/register-route ~name {:route    ~(:route options)})))
       `(defn ~name ~@(when options [options])
          ~argv))))
 

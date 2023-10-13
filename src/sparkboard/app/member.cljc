@@ -88,7 +88,7 @@
 
 (ui/defview read
   {:view/target :modal
-   :endpoint    {:view ["/m/" ['entity/id :member-id]]}}
+   :route       ["/m/" ['entity/id :member-id]]}
   [params]
   (let [{:as          member
          :member/keys [tags

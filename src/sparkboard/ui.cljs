@@ -1,9 +1,11 @@
 (ns sparkboard.ui
   (:require ["@radix-ui/react-dropdown-menu" :as dm]
+            ["prosemirror-keymap" :refer [keydownHandler]]
             ["markdown-it" :as md]
             ["linkify-element" :as linkify-element]
             [applied-science.js-interop :as j]
             [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
             [inside-out.forms :as forms]
             [inside-out.macros]
             [promesa.core :as p]
@@ -25,16 +27,16 @@
 
 (defonce ^js Markdown (md))
 
-(defn show-markdown [source]
+(defview show-markdown
+  [source]
   (let [!ref (h/use-ref)]
     (h/use-effect (fn []
                     (when-let [el @!ref]
-                      (j/log el)
                       (-> el
-                          (j/!set :innerHTML (.render Markdown source))
+                          (j/!set :innerHTML (.render Markdown (or source "")))
                           (linkify-element))))
                   [@!ref])
-    (v/x [:div {:class                   "prose markdown-prose"
+    (v/x [:div {:class                   "prose"
                 :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
 
@@ -351,6 +353,7 @@
    - adds :data to params when a :query is provided"
   [{:as match :match/keys [endpoints params route]}]
   [:Suspense {:fallback (loading:spinner "w-4 h-4 absolute top-2 right-2")}
+   (prn (-> endpoints :view :endpoint/sym) (-> endpoints :view :endpoint/sym (@routes/!views)))
    (if-let [view (-> endpoints :view :endpoint/sym (@routes/!views))]
      (when view
        [view (assoc params :account-id (db/get :env/account :account-id))])
@@ -399,3 +402,50 @@
 
 (defview redirect [to]
   (h/use-effect #(routes/set-path! to)))
+
+(defn initials [display-name]
+  (let [words (str/split display-name #"\s+")]
+    (str/upper-case
+      (str/join "" (map first
+                        (if (> (count words) 2)
+                          [(first words) (last words)]
+                          words))))))
+
+(defn avatar [{:keys [src display-name size]
+               :or   {size 6}}]
+  (let [classes (v/classes ["rounded-full"
+                            (str "h-" size)
+                            (str "w-" size)])]
+    (if src
+      [:img {:src src :class classes}]
+      [:div.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
+       {:class classes}
+       (initials display-name)])))
+
+(defview auto-height-textarea [{:as props :keys [value]}]
+  (let [!text-element (h/use-ref nil)
+        !text-height  (h/use-state nil)]
+    (h/use-effect
+      (fn []
+        (reset! !text-height
+                (some-> @!text-element
+                        (j/call :getBoundingClientRect)
+                        (j/get :height))))
+      [@!text-element value])
+    [:<>
+     [:div.bg-black {:class (:class props)
+                     :style (merge (:style props)
+                                   {:color "white"
+                                    :visibility "hidden"
+                                    :position   "absolute"
+                                    :left       0
+                                    :top        0})
+                     :ref   !text-element}
+      (:value props)
+      (when (= \newline (last (:value props))) " ")]
+     [:textarea
+      (update props :style merge {:height (some-> @!text-height (+ 2))})]]))
+
+(defn keydown-handler [bindings]
+  (let [handler (keydownHandler (clj->js bindings))]
+    (fn [e] (handler #js{} e))))

@@ -112,7 +112,7 @@
     {:body org}))
 
 (ui/defview read
-  {:endpoint {:view ["/o/" ['entity/id :org-id]]}}
+  {:route ["/o/" ['entity/id :org-id]]}
   [params]
   (forms/with-form [_ ?q]
     (let [{:as   org
@@ -151,7 +151,7 @@
          [:div.card-grid (map entity/card:compact (:board/_owner org))])])))
 
 (ui/defview edit
-  {:endpoint {:view ["/o/" ['entity/id :org-id] "/settings"]}}
+  {:route ["/o/" ['entity/id :org-id] "/settings"]}
   [{:as params :keys [org-id]}]
   (let [org (ws/use-query! '[sparkboard.app.org/db:edit params])]
     (forms/with-form [!org (u/keep-changes org
@@ -182,7 +182,7 @@
         [:a.btn.btn-primary.p-4 {:href (routes/entity org :read)} (tr :tr/done)]]])))
 
 (ui/defview new
-  {:endpoint {:view ["/o/" "new"]}
+  {:route ["/o/" "new"]
    :target   :modal}
   [params]
   (forms/with-form [!org (u/prune

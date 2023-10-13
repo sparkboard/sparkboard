@@ -90,7 +90,8 @@
                     :account      "b0"
                     :ballot       "b1"
                     :site         "b2"
-                    :asset        "b3"})
+                    :asset        "b3"
+                    :chat.message "b4"})
 
 (def prefix->kind* (zipmap (vals kind->prefix*) (keys kind->prefix*)))
 

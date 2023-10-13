@@ -28,6 +28,7 @@
             [ring.middleware.multipart-params :as multipart]
             [ring.util.request]
             [ring.util.response :as ring.response]
+            [sparkboard.authorize :as az]
             [sparkboard.schema :as sch]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.i18n :as i18n]
@@ -139,6 +140,19 @@
                                       :code     401}))))
 
   (prepare! (:prepare (meta f)) req params))
+
+(defn effect!
+  {:endpoint {:post ["/effect"]}
+   :prepare  [az/with-account-id!]}
+  [req {:as params :keys [body account-id]}]
+  (let [[id & args] body]
+    (if-let [endpoint (routes/by-tag id :effect)]
+      (let [[params & args] args]
+        {:body (apply (resolve (:endpoint/sym endpoint))
+                      (assoc params :account-id account-id)
+                      args)})
+      (throw (ex-info (str id " is not an effect endpoint.") {:id id :body body})))))
+
 
 (memo/defn-memo $txs [ref]
   (r/catch

@@ -88,7 +88,7 @@
      ))
 
 (ui/defview new
-  {:endpoint    {:view ["/p/" "new"]}
+  {:route    ["/p/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
   (ui/with-form [!project {:entity/title ?title}]
@@ -132,7 +132,7 @@
 (def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
 
 (ui/defview read
-  {:endpoint    {:view ["/p/" ['entity/id :project-id]]}
+  {:route       ["/p/" ['entity/id :project-id]]
    :view/target :modal}
   [params]
   (let [{:as           project

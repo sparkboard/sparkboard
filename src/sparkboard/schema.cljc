@@ -12,9 +12,12 @@
     id))
 
 (defn unwrap-id [id]
-  (if (vector? id)
-    (second id)
-    id))
+  (cond (vector? id) (second id)
+        (map? id) (:entity/id id)
+        :else id))
+
+(defn id= [a b]
+  (= (unwrap-id a) (unwrap-id b)))
 
 (def s- :malli/schema)
 

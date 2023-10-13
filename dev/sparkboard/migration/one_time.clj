@@ -10,6 +10,7 @@
             [jsonista.core :as json]
             [malli.core :as m]
             [malli.generator :as mg]
+            [sparkboard.app.chat :as chat]
             [sparkboard.schema :as sch]
             [sparkboard.server.datalevin :as sb.dl :refer [conn]]
             [sparkboard.schema :as sschema]
@@ -1050,9 +1051,7 @@
                                        ::always (remove-when (comp empty? :chat/messages))
                                        ::always (remove-when (comp nil? :chat/entity))
                                        ::always (fn [{:as m :keys [chat/participants chat/entity]}]
-                                                  (assoc m :chat/key (->> (cons entity (sort participants))
-                                                                          (map sch/unwrap-id)
-                                                                          (str/join "+"))))]
+                                                  (assoc m :chat/key (apply chat/make-key entity participants)))]
               ::mongo                 [:deleted (& (xf (fn [x] (when x deletion-time)))
                                                    (rename :entity/deleted-at))
                                        ::always (remove-when :entity/deleted-at)
