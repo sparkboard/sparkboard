@@ -106,3 +106,8 @@
                            [nil args])
            [argv body] [(first args) (rest args)]]
        [name doc options argv body])))
+
+(defn compare:desc
+  "Compare two values in descending order."
+  [a b]
+  (compare b a))

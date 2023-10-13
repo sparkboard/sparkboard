@@ -225,8 +225,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/owner                           {:en "Owner"
                                           :fr "Propriétaire"
                                           :es "Propietario"}
-
-     }))
+     :tr/find-a-member                   {:en "Find a member"
+                                          :fr "Trouver un membre"
+                                          :es "Encontrar un miembro"}}))
 
 (defn tr
   ([resource-ids] (or (tempura/tr {:dict dict} (locales) (cond-> resource-ids

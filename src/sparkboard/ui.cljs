@@ -3,6 +3,7 @@
             ["prosemirror-keymap" :refer [keydownHandler]]
             ["markdown-it" :as md]
             ["linkify-element" :as linkify-element]
+            ["react" :as react]
             [applied-science.js-interop :as j]
             [clojure.pprint :refer [pprint]]
             [clojure.string :as str]
@@ -22,7 +23,8 @@
             [sparkboard.routes :as routes]
             [sparkboard.query-params :as query-params]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.ui.icons :as icons])
+            [sparkboard.ui.icons :as icons]
+            [shadow.cljs.modern :refer [defclass]])
   (:require-macros [sparkboard.ui :refer [defview with-submission]]))
 
 (defonce ^js Markdown (md))
@@ -57,7 +59,7 @@
               identity))))
 
 (defn pprinted [x]
-  [:pre-wrap (with-out-str (pprint x))])
+  [:pre.whitespace-pre-wrap (with-out-str (pprint x))])
 
 (def safe-html sanitize/safe-html)
 
@@ -449,3 +451,25 @@
 (defn keydown-handler [bindings]
   (let [handler (keydownHandler (clj->js bindings))]
     (fn [e] (handler #js{} e))))
+
+(defclass ErrorBoundary
+          (extends react/Component)
+          (constructor [this props] (super props))
+          Object
+          (componentDidCatch [this error info]
+                             (js/console.error error)
+                             (js/console.log (j/get info :componentStack)))
+          (render [this]
+                  (if-let [e (j/get-in this [:state :error])]
+                    ((j/get-in this [:props :fallback]) e)
+                    (j/get-in this [:props :children]))))
+
+(j/!set ErrorBoundary "getDerivedStateFromError"
+        (fn [error]
+          (js/console.error error)
+          #js {:error error}))
+
+(v/defview error-boundary [fallback child]
+  [:el ErrorBoundary {:fallback fallback} child])
+
+(def startTransition react/startTransition)

@@ -22,7 +22,8 @@
 (sch/register!
   {:account/email               sch/unique-id-str
    :account/email-verified?     {:malli/schema :boolean}
-   :account/display-name        {:malli/schema :string}
+   :account/display-name        {:malli/schema :string
+                                 :db/fulltext  true}
    :account.provider.google/sub sch/unique-id-str
    :account/last-sign-in        {:malli/schema 'inst?}
    :account/password-hash       {:malli/schema :string}

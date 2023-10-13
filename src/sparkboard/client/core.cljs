@@ -10,29 +10,12 @@
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.radix :as radix]
             [sparkboard.routes :as routes]
-            [sparkboard.slack.firebase  :as firebase]
+            [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]
             [sparkboard.ui :as ui]
             [yawn.root :as root]
-            [sparkboard.app :as app]                                 ;; includes all endpoints
-            [shadow.cljs.modern :refer [defclass]]))
-
-(defclass ErrorBoundary
-  (extends react/Component)
-  (constructor [this props] (super props))
-  Object
-  (componentDidCatch [this error info]
-                     (js/console.error error)
-                     (js/console.log (j/get info :componentStack)))
-  (render [this]
-          (if-let [e (j/get-in this [:state :error])]
-            ((j/get-in this [:props :fallback]) e)
-            (j/get-in this [:props :children]))))
-
-(j/!set ErrorBoundary "getDerivedStateFromError"
-        (fn [error]
-          (js/console.error error)
-          #js {:error error}))
+            [sparkboard.app :as app]                        ;; includes all endpoints
+            ))
 
 (ui/defview dev-info [{:as match :keys [modal]}]
   (into [:div.p-2.flex.gap-2.fixed.top-0.right-0 {:style {:z-index 9000}}]
@@ -48,15 +31,16 @@
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
     [:div.w-full.font-sansa
      #_(dev-info match)
-     [:el ErrorBoundary
-      {:fallback (fn [e]
-                   (str "Error: " (ex-message e)))}
-      (ui/show-match match)
+     (ui/try
+       [:<>
+        (ui/show-match match)
 
-      (radix/dialog {:props/root {:open           (boolean modal)
-                                  :on-open-change #(when-not %
-                                                     (routes/set-modal! nil))}}
-                    (ui/show-match modal))]]))
+        (radix/dialog {:props/root {:open           (boolean modal)
+                                    :on-open-change #(when-not %
+                                                       (routes/set-modal! nil))}}
+                      (ui/show-match modal))]
+       (catch js/Error e
+              (str "Error: " (ex-message e))))]))
 
 (defonce !react-root (delay (root/create :web (root))))
 

@@ -1,5 +1,6 @@
 (ns sparkboard.app.member
   (:require #?(:clj [java-time.api :as time])
+            #?(:clj [sparkboard.authorize :as az])
             #?(:clj [sparkboard.server.datalevin :as dl])
             [sparkboard.i18n :refer [tr]]
             [sparkboard.entity :as entity]
@@ -86,6 +87,51 @@
                       (:member-id params))
              :member/password)))
 
+#?(:clj
+   (defn membership-id [account-id entity-id]
+     (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
+
+#?(:clj
+   (defn ensure-membership! [account-id entity-id]
+     (when-not (membership-id account-id entity-id)
+       (throw (ex-info "Not a member" {:status 403})))))
+
+(ws/defquery db:search
+  {:prepare [az/with-account-id!]}
+  [{:as params :keys [account-id entity-id search-term]}]
+  (if entity-id
+    ;; scoped to entity
+    (do
+      (ensure-membership! account-id entity-id)
+      (dl/q '[:find [(pull ?account [:account/display-name
+                                     :entity/id
+                                     {:image/avatar [:asset/id]}]) ...]
+              :in $ ?entity ?search-term
+              :where
+              [?m :member/entity ?entity]
+              [?m :member/account ?account]
+              [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]]
+            entity-id
+            search-term))
+    ;; all entities I'm also a member of
+    (dl/q '[:find [(pull ?your-account [:account/display-name
+                                        :entity/id
+                                        {:image/avatar [:asset/id]}]) ...]
+            :in $ ?my-account ?search-term
+            :where
+            [?me :member/account ?my-account]
+            [?me :member/entity ?entity]
+            [?you :member/entity ?entity]
+            [?you :member/account ?your-account]
+            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+          account-id
+          search-term)))
+
+(comment
+  (db:search {:account-id  [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
+              ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
+              :search-term "matt"}))
+
 (ui/defview read
   {:view/target :modal
    :route       ["/m/" ['entity/id :member-id]]}
@@ -108,15 +154,12 @@
               tags)])
      (when avatar [:img {:src (ui/asset-src avatar :card)}])]))
 
-#?(:clj
-   (defn membership-id [entity-id account-id]
-     (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
 
 #?(:clj
    (defn member:log-visit! [entity-key]
      (fn [_ {:as params :keys [account-id]}]
        (when-let [id (and account-id
-                          (membership-id (entity-key params) account-id))]
+                          (membership-id account-id (entity-key params)))]
          (when-let [member (dl/pull '[:db/id
                                       :member/last-visited]
                                     (dl/resolve-id id))]

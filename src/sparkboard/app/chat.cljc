@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [promesa.core :as p]
             [re-db.api :as db]
+            [sparkboard.app.member :as member]
             [sparkboard.authorize :as az]
             [sparkboard.schema :as sch :refer [s-]]
             [sparkboard.server.datalevin :as dl]
@@ -11,7 +12,14 @@
             [sparkboard.util :as u]
             [sparkboard.websockets :as ws]
             [sparkboard.routes :as routes]
+            [yawn.view :as v]
+            [sparkboard.ui.icons :as icons]
+            [sparkboard.i18n :refer [tr]]
             #?(:cljs [yawn.hooks :as h])))
+
+(def search-classes
+  (v/classes ["rounded-lg p-2 text-sm bg-gray-50 border-gray-300 border"
+              "disabled:bg-gray-200 disabled:text-gray-500"]))
 
 (sch/register!
   {:chat/participants    (merge (sch/ref :many)
@@ -43,7 +51,6 @@
                               :chat.message/read-by
                               :chat.message/content]}})
 
-
 (defn make-key [entity-id & participant-ids]
   (str/join "+" (sort (map sch/unwrap-id (cons entity-id participant-ids)))))
 
@@ -73,11 +80,6 @@
     ;; return new chat
     (db/pull '[*] (get-in tx-report [:tempids "new-message"]))))
 
-(defn compare:desc
-  "Compare two values in descending order."
-  [a b]
-  (compare b a))
-
 (def chat-fields-meta
   [:entity/id
    :entity/updated-at
@@ -96,17 +98,17 @@
    {:chat.message/content [:prose/format
                            :prose/string]}])
 
-#?(:clj
-   (defn ensure-participant!
-     "Throw if account-id is not a participant in chat."
-     [account-id chat]
-     (when-not (contains?
-                 (into #{}
-                       (map :entity/id)
-                       (:chat/participants chat))
-                 (sch/unwrap-id account-id))
-       (az/unauthorized! "You are not a participant in this chat."))
-     chat))
+(defn ensure-participant!
+  "Throw if account-id is not a participant in chat."
+  [account-id chat]
+  #?(:clj
+     (do (when-not (contains?
+                     (into #{}
+                           (map :entity/id)
+                           (:chat/participants chat))
+                     (sch/unwrap-id account-id))
+           (az/unauthorized! "You are not a participant in this chat."))
+         chat)))
 
 (ws/defx db:mark-read!
   "Mark messages as read by account-id."
@@ -143,40 +145,61 @@
            (:entity/id last-message))
         (= account-id (:entity/id (:entity/created-by last-message))))))
 
+(ui/defview member-search [params]
+  (let [!search-term (h/use-state "")]
+    [:<>
+     [:div.flex.flex-col.relative.px-1.py-2
+      [:input.w-full
+       {:class     search-classes
+        :value     @!search-term
+        :placeholder  (tr :tr/find-a-member)
+        :on-change #(reset! !search-term (j/get-in % [:target :value]))}]
+      [:div.absolute.right-2.top-0.bottom-0.flex.items-center
+       [icons/search "w-5 h-5 absolute right-2"]]]
+     ;; TODO
+     ;; show results in a dropdown/autocomplete
+     (ui/pprinted
+       (member/db:search (assoc params :search-term
+                                       (h/use-deferred-value @!search-term))))]))
+
 (ui/defview sidebar [{:as params :keys [account-id entity-id]}]
-  [:div.flex.flex-col.text-sm.divide-y.px-1.py-1
-   (doall
-     (for [{:as        chat
-            :chat/keys [participants
-                        last-message]} (db:chats {:entity-id entity-id})
-           :let [other-participants
-                          (remove #(sch/id= account-id %) participants)
-                 current? (sch/id= (:other-id params) (first other-participants))]]
-       [:a.flex.flex-col.py-2.cursor-default.mx-1.px-1
-        {:href  (routes/path-for `chat (assoc params :other-id
-                                                     (:entity/id (first other-participants)))) ;; TODO path to chat
-         :key   (:entity/id chat)
-         :class (when current? "bg-blue-100 rounded")}
-        (str "chat: " (:entity/id chat))
-        [:div.flex.items-center.gap-2
-         [:div.w-2.h-2.rounded-full
-          {:class (if (and (unread? account-id chat) #_(not current?)) "bg-blue-500")}]
-         ;; participants
-         (for [other other-participants]
-           [:div.font-bold {:key (:entity/id other)} (:account/display-name other)])]
-        [:div.pl-4.line-clamp-2
-         (ui/show-prose
-           (:chat.message/content last-message))]]))])
+  [:div
+   [member-search params]
+   [:div.flex.flex-col.text-sm.divide-y.px-1.py-1
+    (doall
+      (for [{:as        chat
+             :chat/keys [participants
+                         last-message]} (db:chats {:entity-id entity-id})
+            :let [other-participants
+                           (remove #(sch/id= account-id %) participants)
+                  current? (sch/id= (:other-id params) (first other-participants))]]
+        [:a.flex.flex-col.py-2.cursor-default.mx-1.px-1
+         {:href  (routes/path-for `chat (assoc params :other-id
+                                                      (:entity/id (first other-participants)))) ;; TODO path to chat
+          :key   (:entity/id chat)
+          :class (when current? "bg-blue-100 rounded")}
+         (str "chat: " (:entity/id chat))
+         [:div.flex.items-center.gap-2
+          [:div.w-2.h-2.rounded-full
+           {:class (if (and (unread? account-id chat) #_(not current?)) "bg-blue-500")}]
+          ;; participants
+          (for [other other-participants]
+            [:div.font-bold {:key (:entity/id other)} (:account/display-name other)])]
+         [:div.pl-4.line-clamp-2
+          (ui/show-prose
+            (:chat.message/content last-message))]]))]])
 
 (ui/defview with-sidebar [params child]
   [:div.flex.divide-x.h-screen
-   [:di {:class ["min-w-48 max-w-md w-1/3"]}
+   [:div {:class ["min-w-48 max-w-md w-1/3"]}
     [sidebar params]]
    [:div.flex-auto child]])
 
 #?(:cljs
    (defn effect! [f & args]
-     (routes/POST "/effect" (into [f] args))))
+     (throw (ex-info "Effect! error" {}))
+     (-> (routes/POST "/effect" (into [f] args))
+         (p/catch (fn [e] {:error (ex-message e)})))))
 
 (ui/defview chat-message [{:keys [account-id]} {:keys [chat.message/content
                                                        entity/created-by
@@ -224,8 +247,9 @@
       {:ref !scrollable-window}
       (doall (map (partial chat-message params) messages))]
      [ui/auto-height-textarea
-      {:class       ["rounded-lg m-1 p-2 whitespace-pre-wrap text-sm min-h-[38px] bg-gray-50 border-gray-300 flex-none"
-                     "disabled:bg-gray-200 disabled:text-gray-500"]
+
+      {:class       [search-classes
+                     "m-1 whitespace-pre-wrap min-h-[38px] flex-none"]
        :type        "text"
        :placeholder "Aa"
        :disabled    (:pending @!response)
@@ -240,7 +264,9 @@
   [with-sidebar params
    [:div.flex.flex-col.items-stretch.h-full.w-full.py-2.relative
     (when other-id
-      [chat-detail params])]])
+      (ui/try
+        [chat-detail params]
+        (catch js/Error e (str (ex-message e)))))]])
 
 (routes/register-route chat
   {:alias-of chats
