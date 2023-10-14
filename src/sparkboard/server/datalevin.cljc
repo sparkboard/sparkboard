@@ -71,45 +71,15 @@
 (defn to-ref [m id-key] [id-key (id-key m)])
 (def asset-ref #(to-ref % :asset/id))
 
-(def kind->prefix* {:org          "a0"
-                    :board        "a1"
-                    :collection   "a2"
-                    :member       "a3"
-                    :project      "a4"
-                    :field        "a5"
-                    :entry        "a6"
-                    :discussion   "a7"
-                    :post         "a8"
-                    :comment      "a9"
-                    :notification "aa"
-                    :tag          "ab"
-                    :tag-spec     "ac"
-                    :chat         "ad"
-                    :message      "ae"
-                    :roles        "af"
-                    :account      "b0"
-                    :ballot       "b1"
-                    :site         "b2"
-                    :asset        "b3"
-                    :chat.message "b4"})
 
-(def prefix->kind* (zipmap (vals kind->prefix*) (keys kind->prefix*)))
-
-(defn uuid->kind [uuid]
-  (let [prefix (subs (str uuid) 0 2)]
-    (or (prefix->kind* prefix)
-        (throw (ex-info (str "Unknown kind for uuid prefix " prefix) {:uuid uuid :prefix prefix})))))
-
-(defn kind->prefix [kind]
-  (or (kind->prefix* kind) (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))))
 
 #?(:clj
    (defn to-uuid [kind s]
-     (java.util.UUID/fromString (str (kind->prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
+     (java.util.UUID/fromString (str (sch/kind->prefix kind) (subs (str (java.util.UUID/nameUUIDFromBytes (.getBytes s))) 2)))))
 
 #?(:clj
    (defn new-uuid [kind]
-     (java.util.UUID/fromString (str (kind->prefix kind)
+     (java.util.UUID/fromString (str (sch/kind->prefix kind)
                                      (subs (str (random-uuid)) 2)))))
 
 #?(:clj

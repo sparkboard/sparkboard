@@ -89,12 +89,12 @@
     (second id)
     id))
 
-#?(:clj
-   (defn memo-fn-var [query-var]
-     (memo/fn-memo [& args]
-       (r/reaction
-         (let [f (hooks/use-deref query-var)]
-           (apply f args))))))
+
+(defn memo-fn-var [query-var]
+  (memo/fn-memo [& args]
+    (r/reaction
+      (let [f (hooks/use-deref query-var)]
+        (apply f args)))))
 
 #?(:clj
    (defn parse-defn-args [name args]

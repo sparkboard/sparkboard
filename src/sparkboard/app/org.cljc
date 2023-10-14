@@ -12,7 +12,7 @@
             [sparkboard.util :as u]
             [sparkboard.ui.header :as header]
             [sparkboard.ui :as ui]
-            [sparkboard.websockets :as ws]
+            [sparkboard.query :as query]
             [re-db.api :as db]))
 
 (sch/register!
@@ -39,22 +39,22 @@
                                     (? :org/default-board-template)
                                     (? :entity/created-at)]}})
 
-(ws/defx db:delete!
-         "Mutation fn. Retracts organization by given org-id."
-         {:endpoint {:post ["/o/" ['entity/id :org-id] "/delete"]}}
-         [_req {:keys [org-id]}]
-         ;; auth: user is admin of org
-         ;; todo: retract org and all its boards, projects, etc.?
-         (db/transact! [[:db.fn/retractEntity org-id]])
-         {:body ""})
+(query/defx db:delete!
+  "Mutation fn. Retracts organization by given org-id."
+  {:endpoint {:post ["/o/" ['entity/id :org-id] "/delete"]}}
+  [_req {:keys [org-id]}]
+  ;; auth: user is admin of org
+  ;; todo: retract org and all its boards, projects, etc.?
+  (db/transact! [[:db.fn/retractEntity org-id]])
+  {:body ""})
 
-(ws/defquery db:edit
+(query/defquery db:edit
   [{:keys [org-id]}]
   ;; all the settings that can be changed
   (db/pull `[~@entity/fields]
            org-id))
 
-(ws/defquery db:read
+(query/defquery db:read
   {:prepare [az/with-account-id!
              (member/member:log-visit! :org-id)]}
   [{:keys [org-id]}]
@@ -62,7 +62,7 @@
              {:board/_owner ~entity/fields}]
            (dl/resolve-id org-id)))
 
-(ws/defquery db:search
+(query/defquery db:search
   {:endpoint {:query true}}
   [{:as   params
     :keys [org-id q]}]
@@ -90,7 +90,7 @@
                     (remove :project/sticky?))}))
 
 
-(ws/defquery db:edit!
+(query/defquery db:edit!
   {:endpoint {:post ["/o/" ['entity/id :org-id] "/settings"]}}
   [{:keys [account]} {:keys [org-id]
                       org   :body}]
@@ -99,7 +99,7 @@
     {:body org}))
 
 
-(ws/defquery db:new!
+(query/defquery db:new!
   {:endpoint {:post ["/o/" "new"]}}
   [{:keys [account]} {org :body}]
   (let [org    (-> (dl/new-entity org :org :by (:db/id account))
@@ -118,8 +118,8 @@
     (let [{:as   org
            :keys [entity/description]} (db:read params)
           q      (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
-          result (ws/use-query ['sparkboard.app.org/db:search {:org-id (:org-id params)
-                                                               :q      q}])]
+          result (query/use ['sparkboard.app.org/db:search {:org-id (:org-id params)
+                                                            :q      q}])]
       [:div
        (header/entity org
          [header/btn {:icon [icons/settings]
@@ -153,7 +153,7 @@
 (ui/defview edit
   {:route ["/o/" ['entity/id :org-id] "/settings"]}
   [{:as params :keys [org-id]}]
-  (let [org (ws/use-query! '[sparkboard.app.org/db:edit params])]
+  (let [org (query/use! '[sparkboard.app.org/db:edit params])]
     (forms/with-form [!org (u/keep-changes org
                                            {:entity/id          org-id
                                             :entity/title       (?title :label (tr :tr/title))
@@ -182,8 +182,8 @@
         [:a.btn.btn-primary.p-4 {:href (routes/entity org :read)} (tr :tr/done)]]])))
 
 (ui/defview new
-  {:route ["/o/" "new"]
-   :target   :modal}
+  {:route  ["/o/" "new"]
+   :target :modal}
   [params]
   (forms/with-form [!org (u/prune
                            {:entity/title  ?title

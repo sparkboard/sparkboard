@@ -12,12 +12,9 @@
             [promesa.core :as p]
             [re-db.api :as db]
             [re-db.react]
-            [shadow.lazy :as lazy]
             [sparkboard.client.sanitize :as sanitize]
             [sparkboard.i18n :as i]
             [sparkboard.util :as u]
-            [sparkboard.ui.radix :as radix]
-            [sparkboard.websockets :as ws]
             [yawn.hooks :as h]
             [yawn.view :as v]
             [sparkboard.routes :as routes]
@@ -38,7 +35,7 @@
                           (j/!set :innerHTML (.render Markdown (or source "")))
                           (linkify-element))))
                   [@!ref])
-    (v/x [:div {:class                   "prose"
+    (v/x [:div {:class                   "prose contents"
                 :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
 

@@ -42,7 +42,7 @@
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
             [sparkboard.transit :as t]
-            [sparkboard.websockets :as ws]
+            [sparkboard.query :as query]
             [sparkboard.util :as u]
             [taoensso.timbre :as log]
             [shadow.resource]))
@@ -162,11 +162,6 @@
       (println e)
       {:error (ex-message e)})))
 
-(def make-$query
-  (memoize
-    (fn [fn-var]
-      (u/memo-fn-var fn-var))))
-
 (defn resolve-query [[id params :as qvec]]
   (let [endpoint  (routes/by-tag id :query)
         _         (assert endpoint (str "resolve: " id " is not a query endpoint"))
@@ -177,7 +172,7 @@
                                   (::sync/watch context)
                                   (authorize! query-var context))
                          params)
-        $query    (make-$query query-var)]
+        $query    (query/from-var query-var)]
     ($txs ($query params))))
 
 (comment
@@ -198,7 +193,7 @@
   {:endpoint         {:get ["/ws"]}
    :endpoint/public? true}
   [req _]
-  (#'ws/handle-ws-request ws-options req))
+  (#'query/ws:handle-request ws-options req))
 
 (defn pull
   {:endpoint {:query ["/pull"]}}

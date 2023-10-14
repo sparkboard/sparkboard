@@ -15,7 +15,7 @@
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
             [sparkboard.ui :as ui]
-            [sparkboard.websockets :as ws]
+            [sparkboard.query :as query]
             [re-db.api :as db]
             [yawn.view :as v]
             [sparkboard.schema :as sch :refer [s- ?]]))
@@ -191,7 +191,7 @@
   {:route       ["/b/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
-  (let [owners (->> (ws/use-query! ['sparkboard.app.account/db:account-orgs])
+  (let [owners (->> (query/use! ['sparkboard.app.account/db:account-orgs])
                     (cons (entity/account-as-entity (db/get :env/account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
@@ -239,13 +239,13 @@
                   (tr :tr/register)]]))
 
 (ui/defview read:public [params]
-  (let [board (ws/use-query! [`db:read params])]
+  (let [board (query/use! [`db:read params])]
     [:div.p-body (ui/show-prose (:entity/description board))])
   )
 
 (ui/defview read:signed-in
   [params]
-  (let [board       (ws/use-query! [`db:read params])
+  (let [board       (query/use! [`db:read params])
         current-tab (:board/tab params "projects")
         ?filter     (h/use-state nil)
         tabs        [["projects" (tr :tr/projects) (:project/_board board)]
@@ -281,7 +281,7 @@
     [read:public params]))
 
 (ui/defview edit [params]
-  (let [board (ws/use-query! [`db:edit params])]
+  (let [board (query/use! [`db:edit params])]
     [:pre (ui/pprinted board)]))
 
 (ui/defview read:tab

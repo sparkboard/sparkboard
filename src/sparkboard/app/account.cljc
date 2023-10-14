@@ -16,7 +16,7 @@
     [sparkboard.ui.header :as header]
     [sparkboard.ui.icons :as icons]
     [sparkboard.util :as u]
-    [sparkboard.websockets :as ws]
+    [sparkboard.query :as query]
     [yawn.view :as v]))
 
 (sch/register!
@@ -42,13 +42,15 @@
                                                 (? :image/avatar)
                                                 (? :account.provider.google/sub)]}})
 
-(ui/defview header [child]
-  (let [{:keys        [account-id]
-         display-name :account/display-name} (db/get :env/account)]
+(ui/defview header [account entity child]
+  (let [{:as          account
+         :keys        [account-id]
+         display-name :account/display-name} account]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
       {:href (routes/href 'sparkboard.app.account/read {:account-id account-id})} display-name]
      child
+     [header/chat account]
      [header/account]]))
 
 (ui/defview new-menu [params]
@@ -57,7 +59,7 @@
                        [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
 
 
-(ws/defquery db:account-orgs
+(query/defquery db:account-orgs
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
@@ -68,7 +70,7 @@
         (db/where [[:member/account account-id]])))
 
 
-(ws/defquery db:all
+(query/defquery db:all
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
@@ -87,7 +89,7 @@
        :member/_account
        (map #(u/lift-key % :member/entity))))
 
-(ws/defquery db:recents
+(query/defquery db:recents
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [params]
@@ -105,9 +107,10 @@
         ?filter    (h/use-callback (forms/field))
         recent-ids (db:recents {})
         all        (db:all {})
-        recents    (filter (comp recent-ids :entity/id) all)]
+        recents    (filter (comp recent-ids :entity/id) all)
+        account    (db/get :env/account)]
     [:<>
-     (header nil)
+     [header account account nil]
      [radix/tab-root {:value           @!tab
                       :on-value-change (partial reset! !tab)}
       ;; tabs

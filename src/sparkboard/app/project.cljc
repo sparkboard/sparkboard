@@ -8,7 +8,7 @@
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
-            [sparkboard.websockets :as ws]
+            [sparkboard.query :as query]
             [sparkboard.entity :as entity]
             [re-db.api :as db]
             [yawn.view :as v]
@@ -77,7 +77,7 @@
 #?(:clj
    (defn db:new!
      {:endpoint {:post ["/p/new"]}
-      :prepare [az/with-account-id!]}
+      :prepare  [az/with-account-id!]}
      [req {:keys [account-id] project :body}]
      (validate/assert project [:map {:closed true} :entity/title])
      (db/transact! [(-> project
@@ -88,17 +88,17 @@
      ))
 
 (ui/defview new
-  {:route    ["/p/" "new"]
+  {:route       ["/p/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
   (ui/with-form [!project {:entity/title ?title}]
-                [:div
-                 [:h3 (tr :tr/new-project)]
-                 (ui/show-field ?title)
-                 [:button {:on-click #(p/let [res (routes/POST `db:new! @!project)]
-                                        (when-not (:error res)
-                                          (routes/set-path! ['sparkboard.app.board/read params])))}
-                  (tr :tr/create)]]))
+    [:div
+     [:h3 (tr :tr/new-project)]
+     (ui/show-field ?title)
+     [:button {:on-click #(p/let [res (routes/POST `db:new! @!project)]
+                            (when-not (:error res)
+                              (routes/set-path! ['sparkboard.app.board/read params])))}
+      (tr :tr/create)]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type        "text/html" :width 640 :height 360
@@ -140,9 +140,9 @@
                         description
                         video]
          :project/keys [board
-                        badges]} (ws/pull! [:*
-                                            {:project/board entity/fields}]
-                                           (:project-id params))]
+                        badges]} (query/pull! [:*
+                                               {:project/board entity/fields}]
+                                              (:project-id params))]
     [:<>
      #_[ui/entity-header board]
      [:div.p-body.flex.flex-col.gap-2

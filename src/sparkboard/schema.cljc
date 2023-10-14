@@ -7,12 +7,13 @@
             [sparkboard.util :as u]))
 
 (defn wrap-id [id]
-  (if (uuid? id)
-    [:entity/id id]
-    id))
+  (cond (uuid? id) [:entity/id id]
+        (map? id) [:entity/id (:entity/id id)]
+        :else id))
 
 (defn unwrap-id [id]
-  (cond (vector? id) (second id)
+  (cond (uuid? id) id
+        (vector? id) (second id)
         (map? id) (:entity/id id)
         :else id))
 
@@ -209,3 +210,36 @@
      :html/color     {s- :string}
      :email          {s- [:re {:error/message "should be a valid email"} #"^[^@]+@[^@]+$"]}}))
 
+
+(def kind->prefix* {:org          "a0"
+                    :board        "a1"
+                    :collection   "a2"
+                    :member       "a3"
+                    :project      "a4"
+                    :field        "a5"
+                    :entry        "a6"
+                    :discussion   "a7"
+                    :post         "a8"
+                    :comment      "a9"
+                    :notification "aa"
+                    :tag          "ab"
+                    :tag-spec     "ac"
+                    :chat         "ad"
+                    :message      "ae"
+                    :roles        "af"
+                    :account      "b0"
+                    :ballot       "b1"
+                    :site         "b2"
+                    :asset        "b3"
+                    :chat.message "b4"})
+
+(def prefix->kind* (zipmap (vals kind->prefix*) (keys kind->prefix*)))
+
+(defn kind [uuid]
+  (let [uuid (unwrap-id uuid)
+        prefix (subs (str uuid) 0 2)]
+    (or (prefix->kind* prefix)
+        (throw (ex-info (str "Unknown kind for uuid prefix " prefix) {:uuid uuid :prefix prefix})))))
+
+(defn kind->prefix [kind]
+  (or (kind->prefix* kind) (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))))

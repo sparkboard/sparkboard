@@ -6,7 +6,7 @@
             [sparkboard.entity :as entity]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.ui :as ui]
-            [sparkboard.websockets :as ws]
+            [sparkboard.query :as query]
             [re-db.api :as db])
   #?(:clj (:import [java.util Date])))
 
@@ -96,7 +96,7 @@
      (when-not (membership-id account-id entity-id)
        (throw (ex-info "Not a member" {:status 403})))))
 
-(ws/defquery db:search
+(query/defquery db:search
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id entity-id search-term]}]
   (if entity-id
@@ -139,7 +139,7 @@
   (let [{:as          member
          :member/keys [tags
                        ad-hoc-tags
-                       account]} (ws/use-query! [`db:read params])
+                       account]} (query/use! [`db:read params])
         {:keys [:account/display-name
                 :image/avatar]} account]
     [:div
