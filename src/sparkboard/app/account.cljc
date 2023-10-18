@@ -66,7 +66,7 @@
   (into []
         (comp (map :member/entity)
               (filter (comp #{:org} :entity/kind))
-              (map (db/pull entity/fields)))
+              (map (query/pull entity/fields)))
         (db/where [[:member/account account-id]])))
 
 
@@ -74,18 +74,18 @@
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
-  (->> (db/pull '[{:member/_account [:member/roles
-                                     :member/last-visited
-                                     {:member/entity [:entity/id
-                                                      :entity/kind
-                                                      :entity/title
-                                                      {:image/avatar [:asset/link
-                                                                      :asset/id
-                                                                      {:asset/provider [:s3/bucket-host]}]}
-                                                      {:image/background [:asset/link
-                                                                          :asset/id
-                                                                          {:asset/provider [:s3/bucket-host]}]}]}]}]
-                account-id)
+  (->> (query/pull '[{:member/_account [:member/roles
+                                        :member/last-visited
+                                        {:member/entity [(:entity/id :db/id true)
+                                                         :entity/kind
+                                                         :entity/title
+                                                         {:image/avatar [:asset/link
+                                                                         :asset/id
+                                                                         {:asset/provider [:s3/bucket-host]}]}
+                                                         {:image/background [:asset/link
+                                                                             :asset/id
+                                                                             {:asset/provider [:s3/bucket-host]}]}]}]}]
+                   account-id)
        :member/_account
        (map #(u/lift-key % :member/entity))))
 
@@ -102,13 +102,13 @@
 (ui/defview read
   {:route "/account"}
   [_]
-  (let [account-id (db/get :env/account :account-id)
+  (let [account-id (db/get :env/config :account-id)
         !tab       (h/use-state (tr :tr/recent))
         ?filter    (h/use-callback (forms/field))
         recent-ids (db:recents {})
         all        (db:all {})
         recents    (filter (comp recent-ids :entity/id) all)
-        account    (db/get :env/account)]
+        account    (db/get :env/config :account)]
     [:<>
      [header account account nil]
      [radix/tab-root {:value           @!tab
@@ -204,7 +204,7 @@
   {:route            "/"
    :endpoint/public? true}
   [params]
-  (if-let [account-id (db/get :env/account :account-id)]
+  (if-let [account-id (db/get :env/config :account-id)]
     (read {:account-id account-id})
     (sign-in params)))
 

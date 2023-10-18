@@ -4,11 +4,12 @@
             [malli.error :refer [humanize]]
             [malli.registry :as mr]
             [re-db.schema :as s]
-            [sparkboard.util :as u]))
+            [sparkboard.util :as u]
+            [re-db.read :as read ]))
 
 (defn wrap-id [id]
   (cond (uuid? id) [:entity/id id]
-        (map? id) [:entity/id (:entity/id id)]
+        (or (map? id) (satisfies? read/IEntity id)) [:entity/id (:entity/id id)]
         :else id))
 
 (defn unwrap-id [id]

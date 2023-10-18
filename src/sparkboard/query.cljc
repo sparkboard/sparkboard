@@ -4,10 +4,13 @@
             #?(:cljs [yawn.hooks :as h :refer [use-deref]])
             [clojure.pprint :refer [pprint]]
             [applied-science.js-interop :as j]
+            [promesa.core :as p]
+            [re-db.api :as db]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
             [sparkboard.routes :as routes]
-            [sparkboard.util :as u])
+            [sparkboard.util :as u]
+            [re-db.sync.entity-diff-1 :as entity-diff])
   #?(:cljs (:require-macros sparkboard.query)))
 
 (def ws:default-options
@@ -66,14 +69,15 @@
                                                       (js/setTimeout init-ws 1000)))
                          (.addEventListener "message" #(let [message (unpack (j/get % :data))]
                                                          (reset! (:!last-message channel) message)
+                                                         #_(clojure.pprint/pprint (-> message second second))
                                                          (sync/handle-message handlers context message))))))]
        (init-ws)
        channel)))
 
 #?(:cljs
-   (def ws:channel
-     (delay (ws:connect {:port     3000
-                         :handlers (sync/result-handlers)}))))
+   (defonce ws:channel
+            (delay (ws:connect {:port     3000
+                                :handlers (sync/result-handlers entity-diff/result-handlers)}))))
 
 (defn normalize-vec [[id params]] [id (or params {})])
 
@@ -90,7 +94,7 @@
      (if (routes/by-tag (first qvec) :query)
        (let [qvec (normalize-vec qvec)]
          (or (sync/read-result qvec)
-             (do (sync/start-loading! qvec)
+             (do (sync/query-start-promise qvec)
                  (sync/send @ws:channel [::sync/once qvec])
                  (sync/read-result qvec))))
        (delay {:error "Query not found"}))))
@@ -121,12 +125,29 @@
      (sync/send @ws:channel message)))
 
 #?(:cljs
-   (defn pull [expr id]
+   (defn pull* [expr id]
      ['sparkboard.server.core/pull {:id   id
                                     :expr expr}]))
 
 #?(:cljs
-   (def pull! (comp use! pull)))
+   (def pull! (comp use! pull*)))
+
+#?(:clj
+   (def pull
+     (db/partial-pull
+       ;; at root, add :db/id [:ductile/id X]
+       {:wrap-root
+        (fn [_conn root]
+          (if (:entity/id root)
+            (assoc root :db/id [:entity/id (:entity/id root)])
+            root))
+        :wrap-ref
+        (fn [conn e]
+          [:db/id (if-let [entity-id (re-db.read/get conn e :ductile/id)]
+                    [:entity/id entity-id]
+                    (do
+                      (prn ::pull (str "Warning: no entity/id found for ref " e))
+                      e))])})))
 
 #?(:clj
    (defn op-impl [env op name args]
@@ -156,3 +177,16 @@
      ;; invoke a fn as a query
      ;; (use this when consuming nested queries)
      `((from-var ~(resolve name)) ~@args)))
+
+#?(:cljs
+   (defn effect! [f & args]
+     #_(throw (ex-info "Effect! error" {}))
+     (-> (routes/POST "/effect" (into [f] args))
+         (p/catch (fn [e] {:error (ex-message e)})))))
+(comment
+  (re-db.read/-resolve-e
+    re-db.api/*conn*
+    @re-db.api/*conn*
+    [:entity/id #uuid "adc4e6a6-a97e-330b-8e0a-94268505bf37"]))
+
+(def id '(:entity/id :db/id true))

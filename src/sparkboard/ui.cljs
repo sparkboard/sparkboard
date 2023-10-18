@@ -34,7 +34,7 @@
                       (-> el
                           (j/!set :innerHTML (.render Markdown (or source "")))
                           (linkify-element))))
-                  [@!ref])
+                  [@!ref source])
     (v/x [:div {:class                   "prose contents"
                 :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
@@ -352,10 +352,9 @@
    - adds :data to params when a :query is provided"
   [{:as match :match/keys [endpoints params route]}]
   [:Suspense {:fallback (loading:spinner "w-4 h-4 absolute top-2 right-2")}
-   (prn (-> endpoints :view :endpoint/sym) (-> endpoints :view :endpoint/sym (@routes/!views)))
    (if-let [view (-> endpoints :view :endpoint/sym (@routes/!views))]
      (when view
-       [view (assoc params :account-id (db/get :env/account :account-id))])
+       [view (assoc params :account-id (db/get :env/config :account-id))])
      (pr-str match))])
 
 (defn use-debounced-value

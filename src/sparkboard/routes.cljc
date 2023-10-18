@@ -204,20 +204,29 @@
                  (mapcat #(endpoint-maps (:name %) (:meta %))))
            (:cljs.analyzer/namespaces cljs-env))))
 
+
+
 #?(:clj
-   (defmacro register-route [name {:keys [alias-of route]}]
-     `(do
-        ~(if alias-of
-           `(defn ~name {:endpoint {:view ~route}} [& args#] (prn :foo) (apply ~alias-of args#))
-           (do (swap! (ana/current-state) assoc-in [:cljs.analyzer/namespaces
-                                                    (symbol (str *ns*))
-                                                    :defs
-                                                    name
-                                                    :meta
-                                                    :endpoint
-                                                    :view] route)
-               nil))
-        (swap! sparkboard.routes/!views assoc '~(symbol (str *ns*) (str name)) ~(or alias-of name)))))
+   (defmacro register-route [name {:as opts :keys [alias-of route]}]
+     (let [sym-meta (cond-> opts
+                            alias-of
+                            (merge (-> (if (:ns &env)
+                                         (:meta (ana/resolve &env alias-of))
+                                         (meta (resolve alias-of)))
+                                       (u/select-by (comp #{"view"} namespace)))
+                                   {:endpoint {:view route}}))]
+       `(do
+          ~(if alias-of
+             `(def ~(with-meta name sym-meta))
+             (do (swap! (ana/current-state) assoc-in [:cljs.analyzer/namespaces
+                                                      (symbol (str *ns*))
+                                                      :defs
+                                                      name
+                                                      :meta
+                                                      :endpoint
+                                                      :view] route)
+                 nil))
+          (swap! sparkboard.routes/!views assoc '~(symbol (str *ns*) (str name)) (with-meta ~(or alias-of name) ~(u/select-by sym-meta (comp #{"view"} namespace))))))))
 
 #?(:cljs (do
            (defonce !history (atom nil))
@@ -249,12 +258,14 @@
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
-  (cond-> (cond (string? route) route
-                (keyword? route) (bidi/path-for @!routes route options)
-                (vector? route) (apply bidi/path-for @!routes (update route 0 u/dequote))
-                :else (bidi/path-for @!routes route options))
-          (:query-params options)
-          (-> (query-params/merge-query (:query-params options)) :path)))
+  (cond (string? route) route
+        (vector? route) (apply path-for route)
+        :else
+        (let [view (get @!views route)
+              target (:view/target (meta view) :root)]
+          (cond-> (bidi/path-for @!routes route options)
+                  (:query-params options)
+                  (-> (query-params/merge-query (:query-params options)) :path)))))
 
 (def match-route
   "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"

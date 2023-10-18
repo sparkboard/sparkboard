@@ -6,7 +6,9 @@
 
 #?(:clj (def ^:dynamic *selected-locale* "en"))
 (defn current-locale []
-  #?(:cljs (db/get :env/account :account/locale "en")
+  #?(:cljs (-> (db/entity :env/config)
+               :account
+               (:account/locale "en"))
      :clj  *selected-locale*))
 
 

@@ -72,6 +72,12 @@
                  (assoc out as (get m k))
                  out)) {} kmap))
 
+(defn select-by [m pred]
+  (reduce-kv (fn [out k v]
+               (if (pred k)
+                 (assoc out k v)
+                 out)) {} m))
+
 (defmacro p-when [test & body]
   `(p/let [result# ~test]
      (when result#

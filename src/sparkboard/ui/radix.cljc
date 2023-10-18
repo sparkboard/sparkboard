@@ -92,7 +92,7 @@
     [:el dialog/Root (v/props root)
      [:el dialog/Portal
       [:el dialog/Overlay
-       {:class "inset-0 fixed backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid place-items-center sm:p-4 "}
+       {:class "inset-0 fixed backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid place-items-center"}
        [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none dialog/Content
         (v/props {:class "min-w-[300px]"} content)
         body

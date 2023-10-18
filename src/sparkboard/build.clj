@@ -98,7 +98,7 @@
            '[datalevin.core :as dl]
            '[sparkboard.server.datalevin :as sd]
            '[sparkboard.server.env :as env]
-           '[sparkboard.schema :as sb.schema])
+           '[sparkboard.schema :as sch])
 
   ;; reset db (may break fulltext index?)
   (do
@@ -111,9 +111,9 @@
     (def entities (one-time/all-entities))
 
     ;; transact schema
-    (db/merge-schema! @sb.schema/!schema)
+    (db/merge-schema! @sch/!schema)
     ;; upsert lookup refs
-    (db/transact! (mapcat sb.schema/unique-keys entities))
+    (db/transact! (mapcat sch/unique-keys entities))
     ;; transact entities
     (db/transact! (one-time/all-entities)))
 

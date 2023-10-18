@@ -8,6 +8,7 @@
             [sparkboard.client.scratch]
             [sparkboard.app.domain :as domain]
             [sparkboard.i18n :refer [tr]]
+            [sparkboard.schema :as sch]
             [sparkboard.ui.radix :as radix]
             [sparkboard.routes :as routes]
             [sparkboard.slack.firebase :as firebase]
@@ -29,7 +30,7 @@
 (ui/defview root
   []
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
-    [:div.w-full.font-sansa
+    [:div.w-full.font-sans
      #_(dev-info match)
      (ui/try
        [:<>
@@ -76,6 +77,7 @@
   (routes/init-endpoints! app/client-endpoints))
 
 (defn init []
+  (db/merge-schema! @sch/!schema)
   (read-env!)
   (firebase/init)
   (init-endpoints!)

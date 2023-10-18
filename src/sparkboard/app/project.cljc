@@ -122,7 +122,7 @@
       :prepare  [az/with-account-id
                  (member/member:log-visit! :project-id)]}
      [{:keys [project-id]}]
-     (db/pull `[{:project/board ~entity/fields}
+     (query/pull `[{:project/board ~entity/fields}
                 ~@entity/fields
                 :project/sticky?]
               project-id)))

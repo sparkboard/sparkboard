@@ -212,10 +212,10 @@
                  (handler req (authorize! handler req params))))
           (when (:view endpoints)
             (server.html/app-page
-              {:tx [(assoc env/client-config :db/id :env/config)
-                    (assoc (:account req)
-                      :db/id :env/account
-                      :account-id (sch/wrap-id (:entity/id (:account req))))]}))
+              {:tx [(assoc env/client-config
+                      :db/id :env/config
+                      :account-id (sch/wrap-id (:entity/id (:account req)))
+                      :account (:account req))]}))
           (ring.http/not-found "Not found")))))
 
 (def app-handler

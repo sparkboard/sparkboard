@@ -124,12 +124,22 @@
       :prepare  [az/with-account-id
                  (member/member:log-visit! :board-id)]}
      [{:keys [board-id]}]
-     (db/pull `[~@entity/fields
-                :board/registration-open?
-                {:board/owner [~@entity/fields :org/show-org-tab?]}
-                {:project/_board [~@entity/fields :* :entity/archived?]}
-                {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
-              board-id)))
+     (query/pull `[~@entity/fields
+                   :board/registration-open?
+                   {:board/owner [~@entity/fields :org/show-org-tab?]}
+                   {:project/_board [~@entity/fields :entity/archived?]}
+                   {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
+                 board-id)))
+(comment
+
+  (query/pull
+    `[(:entity/id :db/id true)]
+    [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
+
+  (query/pull `[:entity/id
+                {:project/_board [~@entity/fields]}]
+              [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
+  (db:read {:board-id ex-board-id}))
 
 
 
@@ -166,7 +176,7 @@
                                        account-id)
                    params)]}
      [{:keys [board-id]}]
-     (db/pull (u/template
+     (query/pull (u/template
                 [*
                  ~@entity/fields])
               board-id)))
@@ -192,12 +202,13 @@
    :view/target :modal}
   [{:as params :keys [route]}]
   (let [owners (->> (query/use! ['sparkboard.app.account/db:account-orgs])
-                    (cons (entity/account-as-entity (db/get :env/account))))]
+                    (cons (entity/account-as-entity (db/get :env/config :account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
                                 :entity/domain ?domain
                                 :board/owner   [:entity/id (uuid (?owner :init (or (-> params :query-params :org)
-                                                                                   (str (db/get :env/account :entity/id)))))]})
+                                                                                   (str (-> (db/get :env/config :account)
+                                                                                            :entity/id)))))]})
                       :required [?title ?domain]]
       [:form
        {:class     ui/form-classes
@@ -248,9 +259,12 @@
   (let [board       (query/use! [`db:read params])
         current-tab (:board/tab params "projects")
         ?filter     (h/use-state nil)
-        tabs        [["projects" (tr :tr/projects) (:project/_board board)]
+        tabs        [["projects" (tr :tr/projects) (db/where [[:project/board (:db/id board)]])]
                      ["members" (tr :tr/members) (->> (:member/_entity board) (map #(merge (:member/account %) %)))]]]
     [:<>
+     (str (into #{}
+                (map (comp  :project/board))
+                (db/where [:project/board])))
      [header/entity board
       [header/btn {:icon [icons/settings]
                    :href (routes/path-for 'sparkboard.app.board/edit params)}]
@@ -276,7 +290,7 @@
 (ui/defview read
   {:route ["/b/" ['entity/id :board-id]]}
   [params]
-  (if (db/get :env/account)
+  (if (db/get :env/config :account)
     [read:signed-in params]
     [read:public params]))
 
