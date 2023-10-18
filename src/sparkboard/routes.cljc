@@ -190,7 +190,8 @@
            (all-ns))))
 
 (comment
-  (endpoints))
+  (->> (endpoints)
+       (filter (comp #{:view} :endpoint/method))))
 
 #?(:clj
    (defn view-endpoints [cljs-env]

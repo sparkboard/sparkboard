@@ -195,13 +195,6 @@
   [req _]
   (#'query/ws:handle-request ws-options req))
 
-(defn pull
-  {:endpoint {:query ["/pull"]}}
-  ;; TODO
-  ;; generic, rule-based auth?
-  [{:keys [id expr]}]
-  (db/pull expr id))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Routes
 
