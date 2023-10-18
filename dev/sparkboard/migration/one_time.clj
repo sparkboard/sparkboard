@@ -13,7 +13,6 @@
             [sparkboard.app.chat :as chat]
             [sparkboard.schema :as sch]
             [sparkboard.server.datalevin :as sb.dl :refer [conn]]
-            [sparkboard.schema :as sschema]
             [sparkboard.server.env :as env]
             [re-db.api :as db]
             [re-db.triplestore :as ts]
@@ -188,13 +187,13 @@
   (memoize
     (fn [kind s]
       (let [s (:$oid s s)]
-        (cond (uuid? s) (do (assert (= kind (sb.dl/uuid->kind s))
-                                    (str "wrong kind. expected " kind, "got " (sb.dl/uuid->kind s) ". id: " s))
+        (cond (uuid? s) (do (assert (= kind (sch/kind s))
+                                    (str "wrong kind. expected " kind, "got " (sch/kind s) ". id: " s))
                             s)
-              (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sb.dl/uuid->kind (second s)))
+              (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sch/kind (second s)))
                                                                (throw (ex-info (str "unexpected uuid kind: " kind " " s " ")
                                                                                {:expected-kind kind
-                                                                                :actual-kind   (sb.dl/uuid->kind (second s))
+                                                                                :actual-kind   (sch/kind (second s))
                                                                                 :s             s
                                                                                 })))
                                                              (second s))
@@ -253,7 +252,7 @@
 (def unique-ids-from
   (memoize
     (fn [coll-k]
-      (into #{} (comp (mapcat sschema/unique-keys)
+      (into #{} (comp (mapcat sch/unique-keys)
                       (map (comp val first))) (coll-entities coll-k)))))
 
 (defn missing-entity? [coll-k ref]
@@ -263,7 +262,7 @@
          (not ((unique-ids-from coll-k) (to-uuid kind ref))))))
 
 (defn missing-uuid? [the-uuid]
-  (let [kind   (sb.dl/uuid->kind the-uuid)
+  (let [kind   (sch/kind the-uuid)
         coll-k (keyword (name kind) "as-map")]
     (not (contains? (unique-ids-from coll-k) the-uuid))))
 
@@ -1159,11 +1158,11 @@
            (change-keys (changes-for k))))))
 
 (defn explain-errors! []
-  (sschema/install-malli-schemas!)
+  (sch/install-malli-schemas!)
   (->> colls
        (mapcat (fn [k]
                  (for [entity (coll-entities k)
-                       :let [schema (@sschema/!malli-registry k)
+                       :let [schema (@sch/!malli-registry k)
                              _      (when-not schema
                                       (prn :NO_SCHEMA))]
                        :when (not (m/validate schema entity))]
@@ -1185,7 +1184,7 @@
 
 (defn flatten-entities-xf []
   "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
-  (let [reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys @sschema/!schema))]
+  (let [reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys @sch/!schema))]
     (mapcat (fn [doc]
               (cons (apply dissoc doc reverse-ks)
                     (mapcat doc reverse-ks))))))
@@ -1221,12 +1220,12 @@
   ;; transact schema
 
   (def entities (all-entities))
-  (db/merge-schema! @sschema/!schema)
+  (db/merge-schema! @sch/!schema)
   ;; "upsert" lookup refs
-  (db/transact! (mapcat sschema/unique-keys entities))
+  (db/transact! (mapcat sch/unique-keys entities))
   (db/transact! entities)
 
-  (count (filter :entity/id (mapcat sschema/unique-keys entities)))
+  (count (filter :entity/id (mapcat sch/unique-keys entities)))
   ;; transact lookup refs first,
 
   ;; ;; then transact everything else
@@ -1243,7 +1242,7 @@
   (explain-errors!)                                         ;; checks against schema
 
   ;; for investigations: look up any entity by id
-  (def all-ids (->> (mapcat sschema/unique-keys (all-entities))
+  (def all-ids (->> (mapcat sch/unique-keys (all-entities))
                     (mapcat vals)
                     (into #{})))
 
@@ -1262,10 +1261,10 @@
 
   ;; try validating generated docs
   (check-docs
-    (mapv mg/generate (vals @sschema/!entity-schemas)))
+    (mapv mg/generate (vals @sch/!entity-schemas)))
 
   ;; generate examples for every schema entry
-  (mapv (juxt identity mg/generate) (vals @sschema/!entity-schemas))
+  (mapv (juxt identity mg/generate) (vals @sch/!entity-schemas))
 
   (clojure.core/time (count (root-entities)))
 
