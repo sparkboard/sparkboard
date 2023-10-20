@@ -284,12 +284,13 @@
 
 (comment
   @!routes
-  (path-for 'sparkboard.app.board/read)
-  (path-for 'sparkboard.app.org/read {:org-id (random-uuid)})
+  (path-for 'sparkboard.app.board/show)
+  (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
   (match-route "/"))
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
+    (prn :kind kind :id id)
     (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
           params {(keyword (str (name kind) "-id")) id}
           path   (path-for tag params)]

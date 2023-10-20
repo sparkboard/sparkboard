@@ -4,6 +4,7 @@
     #?(:cljs [sparkboard.ui.radix :as radix])
     #?(:cljs [yawn.hooks :as h])
     #?(:clj [sparkboard.server.account :as account])
+    [clojure.pprint :refer [pprint]]
     [inside-out.forms :as forms]
     [promesa.core :as p]
     [re-db.api :as db]
@@ -48,7 +49,7 @@
          display-name :account/display-name} account]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href 'sparkboard.app.account/read {:account-id account-id})} display-name]
+      {:href (routes/href 'sparkboard.app.account/show {:account-id account-id})} display-name]
      child
      [header/chat account]
      [header/account]]))
@@ -76,7 +77,7 @@
   [{:keys [account-id]}]
   (->> (query/pull '[{:member/_account [:member/roles
                                         :member/last-visited
-                                        {:member/entity [(:entity/id :db/id true)
+                                        {:member/entity [:entity/id
                                                          :entity/kind
                                                          :entity/title
                                                          {:image/avatar [:asset/link
@@ -99,7 +100,7 @@
        (into #{} (comp (take 10)
                        (map :entity/id)))))
 
-(ui/defview read
+(ui/defview show
   {:route "/account"}
   [_]
   (let [account-id (db/get :env/config :account-id)
@@ -205,7 +206,7 @@
    :endpoint/public? true}
   [params]
   (if-let [account-id (db/get :env/config :account-id)]
-    (read {:account-id account-id})
+    (show {:account-id account-id})
     (sign-in params)))
 
 #?(:clj

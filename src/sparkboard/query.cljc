@@ -10,7 +10,7 @@
             [re-db.sync.transit :as transit]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
-            [re-db.sync.entity-diff-1 :as entity-diff])
+            [re-db.sync.entity-diff-2 :as entity-diff])
   #?(:cljs (:require-macros sparkboard.query)))
 
 (def ws:default-options
@@ -69,7 +69,6 @@
                                                       (js/setTimeout init-ws 1000)))
                          (.addEventListener "message" #(let [message (unpack (j/get % :data))]
                                                          (reset! (:!last-message channel) message)
-                                                         #_(clojure.pprint/pprint (-> message second second))
                                                          (sync/handle-message handlers context message))))))]
        (init-ws)
        channel)))
@@ -77,7 +76,7 @@
 #?(:cljs
    (defonce ws:channel
             (delay (ws:connect {:port     3000
-                                :handlers (sync/result-handlers entity-diff/result-handlers)}))))
+                                :handlers (sync/result-handlers (entity-diff/result-handlers :entity/id))}))))
 
 (defn normalize-vec [[id params]] [id (or params {})])
 
@@ -133,21 +132,7 @@
    (def pull! (comp use! pull*)))
 
 #?(:clj
-   (def pull
-     (db/partial-pull
-       ;; at root, add :db/id [:ductile/id X]
-       {:wrap-root
-        (fn [_conn root]
-          (if (:entity/id root)
-            (assoc root :db/id [:entity/id (:entity/id root)])
-            root))
-        :wrap-ref
-        (fn [conn e]
-          [:db/id (if-let [entity-id (re-db.read/get conn e :ductile/id)]
-                    [:entity/id entity-id]
-                    (do
-                      (prn ::pull (str "Warning: no entity/id found for ref " e))
-                      e))])})))
+   (def pull db/pull))
 
 #?(:clj
    (defn op-impl [env op name args]
@@ -188,5 +173,3 @@
     re-db.api/*conn*
     @re-db.api/*conn*
     [:entity/id #uuid "adc4e6a6-a97e-330b-8e0a-94268505bf37"]))
-
-(def id '(:entity/id :db/id true))

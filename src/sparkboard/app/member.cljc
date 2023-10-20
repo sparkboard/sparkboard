@@ -132,7 +132,7 @@
               ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
               :search-term "matt"}))
 
-(ui/defview read
+(ui/defview show
   {:view/target :modal
    :route       ["/m/" ['entity/id :member-id]]}
   [params]

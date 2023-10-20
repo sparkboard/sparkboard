@@ -118,22 +118,20 @@
      ;; create membership
      ))
 
-#?(:clj
-   (defn db:read
-     {:endpoint {:query true}
-      :prepare  [az/with-account-id
-                 (member/member:log-visit! :board-id)]}
-     [{:keys [board-id]}]
-     (query/pull `[~@entity/fields
-                   :board/registration-open?
-                   {:board/owner [~@entity/fields :org/show-org-tab?]}
-                   {:project/_board [~@entity/fields :entity/archived?]}
-                   {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
-                 board-id)))
+(query/defquery db:read
+  {:prepare [az/with-account-id
+             (member/member:log-visit! :board-id)]}
+  [{:keys [board-id]}]
+  (query/pull `[~@entity/fields
+                :board/registration-open?
+                {:board/owner [~@entity/fields :org/show-org-tab?]}
+                {:project/_board [~@entity/fields :entity/archived?]}
+                {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
+              board-id))
 (comment
 
   (query/pull
-    `[(:entity/id :db/id true)]
+    `[:entity/id]
     [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
 
   (query/pull `[:entity/id
@@ -256,15 +254,12 @@
 
 (ui/defview read:signed-in
   [params]
-  (let [board       (query/use! [`db:read params])
+  (let [board       (db:read params)
         current-tab (:board/tab params "projects")
         ?filter     (h/use-state nil)
         tabs        [["projects" (tr :tr/projects) (db/where [[:project/board (:db/id board)]])]
                      ["members" (tr :tr/members) (->> (:member/_entity board) (map #(merge (:member/account %) %)))]]]
     [:<>
-     (str (into #{}
-                (map (comp  :project/board))
-                (db/where [:project/board])))
      [header/entity board
       [header/btn {:icon [icons/settings]
                    :href (routes/path-for 'sparkboard.app.board/edit params)}]
@@ -287,7 +282,7 @@
         [radix/tab-content {:value value}
          [entity/show-filtered-results {:results entities}]])]]))
 
-(ui/defview read
+(ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}
   [params]
   (if (db/get :env/config :account)
@@ -304,7 +299,7 @@
   (case (:board/tab params)
     "settings"
     (edit params)
-    (read params)))
+    (show params)))
 
 (comment
   [:ul                                                      ;; i18n stuff

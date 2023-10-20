@@ -94,7 +94,7 @@
       [:el dialog/Overlay
        {:class "inset-0 fixed backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid place-items-center"}
        [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none dialog/Content
-        (v/props {:class "min-w-[300px]"} content)
+        (v/props {:class "min-w-[300px] max-w-[900px]"} content)
         body
         [:el.outline-none.contents dialog/Close [:div.p-2.absolute.top-0.right-0.z-10 (icons/close "w-5 h-5")]]]]]]))
 

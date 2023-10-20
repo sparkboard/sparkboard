@@ -97,7 +97,7 @@
      (ui/show-field ?title)
      [:button {:on-click #(p/let [res (routes/POST `db:new! @!project)]
                             (when-not (:error res)
-                              (routes/set-path! ['sparkboard.app.board/read params])))}
+                              (routes/set-path! ['sparkboard.app.board/show params])))}
       (tr :tr/create)]]))
 
 (defn youtube-embed [video-id]
@@ -131,7 +131,12 @@
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
 (def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
 
-(ui/defview read
+(query/defquery db:show-project
+  [{:keys [project-id]}]
+  (db/pull [:*
+            {:project/board entity/fields}] project-id))
+
+(ui/defview show
   {:route       ["/p/" ['entity/id :project-id]]
    :view/target :modal}
   [params]
@@ -140,9 +145,7 @@
                         description
                         video]
          :project/keys [board
-                        badges]} (query/pull! [:*
-                                               {:project/board entity/fields}]
-                                              (:project-id params))]
+                        badges]} (db:show-project params)]
     [:<>
      #_[ui/entity-header board]
      [:div.p-body.flex.flex-col.gap-2

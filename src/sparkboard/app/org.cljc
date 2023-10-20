@@ -111,7 +111,7 @@
     (db/transact! [member])
     {:body org}))
 
-(ui/defview read
+(ui/defview show
   {:route ["/o/" ['entity/id :org-id]]}
   [params]
   (forms/with-form [_ ?q]
@@ -179,7 +179,7 @@
          [:div.flex.gap-6
           (ui/image-field ?logo)
           (ui/image-field ?background)]]
-        [:a.btn.btn-primary.p-4 {:href (routes/entity org :read)} (tr :tr/done)]]])))
+        [:a.btn.btn-primary.p-4 {:href (routes/entity org :show)} (tr :tr/done)]]])))
 
 (ui/defview new
   {:route  ["/o/" "new"]

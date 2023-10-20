@@ -1,6 +1,7 @@
 (ns sparkboard.entity
   (:require [clojure.set :as set]
             [malli.util :as mu]
+            [re-db.api :as db]
             [sparkboard.app.domain :as domains]
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
@@ -10,7 +11,7 @@
             #?(:clj [sparkboard.server.datalevin :as dl])))
 
 ;; common entity fields
-(def fields `[(:entity/id :db/id true)
+(def fields `[:entity/id
               :entity/kind
               :entity/title
               :entity/description
@@ -43,10 +44,10 @@
      [{:as   entity
        :keys [entity/title image/avatar]}]
      [:a.flex.relative
-      {:href  (try (routes/href (routes/entity entity :read))
+      {:href  (try (routes/href (routes/entity entity :show))
                    (catch js/Error e
                      (js/console.error e)
-                     (prn :ERROR entity :read)))
+                     (prn :ERROR entity :routes.entity.show)))
        :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
                "overflow-hidden rounded-lg"
                "h-12 sm:h-16 bg-card text-card-txt border border-white"]}

@@ -41,7 +41,7 @@
                                                        (routes/set-modal! nil))}}
                       (ui/show-match modal))]
        (catch js/Error e
-              (str "Error: " (ex-message e))))]))
+         (str "Error: " (ex-message e))))]))
 
 (defonce !react-root (delay (root/create :web (root))))
 

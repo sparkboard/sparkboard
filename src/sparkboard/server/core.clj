@@ -17,7 +17,7 @@
             [re-db.reactive :as r]
             [re-db.read :as read]
             [re-db.sync :as sync]
-            [re-db.sync.entity-diff-1 :as sync.entity]
+            [re-db.sync.entity-diff-2 :as sync.entity]
             [ring.middleware.basic-authentication :as basic-auth]
             [ring.middleware.cookies :as ring.cookies]
             [ring.middleware.defaults]
@@ -156,7 +156,7 @@
 
 (memo/defn-memo $txs [ref]
   (r/catch
-    (sync.entity/txs ref)
+    (sync.entity/$txs :entity/id ref)
     (fn [e]
       (println "Error in $resolve-query")
       (println e)
