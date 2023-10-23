@@ -290,7 +290,6 @@
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
-    (prn :kind kind :id id)
     (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
           params {(keyword (str (name kind) "-id")) id}
           path   (path-for tag params)]

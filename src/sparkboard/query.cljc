@@ -52,6 +52,7 @@
      (let [{:keys [url port path pack unpack handlers]} (merge ws:default-options options)
            !ws     (atom nil)
            channel {:!last-message (atom nil)
+                    :dispose-delay 60000
                     :ws            !ws
                     ::sync/send    (fn [message]
                                      (let [^js ws @!ws]
@@ -76,7 +77,7 @@
 #?(:cljs
    (defonce ws:channel
             (delay (ws:connect {:port     3000
-                                :handlers (sync/result-handlers (entity-diff/result-handlers :entity/id))}))))
+                                :handlers (sync/result-handlers entity-diff/result-handlers)}))))
 
 (defn normalize-vec [[id params]] [id (or params {})])
 
@@ -87,16 +88,6 @@
 (comment
   (routes/by-tag 'sparkboard.app.org/db:read :query)
   @routes/!tags)
-
-#?(:cljs
-   (defn once [qvec]
-     (if (routes/by-tag (first qvec) :query)
-       (let [qvec (normalize-vec qvec)]
-         (or (sync/read-result qvec)
-             (do (sync/query-start-promise qvec)
-                 (sync/send @ws:channel [::sync/once qvec])
-                 (sync/read-result qvec))))
-       (delay {:error "Query not found"}))))
 
 #?(:cljs
    (defn use-cached-result [{:as result :keys [loading? value]}]

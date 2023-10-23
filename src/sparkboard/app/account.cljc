@@ -90,7 +90,7 @@
        :member/_account
        (map #(u/lift-key % :member/entity))))
 
-(query/defquery db:recents
+(query/defquery db:recent-ids
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [params]
@@ -106,7 +106,7 @@
   (let [account-id (db/get :env/config :account-id)
         !tab       (h/use-state (tr :tr/recent))
         ?filter    (h/use-callback (forms/field))
-        recent-ids (db:recents {})
+        recent-ids (db:recent-ids {})
         all        (db:all {})
         recents    (filter (comp recent-ids :entity/id) all)
         account    (db/get :env/config :account)]

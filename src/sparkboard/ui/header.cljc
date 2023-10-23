@@ -45,7 +45,7 @@
              "w-4 h-4 rounded-full"
              "text-sm text-white bg-blue-500"
              "flex items-center justify-center"]}
-    (:unread (chat/db:counts {:entity-id (sch/wrap-id entity)}))]
+    (:unread (chat/db:counts {}))]
    [btn {:icon [icons/chat-bubble-bottom-center "w-7 h-7"]}]])
 
 (ui/defview account []

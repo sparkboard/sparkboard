@@ -1,6 +1,7 @@
 (ns sparkboard.util
   (:refer-clojure :exclude [ref])
   (:require #?(:clj [backtick])
+            [clojure.pprint]
             [clojure.string :as str]
             [promesa.core :as p]
             [re-db.hooks :as hooks]
@@ -117,3 +118,6 @@
   "Compare two values in descending order."
   [a b]
   (compare b a))
+
+(defmacro pprint [x]
+  `(~'clojure.pprint/pprint ~x))
