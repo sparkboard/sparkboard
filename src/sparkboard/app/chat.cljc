@@ -119,8 +119,6 @@
      {:chat.message/content [:prose/format
                              :prose/string]}]))
 
- [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
-
 (defn ensure-participant!
   "Throw if account-id is not a participant in chat."
   [account-id chat]
@@ -152,7 +150,7 @@
   "Get a chat by chat-id"
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id chat-id]}]
-  (some->> (query/pull chat-fields-full chat-id)
+  (some->> (db/pull chat-fields-full chat-id)
            (ensure-participant! account-id)))
 
 (query/defquery db:chats-list
@@ -162,10 +160,10 @@
        :chat/_participants
        (sort-by :entity/updated-at u/compare:desc)
        (mapv (fn [e]
-               (-> (query/pull chat-fields-meta e)
+               (-> (db/pull chat-fields-meta e)
                    (assoc :chat/last-message
-                          (query/pull message-fields
-                                      (last (:chat/messages e)))))))))
+                          (db/pull message-fields
+                                   (last (:chat/messages e)))))))))
 
 (defn read? [account-id {:chat/keys [last-message read-last]}]
   (let [account-id (sch/unwrap-id account-id)]
@@ -207,17 +205,7 @@
                          :keys           [account-id]
                          current-chat-id :chat-id}]
   (let [chats (db:chats-list nil)]
-    (def CHATS chats)
-    (-> CHATS first :chat/participants first :db/id :entity/id)
-    ;; TODO
-    ;; we are getting {:db/id {:db/id ...}}
-    ;; we are seeing NESTED ENTITIES, ie, an entity has an id of {:db/id ..} which itself has become an entity,
-    ;; - :entity/created-by returns a map of {:entity/id ..} instead of an entity reference
-    ;; - :entity/participants returns an entity that has an id of an entity (!), ie. NESTED ENTITIES, broken!
-    ;; entities returning {:db/id [:entity/id]}
-    #_[member-search params]
     [:div.flex.flex-col.text-sm.divide-y.px-1.py-2
-     [ui/pprinted (-> chats first :chat/participants first )]
      (doall
        (for [{:as   chat
               :keys [entity/id

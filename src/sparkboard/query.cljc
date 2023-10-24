@@ -110,21 +110,6 @@
              loading? (throw loading?)
              :else value))))
 
-#?(:cljs
-   (defn ws:send [message]
-     (sync/send @ws:channel message)))
-
-#?(:cljs
-   (defn pull* [expr id]
-     ['sparkboard.server.core/pull {:id   id
-                                    :expr expr}]))
-
-#?(:cljs
-   (def pull! (comp use! pull*)))
-
-#?(:clj
-   (def pull db/pull))
-
 #?(:clj
    (defn op-impl [env op name args]
      (let [[name doc params argv body] (u/parse-defn-args name args)
@@ -159,6 +144,7 @@
      #_(throw (ex-info "Effect! error" {}))
      (-> (routes/POST "/effect" (into [f] args))
          (p/catch (fn [e] {:error (ex-message e)})))))
+
 (comment
   (re-db.read/-resolve-e
     re-db.api/*conn*

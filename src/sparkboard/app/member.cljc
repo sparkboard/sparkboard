@@ -80,7 +80,7 @@
    (defn db:read
      {:endpoint {:query true}}
      [params]
-     (dissoc (query/pull `[:*
+     (dissoc (db/pull `[:*
                         {:member/tags [:*]}
                         {:member/account [~@entity/fields
                                           :account/display-name]}]

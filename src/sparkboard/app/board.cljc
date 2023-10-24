@@ -122,21 +122,21 @@
   {:prepare [az/with-account-id
              (member/member:log-visit! :board-id)]}
   [{:keys [board-id]}]
-  (query/pull `[~@entity/fields
-                :board/registration-open?
-                {:board/owner [~@entity/fields :org/show-org-tab?]}
-                {:project/_board [~@entity/fields :entity/archived?]}
-                {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
-              board-id))
+  (db/pull `[~@entity/fields
+             :board/registration-open?
+             {:board/owner [~@entity/fields :org/show-org-tab?]}
+             {:project/_board [~@entity/fields :entity/archived?]}
+             {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
+           board-id))
 (comment
 
-  (query/pull
+  (db/pull
     `[:entity/id]
     [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
 
-  (query/pull `[:entity/id
-                {:project/_board [~@entity/fields]}]
-              [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
+  (db/pull `[:entity/id
+             {:project/_board [~@entity/fields]}]
+           [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
   (db:read {:board-id ex-board-id}))
 
 
@@ -174,7 +174,7 @@
                                        account-id)
                    params)]}
      [{:keys [board-id]}]
-     (query/pull (u/template
+     (db/pull (u/template
                 [*
                  ~@entity/fields])
               board-id)))
@@ -236,16 +236,16 @@
   {:route ["/b/" ['entity/id :board-id] "/register"]}
   [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
-                [:div
-                 [:h3 (tr :tr/register)]
-                 (ui/show-field ?name)
-                 (ui/show-field ?pass)
-                 [:button {:on-click #(p/let [res (routes/POST route @!member)]
-                                        ;; TODO - how to determine POST success?
-                                        #_(when (http-ok? res)
-                                            (routes/set-path! [:board/read params])
-                                            res))}
-                  (tr :tr/register)]]))
+    [:div
+     [:h3 (tr :tr/register)]
+     (ui/show-field ?name)
+     (ui/show-field ?pass)
+     [:button {:on-click #(p/let [res (routes/POST route @!member)]
+                            ;; TODO - how to determine POST success?
+                            #_(when (http-ok? res)
+                                (routes/set-path! [:board/read params])
+                                res))}
+      (tr :tr/register)]]))
 
 (ui/defview read:public [params]
   (let [board (query/use! [`db:read params])]

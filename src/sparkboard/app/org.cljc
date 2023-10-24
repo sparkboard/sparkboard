@@ -51,14 +51,14 @@
 (query/defquery db:edit
   [{:keys [org-id]}]
   ;; all the settings that can be changed
-  (query/pull `[~@entity/fields]
+  (db/pull `[~@entity/fields]
            org-id))
 
 (query/defquery db:read
   {:prepare [az/with-account-id!
              (member/member:log-visit! :org-id)]}
   [{:keys [org-id]}]
-  (query/pull `[~@entity/fields
+  (db/pull `[~@entity/fields
              {:board/_owner ~entity/fields}]
            (dl/resolve-id org-id)))
 
