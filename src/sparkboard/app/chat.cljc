@@ -202,33 +202,37 @@
 (defn other-participant [account-id chat]
   (first (remove #(sch/id= account-id %) (:chat/participants chat))))
 
+(ui/defview chats-list* [{:keys [current-chat-id
+                                 account-id]} chats]
+  (doall
+    (for [{:as   chat
+           :keys [entity/id
+                  chat/participants
+                  chat/last-message]} chats
+          :let [other    (other-participant account-id chat)
+                current? (sch/id= current-chat-id id)]]
+      [:a.flex.flex-col.py-2.cursor-default.mx-1.px-1.hover:bg-gray-100.cursor-pointer.rounded-lg
+       {:href  (routes/href `chat {:chat-id id})
+        :key   id
+        :class (when current? "bg-blue-100 rounded")}
+       [:div.flex.items-center.gap-2
+        [:div.w-2.h-2.rounded-full
+         {:class (if (and (unread? account-id chat) #_(not current?)) "bg-blue-500")}]
+        ;; participants
+
+        [:div.font-bold {:key (:entity/id other)} (:account/display-name other)]]
+       [:div.pl-4.text-gray-700.hidden.md:line-clamp-2
+        (ui/show-prose
+          (cond-> (:chat.message/content last-message)
+                  (sch/id= account-id (:entity/created-by last-message))
+                  (update :prose/string (partial str (tr :tr/you) " "))))]])))
+
 (ui/defview chats-list [{:as             chat
                          :keys           [account-id]
                          current-chat-id :chat-id}]
-  (let [chats (db:chats-list nil)]
-    [:div.flex.flex-col.text-sm.divide-y.px-1.py-2
-     (doall
-       (for [{:as   chat
-              :keys [entity/id
-                     chat/participants
-                     chat/last-message]} chats
-             :let [other    (other-participant account-id chat)
-                   current? (sch/id= current-chat-id id)]]
-         [:a.flex.flex-col.py-2.cursor-default.mx-1.px-1
-          {:href  (routes/href `chat {:chat-id id})
-           :key   id
-           :class (when current? "bg-blue-100 rounded")}
-          [:div.flex.items-center.gap-2
-           [:div.w-2.h-2.rounded-full
-            {:class (if (and (unread? account-id chat) #_(not current?)) "bg-blue-500")}]
-           ;; participants
-
-           [:div.font-bold {:key (:entity/id other)} (:account/display-name other)]]
-          [:div.pl-4.text-gray-700.hidden.md:line-clamp-2
-           (ui/show-prose
-             (cond-> (:chat.message/content last-message)
-                     (sch/id= account-id (:entity/created-by last-message))
-                     (update :prose/string (partial str (tr :tr/you) " "))))]]))]))
+  [:div.flex.flex-col.text-sm.divide-y.px-1.py-2
+   (chats-list* {:current-chat-id current-chat-id
+                 :account-id      account-id} (db:chats-list nil))])
 
 (ui/defview show-chat-message
   {:key (fn [_ {:keys [entity/id]}] id)}
@@ -238,12 +242,17 @@
                                 entity/id]}]
   [:div.p-2.flex.flex-col
    {:class ["max-w-[600px] rounded-[12px]"
-            (if (= (sch/unwrap-id account-id)
-                   (sch/unwrap-id created-by))
+            (if (sch/id= account-id created-by)
               "bg-blue-500 text-white place-self-end"
               "bg-gray-100 text-gray-900")]
     :key   id}
    (ui/show-prose content)])
+
+(ui/defview chat-header [account-id chat]
+  [:div.p-2.text-lg.flex.items-center.h-10
+   (when (and account-id chat) (:account/display-name (other-participant account-id chat)))
+   [:div.flex-auto]
+   [radix/dialog-close [icons/close "w-5 h-5"]]])
 
 (ui/defview chat-messages [params]
   (let [!message           (h/use-state nil)
@@ -271,18 +280,14 @@
           (set! (.-scrollTop el) (.-scrollHeight el))))
       [(count messages) @!scrollable-window])
     [:<>
-     [:div.p-2.border-b.text-lg.flex.items-center
-      (:account/display-name (other-participant (:account-id params) chat))
-      [:div.flex-auto]
-      [radix/dialog-close [icons/close "w-5 h-5"]]]
-     [:div.flex-auto.overflow-y-scroll.flex.flex-col.gap-3.p-2
+     (chat-header (:account-id params) chat)
+     [:div.flex-auto.overflow-y-scroll.flex.flex-col.gap-3.p-2.border-t
       {:ref !scrollable-window}
       (->> messages
            (sort-by :entity/created-at)
            (map (partial show-chat-message params))
            doall)]
      [ui/auto-height-textarea
-
       {:class       [search-classes
                      "m-1 whitespace-pre-wrap min-h-[38px] flex-none"]
        :type        "text"
@@ -293,59 +298,25 @@
        :on-change   #(reset! !message (j/get-in % [:target :value]))
        :value       (or message "")}]]))
 
-(ui/defview chats
+(ui/defview show
   {:view/target :modal
    :route       "/chats"}
-  [{:as params :keys [other-id chat-id]}]
+  [{:as params :keys [other-id chat-id account-id]}]
   [:div {:class ["h-screen w-screen md:h-[80vh] md:w-[80vw] max-w-[800px] flex items-stretch"
-                 "height-100p flex divide-x items-stretch"]}
+                 "height-100p flex divide-x items-stretch bg-gray-100"]}
    [:div {:class ["min-w-48 max-w-md w-1/3 overflow-y-auto"]}
     [chats-list params]]
-   [:div.flex-auto.flex.flex-col.relative
-    (when (or other-id chat-id)
+   [:div.flex-auto.flex.flex-col.relative.m-2.rounded.bg-white.shadow
+    (if (or other-id chat-id)
       (ui/try
         [chat-messages params]
-        (catch js/Error e (str (ex-message e)))))]])
+        (catch js/Error e (str (ex-message e))))
+      (chat-header account-id nil))]])
 
 (routes/register-route chat
-  {:alias-of chats
+  {:alias-of show
    :route    ["/chats/" ['entity/id :chat-id]]})
 
 (routes/register-route new-chat
-  {:alias-of chats
+  {:alias-of show
    :route    ["/chats/" ['entity/id :entity-id] "/new/" ['entity/id :other-id]]})
-
-(comment
-
-  (memo/defn-memo $blah-atom [s]
-    (let [s (str s "-atom")]
-      (prn :INIT-ATOM s)
-      (r/atom s {:on-dispose #(prn :DISPOSE-ATOM s)})))
-
-  (memo/defn-memo $blah-reaction [s]
-    (let [s (str s "-reaction")]
-      (r/reaction
-        (re-db.hooks/use-effect
-          (fn []
-            (prn :INIT-REACTION s)
-            #(prn :DISPOSE-REACTION s)))
-        s)))
-
-  (ui/defview foo
-    {:route       "/foo"
-     :view/target :modal}
-    [_]
-    (let [!pick (h/use-state \a)]
-      (h/use-effect (fn []
-                      (prn :render "-------------------------")
-                      (js/setTimeout #(prn "===================") 10)))
-      [:div
-       (str "pick: "
-            {"atom: "     @($blah-atom @!pick)
-             "reaction: " @($blah-reaction @!pick)})
-
-       [:div.flex.gap-3
-        (for [s "abcdefghijklmnop"]
-          [:div.font-bold.text-xl {:key s :on-click #(reset! !pick s)} s]
-          )]])
-    ))

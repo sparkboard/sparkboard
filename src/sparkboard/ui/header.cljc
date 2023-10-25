@@ -1,5 +1,6 @@
 (ns sparkboard.ui.header
-  (:require [promesa.core :as p]
+  (:require ["@radix-ui/react-popover" :as Popover]
+            [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.app.chat :as chat]
             [sparkboard.i18n :as i :refer [tr]]
@@ -7,7 +8,8 @@
             [sparkboard.schema :as sch]
             [sparkboard.ui :as ui]
             [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]))
+            [sparkboard.ui.radix :as radix]
+            [yawn.hooks :as h]))
 
 (defn btn [{:keys [icon href]}]
   [(if href :a :div)
@@ -37,16 +39,35 @@
           {:trigger [icons/languages "w-5 h-5"]}
           (lang-menu-content))])
 
+(ui/defview chats-list []
+  (let [params {:account-id (db/get :env/config :account-id)}]
+    (->> (chat/db:chats-list params)
+         (take 6)
+         (chat/chats-list* params))))
+
 (ui/defview chat [entity]
-  [:a.relative.inline-flex.items-center.justify-center
-   {:href (routes/href `chat/chats)}
-   [:div
-    {:class ["absolute top-0 right-[-3px]"
-             "w-4 h-4 rounded-full"
-             "text-sm text-white bg-blue-500"
-             "flex items-center justify-center"]}
-    (:unread (chat/db:counts {}))]
-   [btn {:icon [icons/chat-bubble-bottom-center "w-7 h-7"]}]])
+  (let [!open? (h/use-state false)]
+    [:el Popover/Root
+     {:open           @!open?
+      :on-open-change #(reset! !open? %)}
+     [:el Popover/Trigger
+      [:div.relative.inline-flex.items-center.justify-center.cursor-ponter
+       [:div
+        {:class ["absolute top-0 right-[-3px]"
+                 "w-4 h-4 rounded-full"
+                 "text-sm text-white bg-blue-500"
+                 "flex items-center justify-center"]}
+        (:unread (chat/db:counts {}))]
+       [btn {:icon [icons/chat-bubble-bottom-center "w-7 h-7"]}]]]
+     [:el Popover/Portal
+      [:el.bg-white.shadow.p-2.outline-none.rounded-lg Popover/Content
+       {:align "end"
+        :style {:width 360}}
+       (when @!open?
+         [:div.flex.flex-col
+          (chats-list)
+          [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href `chat/show)}
+           "View all"]])]]]))
 
 (ui/defview account []
   (if-let [account (db/get :env/config :account)]

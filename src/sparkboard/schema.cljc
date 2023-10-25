@@ -15,7 +15,7 @@
 (defn unwrap-id [id]
   (cond (uuid? id) id
         (vector? id) (second id)
-        (map? id) (:entity/id id)
+        (:entity/id id) (:entity/id id)
         :else id))
 
 (defn id= [a b]
