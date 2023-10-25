@@ -12,7 +12,8 @@
             [sparkboard.entity :as entity]
             [re-db.api :as db]
             [yawn.view :as v]
-            [sparkboard.ui.radix :as radix]))
+            [sparkboard.ui.radix :as radix]
+            [sparkboard.ui.icons :as icons]))
 
 (comment
   (first (db/where [:project/badges]))
@@ -122,10 +123,10 @@
       :prepare  [az/with-account-id
                  (member/member:log-visit! :project-id)]}
      [{:keys [project-id]}]
-     (db/pull `[{:project/board ~entity/fields}
-                ~@entity/fields
-                :project/sticky?]
-              project-id)))
+     (query/pull `[{:project/board ~entity/fields}
+                   ~@entity/fields
+                   :project/sticky?]
+                 project-id)))
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
@@ -133,8 +134,8 @@
 
 (query/defquery db:show-project
   [{:keys [project-id]}]
-  (db/pull [:*
-            {:project/board entity/fields}] project-id))
+  (query/pull [:*
+               {:project/board entity/fields}] project-id))
 
 (ui/defview show
   {:route       ["/p/" ['entity/id :project-id]]
@@ -149,7 +150,9 @@
     [:<>
      #_[ui/entity-header board]
      [:div.p-body.flex.flex-col.gap-2
-      [:h1.font-bold.text-xl title]
+      [:div.flex.items-start.gap-2
+       [:h1.font-bold.text-xl.flex-auto title]
+       [radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
       (ui/show-prose description)
       (when-let [badges badges]
         [:section

@@ -26,12 +26,6 @@
                         :account/display-name :entity/title
                         :image/avatar         :image/avatar}))
 
-
-(def account-as-entity-fields
-  '[:entity/id
-    {:image/avatar [:asset/id]}
-    (:account/display-name :as :entity/title)])
-
 #?(:cljs
    (defn href [{:as e :entity/keys [kind id]} key]
      (when e

@@ -67,7 +67,7 @@
   (into []
         (comp (map :member/entity)
               (filter (comp #{:org} :entity/kind))
-              (map (db/pull entity/fields)))
+              (map (query/pull entity/fields)))
         (db/where [[:member/account account-id]])))
 
 
@@ -75,7 +75,7 @@
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
-  (->> (db/pull '[{:member/_account [:member/roles
+  (->> (query/pull '[{:member/_account [:member/roles
                                         :member/last-visited
                                         {:member/entity [:entity/id
                                                          :entity/kind

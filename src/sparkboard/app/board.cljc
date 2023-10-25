@@ -1,5 +1,6 @@
 (ns sparkboard.app.board
-  (:require #?(:clj [sparkboard.server.datalevin :as dl])
+  (:require [sparkboard.server.datalevin :as dl]
+            [clojure.string :as str]
             #?(:cljs [sparkboard.ui.radix :as radix])
             #?(:cljs [yawn.hooks :as h])
             [sparkboard.authorize :as az]
@@ -18,7 +19,8 @@
             [sparkboard.query :as query]
             [re-db.api :as db]
             [yawn.view :as v]
-            [sparkboard.schema :as sch :refer [s- ?]]))
+            [sparkboard.schema :as sch :refer [s- ?]]
+            [clojure.pprint :refer [pprint]]))
 
 (sch/register!
   {:board/show-project-numbers?              {s-   :boolean
@@ -122,21 +124,22 @@
   {:prepare [az/with-account-id
              (member/member:log-visit! :board-id)]}
   [{:keys [board-id]}]
-  (db/pull `[~@entity/fields
-             :board/registration-open?
-             {:board/owner [~@entity/fields :org/show-org-tab?]}
-             {:project/_board [~@entity/fields :entity/archived?]}
-             {:member/_entity [~@entity/fields {:member/account ~entity/account-as-entity-fields}]}]
-           board-id))
+  (query/pull `[~@entity/fields
+                :board/registration-open?
+                {:board/owner [~@entity/fields :org/show-org-tab?]}
+                {:project/_board [~@entity/fields :entity/archived?]}
+                {:member/_entity [~@entity/fields {:member/account [:entity/id
+                                                                    {:image/avatar [:asset/id]}
+                                                                    :account/display-name]}]}]
+              board-id))
 (comment
 
-  (db/pull
-    `[:entity/id]
+  (query/pull
     [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
 
-  (db/pull `[:entity/id
-             {:project/_board [~@entity/fields]}]
-           [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
+  (query/pull `[:entity/id
+                {:project/_board [~@entity/fields]}]
+              [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
   (db:read {:board-id ex-board-id}))
 
 
@@ -174,10 +177,10 @@
                                        account-id)
                    params)]}
      [{:keys [board-id]}]
-     (db/pull (u/template
-                [*
-                 ~@entity/fields])
-              board-id)))
+     (query/pull (u/template
+                   [*
+                    ~@entity/fields])
+                 board-id)))
 
 #?(:clj
    (defn db:new!
@@ -248,39 +251,51 @@
       (tr :tr/register)]]))
 
 (ui/defview read:public [params]
-  (let [board (query/use! [`db:read params])]
+  (let [board (db:read params)]
     [:div.p-body (ui/show-prose (:entity/description board))])
   )
 
 (ui/defview read:signed-in
   [params]
-  (let [board       (db:read params)
+  (let [board       (db:read {:board-id (:board-id params)})
         current-tab (:board/tab params "projects")
         ?filter     (h/use-state nil)
-        tabs        [["projects" (tr :tr/projects) (db/where [[:project/board (:db/id board)]])]
-                     ["members" (tr :tr/members) (->> (:member/_entity board) (map #(merge (:member/account %) %)))]]]
+        tabs        [["projects" (tr :tr/projects)
+                      (fn [] (db/where [[:project/board (:db/id board)]]))]
+                     ["members" (tr :tr/members)
+                      (fn []
+                        (->> (:member/_entity board)
+                             (map #(merge (entity/account-as-entity (:member/account %))
+                                          (db/touch %)))
+                             #_(filter #(some-> (:account/display-name %) (str/starts-with? "t")))
+                             (sort-by :entity/id)))]]]
     [:<>
      [header/entity board
       [header/btn {:icon [icons/settings]
-                   :href (routes/path-for 'sparkboard.app.board/edit params)}]
-      ]
+                   :href (routes/path-for 'sparkboard.app.board/edit params)}]]
 
      ;; TODO new project
      #_[:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
 
 
      [radix/tab-root {:value           current-tab
-                      :on-value-change #(routes/set-path!
-                                          `read:tab (assoc params :board/tab %))}
+                      :on-value-change #(do (routes/set-path!
+                                              `read:tab (assoc params :board/tab %))
+                                            (reset! ?filter nil))}
       ;; tabs
       [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
        [radix/show-tab-list (for [[value title _] tabs] {:title title :value value})]
        [:div.flex-grow]
        [ui/filter-field ?filter]]
 
-      (for [[value title entities] tabs]
+      (for [[value title result-fn] tabs]
         [radix/tab-content {:value value}
-         [entity/show-filtered-results {:results entities}]])]]))
+         (when (= value current-tab)
+           [:div.mt-6 {:key title}
+            (into [:div.card-grid]
+                  (comp (ui/filtered @?filter)
+                        (map entity/card:compact))
+                  (result-fn))])])]]))
 
 (ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}

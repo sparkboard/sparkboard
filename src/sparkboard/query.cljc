@@ -79,6 +79,18 @@
             (delay (ws:connect {:port     3000
                                 :handlers (sync/result-handlers entity-diff/result-handlers)}))))
 
+#?(:clj
+   (def pull
+     (db/partial-pull
+       ;; at root, add :db/id [:ductile/id X]
+       {:wrap-ref
+        (fn [conn e]
+          (if-let [entity-id (re-db.read/get conn e :entity/id)]
+            [:entity/id entity-id]
+            (do
+              (prn ::pull (str "Warning: no entity/id found for ref " e))
+              e)))})))
+
 (defn normalize-vec [[id params]] [id (or params {})])
 
 #?(:cljs

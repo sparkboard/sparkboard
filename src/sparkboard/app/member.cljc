@@ -76,16 +76,15 @@
                                          (? :entity/deleted-at)
                                          (? :entity/modified-by)]}})
 
-#?(:clj
-   (defn db:read
-     {:endpoint {:query true}}
-     [params]
-     (dissoc (db/pull `[:*
-                        {:member/tags [:*]}
+
+(query/defquery db:read
+  {:prepare az/require-account!}
+  [params]
+  (dissoc (query/pull `[{:member/tags [:*]}
                         {:member/account [~@entity/fields
                                           :account/display-name]}]
                       (:member-id params))
-             :member/password)))
+          :member/password))
 
 #?(:clj
    (defn membership-id [account-id entity-id]
@@ -139,7 +138,7 @@
   (let [{:as          member
          :member/keys [tags
                        ad-hoc-tags
-                       account]} (query/use! [`db:read params])
+                       account]} (db:read {:member-id (:member-id params)})
         {:keys [:account/display-name
                 :image/avatar]} account]
     [:div

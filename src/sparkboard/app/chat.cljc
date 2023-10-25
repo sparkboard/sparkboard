@@ -9,6 +9,7 @@
             [sparkboard.server.datalevin :as dl]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]
+            [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
             [sparkboard.query :as query]
             [sparkboard.routes :as routes]
@@ -150,7 +151,7 @@
   "Get a chat by chat-id"
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id chat-id]}]
-  (some->> (db/pull chat-fields-full chat-id)
+  (some->> (query/pull chat-fields-full chat-id)
            (ensure-participant! account-id)))
 
 (query/defquery db:chats-list
@@ -160,10 +161,10 @@
        :chat/_participants
        (sort-by :entity/updated-at u/compare:desc)
        (mapv (fn [e]
-               (-> (db/pull chat-fields-meta e)
+               (-> (query/pull chat-fields-meta e)
                    (assoc :chat/last-message
-                          (db/pull message-fields
-                                   (last (:chat/messages e)))))))))
+                          (query/pull message-fields
+                                      (last (:chat/messages e)))))))))
 
 (defn read? [account-id {:chat/keys [last-message read-last]}]
   (let [account-id (sch/unwrap-id account-id)]
@@ -244,7 +245,7 @@
     :key   id}
    (ui/show-prose content)])
 
-(ui/defview messages-pane [params]
+(ui/defview chat-messages [params]
   (let [!message           (h/use-state nil)
         !response          (h/use-state nil)
         !scrollable-window (h/use-ref)
@@ -270,7 +271,10 @@
           (set! (.-scrollTop el) (.-scrollHeight el))))
       [(count messages) @!scrollable-window])
     [:<>
-     [:div.p-2.border-b.text-lg (:account/display-name (other-participant (:account-id params) chat))]
+     [:div.p-2.border-b.text-lg.flex.items-center
+      (:account/display-name (other-participant (:account-id params) chat))
+      [:div.flex-auto]
+      [radix/dialog-close [icons/close "w-5 h-5"]]]
      [:div.flex-auto.overflow-y-scroll.flex.flex-col.gap-3.p-2
       {:ref !scrollable-window}
       (->> messages
@@ -300,7 +304,7 @@
    [:div.flex-auto.flex.flex-col.relative
     (when (or other-id chat-id)
       (ui/try
-        [messages-pane params]
+        [chat-messages params]
         (catch js/Error e (str (ex-message e)))))]])
 
 (routes/register-route chat

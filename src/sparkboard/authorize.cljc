@@ -1,6 +1,6 @@
 (ns sparkboard.authorize)
 
-(defn require-account [req params]
+(defn require-account! [req params]
   (when-not (-> req :account :entity/id)
     (throw (ex-info "User not signed in" {:code 400})))
   params)
