@@ -39,7 +39,8 @@
         (radix/dialog {:props/root {:open           (boolean modal)
                                     :on-open-change #(when-not %
                                                        (routes/set-modal! nil))}}
-                      (ui/show-match modal))]
+                      [:Suspense {:fallback [ui/loading-bar "bg-blue-100 h-1"]}
+                       (ui/show-match modal)])]
        (catch js/Error e
          (str "Error: " (ex-message e))))]))
 

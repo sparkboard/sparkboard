@@ -3,7 +3,7 @@
   (:require [malli.core :as m]
             [malli.error :refer [humanize]]
             [malli.registry :as mr]
-            [re-db.schema :as s]
+            [re-db.schema :as rs]
             [sparkboard.util :as u]
             [re-db.read :as read ]))
 
@@ -34,38 +34,38 @@
 (defn ref
   "returns a schema entry for a ref (one or many)"
   ([cardinality]
-   (case cardinality :one (merge s/ref
-                                 s/one
+   (case cardinality :one (merge rs/ref
+                                 rs/one
                                  {s- db-id})
-                     :many (merge s/ref
-                                  s/many
+                     :many (merge rs/ref
+                                  rs/many
                                   {s- [:sequential db-id]})))
   ([cardinality nesting-schema]
    {:pre [(keyword? nesting-schema)]}
-   (case cardinality :one (merge s/ref
-                                 s/one
+   (case cardinality :one (merge rs/ref
+                                 rs/one
                                  {s- (conj db-id nesting-schema)})
-                     :many (merge s/ref
-                                  s/many
+                     :many (merge rs/ref
+                                  rs/many
                                   {s- [:sequential
                                        (conj db-id nesting-schema)]}))))
 
-(def unique-id-str (merge s/unique-id
-                          s/string
+(def unique-id-str (merge rs/unique-id
+                          rs/string
                           {s- :string}))
 
-(def unique-uuid (merge s/unique-id
-                        s/uuid
+(def unique-uuid (merge rs/unique-id
+                        rs/uuid
                         {s- :uuid}))
 
 
-(def unique-value s/unique-value)
-(def unique-id s/unique-id)
-(def component s/component)
-(def instant s/instant)
-(def keyword s/keyword)
-(def many s/many)
-(def string s/string)
+(def unique-value rs/unique-value)
+(def unique-id rs/unique-id)
+(def component rs/component)
+(def instant rs/instant)
+(def keyword rs/keyword)
+(def many rs/many)
+(def string rs/string)
 
 
 (defn ? [k]
@@ -86,13 +86,13 @@
 
 (defn infer-db-type [m]
   (let [inferred-type (when (and (s- m) (not (:db/valueType m)))
-                        (let [base-mappings {:string     s/string
-                                             :boolean    s/boolean
-                                             :keyword    s/keyword
-                                             :http/url   s/string
-                                             :html/color s/string
-                                             :int        s/long #_s/bigint
-                                             'inst?      s/instant}
+                        (let [base-mappings {:string     rs/string
+                                             :boolean    rs/boolean
+                                             :keyword    rs/keyword
+                                             :http/url   rs/string
+                                             :html/color rs/string
+                                             :int        rs/long #_s/bigint
+                                             'inst?      rs/instant}
                               known-bases   (set (keys base-mappings))
                               malli-type    (as-> (s- m) t
                                                   (cond-> t (vector? t) first))

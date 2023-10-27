@@ -1,7 +1,9 @@
 (ns sparkboard.i18n
-  (:require #?(:clj [sparkboard.validate :as vd])
+  (:require [sparkboard.authorize :as az]
+            [sparkboard.validate :as vd]
             [re-db.api :as db]
-            [taoensso.tempura :as tempura])
+            [taoensso.tempura :as tempura]
+            [sparkboard.query :as q])
   #?(:cljs (:require-macros [sparkboard.i18n :refer [ungroup-dict]])))
 
 #?(:clj (def ^:dynamic *selected-locale* "en"))
@@ -263,23 +265,21 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
          (some-> (get-in req [:headers "accept-language"]) accept-language->639-2) ;; use the browser's language
          "en")))                                            ;; fallback to english
 
-#?(:clj
-   (defn set-locale!
-     {:endpoint/route {:post ["/locale/" "set"]}
-      :malli/in       :i18n/locale}
-     [req {locale :body}]
-     (tap> (vector :set-locale locale (some? (:account req))))
-     (vd/assert locale :i18n/locale)
-     (if (:account req)
-       (do (re-db.api/transact! [{:db/id          (:db/id (:account req))
-                                  :account/locale locale}])
-           {:status 200
-            :body   {:i18n/locale locale}})
-       {:status  200
-        :body    {:i18n/locale locale}
-        :cookies {"locale" {:value   locale
-                            :max-age 31536000
-                            :path    "/"}}})))
+(q/defx set-locale!
+  {:prepare [az/with-account-id]}
+  [{:keys [i18n/locale account-id]}]
+  (vd/assert locale :i18n/locale)
+  {:http/response
+   (if account-id
+     (do (re-db.api/transact! [[:db/add account-id :account/locale locale]])
+         {:status 200
+          :body   {:i18n/locale locale}})
+     {:status  200
+      :body    {:i18n/locale locale}
+      :cookies {"locale" {:value   locale
+                          :max-age 31536000
+                          :path    "/"}}})})
+
 
 #?(:clj
    (defn wrap-i18n [f] [f]

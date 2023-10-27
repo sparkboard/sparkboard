@@ -4,24 +4,26 @@
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
             [sparkboard.ui.icons :as icons]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [yawn.util]))
 
-(def menu-root (v/from-element :el dm/Root))
+(def menu-root (v/from-element :el dm/Root {:modal false}))
 (def menu-sub-root (v/from-element :el dm/Sub))
-(def menu-portal (v/from-element :el dm/Portal))
+(def menu-portal (v/from-element :el dm/Portal {:container (yawn.util/find-or-create-element :radix-modal)}))
 (def menu-content-classes (v/classes ["rounded bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
                                       "focus:outline-none z-50"
-                                      "text-sm gap-1 py-1"]))
-(def menu-content (v/from-element :el dm/Content {:sideOffset        0
+                                      "gap-1 py-2 px-1"]))
+(def menu-content (v/from-element :el dm/Content {:sideOffset        4
                                                   :collision-padding 16
+                                                  :align             "end"
                                                   :class             menu-content-classes}))
 (def menu-sub-content (v/from-element :el dm/SubContent {:class             menu-content-classes
                                                          :collision-padding 16
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-2 py-1 rounded mx-1 relative text-sm hover:outline-0  "
+  (str "block px-3 py-1 rounded mx-1 relative hover:outline-0  "
        (if selected?
          "text-txt/50 cursor-default "
          (str "cursor-pointer hover:bg-primary/5 "
@@ -94,7 +96,7 @@
       [:el dialog/Overlay
        {:class "inset-0 fixed flex items-stretch md:items-start md:pt-[20px] justify-center backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid "}
        [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none dialog/Content
-        (v/props {:class "min-w-[300px] max-w-[900px]"} content)
+        (v/props {:class "min-w-[350px] max-w-[900px]"} content)
         body
         #_[:el.outline-none.contents dialog/Close [:div.p-2.absolute.top-0.right-0.z-10 (icons/close "w-5 h-5")]]]]]]))
 
@@ -119,11 +121,11 @@
                  :class "flex items-center"} title]))
         (into [:<>]))])
 #_(defn tabs [& sections]
-  (v/x
-    [:el tabs/Root
-     (into [:el tabs/List]
-           (map-indexed (fn [i [trigger _]]
-                          (v/x [tabs/Trigger {:value i} trigger])) sections))
-     (into [:el tabs/Content]
-           (map-indexed (fn [i [trigger _]]
-                          (v/x [tabs/Content {:value i} trigger])) sections))]))
+    (v/x
+      [:el tabs/Root
+       (into [:el tabs/List]
+             (map-indexed (fn [i [trigger _]]
+                            (v/x [tabs/Trigger {:value i} trigger])) sections))
+       (into [:el tabs/Content]
+             (map-indexed (fn [i [trigger _]]
+                            (v/x [tabs/Content {:value i} trigger])) sections))]))

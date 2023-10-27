@@ -17,7 +17,7 @@
     [sparkboard.ui.header :as header]
     [sparkboard.ui.icons :as icons]
     [sparkboard.util :as u]
-    [sparkboard.query :as query]
+    [sparkboard.query :as q]
     [yawn.view :as v]))
 
 (sch/register!
@@ -43,6 +43,12 @@
                                                 (? :image/avatar)
                                                 (? :account.provider.google/sub)]}})
 
+(ui/defview new-menu [params]
+  (radix/dropdown-menu {:trigger
+                        [:div.btn-light (tr :tr/new) (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4")]}
+                       [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                       [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
+
 (ui/defview header [account entity child]
   (let [{:as          account
          :keys        [account-id]
@@ -51,90 +57,100 @@
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
       {:href (routes/href 'sparkboard.app.account/show {:account-id account-id})} display-name]
      child
+     [new-menu {:account-id account-id}]
      [header/chat account]
      [header/account]]))
 
-(ui/defview new-menu [params]
-  (radix/dropdown-menu {:trigger [:div.btn.btn-primary (tr :tr/new) (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4")]}
-                       [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
-                       [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
-
-
-(query/defquery db:account-orgs
+(q/defquery db:account-orgs
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
   (into []
         (comp (map :member/entity)
               (filter (comp #{:org} :entity/kind))
-              (map (query/pull entity/fields)))
+              (map (q/pull entity/fields)))
         (db/where [[:member/account account-id]])))
 
 
-(query/defquery db:all
+(q/defquery db:all
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
-  (->> (query/pull '[{:member/_account [:member/roles
-                                        :member/last-visited
-                                        {:member/entity [:entity/id
-                                                         :entity/kind
-                                                         :entity/title
-                                                         {:image/avatar [:asset/link
+  (->> (q/pull '[{:member/_account [:member/roles
+                                    :member/last-visited
+                                    {:member/entity [:entity/id
+                                                     :entity/kind
+                                                     :entity/title
+                                                     {:image/avatar [:asset/link
+                                                                     :asset/id
+                                                                     {:asset/provider [:s3/bucket-host]}]}
+                                                     {:image/background [:asset/link
                                                                          :asset/id
-                                                                         {:asset/provider [:s3/bucket-host]}]}
-                                                         {:image/background [:asset/link
-                                                                             :asset/id
-                                                                             {:asset/provider [:s3/bucket-host]}]}]}]}]
-                   account-id)
+                                                                         {:asset/provider [:s3/bucket-host]}]}]}]}]
+               account-id)
        :member/_account
        (map #(u/lift-key % :member/entity))))
 
-(query/defquery db:recent-ids
+(q/defquery db:recent-ids
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [params]
   (->> (db:all params)
        (filter :member/last-visited)
        (sort-by :member/last-visited #(compare %2 %1))
-       (into #{} (comp (take 10)
+       (into #{} (comp (take 8)
                        (map :entity/id)))))
+
+(ui/defview truncate-items [{:keys [limit expander unexpander]
+                             :or   {expander   (fn [n]
+                                                 [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600
+                                                  #_[icons/chevron-down "w-6 h-6"]
+                                                  #_[icons/ellipsis-horizontal "w-8"]
+                                                  (str "+ " n)])
+                                    unexpander [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
+  (let [item-count  (count items)
+        !expanded?  (h/use-state false)
+        expandable? (> item-count limit)]
+    (cond (not expandable?) items
+          @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
+          :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))
 
 (ui/defview show
   {:route "/account"}
   [_]
-  (let [account-id (db/get :env/config :account-id)
-        !tab       (h/use-state (tr :tr/recent))
-        ?filter    (h/use-callback (forms/field))
-        recent-ids (db:recent-ids {})
+  (let [?filter    (h/use-callback (forms/field))
         all        (db:all {})
-        recents    (filter (comp recent-ids :entity/id) all)
-        account    (db/get :env/config :account)]
-    [:<>
+        recents    (filterv (comp (db:recent-ids {}) :entity/id) all)
+        account    (db/get :env/config :account)
+        title      (v/from-element :div.font-medium.text-xl.px-2)]
+    [:div
      [header account account nil]
-     [radix/tab-root {:value           @!tab
-                      :on-value-change (partial reset! !tab)}
-      ;; tabs
-      [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
-       [:div.flex-grow]
-       [ui/filter-field ?filter]
-       [new-menu {:account-id account-id}]]
 
-      [entity/show-filtered-results {:q       @?filter
-                                     :title   (tr :tr/recent)
-                                     :results recents}]
+     [:div.px-body.flex.flex-col.gap-8.mt-8
+      [:div.flex.flex-col.gap-4
+       [title (tr :tr/recent)]
+       (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
+             (map entity/row)
+             recents)]
+      [ui/filter-field ?filter]
+      (let [{:keys [org board project]} (-> (group-by :entity/kind all)
+                                            (update-vals #(->> (sequence (ui/filtered @?filter) %)
+                                                               (sort-by :entity/created-at u/compare:desc))))
+            card  (v/from-element :div.flex.flex-col.gap-2)
+            limit (partial truncate-items {:limit 10})]
 
-      (let [{:keys [org board project]} (group-by :entity/kind all)]
-        [:<>
-         [entity/show-filtered-results {:q       @?filter
-                                        :title   (tr :tr/projects)
-                                        :results project}]
-         [entity/show-filtered-results {:q       @?filter
-                                        :title   (tr :tr/boards)
-                                        :results board}]
-         [entity/show-filtered-results {:q       @?filter
-                                        :title   (tr :tr/orgs)
-                                        :results org}]])]]))
+        [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
+         [card
+          [title (tr :tr/projects)]
+          (limit (map entity/row project))]
+         [card
+          [title (tr :tr/boards)]
+          (limit (map entity/row board))]
+         [card
+          [title (tr :tr/orgs)]
+          (limit (map entity/row org))]
+
+         ])]]))
 
 
 (defn account:sign-in-with-google []

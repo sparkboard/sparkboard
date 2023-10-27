@@ -32,28 +32,37 @@
        (let [tag (keyword (name kind) (name key))]
          (routes/href tag (keyword (str (name kind) "-id")) id)))))
 
-#?(:cljs
-   (ui/defview card:compact
-     {:key :entity/id}
-     [{:as   entity
-       :keys [entity/title image/avatar]}]
-     [:a.flex.relative
-      {:href  (try (routes/href (routes/entity entity :show))
-                   (catch js/Error e
-                     (js/console.error e)
-                     (prn :ERROR entity :routes.entity.show)))
-       :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
-               "overflow-hidden rounded-lg"
-               "h-12 sm:h-16 bg-card text-card-txt border border-white"]}
-      (when avatar
-        [:div.flex-none
-         (v/props
-           (merge {:class ["w-12 sm:w-16"
-                           "bg-no-repeat sm:bg-secondary bg-center bg-contain"]}
-                  (when avatar
-                    {:style {:background-image (ui/css-url (ui/asset-src avatar :avatar))}})))])
-      [:div.flex.items-center.px-3.leading-snug
-       [:div.line-clamp-2 title]]]))
+
+(ui/defview card:compact
+  {:key :entity/id}
+  [{:as   entity
+    :keys [entity/title image/avatar]}]
+  [:a.flex.relative
+   {:href  (try (routes/href (routes/entity entity :show))
+                (catch js/Error e
+                  (js/console.error e)
+                  (prn :ERROR entity :routes.entity.show)))
+    :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
+            "overflow-hidden rounded-lg"
+            "h-12 sm:h-16 bg-card text-card-txt border border-white"]}
+   (when avatar
+     [:div.flex-none
+      (v/props
+        (merge {:class ["w-12 sm:w-16"
+                        "bg-no-repeat sm:bg-secondary bg-center bg-contain"]}
+               (when avatar
+                 {:style {:background-image (ui/css-url (ui/asset-src avatar :avatar))}})))])
+   [:div.flex.items-center.px-3.leading-snug
+    [:div.line-clamp-2 title]]])
+
+(ui/defview row
+  {:key :entity/id}
+  [{:as   entity
+    :keys [entity/title image/avatar]}]
+  [:a.flex.relative.gap-3.items-center.hover:bg-gray-100.rounded-lg.p-2
+   {:href (routes/href (routes/entity entity :show))}
+   [ui/avatar {:size 10} entity]
+   [:div.line-clamp-2.leading-snug title]])
 
 #?(:cljs
    (ui/defview card:pprinted [x]

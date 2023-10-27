@@ -16,7 +16,7 @@
             [sparkboard.routes :as routes]
             [sparkboard.util :as u]
             [sparkboard.ui :as ui]
-            [sparkboard.query :as query]
+            [sparkboard.query :as q]
             [re-db.api :as db]
             [yawn.view :as v]
             [sparkboard.schema :as sch :refer [s- ?]]
@@ -120,26 +120,26 @@
      ;; create membership
      ))
 
-(query/defquery db:read
+(q/defquery db:read
   {:prepare [az/with-account-id
              (member/member:log-visit! :board-id)]}
   [{:keys [board-id]}]
-  (query/pull `[~@entity/fields
+  (q/pull `[~@entity/fields
                 :board/registration-open?
                 {:board/owner [~@entity/fields :org/show-org-tab?]}
                 {:project/_board [~@entity/fields :entity/archived?]}
                 {:member/_entity [~@entity/fields {:member/account [:entity/id
                                                                     {:image/avatar [:asset/id]}
                                                                     :account/display-name]}]}]
-              board-id))
+          board-id))
 (comment
 
-  (query/pull
+  (q/pull
     [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
 
-  (query/pull `[:entity/id
+  (q/pull `[:entity/id
                 {:project/_board [~@entity/fields]}]
-              [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
+          [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
   (db:read {:board-id ex-board-id}))
 
 
@@ -177,10 +177,10 @@
                                        account-id)
                    params)]}
      [{:keys [board-id]}]
-     (query/pull (u/template
+     (q/pull (u/template
                    [*
                     ~@entity/fields])
-                 board-id)))
+             board-id)))
 
 #?(:clj
    (defn db:new!
@@ -202,7 +202,7 @@
   {:route       ["/b/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
-  (let [owners (->> (query/use! ['sparkboard.app.account/db:account-orgs])
+  (let [owners (->> (q/use! ['sparkboard.app.account/db:account-orgs])
                     (cons (entity/account-as-entity (db/get :env/config :account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
@@ -305,7 +305,7 @@
     [read:public params]))
 
 (ui/defview edit [params]
-  (let [board (query/use! [`db:edit params])]
+  (let [board (q/use! [`db:edit params])]
     [:pre (ui/pprinted board)]))
 
 (ui/defview read:tab

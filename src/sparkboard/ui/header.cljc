@@ -1,15 +1,16 @@
 (ns sparkboard.ui.header
-  (:require ["@radix-ui/react-popover" :as Popover]
+  (:require #?(:cljs ["@radix-ui/react-popover" :as Popover])
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.app.chat :as chat]
             [sparkboard.i18n :as i :refer [tr]]
             [sparkboard.routes :as routes]
-            [sparkboard.schema :as sch]
             [sparkboard.ui :as ui]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
-            [yawn.hooks :as h]))
+            [yawn.hooks :as h]
+            [yawn.util :as yu]
+            [sparkboard.util :as u]))
 
 (defn btn [{:keys [icon href]}]
   [(if href :a :div)
@@ -23,8 +24,9 @@
    (defn lang-menu-content []
      (let [current-locale (i/current-locale)
            on-select      (fn [v]
-                            (p/do (routes/POST :account/set-locale v)
-                                  (js/window.location.reload)))]
+                            (p/do
+                              (i/set-locale! {:i18n/locale v})
+                              (js/window.location.reload)))]
        (map (fn [lang]
               (let [selected (= lang current-locale)]
                 [{:selected selected
@@ -43,7 +45,7 @@
   (let [params {:account-id (db/get :env/config :account-id)}]
     (->> (chat/db:chats-list params)
          (take 6)
-         (chat/chats-list* params))))
+         (map (partial chat/chat-snippet params)))))
 
 (ui/defview chat [entity]
   (let [!open? (h/use-state false)]
@@ -51,23 +53,25 @@
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
      [:el Popover/Trigger
-      [:div.relative.inline-flex.items-center.justify-center.cursor-ponter
-       [:div
-        {:class ["absolute top-0 right-[-3px]"
-                 "w-4 h-4 rounded-full"
-                 "text-sm text-white bg-blue-500"
-                 "flex items-center justify-center"]}
-        (:unread (chat/db:counts {}))]
-       [btn {:icon [icons/chat-bubble-bottom-center "w-7 h-7"]}]]]
+      [:div.btn-light.relative
+       ;; unread-count bubble
+       (when (some-> (:unread (chat/db:counts {})) #_(u/guard pos-int?))
+         [:div
+          {:class ["absolute top-[-5px] right-[-5px] "
+                   "w-3 h-3 rounded-full"
+                   "bg-blue-500"]}])
+       [icons/chat-bubble-bottom-center-text "w-7 h-7"]]]
      [:el Popover/Portal
-      [:el.bg-white.shadow.p-2.outline-none.rounded-lg Popover/Content
-       {:align "end"
-        :style {:width 360}}
-       (when @!open?
-         [:div.flex.flex-col
-          (chats-list)
-          [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href `chat/show)}
-           "View all"]])]]]))
+      {:container (yu/find-or-create-element :radix-modal)}
+      [:Suspense {}
+       [:el.bg-white.shadow.p-2.outline-none.rounded-lg Popover/Content
+        {:align "end"
+         :style {:width 360}}
+        (when @!open?
+          [:div.flex.flex-col
+           (chats-list)
+           [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href `chat/chats)}
+            "View all"]])]]]]))
 
 (ui/defview account []
   (if-let [account (db/get :env/config :account)]

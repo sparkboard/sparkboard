@@ -8,7 +8,7 @@
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
-            [sparkboard.query :as query]
+            [sparkboard.query :as q]
             [sparkboard.entity :as entity]
             [re-db.api :as db]
             [yawn.view :as v]
@@ -123,18 +123,18 @@
       :prepare  [az/with-account-id
                  (member/member:log-visit! :project-id)]}
      [{:keys [project-id]}]
-     (query/pull `[{:project/board ~entity/fields}
+     (q/pull `[{:project/board ~entity/fields}
                    ~@entity/fields
                    :project/sticky?]
-                 project-id)))
+             project-id)))
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
 (def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
 
-(query/defquery db:show-project
+(q/defquery db:show-project
   [{:keys [project-id]}]
-  (query/pull [:*
+  (q/pull [:*
                {:project/board entity/fields}] project-id))
 
 (ui/defview show

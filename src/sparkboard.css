@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+#radix-modal {
+    transform-style: preserve-3d;
+    position: absolute;
+    top: 0;
+}
+
+
 @layer base {
 
     .prose {
@@ -13,6 +20,7 @@
     .prose a {
         @apply font-normal underline decoration-2 decoration-primary/30 hover:decoration-primary/50 text-primary
     }
+
     h3 {
         @apply text-lg font-semibold leading-6
     }
@@ -103,6 +111,14 @@
 }
 
 @layer utilities {
+    .text-white a {
+        color: white;
+        text-decoration-color: rgba(255, 255, 255, 0.7);
+    }
+    .text-white a:hover {
+        color: white;
+        text-decoration-color: rgba(255, 255, 255, 1);
+    }
     .px-body {
         @apply px-2 sm:px-6
     }
@@ -172,8 +188,10 @@
     .btn-light {
         @apply
         ring-offset-back
-        border  border-primary hover:border-primary/60 focus-visible:border-primary/60
-        text-primary
+        border border-primary/10 hover:bg-black/5  focus-visible:border-primary/60
+        text-primary/80
+        rounded-lg
+        inline-flex items-center justify-center py-1 px-3
     }
 
     .btn-primary {
@@ -216,7 +234,7 @@
     .card-grid {
         @apply
         grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
-        gap-body text-card-txt p-body divide-y sm:divide-none
+        gap-body text-card-txt divide-y sm:divide-none
     }
 
     .loading-bar {
@@ -229,6 +247,7 @@
 
         @apply absolute inset-0
     }
+
 
 }
 

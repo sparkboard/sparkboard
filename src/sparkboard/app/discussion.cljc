@@ -1,6 +1,6 @@
 (ns sparkboard.app.discussion
   (:require [sparkboard.schema :as sch :refer [s- ?]]
-            [re-db.schema :as s]))
+            [re-db.schema :as rs]))
 
 (sch/register!
   (merge
@@ -32,7 +32,7 @@
 
     {:discussion/followers (sch/ref :many),
      :discussion/posts     (merge (sch/ref :many :post/as-map)
-                                  s/component)
+                                  rs/component)
      :discussion/project   (sch/ref :one)
      :discussion/as-map    {s- [:map {:closed true}
                                 :entity/id

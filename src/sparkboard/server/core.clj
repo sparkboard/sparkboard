@@ -42,7 +42,7 @@
             [sparkboard.slack.firebase.jvm :as fire-jvm]
             [sparkboard.slack.server :as slack.server]
             [sparkboard.transit :as t]
-            [sparkboard.query :as query]
+            [sparkboard.query :as q]
             [sparkboard.util :as u]
             [taoensso.timbre :as log]
             [shadow.resource]))
@@ -147,10 +147,14 @@
   [req {:as params :keys [body account-id]}]
   (let [[id & args] body]
     (if-let [endpoint (routes/by-tag id :effect)]
-      (let [[params & args] args]
-        {:body (apply (resolve (:endpoint/sym endpoint))
-                      (assoc params :account-id account-id)
-                      args)})
+      (let [[params & args] args
+            result (apply (resolve (:endpoint/sym endpoint))
+                          (assoc params :account-id account-id)
+                          args)]
+        (prn :result result (or (:http/response result)
+                                {:body result}))
+        (or (:http/response result)
+            {:body result}))
       (throw (ex-info (str id " is not an effect endpoint.") {:id id :body body})))))
 
 
@@ -172,7 +176,7 @@
                                   (::sync/watch context)
                                   (authorize! query-var context))
                          params)
-        $query    (query/from-var query-var)]
+        $query    (q/from-var query-var)]
     ($txs ($query params))))
 
 (comment
@@ -193,7 +197,7 @@
   {:endpoint         {:get ["/ws"]}
    :endpoint/public? true}
   [req _]
-  (#'query/ws:handle-request ws-options req))
+  (#'q/ws:handle-request ws-options req))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Routes

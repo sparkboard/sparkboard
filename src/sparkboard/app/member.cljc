@@ -6,7 +6,7 @@
             [sparkboard.entity :as entity]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.ui :as ui]
-            [sparkboard.query :as query]
+            [sparkboard.query :as q]
             [re-db.api :as db])
   #?(:clj (:import [java.util Date])))
 
@@ -77,13 +77,13 @@
                                          (? :entity/modified-by)]}})
 
 
-(query/defquery db:read
+(q/defquery db:read
   {:prepare az/require-account!}
   [params]
-  (dissoc (query/pull `[{:member/tags [:*]}
+  (dissoc (q/pull `[{:member/tags [:*]}
                         {:member/account [~@entity/fields
                                           :account/display-name]}]
-                      (:member-id params))
+                  (:member-id params))
           :member/password))
 
 #?(:clj
@@ -95,7 +95,7 @@
      (when-not (membership-id account-id entity-id)
        (throw (ex-info "Not a member" {:status 403})))))
 
-(query/defquery db:search
+(q/defquery db:search
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id entity-id search-term]}]
   (if entity-id

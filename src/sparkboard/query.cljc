@@ -1,6 +1,7 @@
 (ns sparkboard.query
-  (:refer-clojure :exclude [use])
+  (:refer-clojure :exclude [use ..])
   (:require #?(:clj [org.httpkit.server :as httpkit])
+            #?(:clj [backtick])
             #?(:cljs [yawn.hooks :as h :refer [use-deref]])
             [clojure.pprint :refer [pprint]]
             [applied-science.js-interop :as j]
@@ -52,7 +53,7 @@
      (let [{:keys [url port path pack unpack handlers]} (merge ws:default-options options)
            !ws     (atom nil)
            channel {:!last-message (atom nil)
-                    :dispose-delay 60000
+                    :dispose-delay (* 10 60000)
                     :ws            !ws
                     ::sync/send    (fn [message]
                                      (let [^js ws @!ws]
@@ -122,12 +123,27 @@
              loading? (throw loading?)
              :else value))))
 
+(comment
+  #?(:cljs
+     (defn use-some [qvec]
+       (let [{:keys [value error loading?]} (use qvec)]
+         (cond error (throw (ex-info error {:query qvec}))
+               loading? value
+               :else value)))))
+
+#?(:cljs
+   (defn effect! [f & args]
+     #_(throw (ex-info "Effect! error" {}))
+     (-> (routes/POST "/effect" (into [f] args))
+         (p/catch (fn [e] {:error (ex-message e)})))))
+
 #?(:clj
    (defn op-impl [env op name args]
      (let [[name doc params argv body] (u/parse-defn-args name args)
            fqn (symbol (str *ns*) (str name))]
        (if (:ns env)
-         `(defn ~name [params#] (~'sparkboard.query/use! ['~fqn params#]))
+         (case op :query `(defn ~name [params#] (~'sparkboard.query/use! ['~fqn params#]))
+                  :effect `(defn ~name [& args#] (apply ~'sparkboard.query/effect! '~fqn args#)))
          `(defn ~name
             ~@(when doc [doc])
             ~(assoc-in params [:endpoint op] true)
@@ -150,12 +166,6 @@
      ;; invoke a fn as a query
      ;; (use this when consuming nested queries)
      `((from-var ~(resolve name)) ~@args)))
-
-#?(:cljs
-   (defn effect! [f & args]
-     #_(throw (ex-info "Effect! error" {}))
-     (-> (routes/POST "/effect" (into [f] args))
-         (p/catch (fn [e] {:error (ex-message e)})))))
 
 (comment
   (re-db.read/-resolve-e

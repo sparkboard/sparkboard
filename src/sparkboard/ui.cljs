@@ -44,8 +44,8 @@
                :page   {:op "bound" :width 1200}})
 
 (defn asset-src [asset variant]
-  (when asset
-    (str "/assets/" (:asset/id asset)
+  (when-let [id (:asset/id asset)]
+    (str "/assets/" id
          (some-> (variants variant) query-params/query-string))))
 
 (defn filtered [match-text]
@@ -223,16 +223,18 @@
 (defn filter-field [?field & [attrs]]
   (let [loading? (or (:loading? ?field) (:loading? attrs))]
     [:div.flex.relative.items-stretch
-     [:input.form-text.pr-9 (v/props (text-props ?field)
-                                     {:on-key-down #(when (= "Escape" (.-key ^js %))
-                                                      (reset! ?field nil))})]
-     [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-2
+     [:input.pr-9.outline.outline-4.outline-gray-300.w-full.rounded-lg.p-3.focus-visible:outline-gray-400.outline-offset-0
+      (v/props (text-props ?field)
+               {:placeholder "Search..."
+                :on-key-down #(when (= "Escape" (.-key ^js %))
+                                (reset! ?field nil))})]
+     [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
       {:class "text-txt/40"}
       (cond loading? (icons/loading "w-4 h-4 rotate-3s")
             (seq @?field) [:div.contents.cursor-pointer
                            {:on-click #(reset! ?field nil)}
                            (icons/close "w-5 h-5")]
-            :else (icons/search "w-5 h-5"))]]))
+            :else (icons/search "w-6 h-6"))]]))
 
 (defn error-view [{:keys [error]}]
   (when error
@@ -409,16 +411,23 @@
                           [(first words) (last words)]
                           words))))))
 
-(defn avatar [{:keys [src display-name size]
-               :or   {size 6}}]
-  (let [classes (v/classes ["rounded-full"
-                            (str "h-" size)
-                            (str "w-" size)])]
-    (if src
-      [:img {:src src :class classes}]
-      [:div.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
-       {:class classes}
-       (initials display-name)])))
+(defn avatar [{:as props :keys [size] :or {size 6}}
+              {:keys [account/display-name
+                      entity/title
+                      image/avatar]}]
+  (let [class (v/classes [(str "w-" size)
+                          (str "h-" size)])
+        props (dissoc props :size)]
+    (or
+      (when-let [src (asset-src avatar :avatar)]
+        [:div.rounded-full.bg-no-repeat.bg-center.bg-contain
+         (v/merge-props {:style {:background-image (css-url src)}
+                         :class class}
+                        props)])
+      (when-let [txt (or display-name title)]
+        [:div.rounded-full.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
+         (v/merge-props {:class class} props)
+         (initials txt)]))))
 
 (defview auto-height-textarea [{:as props :keys [value]}]
   (let [!text-element (h/use-ref nil)
@@ -433,7 +442,7 @@
     [:<>
      [:div.bg-black {:class (:class props)
                      :style (merge (:style props)
-                                   {:color "white"
+                                   {:color      "white"
                                     :visibility "hidden"
                                     :position   "absolute"
                                     :left       0
@@ -449,16 +458,16 @@
     (fn [e] (handler #js{} e))))
 
 (defclass ErrorBoundary
-          (extends react/Component)
-          (constructor [this props] (super props))
-          Object
-          (componentDidCatch [this error info]
-                             (js/console.error error)
-                             (js/console.log (j/get info :componentStack)))
-          (render [this]
-                  (if-let [e (j/get-in this [:state :error])]
-                    ((j/get-in this [:props :fallback]) e)
-                    (j/get-in this [:props :children]))))
+  (extends react/Component)
+  (constructor [this props] (super props))
+  Object
+  (componentDidCatch [this error info]
+                     (js/console.error error)
+                     (js/console.log (j/get info :componentStack)))
+  (render [this]
+          (if-let [e (j/get-in this [:state :error])]
+            ((j/get-in this [:props :fallback]) e)
+            (j/get-in this [:props :children]))))
 
 (j/!set ErrorBoundary "getDerivedStateFromError"
         (fn [error]

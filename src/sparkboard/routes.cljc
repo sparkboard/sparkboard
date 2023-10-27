@@ -334,15 +334,14 @@
                        (j/lit {:method  "POST"
                                :headers {"Accept" "application/transit+json"}
                                :body    body})
-                       (j/lit {:headers {"Accept"       "application/transit+json"
+                       (j/lit {:method  "POST"
+                               :headers {"Accept"       "application/transit+json"
                                          "Content-type" "application/transit+json"}
-                               :body    (t/write body)
-                               :method  "POST"})))
+                               :body    (t/write body)})))
            (.then http/format-response)))))
 
 #?(:cljs
    (defn GET [route & args]
-
      (-> (apply path-for route args)
          (js/fetch (j/lit {:headers {"Accept"       "application/transit+json"
                                      "Content-type" "application/transit+json"}

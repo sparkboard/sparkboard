@@ -6,8 +6,7 @@
             [promesa.core :as p]
             [re-db.hooks :as hooks]
             [re-db.memo :as memo]
-            [re-db.reactive :as r]
-            [re-db.schema :as s])
+            [re-db.reactive :as r])
   #?(:cljs (:require-macros sparkboard.util)))
 
 (defn guard [x f]
