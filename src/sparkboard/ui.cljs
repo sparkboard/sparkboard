@@ -420,7 +420,7 @@
         props (dissoc props :size)]
     (or
       (when-let [src (asset-src avatar :avatar)]
-        [:div.rounded-full.bg-no-repeat.bg-center.bg-contain
+        [:div.rounded-full.bg-no-repeat.bg-center.bg-contain.flex-none
          (v/merge-props {:style {:background-image (css-url src)}
                          :class class}
                         props)])
@@ -478,3 +478,17 @@
   [:el ErrorBoundary {:fallback fallback} child])
 
 (def startTransition react/startTransition)
+
+(defview truncate-items [{:keys [limit expander unexpander]
+                          :or   {expander   (fn [n]
+                                              [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600
+                                               #_[icons/chevron-down "w-6 h-6"]
+                                               #_[icons/ellipsis-horizontal "w-8"]
+                                               (str "+ " n)])
+                                 unexpander [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
+  (let [item-count  (count items)
+        !expanded?  (h/use-state false)
+        expandable? (> item-count limit)]
+    (cond (not expandable?) items
+          @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
+          :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))

@@ -1,8 +1,8 @@
 (ns sparkboard.util
   (:refer-clojure :exclude [ref])
-  (:require #?(:clj [backtick])
-            [clojure.pprint]
+  (:require [clojure.pprint]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [promesa.core :as p]
             [re-db.hooks :as hooks]
             [re-db.memo :as memo]
@@ -84,7 +84,12 @@
        ~@body)))
 
 (defmacro template [x]
-  (backtick/quote-fn backtick/resolve-symbol x))
+  (let [current (str *ns*)]
+    (walk/postwalk (fn [x]
+                     (if (and (symbol? x)
+                              (= (namespace x) current))
+                       (symbol (name x))
+                       x)) x)))
 
 (defn lift-key [m k]
   (merge (dissoc m k)

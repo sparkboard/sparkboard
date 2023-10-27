@@ -1,19 +1,22 @@
 (ns sparkboard.app.org
-  (:require #?(:clj [sparkboard.app.member :as member])
-            #?(:clj [sparkboard.server.datalevin :as dl])
-            [sparkboard.authorize :as az]
+  (:require #?(:clj [sparkboard.server.datalevin :as dl])
             [inside-out.forms :as forms]
+            [promesa.core :as p]
+            [re-db.api :as db]
             [sparkboard.app.domain :as domain]
+            [sparkboard.app.member :as member]
+            [sparkboard.authorize :as az]
             [sparkboard.entity :as entity]
-            [sparkboard.ui.icons :as icons]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.routes :as routes]
-            [sparkboard.schema :as sch :refer [s- ?]]
-            [sparkboard.util :as u]
-            [sparkboard.ui.header :as header]
-            [sparkboard.ui :as ui]
             [sparkboard.query :as q]
-            [re-db.api :as db]))
+            [sparkboard.routes :as routes]
+            [sparkboard.schema :as sch :refer [? s-]]
+            [sparkboard.ui :as ui]
+            [sparkboard.ui.header :as header]
+            [sparkboard.ui.icons :as icons]
+            [sparkboard.util :as u]
+            [yawn.hooks :as h]
+            [yawn.view :as v]))
 
 (sch/register!
   {:org/show-org-tab?          {:doc "Boards should visibly link to this parent organization"
@@ -59,32 +62,31 @@
              (member/member:log-visit! :org-id)]}
   [{:keys [org-id]}]
   (q/pull `[~@entity/fields
-             {:board/_owner ~entity/fields}]
+            {:board/_owner ~entity/fields}]
           (dl/resolve-id org-id)))
 
-(q/defquery db:search
-  {:endpoint {:query true}}
+(q/defx db:search-once
   [{:as   params
     :keys [org-id q]}]
   (when q
     {:q        q
      :boards   (dl/q (u/template
-                       [:find [(pull ?board ~entity/fields) ...]
-                        :in $ ?terms ?org
-                        :where
-                        [?board :board/owner ?org]
-                        [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]])
+                       `[:find [(pull ?board ~entity/fields) ...]
+                         :in $ ?terms ?org
+                         :where
+                         [?board :board/owner ?org]
+                         [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]])
                      q
                      org-id)
      :projects (->> (dl/q (u/template
-                            [:find [(pull ?project [~@entity/fields
-                                                    :project/sticky?
-                                                    {:project/board [:entity/id]}]) ...]
-                             :in $ ?terms ?org
-                             :where
-                             [?board :board/owner ?org]
-                             [?project :project/board ?board]
-                             [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]])
+                            `[:find [(pull ?project [~@entity/fields
+                                                     :project/sticky?
+                                                     {:project/board [:entity/id]}]) ...]
+                              :in $ ?terms ?org
+                              :where
+                              [?board :board/owner ?org]
+                              [?project :project/board ?board]
+                              [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]])
                           q
                           org-id)
                     (remove :project/sticky?))}))
@@ -118,9 +120,21 @@
     (let [{:as   org
            :keys [entity/description]} (db:read params)
           q      (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
-          result (q/use ['sparkboard.app.org/db:search {:org-id (:org-id params)
-                                                            :q  q}])]
+          [result set-result!] (h/use-state nil)
+          title (v/from-element :h3.font-medium.text-lg.pt-6)]
+      (h/use-effect
+        (fn []
+          (when q
+            (let [q q]
+              (set-result! {:loading? true})
+              (p/let [result (db:search-once {:org-id (:org-id params)
+                                              :q      q})]
+                (when (= q @?q)
+                  (set-result! {:value result
+                                :q     q}))))))
+        [q])
       [:div
+
        (header/entity org
          [header/btn {:icon [icons/settings]
                       :href (routes/path-for 'sparkboard.app.org/edit params)}]
@@ -128,7 +142,7 @@
             {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                       title "?"))
                           (routes/POST :org/delete params))}]
-         [ui/filter-field ?q {:loading? (:loading? result)}]
+
          [:a.btn.btn-light {:href (routes/href 'sparkboard.app.board/new
                                                {:query-params {:org-id (:entity/id org)}})} (tr :tr/new-board)])
 
@@ -141,14 +155,20 @@
          "
         ]
        [:div.p-body (ui/show-prose description)]
-       [ui/error-view result]
-       (if (seq q)
-         (for [[kind results] (dissoc (:value result) :q)
-               :when (seq results)]
-           [:<>
-            [:h3.px-body.font-bold.text-lg.pt-6 (tr (keyword "tr" (name kind)))]
-            [:div.card-grid (map entity/card:compact results)]])
-         [:div.card-grid (map entity/card:compact (:board/_owner org))])])))
+       [:div.p-body
+        [ui/filter-field ?q {:loading? (:loading? result)}]
+        [ui/error-view result]
+        (if (seq q)
+          (for [[kind results] (dissoc (:value result) :q)
+                :when (seq results)]
+            [:<>
+             [title (tr (keyword "tr" (name kind)))]
+             [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
+              (map entity/row results)]])
+          [:div.flex.flex-col.gap-2
+           [title (tr :tr/boards)]
+           [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
+            (map entity/row (:board/_owner org))]])]])))
 
 (ui/defview edit
   {:route ["/o/" ['entity/id :org-id] "/settings"]}
@@ -182,7 +202,7 @@
         [:a.btn.btn-primary.p-4 {:href (routes/entity org :show)} (tr :tr/done)]]])))
 
 (ui/defview new
-  {:route  ["/o/" "new"]
+  {:route       ["/o/" "new"]
    :view/target :modal}
   [params]
   (forms/with-form [!org (u/prune

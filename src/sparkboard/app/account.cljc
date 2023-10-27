@@ -101,20 +101,6 @@
        (into #{} (comp (take 8)
                        (map :entity/id)))))
 
-(ui/defview truncate-items [{:keys [limit expander unexpander]
-                             :or   {expander   (fn [n]
-                                                 [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600
-                                                  #_[icons/chevron-down "w-6 h-6"]
-                                                  #_[icons/ellipsis-horizontal "w-8"]
-                                                  (str "+ " n)])
-                                    unexpander [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
-  (let [item-count  (count items)
-        !expanded?  (h/use-state false)
-        expandable? (> item-count limit)]
-    (cond (not expandable?) items
-          @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
-          :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))
-
 (ui/defview show
   {:route "/account"}
   [_]
@@ -136,17 +122,17 @@
       (let [{:keys [org board project]} (-> (group-by :entity/kind all)
                                             (update-vals #(->> (sequence (ui/filtered @?filter) %)
                                                                (sort-by :entity/created-at u/compare:desc))))
-            card  (v/from-element :div.flex.flex-col.gap-2)
-            limit (partial truncate-items {:limit 10})]
+            section  (v/from-element :div.flex.flex-col.gap-2)
+            limit (partial ui/truncate-items {:limit 10})]
 
         [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
-         [card
+         [section
           [title (tr :tr/projects)]
           (limit (map entity/row project))]
-         [card
+         [section
           [title (tr :tr/boards)]
           (limit (map entity/row board))]
-         [card
+         [section
           [title (tr :tr/orgs)]
           (limit (map entity/row org))]
 
