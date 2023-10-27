@@ -14,8 +14,7 @@
 
 (defn btn [{:keys [icon href]}]
   [(if href :a :div)
-   {:class ["inline-flex items-center"
-            "hover:text-txt/60"]
+   {:class "btn-light"
     :href  href}
    icon])
 

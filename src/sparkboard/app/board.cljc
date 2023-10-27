@@ -113,24 +113,25 @@
 
                                                   (? :member-vote/open?)
                                                   (? :webhook/subscriptions)]}})
-#?(:clj
-   (defn board:register!
-     {:endpoint {:post ["/b/" ['entity/id :board-id] "/register"]}}
-     [req {:as params registration-data :body}]
-     ;; create membership
-     ))
+
+(q/defx board:register!
+
+  [req {:as params registration-data :body}]
+  ;; create membership
+  )
 
 (q/defquery db:read
   {:prepare [az/with-account-id
              (member/member:log-visit! :board-id)]}
   [{:keys [board-id]}]
-  (q/pull `[~@entity/fields
-                :board/registration-open?
-                {:board/owner [~@entity/fields :org/show-org-tab?]}
-                {:project/_board [~@entity/fields :entity/archived?]}
-                {:member/_entity [~@entity/fields {:member/account [:entity/id
-                                                                    {:image/avatar [:asset/id]}
-                                                                    :account/display-name]}]}]
+  (q/pull (u/template
+            `[~@entity/fields
+              :board/registration-open?
+              {:board/owner [~@entity/fields :org/show-org-tab?]}
+              {:project/_board [~@entity/fields :entity/archived?]}
+              {:member/_entity [~@entity/fields {:member/account [:entity/id
+                                                                  {:image/avatar [:asset/id]}
+                                                                  :account/display-name]}]}])
           board-id))
 (comment
 
@@ -138,7 +139,7 @@
     [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
 
   (q/pull `[:entity/id
-                {:project/_board [~@entity/fields]}]
+            {:project/_board [~@entity/fields]}]
           [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
   (db:read {:board-id ex-board-id}))
 
@@ -149,7 +150,8 @@
      (validate/assert board [:map [:board/owner
                                    [:fn {:error/message "Not authorized."}
                                     (fn [owner]
-                                      (let [owner-id (:db/id (dl/entity owner))]
+                                      (let [account-id (:db/id (dl/entity account-id))
+                                            owner-id   (:db/id (dl/entity owner))]
                                         (or
                                           ;; board is owned by this account
                                           (= account-id owner-id)
@@ -159,44 +161,20 @@
                                           ;; account is admin of board's org
                                           (entity/can-edit? owner-id account-id))))]]])))
 
-#?(:clj
-   (defn db:edit!
-     {:endpoint {:post ["/b/" ['entity/id :board-id] "/edit"]}}
-     [{:keys [account]} {:keys [board-id] board :body}]
-     (let [board (entity/conform (assoc board :entity/id board-id) :board/as-map)]
-       (db:authorize-edit! board (:db/id account))
-       (db/transact! [board])
-       {:body board})))
-
-#?(:clj
-   (defn db:edit
-     {:endpoint {:query true}
-      :prepare  [az/with-account-id!
-                 (fn [_ {:as params :keys [board-id account-id]}]
-                   (db:authorize-edit! (dl/entity board-id)
-                                       account-id)
-                   params)]}
-     [{:keys [board-id]}]
-     (q/pull (u/template
-                   [*
-                    ~@entity/fields])
-             board-id)))
-
-#?(:clj
-   (defn db:new!
-     {:endpoint {:post ["/b/" "new"]}}
-     [{:keys [account]} {board :body}]
-     ;; TODO
-     ;; confirm that owner is account, or account is admin of org
-     (let [board  (-> (dl/new-entity board :board :by (:db/id account))
-                      (entity/conform :board/as-map))
-           _      (db:authorize-edit! board (:db/id account))
-           member (-> {:member/entity  board
-                       :member/account (:db/id account)
-                       :member/roles   #{:role/admin}}
-                      (dl/new-entity :member))]
-       (db/transact! [member])
-       {:body board})))
+(q/defx db:new!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account]} {board :body}]
+  ;; TODO
+  ;; confirm that owner is account, or account is admin of org
+  (let [board  (-> (dl/new-entity board :board :by (:db/id account))
+                   (entity/conform :board/as-map))
+        _      (db:authorize-edit! board (:db/id account))
+        member (-> {:member/entity  board
+                    :member/account (:db/id account)
+                    :member/roles   #{:role/admin}}
+                   (dl/new-entity :member))]
+    (db/transact! [member])
+    {:body board}))
 
 (ui/defview new
   {:route       ["/b/" "new"]
@@ -257,45 +235,44 @@
 
 (ui/defview read:signed-in
   [params]
-  (let [board       (db:read {:board-id (:board-id params)})
-        current-tab (:board/tab params "projects")
-        ?filter     (h/use-state nil)
-        tabs        [["projects" (tr :tr/projects)
-                      (fn [] (db/where [[:project/board (:db/id board)]]))]
-                     ["members" (tr :tr/members)
-                      (fn []
-                        (->> (:member/_entity board)
-                             (map #(merge (entity/account-as-entity (:member/account %))
-                                          (db/touch %)))
-                             #_(filter #(some-> (:account/display-name %) (str/starts-with? "t")))
-                             (sort-by :entity/id)))]]]
+  (let [board        (db:read {:board-id (:board-id params)})
+        !current-tab (h/use-state "projects")
+        ?filter      (h/use-state nil)
+        tabs         [["projects" (tr :tr/projects)
+                       (fn [] (db/where [[:project/board (:db/id board)]]))]
+                      ["members" (tr :tr/members)
+                       (fn []
+                         (->> (:member/_entity board)
+                              (map #(merge (entity/account-as-entity (:member/account %))
+                                           (db/touch %)))
+                              #_(filter #(some-> (:account/display-name %) (str/starts-with? "t")))
+                              (sort-by :entity/id)))]]]
     [:<>
      [header/entity board
       [header/btn {:icon [icons/settings]
-                   :href (routes/path-for 'sparkboard.app.board/edit params)}]]
+                   :href (routes/href 'sparkboard.app.board/settings params)}]]
 
-     ;; TODO new project
-     #_[:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
+     [:div.p-body
 
+      ;; TODO new project
+      #_[:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
 
-     [radix/tab-root {:value           current-tab
-                      :on-value-change #(do (routes/set-path!
-                                              `read:tab (assoc params :board/tab %))
-                                            (reset! ?filter nil))}
-      ;; tabs
-      [:div.mt-6.flex.items-stretch.px-body.h-10.gap-3
-       [radix/show-tab-list (for [[value title _] tabs] {:title title :value value})]
-       [:div.flex-grow]
-       [ui/filter-field ?filter]]
+      [ui/filter-field ?filter]
+      [radix/tab-root {:value           @!current-tab
+                       :on-value-change #(do (reset! !current-tab %)
+                                             (reset! ?filter nil))}
+       ;; tabs
+       [:div.mt-6.flex.items-stretch.h-10.gap-3
+        [radix/show-tab-list (for [[value title _] tabs] {:title title :value value})]]
 
-      (for [[value title result-fn] tabs]
-        [radix/tab-content {:value value}
-         (when (= value current-tab)
-           [:div.mt-6 {:key title}
-            (into [:div.card-grid]
-                  (comp (ui/filtered @?filter)
-                        (map entity/card:compact))
-                  (result-fn))])])]]))
+       (for [[value title result-fn] tabs]
+         [radix/tab-content {:value value}
+          (when (= value @!current-tab)
+            [:div.mt-6 {:key title}
+             (into [:div.grid]
+                   (comp (ui/filtered @?filter)
+                         (map entity/row))
+                   (result-fn))])])]]]))
 
 (ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}
@@ -304,17 +281,33 @@
     [read:signed-in params]
     [read:public params]))
 
-(ui/defview edit [params]
-  (let [board (q/use! [`db:edit params])]
-    [:pre (ui/pprinted board)]))
 
-(ui/defview read:tab
-  {:route ["/b/" ['entity/id :board-id] "/" :board/tab]}
+(q/defx db:edit!
+  {:endpoint {:post ["/b/" ['entity/id :board-id] "/edit"]}}
+  [{:keys [account]} {:keys [board-id] board :body}]
+  (let [board (entity/conform (assoc board :entity/id board-id) :board/as-map)]
+    (db:authorize-edit! board (:db/id account))
+    (db/transact! [board])
+    {:body board}))
+
+
+(q/defquery db:edit
+  {:prepare [az/with-account-id!
+             (fn [_ {:as params :keys [board-id account-id]}]
+               (db:authorize-edit! (dl/entity board-id)
+                                   account-id)
+               params)]}
+  [{:keys [board-id]}]
+  (q/pull entity/fields board-id))
+
+(ui/defview settings
+  {:route       ["/b/" ['entity/id :board-id] "/settings"]
+   :view/target :modal}
   [params]
-  (case (:board/tab params)
-    "settings"
-    (edit params)
-    (show params)))
+  (let [board (db:edit {:board-id (:board-id params)})]
+    [:pre (ui/pprinted (seq board))]))
+
+
 
 (comment
   [:ul                                                      ;; i18n stuff

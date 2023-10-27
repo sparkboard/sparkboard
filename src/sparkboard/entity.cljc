@@ -11,15 +11,15 @@
             #?(:clj [sparkboard.server.datalevin :as dl])))
 
 ;; common entity fields
-(def fields `[:entity/id
-              :entity/kind
-              :entity/title
-              :entity/description
-              :entity/created-at
-              :entity/deleted-at
-              {:image/avatar [:asset/id]}
-              {:image/background [:asset/id]}
-              {:entity/domain [:domain/name]}])
+(def fields [:entity/id
+             :entity/kind
+             :entity/title
+             :entity/description
+             :entity/created-at
+             :entity/deleted-at
+             {:image/avatar [:asset/id]}
+             {:image/background [:asset/id]}
+             {:entity/domain [:domain/name]}])
 
 (defn account-as-entity [account]
   (u/select-as account {:entity/id            :entity/id
