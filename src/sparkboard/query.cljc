@@ -89,7 +89,7 @@
           (if-let [entity-id (re-db.read/get conn e :entity/id)]
             [:entity/id entity-id]
             (do
-              (prn ::pull (str "Warning: no entity/id found for ref " e))
+              (prn ::pull (str "Warning: no entity/id found for ref " (db/touch (db/entity e))))
               e)))})))
 
 (defn normalize-vec [[id params]] [id (or params {})])

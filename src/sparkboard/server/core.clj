@@ -151,8 +151,6 @@
             result (apply (resolve (:endpoint/sym endpoint))
                           (assoc params :account-id account-id)
                           args)]
-        (prn :result result (or (:http/response result)
-                                {:body result}))
         (or (:http/response result)
             {:body result}))
       (throw (ex-info (str id " is not an effect endpoint.") {:id id :body body})))))
@@ -252,6 +250,7 @@
   Starts HTTP server, stopping existing HTTP server first if necessary."
   [port]
   (sch/install-malli-schemas!)
+  (db/merge-schema! @sch/!schema)
   (routes/init-endpoints! (routes/endpoints))
   (stop-server!)
   (reset! the-server (httpkit/run-server (fn [req] (@app-handler req))

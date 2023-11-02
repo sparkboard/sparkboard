@@ -4,6 +4,7 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
+            [sparkboard.server.datalevin :as dl]
             [sparkboard.validate :as vd]
             [sparkboard.transit :as t]
             [sparkboard.routes :as routes]
@@ -76,12 +77,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Account lookup
 
-(def pull-account [:db/id
-                   :entity/id
-                   :account/display-name
-                   :account/email
-                   {:image/avatar [:asset/id]}
-                   :account/locale])
+(def account-fields [:db/id
+                     :entity/id
+                     :account/display-name
+                     :account/email
+                     {:image/avatar [:asset/id]}
+                     :account/locale])
+
 (defn account-cookie [id expires]
   {:value     (t/write id)
    :http-only true
@@ -110,7 +112,7 @@
                                                            t/read)
                                                    (catch Exception e
                                                      (tap> [:ACCOUNT-ERROR e])))]
-                          (try (not-empty (db/pull pull-account account-id))
+                          (try (not-empty (db/pull account-fields account-id))
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))
 
@@ -173,13 +175,14 @@
         now      (java.util.Date.)]
     [(merge
        ;; backfill account info (do not overwrite current data)
-       (-> {:entity/created-at           now
+       (-> {:entity/id (dl/to-uuid :account (:email provider-info))
+            :entity/created-at now
             :account.provider.google/sub (:sub provider-info)
-            :account/display-name        (:name provider-info)
-            :account/email               (:email provider-info)
-            :account/email-verified?     (:email_verified provider-info)
-            :image/avatar                (some-> (:picture provider-info) (assets/link-asset))
-            :account/locale              (some-> (:locale provider-info) (str/split #"-") first)}
+            :account/display-name (:name provider-info)
+            :account/email (:email provider-info)
+            :account/email-verified? (:email_verified provider-info)
+            :image/avatar (some-> (:picture provider-info) (assets/link-asset))
+            :account/locale (some-> (:locale provider-info) (str/split #"-") first)}
            (filter-vals some?))
        existing
        ;; last-sign-in can overwrite existing data

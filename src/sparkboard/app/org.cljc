@@ -75,7 +75,7 @@
                          :in $ ?terms ?org
                          :where
                          [?board :board/owner ?org]
-                         [(fulltext $ ?terms {:top 100}) [[?board ?a ?v]]]])
+                         [(fulltext $ ?terms {:top 100}) [[?board _ _]]]])
                      q
                      org-id)
      :projects (->> (dl/q (u/template
@@ -86,7 +86,7 @@
                               :where
                               [?board :board/owner ?org]
                               [?project :project/board ?board]
-                              [(fulltext $ ?terms {:top 100}) [[?project ?a ?v]]]])
+                              [(fulltext $ ?terms {:top 100}) [[?project _ _]]]])
                           q
                           org-id)
                     (remove :project/sticky?))}))

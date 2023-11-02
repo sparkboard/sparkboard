@@ -1,5 +1,6 @@
 (ns sparkboard.server.datalevin
   #?(:clj (:require [datalevin.core :as dl]
+                    [datalevin.search-utils :as sut]
                     [re-db.integrations.datalevin]
                     [sparkboard.schema :as sch]
                     [sparkboard.server.env :as env]
@@ -8,12 +9,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
 
-
 #?(:clj
    (do
-     (def conn (dl/get-conn (env/db-path "datalevin") {}))
-     (alter-var-root #'db/*conn* (constantly conn))))
 
+     (def db-opts (let [analyzer (sut/create-analyzer
+                                   {:tokenizer
+                                    (sut/create-regexp-tokenizer
+                                      #"[\s:/\.;,!=?\"'()\[\]{}|<>&@#^*\\~`]+")
+                                    :token-filters [(sut/create-ngram-token-filter 2)]})]
+                    {:search-opts
+                     {:query-analyzer analyzer
+                      :analyzer       analyzer}}))
+
+     (def conn (dl/get-conn (env/db-path "datalevin") {} db-opts))
+     (alter-var-root #'db/*conn* (constantly conn))))
 
 #?(:clj
    (def entity? datalevin.entity/entity?))
@@ -45,7 +54,7 @@
 #?(:clj
    (def squuid dl/squuid))
 
-(defn now [] #?(:clj (java.util.Date.)
+(defn now [] #?(:clj  (java.util.Date.)
                 :cljs (js/Date.)))
 
 #?(:clj

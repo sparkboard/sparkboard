@@ -55,7 +55,7 @@
          display-name :account/display-name} account]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href 'sparkboard.app.account/show {:account-id account-id})} display-name]
+      {:href (routes/href 'sparkboard.app.account/home {:account-id account-id})} display-name]
      child
      [new-menu {:account-id account-id}]
      [header/chat account]
@@ -70,7 +70,6 @@
               (filter (comp #{:org} :entity/kind))
               (map (q/pull entity/fields)))
         (db/where [[:member/account account-id]])))
-
 
 (q/defquery db:all
   {:endpoint {:query true}
@@ -100,44 +99,6 @@
        (sort-by :member/last-visited #(compare %2 %1))
        (into #{} (comp (take 8)
                        (map :entity/id)))))
-
-(ui/defview show
-  {:route "/account"}
-  [_]
-  (let [?filter    (h/use-callback (forms/field))
-        all        (db:all {})
-        recents    (filterv (comp (db:recent-ids {}) :entity/id) all)
-        account    (db/get :env/config :account)
-        title      (v/from-element :div.font-medium.text-xl.px-2)]
-    [:div
-     [header account account nil]
-
-     [:div.px-body.flex.flex-col.gap-8.mt-8
-      [:div.flex.flex-col.gap-4
-       [title (tr :tr/recent)]
-       (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
-             (map entity/row)
-             recents)]
-      [ui/filter-field ?filter]
-      (let [{:keys [org board project]} (-> (group-by :entity/kind all)
-                                            (update-vals #(->> (sequence (ui/filtered @?filter) %)
-                                                               (sort-by :entity/created-at u/compare:desc))))
-            section  (v/from-element :div.flex.flex-col.gap-2)
-            limit (partial ui/truncate-items {:limit 10})]
-
-        [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
-         [section
-          [title (tr :tr/projects)]
-          (limit (map entity/row project))]
-         [section
-          [title (tr :tr/boards)]
-          (limit (map entity/row board))]
-         [section
-          [title (tr :tr/orgs)]
-          (limit (map entity/row org))]
-
-         ])]]))
-
 
 (defn account:sign-in-with-google []
   (v/x
@@ -196,20 +157,55 @@
 (ui/defview sign-in
   {:route "/login"}
   [params]
-  [:div.h-screen.flex.flex-col
-   [header/lang "absolute top-0 right-0 p-4"]
-   [:div.flex.flex-col.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
-    {:class ["bg-secondary rounded-lg border border-txt/05"]}
-    [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
-    [account:sign-in-form params]]])
+  (if (db/get :env/config :account-id)
+    (ui/redirect `home)
+    [:div.h-screen.flex.flex-col
+     [header/lang "absolute top-0 right-0 p-4"]
+     [:div.flex.flex-col.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
+      {:class ["bg-secondary rounded-lg border border-txt/05"]}
+      [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
+      [radix/tab-root]
+      [account:sign-in-form params]]]))
 
 (ui/defview home
   {:route            "/"
    :endpoint/public? true}
   [params]
-  (if-let [account-id (db/get :env/config :account-id)]
-    (show {:account-id account-id})
-    (sign-in params)))
+  (if (db/get :env/config :account-id)
+    (let [?filter    (h/use-callback (forms/field))
+          all        (db:all {})
+          recents    (filterv (comp (db:recent-ids {}) :entity/id) all)
+          account    (db/get :env/config :account)
+          title      (v/from-element :div.font-medium.text-xl.px-2)]
+      [:div
+       [header account account nil]
+
+       [:div.px-body.flex.flex-col.gap-8.mt-8
+        [:div.flex.flex-col.gap-4
+         [title (tr :tr/recent)]
+         (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
+               (map entity/row)
+               recents)]
+        [ui/filter-field ?filter]
+        (let [{:keys [org board project]} (-> (group-by :entity/kind all)
+                                              (update-vals #(->> (sequence (ui/filtered @?filter) %)
+                                                                 (sort-by :entity/created-at u/compare:desc))))
+              section  (v/from-element :div.flex.flex-col.gap-2)
+              limit (partial ui/truncate-items {:limit 10})]
+
+          [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
+           [section
+            [title (tr :tr/projects)]
+            (limit (map entity/row project))]
+           [section
+            [title (tr :tr/boards)]
+            (limit (map entity/row board))]
+           [section
+            [title (tr :tr/orgs)]
+            (limit (map entity/row org))]
+
+           ])]])
+    (ui/redirect `sign-in)))
 
 #?(:clj
    (defn login!

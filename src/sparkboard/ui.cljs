@@ -416,16 +416,17 @@
                       entity/title
                       image/avatar]}]
   (let [class (v/classes [(str "w-" size)
-                          (str "h-" size)])
+                          (str "h-" size)
+                          "flex-none rounded-full"])
         props (dissoc props :size)]
     (or
       (when-let [src (asset-src avatar :avatar)]
-        [:div.rounded-full.bg-no-repeat.bg-center.bg-contain.flex-none
+        [:div.bg-no-repeat.bg-center.bg-contain
          (v/merge-props {:style {:background-image (css-url src)}
                          :class class}
                         props)])
       (when-let [txt (or display-name title)]
-        [:div.rounded-full.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
+        [:div.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
          (v/merge-props {:class class} props)
          (initials txt)]))))
 

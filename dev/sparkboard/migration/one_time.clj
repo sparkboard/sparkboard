@@ -147,7 +147,9 @@
                                     #_(mapv (fn [[k m]] (assoc m :firebase/id k))))
             :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
-
+(defn account-uuid [email]
+  (assert (str/includes? email "@") "account-uuid requires email address")
+  (sb.dl/to-uuid :account email))
 
 (def !members-raw
   (delay (into []
@@ -158,19 +160,25 @@
                             (= "example" (:boardId %))))
                (read-coll :member/as-map))))
 
+(def !firebaseAccount->email
+  (delay
+    (into {}
+          (map (juxt :localId :email))
+          @!accounts)))
+
 (def !member-id->account-uuid
   (delay
     (into {}
           (map (fn [member]
-                 [(-> member :_id :$oid)
-                  (sb.dl/to-uuid :account (:firebaseAccount member))]))
+                 [(-> member :_id get-oid)
+                  (account-uuid (-> member :firebaseAccount (@!firebaseAccount->email)))]))
           @!members-raw)))
 
 (def !member-id->board-id
   (delay
     (into {}
           (map (fn [member]
-                 [(-> member :_id :$oid)
+                 [(-> member :_id get-oid)
                   (-> member :boardId)]))
           @!members-raw)))
 
@@ -229,7 +237,7 @@
     (-> (read-coll :member/as-map)
         (->> (group-by :firebaseAccount))
         (dissoc nil)
-        (update-keys #(some->> % (to-uuid :account)))
+        (update-keys #(some->> % (@!firebaseAccount->email) account-uuid))
         (update-vals #(->> %
                            (sort-by (comp bson-id-timestamp get-oid :_id)))))))
 
@@ -749,7 +757,8 @@
                                                                   _       (assert (= (:kind account) :account))]]
                                                         {:entity/id      (composite-uuid :member (:uuid ent) (:uuid account))
                                                          :entity/kind    :member
-                                                         :member/account (uuid-ref :account (:uuid account))
+                                                         :member/account (uuid-ref :account
+                                                                                   (@!firebaseAccount->email (:uuid account)))
                                                          :member/entity  (:ref ent)
                                                          :member/roles   (into (into #{}
                                                                                      (comp (filter val)
@@ -765,10 +774,10 @@
               :account/as-map         [::prepare (fn [accounts]
                                                    (->> accounts
                                                         (keep (fn [{:as account [provider] :providerUserInfo}]
-                                                                (let [account-id (to-uuid :account (:localId account))]
-                                                                  (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
+                                                                (let [entity-id (account-uuid (:email account))]
+                                                                  (when-let [most-recent-member-doc (last (@!account->member-docs entity-id))]
                                                                     (assoc-some-value {}
-                                                                                      :entity/id account-id
+                                                                                      :entity/id entity-id
                                                                                       :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
                                                                                       :image/avatar (when-let [src (or (some-> (:picture most-recent-member-doc)
                                                                                                                                (u/guard #(not (str/starts-with? % "/images"))))
@@ -816,7 +825,9 @@
                                                   (assoc :entity/created-at (bson-id-timestamp (get-oid v))
                                                          :entity/id (composite-uuid :member
                                                                                     (to-uuid :board (:boardId m))
-                                                                                    (to-uuid :account (:firebaseAccount m))))
+                                                                                    (-> (:firebaseAccount m)
+                                                                                        (@!firebaseAccount->email)
+                                                                                        account-uuid)))
                                                   (dissoc a)))
                                        :boardId (uuid-ref-as :board :member/entity)
 
@@ -924,23 +935,23 @@
                                        :approved (rename :project/approved?)
                                        :ready (rename :project/team-complete?)
                                        :members (&
-                                                  (fn [m a v]
-                                                    (let [project-id (:entity/id m)]
-                                                      (assoc m a (keep
-                                                                   (fn [{:as   m
-                                                                         :keys [user_id]}]
-                                                                     (when-let [account-id (member->account-uuid user_id)]
-                                                                       (let [role (if (and (not (:role m))
-                                                                                           (= account-id (some->> (:entity/created-by m)
-                                                                                                                  (to-uuid :account))))
-                                                                                    :role/owner
-                                                                                    (some-> (:role m) role-kw))]
-                                                                         (merge {:entity/id      (composite-uuid :member project-id account-id)
-                                                                                 :entity/kind    :member
-                                                                                 :member/entity  (uuid-ref :project project-id)
-                                                                                 :member/account (uuid-ref :account account-id)}
-                                                                                (when role {:member/roles #{role}})))))
-                                                                   v))))
+                                                  (fn [project a v]
+                                                    (let [project-id (:entity/id project)]
+                                                      (assoc project a (keep
+                                                                         (fn [{:as   member
+                                                                               :keys [user_id]}]
+                                                                           (when-let [account-id (member->account-uuid user_id)]
+                                                                             (let [role (if (and (not (:role member))
+                                                                                                 (= account-id (some->> (:entity/created-by project)
+                                                                                                                        (to-uuid :account))))
+                                                                                          :role/owner
+                                                                                          (some-> (:role member) role-kw))]
+                                                                               (merge {:entity/id      (composite-uuid :member project-id account-id)
+                                                                                       :entity/kind    :member
+                                                                                       :member/entity  (uuid-ref :project project-id)
+                                                                                       :member/account (uuid-ref :account account-id)}
+                                                                                      (when role {:member/roles #{role}})))))
+                                                                         v))))
                                                   (rename :member/_entity))
 
                                        ::always (remove-when #(and (not (:entity/created-by %))

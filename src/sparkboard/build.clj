@@ -115,7 +115,10 @@
     ;; upsert lookup refs
     (db/transact! (mapcat sch/unique-keys entities))
     ;; transact entities
-    (db/transact! (one-time/all-entities)))
+    (-> (db/transact! (one-time/all-entities))
+        :tx-data
+        count
+        (str " datoms")))
 
   ;; add entities, print and stop if one fails
   (doseq [e entities]
@@ -133,7 +136,7 @@
 
 
   *e
-  (start)
+  (start "3000")
   )
 
 ;; TODO
