@@ -155,6 +155,10 @@
 #?(:clj
    (defmacro defx [name & args]
      (op-impl &env :effect name args)))
+#?(:clj
+   (defmacro server [& body]
+     (when-not (:ns &env)
+       `(do ~@body))))
 
 (def from-var
   (memoize

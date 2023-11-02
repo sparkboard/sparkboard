@@ -180,31 +180,40 @@
       [:div
        [header account account nil]
 
-       [:div.px-body.flex.flex-col.gap-8.mt-8
-        [:div.flex.flex-col.gap-4
-         [title (tr :tr/recent)]
-         (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
-               (map entity/row)
-               recents)]
-        [ui/filter-field ?filter]
-        (let [{:keys [org board project]} (-> (group-by :entity/kind all)
-                                              (update-vals #(->> (sequence (ui/filtered @?filter) %)
-                                                                 (sort-by :entity/created-at u/compare:desc))))
-              section  (v/from-element :div.flex.flex-col.gap-2)
-              limit (partial ui/truncate-items {:limit 10})]
+       (if (seq all)
+         [:div.px-body.flex.flex-col.gap-8.mt-8
+          [:div.flex.flex-col.gap-4
+           [title (tr :tr/recent)]
+           (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
+                 (map entity/row)
+                 recents)]
+          (when (> (count all) 6)
+            [ui/filter-field ?filter])
+          (let [{:keys [org board project]} (-> (group-by :entity/kind all)
+                                                (update-vals #(->> (sequence (ui/filtered @?filter) %)
+                                                                   (sort-by :entity/created-at u/compare:desc))))
+                section (v/from-element :div.flex.flex-col.gap-2)
+                limit   (partial ui/truncate-items {:limit 10})]
 
-          [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
-           [section
-            [title (tr :tr/projects)]
-            (limit (map entity/row project))]
-           [section
-            [title (tr :tr/boards)]
-            (limit (map entity/row board))]
-           [section
-            [title (tr :tr/orgs)]
-            (limit (map entity/row org))]
-
-           ])]])
+            [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
+             (when (seq project)
+               [section
+                [title (tr :tr/projects)]
+                (limit (map entity/row project))])
+             (when (seq board)
+               [section
+                [title (tr :tr/boards)]
+                (limit (map entity/row board))])
+             (when (seq org)
+               [section
+                [title (tr :tr/orgs)]
+                (limit (map entity/row org))])])]
+         [:div.p-body
+          [ui/hero
+           (ui/show-markdown
+             (tr :tr/start-board-new))
+           [:a.btn.btn-primary.py-3.px-6.text-lg.mt-6 {:href (routes/href 'sparkboard.app.board/new)}
+            (tr :tr/create-first-board)]]])])
     (ui/redirect `sign-in)))
 
 #?(:clj

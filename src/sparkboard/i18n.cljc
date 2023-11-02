@@ -34,7 +34,19 @@
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
 See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict                                             ;; grouped for easy generation of multiple languages
-    {:tr/domain-already-registered       {:en "Domain already registered"
+    {:tr/start-board-new {:en "### Start Something New\nNo boards yet? Start a hackathon and bring people together to solve problems."
+                          :fr "### Commencez quelque chose de nouveau\nPas encore de tableaux ? Démarrez un hackathon et rassemblez des personnes pour résoudre des problèmes."
+                          :es "### Comienza algo nuevo\n¿Aún no hay tableros? Inicie un hackathon y reúna a las personas para resolver problemas."}
+     :tr/create-first-board              {:en "Create your first board"
+                                          :fr "Créez votre premier tableau"
+                                          :es "Crea tu primer tablero"},
+     :tr/view-all                        {:en "View all"
+                                          :fr "Voir tout"
+                                          :es "Ver todo"}
+     :tr/no-messages                     {:en "You have no messages."
+                                          :fr "Vous n'avez pas de messages."
+                                          :es "No tienes mensajes."}
+     :tr/domain-already-registered       {:en "Domain already registered"
                                           :fr "Domaine déjà enregistré"
                                           :es "Dominio ya registrado"},
      :tr/you                             {:en "You:"

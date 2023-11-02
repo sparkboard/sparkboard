@@ -39,7 +39,7 @@
                                (dissoc props :selected))
           (when checks?
             [:span.absolute.inset-y-0.left-0.flex.items-center.pl-2.text-txt.inline-flex
-             {:class         "data-[selected=false]:hidden"
+             {:class         "data-[selected=false]:hidden data-[highlighted]:bg-gray-100 hover:bg-gray-100"
               :data-selected (:selected props)}
              [icons/checkmark "h-4 w-4"]])
           children])))

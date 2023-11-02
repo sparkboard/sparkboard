@@ -41,20 +41,27 @@
           (lang-menu-content))])
 
 (ui/defview chats-list []
-  (let [params {:account-id (db/get :env/config :account-id)}]
-    (->> (chat/db:chats-list params)
-         (take 6)
-         (map (partial chat/chat-snippet params)))))
+  (let [params {:account-id (db/get :env/config :account-id)}
+        chats (chat/db:chats-list params)]
+    (if (seq chats)
+      [:div.flex.flex-col
+       (->> chats
+            (take 6)
+            (map (partial chat/chat-snippet params)))
+       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href `chat/chats)}
+        (tr :tr/view-all)]]
+      (tr :tr/no-messages))))
 
 (ui/defview chat [entity]
-  (let [!open? (h/use-state false)]
+  (let [!open? (h/use-state false)
+        unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))]
     [:el Popover/Root
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
      [:el Popover/Trigger
       [:div.btn-light.relative
        ;; unread-count bubble
-       (when (some-> (:unread (chat/db:counts {})) #_(u/guard pos-int?))
+       (when unread
          [:div
           {:class ["absolute top-[-5px] right-[-5px] "
                    "w-3 h-3 rounded-full"
@@ -67,10 +74,7 @@
         {:align "end"
          :style {:width 360}}
         (when @!open?
-          [:div.flex.flex-col
-           (chats-list)
-           [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href `chat/chats)}
-            "View all"]])]]]]))
+          (chats-list))]]]]))
 
 (ui/defview account []
   (if-let [account (db/get :env/config :account)]

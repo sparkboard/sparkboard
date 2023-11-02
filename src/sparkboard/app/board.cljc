@@ -6,6 +6,7 @@
             [sparkboard.authorize :as az]
             [inside-out.forms :as forms]
             [promesa.core :as p]
+            [sparkboard.app.account :as account]
             [sparkboard.app.member :as member]
             [sparkboard.validate :as validate]
             [sparkboard.app.domain :as domain]
@@ -123,16 +124,18 @@
 (q/defquery db:read
   {:prepare [az/with-account-id
              (member/member:log-visit! :board-id)]}
-  [{:keys [board-id]}]
-  (q/pull (u/template
-            `[~@entity/fields
-              :board/registration-open?
-              {:board/owner [~@entity/fields :org/show-org-tab?]}
-              {:project/_board [~@entity/fields :entity/archived?]}
-              {:member/_entity [~@entity/fields {:member/account [:entity/id
-                                                                  {:image/avatar [:asset/id]}
-                                                                  :account/display-name]}]}])
-          board-id))
+  [{:keys [account-id board-id]}]
+  (merge {:can-edit? (boolean (entity/can-edit? board-id account-id))}
+         (q/pull (u/template
+                   `[~@entity/fields
+                     :board/registration-open?
+                     {:board/owner [~@entity/fields :org/show-org-tab?]}
+                     {:project/_board [~@entity/fields :entity/archived?]}
+                     {:member/_entity [~@entity/fields
+                                       {:member/account [:entity/id
+                                                         {:image/avatar [:asset/id]}
+                                                         :account/display-name]}]}])
+                 board-id)))
 (comment
 
   (q/pull
@@ -143,70 +146,77 @@
           [:entity/id #uuid"a12f4a7f-7bfb-3b83-9a29-df208ec981f1"])
   (db:read {:board-id ex-board-id}))
 
+(q/server (defn db:authorize-edit! [board account-id]
+            (validate/assert board [:map [:board/owner
+                                          [:fn {:error/message "Not authorized."}
+                                           (fn [owner]
+                                             (let [account-id (dl/resolve-id account-id)
+                                                   owner-id   (dl/resolve-id owner)]
+                                               (or
+                                                 ;; board is owned by this account
+                                                 (= account-id owner-id)
+                                                 ;; account is editor of this board (existing)
+                                                 (when-let [existing-board (dl/entity (:entity/id board))]
+                                                   (entity/can-edit? (:db/id existing-board) account-id))
+                                                 ;; account is admin of board's org
+                                                 (entity/can-edit? owner-id account-id))))]]])))
 
-
-#?(:clj
-   (defn db:authorize-edit! [board account-id]
-     (validate/assert board [:map [:board/owner
-                                   [:fn {:error/message "Not authorized."}
-                                    (fn [owner]
-                                      (let [account-id (:db/id (dl/entity account-id))
-                                            owner-id   (:db/id (dl/entity owner))]
-                                        (or
-                                          ;; board is owned by this account
-                                          (= account-id owner-id)
-                                          ;; account is editor of this board (existing)
-                                          (when-let [existing-board (dl/entity (:entity/id board))]
-                                            (entity/can-edit? (:db/id existing-board) account-id))
-                                          ;; account is admin of board's org
-                                          (entity/can-edit? owner-id account-id))))]]])))
+(q/server (defn db:authorize-create! [board account-id]
+            ;; confirm that owner is account, or account is admin of org
+            (validate/assert board [:map [:board/owner
+                                          [:fn {:error/message "Not authorized."}
+                                           (fn [owner]
+                                             (entity/can-edit? owner account-id))]]])))
 
 (q/defx db:new!
   {:prepare [az/with-account-id!]}
-  [{:keys [account]} {board :body}]
-  ;; TODO
-  ;; confirm that owner is account, or account is admin of org
-  (let [board  (-> (dl/new-entity board :board :by (:db/id account))
+  [{:keys [board account-id]}]
+  (let [board  (-> (dl/new-entity board :board :by account-id)
                    (entity/conform :board/as-map))
-        _      (db:authorize-edit! board (:db/id account))
+        _      (db:authorize-create! board account-id)
         member (-> {:member/entity  board
-                    :member/account (:db/id account)
+                    :member/account account-id
                     :member/roles   #{:role/admin}}
                    (dl/new-entity :member))]
     (db/transact! [member])
-    {:body board}))
+    board))
 
 (ui/defview new
   {:route       ["/b/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
-  (let [owners (->> (q/use! ['sparkboard.app.account/db:account-orgs])
-                    (cons (entity/account-as-entity (db/get :env/config :account))))]
+  (let [owners (some->> (account/db:account-orgs {})
+                        seq
+                        (cons (entity/account-as-entity (db/get :env/config :account))))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
                                 :entity/domain ?domain
-                                :board/owner   [:entity/id (uuid (?owner :init (or (-> params :query-params :org)
-                                                                                   (str (-> (db/get :env/config :account)
-                                                                                            :entity/id)))))]})
+                                :board/owner   [:entity/id (uuid (?owner
+                                                                   :init
+                                                                   (or (-> params :query-params :org)
+                                                                       (str (-> (db/get :env/config :account)
+                                                                                :entity/id)))))]})
                       :required [?title ?domain]]
       [:form
        {:class     ui/form-classes
         :on-submit (fn [^js e]
                      (.preventDefault e)
-                     (ui/with-submission [result (routes/POST `db:new! @!board)
+                     (ui/with-submission [result (db:new! {:board @!board})
                                           :form !board]
-                                         (routes/set-path! :org/read {:org-id (:entity/id result)})))}
+                       (routes/set-path! `show {:board-id (:entity/id result)})))
+        :ref       (ui/use-autofocus-ref)}
        [:h2.text-2xl (tr :tr/new-board)]
 
-       [:div.flex.flex-col.gap-2
-        [ui/input-label {} (tr :tr/owner)]
-        (->> owners
-             (map (fn [{:keys [entity/id entity/title image/avatar]}]
-                    (v/x [radix/select-item {:value (str id)
-                                             :text  title
-                                             :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}])))
-             (apply radix/select-menu {:value           @?owner
-                                       :on-value-change (partial reset! ?owner)}))]
+       (when owners
+         [:div.flex.flex-col.gap-2
+          [ui/input-label {} (tr :tr/owner)]
+          (->> owners
+               (map (fn [{:keys [entity/id entity/title image/avatar]}]
+                      (v/x [radix/select-item {:value (str id)
+                                               :text  title
+                                               :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}])))
+               (apply radix/select-menu {:value           @?owner
+                                         :on-value-change (partial reset! ?owner)}))])
 
        (ui/show-field ?title {:label (tr :tr/title)})
        (domain/show-domain-field ?domain)
@@ -233,13 +243,22 @@
     [:div.p-body (ui/show-prose (:entity/description board))])
   )
 
-(ui/defview read:signed-in
-  [params]
-  (let [board        (db:read {:board-id (:board-id params)})
+(ui/defview editor-todos [{:keys [account-id]} board]
+  [:div.mb-6
+   [ui/show-markdown
+    "## TODO
+    - check for missing logo, background, member fields, project fields, tags, etc.
+    - allow editing of all of the above, + skip button."]])
+
+(ui/defview show
+  {:route ["/b/" ['entity/id :board-id]]}
+  [{:as params :keys [board-id]}]
+  ;; if board is not public, redirect to login
+  (let [board        (db:read {:board-id board-id})
         !current-tab (h/use-state "projects")
         ?filter      (h/use-state nil)
         tabs         [["projects" (tr :tr/projects)
-                       (fn [] (db/where [[:project/board (:db/id board)]]))]
+                       (fn [] (db/where [[:project/board board-id]]))]
                       ["members" (tr :tr/members)
                        (fn []
                          (->> (:member/_entity board)
@@ -251,13 +270,17 @@
      [header/entity board
       [header/btn {:icon [icons/settings]
                    :href (routes/href 'sparkboard.app.board/settings params)}]]
-
      [:div.p-body
 
       ;; TODO new project
-      #_[:a {:href (routes/path-for :project/new params)} (tr :tr/new-project)]
+      (when (:can-edit? board)
+        (editor-todos params board))
 
-      [ui/filter-field ?filter]
+      [:div.flex.gap-4.items-stretch
+       [ui/filter-field ?filter]
+       [:a.btn.btn-light.flex.items-center.px-3
+        {:href (routes/href 'sparkboard.app.project/new)}
+        (tr :tr/new-project)]]
       [radix/tab-root {:value           @!current-tab
                        :on-value-change #(do (reset! !current-tab %)
                                              (reset! ?filter nil))}
@@ -274,22 +297,14 @@
                          (map entity/row))
                    (result-fn))])])]]]))
 
-(ui/defview show
-  {:route ["/b/" ['entity/id :board-id]]}
-  [params]
-  (if (db/get :env/config :account)
-    [read:signed-in params]
-    [read:public params]))
-
-
 (q/defx db:edit!
-  {:endpoint {:post ["/b/" ['entity/id :board-id] "/edit"]}}
-  [{:keys [account]} {:keys [board-id] board :body}]
-  (let [board (entity/conform (assoc board :entity/id board-id) :board/as-map)]
-    (db:authorize-edit! board (:db/id account))
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id board]}]
+  (db:authorize-edit! board account-id)
+  (let [board (entity/conform board :board/as-map)]
+    (db:authorize-edit! board account-id)
     (db/transact! [board])
-    {:body board}))
-
+    board))
 
 (q/defquery db:edit
   {:prepare [az/with-account-id!

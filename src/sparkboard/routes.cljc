@@ -288,13 +288,6 @@
   (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
   (match-route "/"))
 
-(defn entity [{:as e :entity/keys [kind id]} key]
-  (when e
-    (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
-          params {(keyword (str (name kind) "-id")) id}
-          path   (path-for tag params)]
-      path)))
-
 (defn merge-query [params]
   (:path (query-params/merge-query
            (db/get :env/location :match/path)
@@ -306,6 +299,12 @@
     (if (= :modal (-> match :match/endpoints :view :endpoint/sym (@!views) meta :view/target))
       (merge-query {:modal path})
       path)))
+
+(defn entity [{:as e :entity/keys [kind id]} key]
+  (when e
+    (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
+          params {(keyword (str (name kind) "-id")) id}]
+      (href tag params))))
 
 #?(:cljs
    (do

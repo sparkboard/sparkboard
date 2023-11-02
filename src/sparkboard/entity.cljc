@@ -60,7 +60,7 @@
   [{:as   entity
     :keys [entity/title image/avatar]}]
   [:a.flex.relative.gap-3.items-center.hover:bg-gray-100.rounded-lg.p-2
-   {:href (routes/href (routes/entity entity :show))}
+   {:href (routes/entity entity :show)}
    [ui/avatar {:size 10} entity]
    [:div.line-clamp-2.leading-snug title]])
 
@@ -77,11 +77,14 @@
 
 #?(:clj
    (defn can-edit? [entity-id account-id]
-     (-> (dl/entity [:member/entity+account [entity-id account-id]])
-         :member/roles
-         (set/intersection #{:role/admin :role/collaborator})
-         seq
-         boolean)))
+     (let [entity-id  (dl/resolve-id entity-id)
+           account-id (dl/resolve-id account-id)]
+       (or (= entity-id account-id)                         ;; entity _is_ account
+           (-> (dl/entity [:member/entity+account [entity-id account-id]])
+               :member/roles
+               (set/intersection #{:role/admin :role/collaborator})
+               seq
+               boolean)))))
 
 #?(:cljs
    (v/defview show-filtered-results

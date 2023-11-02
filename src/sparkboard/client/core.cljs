@@ -31,7 +31,7 @@
   []
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
     [:div.w-full.font-sans
-     #_(dev-info match)
+     (dev-info match)
      (ui/try
        [:<>
         (ui/show-match match)

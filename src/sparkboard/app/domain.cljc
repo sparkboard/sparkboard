@@ -3,11 +3,13 @@
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
+            [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.ui :as ui]
-            [sparkboard.util :as u]))
+            [sparkboard.util :as u]
+            [sparkboard.query :as q]))
 
 (sch/register!
   {:domain/url     {s- :http/url}
@@ -41,14 +43,14 @@
   (when domain
     (str/replace domain #"\.sparkboard\.com$" "")))
 
-(defn availability
-  {:endpoint/route {:get ["/domain-availability"]}}
-  [req {:as foo {:keys [domain]} :query-params}]
+(q/defx check-availability
+  {:prepare [az/with-account-id!]}
+  [{:keys [domain]}]
   (let [domain (qualify-domain domain)]
-    {:body {:available?
-            (and (re-matches #"^[a-z0-9-.]+$" domain)
-                 (nil? (db/get [:domain/name domain] :domain/name)))
-            :domain domain}}))
+    {:available?
+     (and (re-matches #"^[a-z0-9-.]+$" domain)
+          (nil? (db/get [:domain/name domain] :domain/name)))
+     :domain domain}))
 
 (defn conform-and-validate
   "Conforms and validates an entity which may contain :entity/domain."
@@ -86,7 +88,7 @@
            (when (not= (:init field) v)
              (when-let [v (:domain/name v)]
                (when (>= (count v) 3)
-                 (p/let [res (routes/GET `availability :query-params {:domain v})]
+                 (p/let [res (check-availability {:domain v})]
                    (if (:available? res)
                      (forms/message :info
                                     [:span.text-green-500.font-bold (tr :tr/available)])

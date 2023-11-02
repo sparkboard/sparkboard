@@ -222,10 +222,11 @@
 
 (defn filter-field [?field & [attrs]]
   (let [loading? (or (:loading? ?field) (:loading? attrs))]
-    [:div.flex.relative.items-stretch
-     [:input.pr-9.outline.outline-4.outline-gray-300.w-full.rounded-lg.p-3.focus-visible:outline-gray-400.outline-offset-0
+    [:div.flex.relative.items-stretch.flex-auto
+     [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
       (v/props (text-props ?field)
-               {:placeholder "Search..."
+               {:class ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
+                :placeholder "Search..."
                 :on-key-down #(when (= "Escape" (.-key ^js %))
                                 (reset! ?field nil))})]
      [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
@@ -393,7 +394,7 @@
                            (tr :tr/invalid-email)))))
 
 (def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative")
-(def primary-button :button.btn.btn-primary.px-6.py-3.self-start)
+(def primary-button :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer)
 
 (v/defview submit-form [!form label]
   [primary-button {:type     "submit"
@@ -493,3 +494,11 @@
     (cond (not expandable?) items
           @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
           :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))
+
+(def hero (v/from-element :div.rounded-lg.bg-gray-100.p-6.width-full))
+
+(defn use-autofocus-ref []
+  (h/use-callback (fn [x]
+                    (some-> x
+                            (j/call :querySelector "input, textarea")
+                            (j/call :focus)))))
