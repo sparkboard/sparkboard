@@ -141,7 +141,7 @@
 #?(:cljs
    (defn effect! [f & args]
      #_(throw (ex-info "Effect! error" {}))
-     (-> (routes/POST "/effect" (into [f] args))
+     (-> (routes/POST 'sparkboard.server.core/effect! (into [f] args))
          (p/catch (fn [e] {:error (ex-message e)})))))
 
 #?(:clj

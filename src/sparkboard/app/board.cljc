@@ -133,7 +133,7 @@
                             {:board/owner [~@entity/fields :org/show-org-tab?]}]
                           board-id)]
     (merge board {:member/roles roles})
-    (throw (ex-info "Board not found" {:status 400}))))
+    (throw (ex-info "Board not found!" {:status 400}))))
 
 (q/defquery db:members
   {:prepare [(az/with-roles :board-id)]}
@@ -260,45 +260,44 @@
 (ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}
   [{:as params :keys [board-id]}]
-  (if-let [{:as board :keys [member/roles]} (db:board {:board-id board-id})]
-    (let [!current-tab (h/use-state "projects")
-          ?filter      (h/use-state nil)
-          tabs         [["projects" (tr :tr/projects)
-                         #(db:projects {:board-id board-id})]
-                        ["members" (tr :tr/members)
-                         #(db:members {:board-id board-id})]]]
-      [:<>
-       [header/entity board
-        [header/btn {:icon [icons/settings]
-                     :href (routes/href 'sparkboard.app.board/settings params)}]]
-       [:div.p-body
+  (let [{:as board :keys [member/roles]} (db:board {:board-id board-id})
+        !current-tab (h/use-state "projects")
+        ?filter      (h/use-state nil)
+        tabs         [["projects" (tr :tr/projects)
+                       #(db:projects {:board-id board-id})]
+                      ["members" (tr :tr/members)
+                       #(db:members {:board-id board-id})]]]
+    [:<>
+     [header/entity board
+      [header/btn {:icon [icons/settings]
+                   :href (routes/href 'sparkboard.app.board/settings params)}]]
+     [:div.p-body
 
-        (when (az/editor-role? roles)
-          (admin-todo-list params board))
+      (when (az/editor-role? roles)
+        (admin-todo-list params board))
 
-        [:div.flex.gap-4.items-stretch
-         [ui/filter-field ?filter]
-         [:a.btn.btn-light.flex.items-center.px-3
-          {:href (routes/href 'sparkboard.app.project/new)}
-          (tr :tr/new-project)]]
-        [radix/tab-root {:value           @!current-tab
-                         :on-value-change #(do (reset! !current-tab %)
-                                               (reset! ?filter nil))}
-         ;; tabs
-         [:div.mt-6.flex.items-stretch.h-10.gap-3
-          [radix/show-tab-list (for [[value title _] tabs] {:title title :value value})]]
+      [:div.flex.gap-4.items-stretch
+       [ui/filter-field ?filter]
+       [:a.btn.btn-light.flex.items-center.px-3
+        {:href (routes/href 'sparkboard.app.project/new)}
+        (tr :tr/new-project)]]
+      [radix/tab-root {:value           @!current-tab
+                       :on-value-change #(do (reset! !current-tab %)
+                                             (reset! ?filter nil))}
+       ;; tabs
+       [:div.mt-6.flex.items-stretch.h-10.gap-3
+        [radix/show-tab-list (for [[value title _] tabs] {:title title :value value})]]
 
-         (for [[value title result-fn] tabs]
-           [radix/tab-content {:value value}
-            (when (= value @!current-tab)
+       (for [[value title result-fn] tabs]
+         [radix/tab-content {:value value}
+          (when (= value @!current-tab)
 
-              [:div.mt-6 {:key title}
-               (into [:div.grid]
-                     (comp (ui/filtered @?filter)
-                           ;; TODO - show membership profile here instead of account
-                           (map (comp #_entity/row ui/pprinted entity/account-as-entity :member/account)))
-                     (result-fn))])])]]]))
-  "Board not found")
+            [:div.mt-6 {:key title}
+             (into [:div.grid]
+                   (comp (ui/filtered @?filter)
+                         ;; TODO - show membership profile here instead of account
+                         (map (comp #_entity/row ui/pprinted entity/account-as-entity :member/account)))
+                   (result-fn))])])]]]))
 
 (q/defx db:edit!
   {:prepare [az/with-account-id!]}
