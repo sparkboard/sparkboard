@@ -4,7 +4,6 @@
     #?(:cljs [sparkboard.ui.radix :as radix])
     #?(:cljs [yawn.hooks :as h])
     #?(:clj [sparkboard.server.account :as account])
-    [clojure.pprint :refer [pprint]]
     [inside-out.forms :as forms]
     [promesa.core :as p]
     [re-db.api :as db]
@@ -49,7 +48,7 @@
                        [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
                        [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
 
-(ui/defview header [account entity child]
+(ui/defview header [account child]
   (let [{:as          account
          :keys        [account-id]
          display-name :account/display-name} account]
@@ -105,7 +104,7 @@
     [:a.btn.btn-light
      {:class "w-full h-10 text-zinc-500 text-sm"
       :href  "/oauth2/google/launch"}
-     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/sign-in-with-google)]))
+     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/continue-with-google)]))
 
 (defn account:sign-in-terms []
   (v/x
@@ -123,7 +122,7 @@
                       :account/password "123123123"})
         js/console.log))
 
-(ui/defview account:sign-in-form [{:keys [route]}]
+(ui/defview account:continue-with [{:keys [route]}]
   (ui/with-form [!account {:account/email    (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
@@ -145,7 +144,7 @@
           (ui/show-field ?password {:id "account-password"}))
         (str (forms/visible-messages !account))
         [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
-         (tr :tr/sign-in)]]
+         (tr :tr/continue-with-email)]]
 
        [:div.relative
         [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
@@ -165,7 +164,7 @@
       {:class ["bg-secondary rounded-lg border border-txt/05"]}
       [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
       [radix/tab-root]
-      [account:sign-in-form params]]]))
+      [account:continue-with params]]]))
 
 (ui/defview home
   {:route            "/"
@@ -178,7 +177,7 @@
           account    (db/get :env/config :account)
           title      (v/from-element :div.font-medium.text-xl.px-2)]
       [:div
-       [header account account nil]
+       [header account nil]
 
        (if (seq all)
          [:div.px-body.flex.flex-col.gap-8.mt-8

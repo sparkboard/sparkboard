@@ -1,5 +1,4 @@
 (ns sparkboard.ui
-  (:refer-clojure :exclude [catch try])
   (:require [sparkboard.util :as u]
             [yawn.view :as v]
             [clojure.walk :as walk]
@@ -48,17 +47,14 @@
 (defmacro with-form [bindings & body]
   (inside-out.macros/with-form* &form &env {} bindings [`(v/x (do ~@body))]))
 
-(defmacro try [& body]
-  (let [[_ catch-type catch-e & catch-body :as catch-expr] (u/guard (last body) (comp #{'catch} first))
-        catch-fn `(fn [~catch-e] ~@catch-body)
-        body (cond-> body catch-expr drop-last)]
-    `(let [catch-fn# ~catch-fn]
-       (~'try
-         (~'sparkboard.ui/error-boundary
-           catch-fn#
-           ~@body)
-         (~'catch ~catch-type e#
-           (when catch-fn# (catch-fn# e#)))))))
+(defmacro boundary [{:keys [on-error]} & body]
+  `(let [on-error# ~on-error]
+     (~'try
+       (~'sparkboard.ui/error-boundary
+         on-error#
+         ~@body)
+       (~'catch ~'js/Error e#
+         (on-error# e#)))))
 
 (defmacro transition [expr]
   `(~'sparkboard.ui/startTransition (fn [] ~expr)))

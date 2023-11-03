@@ -29,8 +29,8 @@
 
 (defn role-kw [role-name]
   (case role-name
-    "editor" :role/collaborator
-    "collaborator" :role/collaborator
+    "editor" :role/collaborate
+    "collaborator" :role/collaborate
     "admin" :role/admin
     "owner" :role/owner
     "member" nil))

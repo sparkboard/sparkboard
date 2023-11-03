@@ -24,21 +24,21 @@
   ((requiring-resolve 'shadow.cljs.devtools.api/watch) :web)
   ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
 
+(defn slurp-some [path]
+  (some-> path  (io/file path) (u/guard #(.exists %)) slurp))
+
 (defn spit-changed [path s]
-  (when-not (= s (some-> (io/file path) slurp))
+  (when (not= s (slurp-some path))
+    (io/make-parents path)
     (spit path s)))
 
 (defn spit-endpoints!
-  {:shadow.build/stage :flush}
+  {:shadow.build/stage :compile-prepare}
   [state]
-  (let [view-endpoints (->> (routes/view-endpoints (:compiler-env state))
-                            (map #(u/update-some % {:endpoint/route (partial walk/postwalk-replace {''entity/id 'entity/id})})))]
+  (let [endpoints (routes/endpoints)]
     (spit-changed "resources/public/js/sparkboard-views.transit.json"
-                  (t/write view-endpoints))
-    (routes/init-endpoints! (-> (merge (group-by :endpoint/tag (routes/endpoints))
-                                       (group-by :endpoint/tag view-endpoints))
-                                (update-vals first)
-                                vals)))
+                  (t/write endpoints))
+    (routes/init-endpoints! endpoints))
   state)
 
 (defn tailwind-dev!

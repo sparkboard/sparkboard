@@ -23,7 +23,7 @@
    :member/role                     {s- [:enum
                                          :role/admin
                                          :role/owner
-                                         :role/collaborator
+                                         :role/collaborate
                                          :role/member]}
    :member/roles                    (merge sch/keyword
                                            sch/many
@@ -81,8 +81,8 @@
   {:prepare az/require-account!}
   [params]
   (dissoc (q/pull `[{:member/tags [:*]}
-                        {:member/account [~@entity/fields
-                                          :account/display-name]}]
+                    {:member/account [~@entity/fields
+                                      :account/display-name]}]
                   (:member-id params))
           :member/password))
 
@@ -156,14 +156,11 @@
 
 #?(:clj
    (defn member:log-visit! [entity-key]
-     (fn [_ {:as params :keys [account-id]}]
-       (when-let [id (and account-id
-                          (membership-id account-id (entity-key params)))]
-         (when-let [member (dl/pull '[:db/id
-                                      :member/last-visited]
-                                    (dl/resolve-id id))]
-           (db/transact! [[:db/add id :member/last-visited
-                           (-> (time/offset-date-time)
-                               time/instant
-                               Date/from)]])))
+     (fn [req params]
+       (when-let [id (some-> (-> req :account :entity/id)
+                             (membership-id (entity-key params)))]
+         (db/transact! [[:db/add id :member/last-visited
+                         (-> (time/offset-date-time)
+                             time/instant
+                             Date/from)]]))
        params)))

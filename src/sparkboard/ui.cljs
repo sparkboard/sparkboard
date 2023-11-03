@@ -354,11 +354,10 @@
   "Given a match, shows the view, loading bar, and/or error message.
    - adds :data to params when a :query is provided"
   [{:as match :match/keys [endpoints params route]}]
-  [:Suspense {:fallback (loading:spinner "w-4 h-4 absolute top-2 right-2")}
-   (if-let [view (-> endpoints :view :endpoint/sym (@routes/!views))]
-     (when view
-       [view (assoc params :account-id (db/get :env/config :account-id))])
-     (pr-str match))])
+  (if-let [view (-> endpoints :view :endpoint/sym (@routes/!views))]
+    (when view
+      [view (assoc params :account-id (db/get :env/config :account-id))])
+    [pprinted match]))
 
 (defn use-debounced-value
   "Caches value for `wait` milliseconds after last change."

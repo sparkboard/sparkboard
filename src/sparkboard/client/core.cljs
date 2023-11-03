@@ -16,33 +16,38 @@
             [sparkboard.ui :as ui]
             [yawn.root :as root]
             [sparkboard.app :as app]                        ;; includes all endpoints
-            ))
+            [yawn.view :as v]))
 
 (ui/defview dev-info [{:as match :keys [modal]}]
-  (into [:div.p-2.flex.gap-2.fixed.top-0.right-0 {:style {:z-index 9000}}]
+  (into [:div.flex.justify-center.gap-2.fixed.left-0.bottom-0.border {:style {:z-index 9000}}]
         (for [info [(some-> match :match/endpoints :view :endpoint/tag str)
                     (when-let [modal-tag (some-> modal :view :endpoint/tag str)]
                       [:span [:span.font-bold "modal: "] modal-tag])]
               :when info]
-          [:div.rounded.bg-gray-100.inline-block.px-2.py-1.text-sm.text-gray-600.relative
+          [:div.rounded.bg-gray-200.inline-block.px-2.py-1.text-sm.text-gray-600.relative
            info])))
+
+#_{:fallback (loading:spinner "w-4 h-4 absolute top-2 right-2")}
+
+(def default-loading-bar (v/x [ui/loading-bar "bg-blue-100 h-1"]))
 
 (ui/defview root
   []
   (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
     [:div.w-full.font-sans
      (dev-info match)
-     (ui/try
-       [:<>
-        (ui/show-match match)
+     [:Suspense {:fallback default-loading-bar}
+      (ui/boundary {:on-error (fn [e]
+                                (v/x [:div.p-6
+                                      [ui/hero {:class "bg-red-100 border-red-400/50 border border-4"}
+                                       (ex-message e)]]))}
+        (ui/show-match match))]
 
-        (radix/dialog {:props/root {:open           (boolean modal)
-                                    :on-open-change #(when-not %
-                                                       (routes/set-modal! nil))}}
-                      [:Suspense {:fallback [ui/loading-bar "bg-blue-100 h-1"]}
-                       (ui/show-match modal)])]
-       (catch js/Error e
-         (str "Error: " (ex-message e))))]))
+     (radix/dialog {:props/root {:open           (boolean modal)
+                                 :on-open-change #(when-not %
+                                                    (routes/set-modal! nil))}}
+                   [:Suspense {:fallback default-loading-bar}
+                    (ui/show-match modal)])]))
 
 (defonce !react-root (delay (root/create :web (root))))
 

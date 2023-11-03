@@ -93,7 +93,9 @@
 (defonce !routes (atom ["" {}]))
 (defonce !views (atom {}))
 (defonce !tags (atom {}))
-(defn by-tag [id method] (get-in @!tags [id method]))
+(defn by-tag
+  ([id] (get @!tags id))
+  ([id method] (get-in @!tags [id method])))
 
 (defn breadcrumb
   ([path] (breadcrumb @!routes path))
@@ -193,18 +195,8 @@
   (->> (endpoints)
        (filter (comp #{:view} :endpoint/method))))
 
-#?(:clj
-   (defn view-endpoints [cljs-env]
-     (into []
-           (comp (filter #(str/starts-with? (str (key %)) "sparkboard.app"))
-                 (mapcat (comp vals :defs val))
-                 (filter (comp :view
-                               :endpoint
-                               :meta))
-                 (mapcat #(endpoint-maps (:name %) (:meta %))))
-           (:cljs.analyzer/namespaces cljs-env))))
-
-
+#?(:clj (defn meta->sym [m]
+          (symbol (str (:ns m)) (str (:name m)))))
 
 #?(:clj
    (defmacro register-route [name {:as opts :keys [alias-of route]}]
@@ -248,57 +240,55 @@
 
 (defn endpoints->tags [endpoints]
   (->> endpoints
-       (filter (comp #{:query :effect} :endpoint/method))
        (reduce (fn [out endpoint]
                  (assoc-in out
                            [(:endpoint/tag endpoint) (:endpoint/method endpoint)]
                            endpoint))
                {})))
 
+
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
-  (cond (string? route) route
-        (vector? route) (apply path-for route)
-        :else
-        (let [view (get @!views route)
-              target (:view/target (meta view) :root)]
-          (cond-> (bidi/path-for @!routes route options)
-                  (:query-params options)
-                  (-> (query-params/merge-query (:query-params options)) :path)))))
+  {:pre [(symbol? route)]}
+  (cond-> (bidi/path-for @!routes route options)
+          (:query-params options)
+          (-> (query-params/merge-query (:query-params options)) :path)))
 
-(def match-route
-  "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
-  ;; memoize
-  (fn [path]
-    (match-path* @!routes (path-for path))))
-
-(defn init-endpoints! [endpoints]
-  (reset! !tags (endpoints->tags endpoints))
-  (reset! !routes ["" (endpoints->routes endpoints)])
-  #?(:cljs
-     (do (reset! !history (pushy/pushy set-location! match-route))
-         (pushy/start! @!history))))
-
-(def ENTITY-ID [bidi/uuid :entity/id])
-
-(comment
-  @!routes
-  (path-for 'sparkboard.app.board/show)
-  (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
-  (match-route "/"))
 
 (defn merge-query [params]
   (:path (query-params/merge-query
            (db/get :env/location :match/path)
            params)))
 
+(defn match-path
+  "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
+  [path]
+  {:pre [(string? path)]}
+  (match-path* @!routes path))
+
 (defn href [route & args]
   (let [path  (apply path-for route args)
-        match (match-route path)]
-    (if (= :modal (-> match :match/endpoints :view :endpoint/sym (@!views) meta :view/target))
+        endpoint (-> (by-tag route) first val)]
+    (if (= :modal (:view/target endpoint))                  ;; TODO
       (merge-query {:modal path})
       path)))
+
+(comment
+  @!routes
+  (by-tag 'sparkboard.app.board/show)
+  (href 'sparkboard.app.board/show {:board-id (random-uuid)})
+  (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
+  (match-path "/"))
+
+(defn init-endpoints! [endpoints]
+  (reset! !tags (endpoints->tags endpoints))
+  (reset! !routes ["" (endpoints->routes endpoints)])
+  #?(:cljs
+     (do (reset! !history (pushy/pushy set-location! match-path))
+         (pushy/start! @!history))))
+
+(def ENTITY-ID [bidi/uuid :entity/id])
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
@@ -317,8 +307,11 @@
 
      (defn close-modal! [] (merge-query! {:modal nil}))
 
-     (defn set-path! [& args]
-       (js/setTimeout #(pushy/set-token! @!history (apply href args)) 0))))
+     (defn set-path! [route & args]
+       (let [path (apply href route args)]
+         (if (:view (by-tag route))
+           (js/setTimeout #(pushy/set-token! @!history (apply href route args)) 0)
+           (j/assoc-in! js/window [:location :href] path))))))
 
 (defn path->route [path]
   (cond-> path

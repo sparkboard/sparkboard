@@ -34,9 +34,9 @@
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
 See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict                                             ;; grouped for easy generation of multiple languages
-    {:tr/start-board-new {:en "### Start Something New\nNo boards yet? Start a hackathon and bring people together to solve problems."
-                          :fr "### Commencez quelque chose de nouveau\nPas encore de tableaux ? Démarrez un hackathon et rassemblez des personnes pour résoudre des problèmes."
-                          :es "### Comienza algo nuevo\n¿Aún no hay tableros? Inicie un hackathon y reúna a las personas para resolver problemas."}
+    {:tr/start-board-new                 {:en "### Start Something New\nNo boards yet? Start a hackathon and bring people together to solve problems."
+                                          :fr "### Commencez quelque chose de nouveau\nPas encore de tableaux ? Démarrez un hackathon et rassemblez des personnes pour résoudre des problèmes."
+                                          :es "### Comienza algo nuevo\n¿Aún no hay tableros? Inicie un hackathon y reúna a las personas para resolver problemas."}
      :tr/create-first-board              {:en "Create your first board"
                                           :fr "Créez votre premier tableau"
                                           :es "Crea tu primer tablero"},
@@ -82,9 +82,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/tags                            {:en "Tags"
                                           :fr "Mots clés"
                                           :es "Etiquetas"},
-     :tr/sign-in                         {:en "Sign in"
-                                          :fr "Connexion"
-                                          :es "Iniciar sesión"},
+     :tr/continue-with-email             {:en "Continue with email"
+                                          :fr "Continuer avec courriel"
+                                          :es "Continuar con correo electrónico"},
      :tr/email                           {:en "Email"
                                           :fr "Courriel"
                                           :es "Correo electrónico"},
@@ -188,9 +188,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/board-title                     {:en "Board title"
                                           :fr "Titre du tableau"
                                           :es "Título del tablero"}
-     :tr/sign-in-with-google             {:en "Sign in with Google"
-                                          :fr "Se connecter avec Google"
-                                          :es "Iniciar sesión con Google"}
+     :tr/continue-with-google            {:en "Continue with Google"
+                                          :fr "Continuer avec Google"
+                                          :es "Continuar con Google"}
      :tr/sign-in-agree-to                {:en "By signing in, you agree to our",
                                           :fr "En cliquant sur continuer, vous acceptez notre",
                                           :es "Al hacer clic en continuar, acepta nuestro"}

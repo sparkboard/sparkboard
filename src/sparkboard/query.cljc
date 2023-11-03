@@ -123,6 +123,13 @@
              loading? (throw loading?)
              :else value))))
 
+#?(:cljs
+   (defn deref! [qvec]
+     (let [{:keys [value error loading?]} @(sync/$query @ws:channel (normalize-vec qvec))]
+       (cond error (throw (ex-info error {:query qvec}))
+             loading? (throw loading?)
+             :else value))))
+
 (comment
   #?(:cljs
      (defn use-some [qvec]
@@ -142,7 +149,7 @@
      (let [[name doc params argv body] (u/parse-defn-args name args)
            fqn (symbol (str *ns*) (str name))]
        (if (:ns env)
-         (case op :query `(defn ~name [params#] (~'sparkboard.query/use! ['~fqn params#]))
+         (case op :query `(defn ~name [params#] (~'sparkboard.query/deref! ['~fqn params#]))
                   :effect `(defn ~name [& args#] (apply ~'sparkboard.query/effect! '~fqn args#)))
          `(defn ~name
             ~@(when doc [doc])

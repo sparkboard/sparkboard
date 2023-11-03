@@ -38,10 +38,7 @@
   [{:as   entity
     :keys [entity/title image/avatar]}]
   [:a.flex.relative
-   {:href  (try (routes/href (routes/entity entity :show))
-                (catch js/Error e
-                  (js/console.error e)
-                  (prn :ERROR entity :routes.entity.show)))
+   {:href  (routes/href (routes/entity entity :show))
     :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
             "overflow-hidden rounded-lg"
             "h-12 sm:h-16 bg-card text-card-txt border border-white"]}
@@ -82,7 +79,7 @@
        (or (= entity-id account-id)                         ;; entity _is_ account
            (-> (dl/entity [:member/entity+account [entity-id account-id]])
                :member/roles
-               (set/intersection #{:role/admin :role/collaborator})
+               (set/intersection #{:role/admin :role/collaborate})
                seq
                boolean)))))
 

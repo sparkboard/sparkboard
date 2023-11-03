@@ -165,19 +165,24 @@
       {:error (ex-message e)})))
 
 (defn resolve-query [[id params :as qvec]]
-  (let [endpoint  (routes/by-tag id :query)
-        _         (assert endpoint (str "resolve: " id " is not a query endpoint"))
-        query-var (-> endpoint :endpoint/sym requiring-resolve)
-        context   (meta qvec)
-        params    (merge {}
-                         (cond->> params
-                                  (::sync/watch context)
-                                  (authorize! query-var context))
-                         params)
-        $query    (q/from-var query-var)]
-    ($txs ($query params))))
+  (try (let [endpoint  (routes/by-tag id :query)
+             _         (assert endpoint (str "resolve: " id " is not a query endpoint"))
+             query-var (-> endpoint :endpoint/sym requiring-resolve)
+             context   (meta qvec)
+             params    (merge {}
+                              (cond->> params
+                                       (::sync/watch context)
+                                       (authorize! query-var context))
+                              params)
+             $query    (q/from-var query-var)]
+         ($txs ($query params)))
+       (catch Exception e
+         ;; TODO test this case
+         (prn :resolve-query-error e)
+         ($txs (r/atom e)))))
 
 (comment
+  (random-uuid)
   (resolve-query ['sparkboard.app.org/db:read {}])
   (routes/by-tag 'sparkboard.app.org/db:read :query)
   @routes/!routes)
@@ -186,8 +191,7 @@
                                   {::sync/once
                                    ;; TODO what is this and how do I handle params...
                                    (fn [{:keys [channel]} qvec]
-                                     (let [match    (routes/match-route qvec)
-                                           query-fn (-> match :match/endpoints :query :endpoint/sym requiring-resolve)]
+                                     (let [query-fn (-> (routes/by-tag (first qvec) :query) :endpoint/sym requiring-resolve)]
                                        (sync/send channel
                                                   (sync/wrap-result qvec {:value (apply query-fn (rest qvec))}))))})})
 
@@ -203,7 +207,7 @@
 (def route-handler
   (fn [{:as req :keys [uri request-method]}]
     (let [{:as         match
-           :match/keys [endpoints params]} (routes/match-route uri)
+           :match/keys [endpoints params]} (routes/match-path uri)
           {:as endpoint :keys [endpoint/sym]} (get endpoints request-method)]
       (or (and endpoint
                (#{:get :post} request-method)
@@ -270,11 +274,11 @@
   (-main)
 
   @routes/!routes
-  (routes/match-route (str "/o/" (random-uuid)))
+  (routes/match-path (str "/o/" (random-uuid)))
 
   (routes/path-for 'sparkboard.app.account/db:read)
-  (routes/match-route (str "/o/" (random-uuid)))
-  (routes/match-route (str "/ws"))
+  (routes/match-path (str "/o/" (random-uuid)))
+  (routes/match-path (str "/ws"))
 
 
   @routes/!tags

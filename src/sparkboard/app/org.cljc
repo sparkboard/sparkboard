@@ -173,7 +173,7 @@
 (ui/defview edit
   {:route ["/o/" ['entity/id :org-id] "/settings"]}
   [{:as params :keys [org-id]}]
-  (let [org (q/use! '[sparkboard.app.org/db:edit params])]
+  (let [org (sparkboard.app.org/db:edit params)]
     (forms/with-form [!org (u/keep-changes org
                                            {:entity/id          org-id
                                             :entity/title       (?title :label (tr :tr/title))

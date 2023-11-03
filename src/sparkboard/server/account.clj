@@ -176,6 +176,7 @@
     [(merge
        ;; backfill account info (do not overwrite current data)
        (-> {:entity/id (dl/to-uuid :account (:email provider-info))
+            :entity/kind :account
             :entity/created-at now
             :account.provider.google/sub (:sub provider-info)
             :account/display-name (:name provider-info)
