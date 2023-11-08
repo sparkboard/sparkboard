@@ -247,57 +247,61 @@
                                 res))}
       (tr :tr/register)]]))
 
-(ui/defview admin-todo-list [{:keys [account-id]} board]
-  [:div.mb-6
+(ui/defview new-board-todos [{:keys [account-id]} board]
+  [:div.my-6
    [ui/show-markdown
-    "## TODO
-    - check for missing logo, background, member fields, project fields, tags, etc.
-    - allow editing of all of the above, + skip button."]
-   [ui/pprinted
+    "### TODO
+    - [ ] settings panel, copy from old sparkboard
+    - [ ] no projects? create a sample project
+    - [ ] no members? invite / set up registration
+      (:entity/title, :entity/domain, ...)"]
+   #_[ui/pprinted
     (db/touch board)]])
-
 
 (ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}
   [{:as params :keys [board-id]}]
   (let [{:as board :keys [member/roles]} (db:board {:board-id board-id})
-        !current-tab (h/use-state "projects")
-        ?filter      (h/use-state nil)
-        tabs         [["projects" (tr :tr/projects)
-                       #(db:projects {:board-id board-id})]
-                      ["members" (tr :tr/members)
-                       #(db:members {:board-id board-id})]]]
+        !current-tab (h/use-state (tr :tr/projects))
+        ?filter      (h/use-state nil)]
     [:<>
      [header/entity board
       [header/btn {:icon [icons/settings]
                    :href (routes/href 'sparkboard.app.board/settings params)}]]
      [:div.p-body
 
-      (when (az/editor-role? roles)
-        (admin-todo-list params board))
-
       [:div.flex.gap-4.items-stretch
        [ui/filter-field ?filter]
        [:a.btn.btn-light.flex.items-center.px-3
-        {:href (routes/href 'sparkboard.app.project/new)}
+        {:href (routes/href 'sparkboard.app.project.new-flow/start {:board-id board-id})}
         (tr :tr/new-project)]]
-      [radix/tab-root {:value           @!current-tab
+
+      (when (az/editor-role? roles)
+        (new-board-todos params board))
+
+      [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
+                       :value           @!current-tab
                        :on-value-change #(do (reset! !current-tab %)
                                              (reset! ?filter nil))}
        ;; tabs
-       [:div.mt-6.flex.items-stretch.h-10.gap-3
-        [radix/show-tab-list (for [[value title _] tabs] {:title title :value value})]]
+       [:div.flex.items-stretch.h-10.gap-3
+        [radix/show-tab-list
+         (for [x [:tr/projects :tr/members] :let [x (tr x)]]
+           {:title x :value x})]]
 
-       (for [[value title result-fn] tabs]
-         [radix/tab-content {:value value}
-          (when (= value @!current-tab)
+       [radix/tab-content {:value (tr :tr/projects)}
+        (into [:div.grid]
+              (comp (ui/filtered @?filter)
+                    (map entity/row))
+              (db:projects {:board-id board-id}))]
 
-            [:div.mt-6 {:key title}
-             (into [:div.grid]
-                   (comp (ui/filtered @?filter)
-                         ;; TODO - show membership profile here instead of account
-                         (map (comp #_entity/row ui/pprinted entity/account-as-entity :member/account)))
-                   (result-fn))])])]]]))
+       [radix/tab-content {:value (tr :tr/members)}
+        (into [:div.grid]
+              (comp (map #(merge (entity/account-as-entity (:member/account %))
+                                 (db/touch %)))
+                    (map entity/row))
+              (db:members {:board-id board-id}))
+        ]]]]))
 
 (q/defx db:edit!
   {:prepare [az/with-account-id!]}

@@ -75,31 +75,7 @@
                                      (? :entity/description)
                                      (? :project/team-complete?)]}}))
 
-#?(:clj
-   (defn db:new!
-     {:endpoint {:post ["/p/new"]}
-      :prepare  [az/with-account-id!]}
-     [req {:keys [account-id] project :body}]
-     (validate/assert project [:map {:closed true} :entity/title])
-     (db/transact! [(-> project
-                        ;; Auth: board allows projects to be created by current user (must be a member)
-                        (dl/new-entity :project :by account-id))])
-     ;; what to return?
-     {:status 201}
-     ))
 
-(ui/defview new
-  {:route       ["/p/" "new"]
-   :view/target :modal}
-  [{:as params :keys [route]}]
-  (ui/with-form [!project {:entity/title ?title}]
-    [:div
-     [:h3 (tr :tr/new-project)]
-     (ui/show-field ?title)
-     [:button {:on-click #(p/let [res (routes/POST `db:new! @!project)]
-                            (when-not (:error res)
-                              (routes/set-path! ['sparkboard.app.board/show params])))}
-      (tr :tr/create)]]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type        "text/html" :width 640 :height 360

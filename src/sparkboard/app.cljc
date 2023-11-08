@@ -14,6 +14,7 @@
             [sparkboard.app.notification]
             [sparkboard.app.org]
             [sparkboard.app.project]
+            [sparkboard.app.project.new-flow]
             [sparkboard.app.social-feed]
             [sparkboard.app.vote]
             [sparkboard.transit :as t]))

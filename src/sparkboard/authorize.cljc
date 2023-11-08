@@ -33,4 +33,5 @@
      (fn [req params]
        (assoc params :member/roles (db/get (membership-id (some-> (-> req :account :entity/id)
                                                                   sch/wrap-id)
-                                                          (entity-key params)))))))
+                                                          (entity-key params))
+                                           :member/roles)))))

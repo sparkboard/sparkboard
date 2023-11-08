@@ -25,15 +25,18 @@
   ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
 
 (defn slurp-some [path]
-  (some-> path  (io/file path) (u/guard #(.exists %)) slurp))
+  (try (slurp path)
+       (catch Exception e nil)))
 
 (defn spit-changed [path s]
   (when (not= s (slurp-some path))
+    (println "changed: " path)
     (io/make-parents path)
     (spit path s)))
 
 (defn spit-endpoints!
-  {:shadow.build/stage :compile-prepare}
+  {:shadow.build/stages #{:compile-prepare
+                          :flush}}
   [state]
   (let [endpoints (routes/endpoints)]
     (spit-changed "resources/public/js/sparkboard-views.transit.json"
