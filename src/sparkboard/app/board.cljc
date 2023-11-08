@@ -227,7 +227,7 @@
                 (apply radix/select-menu {:value           @?owner
                                           :on-value-change (partial reset! ?owner)}))])
 
-        (ui/show-field ?title {:label (tr :tr/title)})
+        [ui/text-field ?title {:label (tr :tr/title)}]
         (domain/show-domain-field ?domain)
         (ui/show-field-messages !board)
         [ui/submit-form !board (tr :tr/create)]])]))
@@ -238,8 +238,8 @@
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 (tr :tr/register)]
-     (ui/show-field ?name)
-     (ui/show-field ?pass)
+     [ui/text-field ?name]
+     [ui/text-field ?pass]
      [:button {:on-click #(p/let [res (routes/POST route @!member)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)

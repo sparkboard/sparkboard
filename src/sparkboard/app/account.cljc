@@ -139,9 +139,9 @@
 
 
        [:div.flex.flex-col.gap-2
-        (ui/show-field ?email)
+        [ui/text-field ?email]
         (when (= :password @!step)
-          (ui/show-field ?password {:id "account-password"}))
+          [ui/text-field ?password {:id "account-password"}])
         (str (forms/visible-messages !account))
         [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
          (tr :tr/continue-with-email)]]

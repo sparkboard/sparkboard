@@ -99,7 +99,7 @@
 
 #?(:cljs
    (defn show-domain-field [?domain]
-     (ui/show-field ?domain {:label         (tr :tr/domain-name)
+     (ui/text-field ?domain {:label         (tr :tr/domain-name)
                              :auto-complete "off"
                              :spell-check   false
                              :placeholder   (or (:placeholder ?domain))

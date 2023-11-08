@@ -177,12 +177,8 @@
            :input.form-text)
          (v/props (text-props ?field)
                   (pass-props props)
-                  {:class [
-                           (if (:invalid (forms/types (forms/visible-messages ?field)))
-                             "outline-invalid"
-                             "outline-default"
-
-                             )]})]
+                  {:class [(when (:invalid (forms/types (forms/visible-messages ?field)))
+                             "outline-invalid")]})]
         (show-postfix ?field props)]
        (show-field-messages ?field)])))
 
@@ -215,10 +211,8 @@
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
-(defn show-field [?field & [props]]
-  (let [props (v/merge-props (:props (meta ?field)) props)
-        el    (:el props text-field)]
-    (el ?field (dissoc props :el))))
+(defn field-props [?field & [props]]
+  (v/props (:props (meta ?field)) props))
 
 (defn filter-field [?field & [attrs]]
   (let [loading? (or (:loading? ?field) (:loading? attrs))]

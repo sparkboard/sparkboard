@@ -191,6 +191,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/continue-with-google            {:en "Continue with Google"
                                           :fr "Continuer avec Google"
                                           :es "Continuar con Google"}
+     :tr/next                            {:en "Next"
+                                          :fr "Suivant"
+                                          :es "Siguiente"}
      :tr/sign-in-agree-to                {:en "By signing in, you agree to our",
                                           :fr "En cliquant sur continuer, vous acceptez notre",
                                           :es "Al hacer clic en continuar, acepta nuestro"}

@@ -217,7 +217,7 @@
                                         :form !org]
                                        (routes/set-path! :org/read {:org-id (:entity/id result)})))}
      [:h2.text-2xl (tr :tr/new-org)]
-     (ui/show-field ?title {:label (tr :tr/title)})
+     [ui/text-field ?title {:label (tr :tr/title)}]
      (domain/show-domain-field ?domain)
      (ui/show-field-messages !org)
      [ui/submit-form !org (tr :tr/create)]]))
