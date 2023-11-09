@@ -1,4 +1,5 @@
 (ns sparkboard.routes
+  (:refer-clojure :exclude [resolve])
   (:require #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs ["react" :as react])
             #?(:clj [cljs.analyzer.api :as ana])
@@ -251,9 +252,11 @@
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
   {:pre [(symbol? route)]}
-  (cond-> (bidi/path-for @!routes route options)
-          (:query-params options)
-          (-> (query-params/merge-query (:query-params options)) :path)))
+  (if (vector? route)
+    (apply path-for route)
+    (cond-> (bidi/path-for @!routes route options)
+            (:query-params options)
+            (-> (query-params/merge-query (:query-params options)) :path))))
 
 
 (defn merge-query [params]
@@ -267,17 +270,36 @@
   {:pre [(string? path)]}
   (match-path* @!routes path))
 
-(defn href [route & args]
-  (let [path  (apply path-for route args)
-        endpoint (-> (by-tag route) first val)]
-    (if (= :modal (:view/target endpoint))                  ;; TODO
-      (merge-query {:modal path})
-      path)))
+(defn resolve [route & args]
+  (cond (string? route) (match-path route)
+        (vector? route) (apply resolve route)
+        (symbol? route) (match-path (apply path-for route args))))
+
+(defn href [match]
+  (if (map? match)
+    (let [{:match/keys [path endpoints]} match]
+      (if (= :modal (-> endpoints :view :view/target))
+        (merge-query {:modal path})
+        path))
+    (href (resolve match))))
 
 (comment
+  (resolve "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
+  (href "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
+  (href ['sparkboard.app.board/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
+                                     :query-params {:foo "blah"}}])
+  (def p "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")
+  (match-path p)
+  (def r ['sparkboard.app.board/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
+                                      :foo "blah"}])
+
+
+  (time (resolve r))
+  (time (resolve p))
+
   @!routes
   (by-tag 'sparkboard.app.board/show)
-  (href 'sparkboard.app.board/show {:board-id (random-uuid)})
+  (href ['sparkboard.app.board/show {:board-id (random-uuid)}])
   (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
   (match-path "/"))
 
@@ -294,7 +316,12 @@
   (when e
     (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
           params {(keyword (str (name kind) "-id")) id}]
-      (href tag params))))
+      (href [tag params]))))
+
+(defn entity-route [{:as e :entity/keys [kind id]} key]
+  (when e
+    [(symbol (str "sparkboard.app." (name kind)) (name key))
+     {(keyword (str (name kind) "-id")) id}]))
 
 #?(:cljs
    (do
@@ -308,9 +335,9 @@
      (defn close-modal! [] (merge-query! {:modal nil}))
 
      (defn set-path! [route & args]
-       (let [path (apply href route args)]
-         (if (:view (by-tag route))
-           (js/setTimeout #(pushy/set-token! @!history (apply href route args)) 0)
+       (let [{:as match :match/keys [path endpoints]} (apply resolve route args)]
+         (if (:view endpoints)
+           (js/setTimeout #(pushy/set-token! @!history (href match)) 0)
            (j/assoc-in! js/window [:location :href] path))))))
 
 (defn path->route [path]

@@ -267,13 +267,13 @@
     [:<>
      [header/entity board
       [header/btn {:icon [icons/settings]
-                   :href (routes/href 'sparkboard.app.board/settings params)}]]
+                   :href (routes/href ['sparkboard.app.board/settings params])}]]
      [:div.p-body
 
       [:div.flex.gap-4.items-stretch
        [ui/filter-field ?filter]
        [:a.btn.btn-light.flex.items-center.px-3
-        {:href (routes/href 'sparkboard.app.project.new-flow/start {:board-id board-id})}
+        {:href (routes/href ['sparkboard.app.project.new-flow/start {:board-id board-id}])}
         (tr :tr/new-project)]]
 
       (when (az/editor-role? roles)

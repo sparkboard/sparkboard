@@ -122,13 +122,14 @@
                            (db:all params)))]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href 'sparkboard.app.account/show params)} display-name]
+      {:href (routes/href ['sparkboard.app.account/show params])} display-name]
      child
      (apply radix/dropdown-menu
             {:trigger
              [:div.btn-light (tr :tr/recent) down-arrow]}
             (map (fn [entity]
-                   [{:on-select #(routes/set-path! (routes/entity entity :show))} (:entity/title entity)])
+                   [{:on-select #(routes/set-path! (routes/entity-route entity 'show) entity)}
+                    (:entity/title entity)])
                  recents))
      (radix/dropdown-menu {:trigger
                            [:div.btn-light (tr :tr/new) down-arrow]}
@@ -219,7 +220,7 @@
         (ui/show-markdown
           (tr :tr/start-board-new))
         [ui/btn-primary {:class "mt-6"
-                         :href (routes/href 'sparkboard.app.board/new)}
+                         :href (routes/href ['sparkboard.app.board/new])}
          (tr :tr/create-first-board)]]])
     (ui/redirect `sign-in)))
 

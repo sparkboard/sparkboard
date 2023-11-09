@@ -143,8 +143,8 @@
                                                       title "?"))
                           (routes/POST :org/delete params))}]
 
-         [:a.btn.btn-light {:href (routes/href 'sparkboard.app.board/new
-                                               {:query-params {:org-id (:entity/id org)}})} (tr :tr/new-board)])
+         [:a.btn.btn-light {:href (routes/href ['sparkboard.app.board/new
+                                                {:query-params {:org-id (:entity/id org)}}])} (tr :tr/new-board)])
 
        [:div.p-body.whitespace-pre
         "This is the landing page for an organization. Its purpose is to provide a quick overview of the organization and list its boards.

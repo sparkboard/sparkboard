@@ -48,7 +48,7 @@
        (->> chats
             (take 6)
             (map (partial chat/chat-snippet params)))
-       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href `chat/chats)}
+       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href [`chat/chats])}
         (tr :tr/view-all)]]
       (tr :tr/no-messages))))
 
@@ -86,7 +86,7 @@
        (into [{:sub?    true
                :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))]
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/href 'sparkboard.app.account/sign-in)} (tr :tr/continue-with-email)]))
+     {:href (routes/href ['sparkboard.app.account/sign-in])} (tr :tr/continue-with-email)]))
 
 (ui/defview entity* [{:as   entity
                       :keys [entity/title

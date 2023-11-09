@@ -199,7 +199,7 @@
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
     [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.cursor-pointer.rounded-lg.items-center
-     {:href  (routes/href `chat {:chat-id id})
+     {:href  (routes/href [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} other]
      [:div.flex.flex-col.w-full

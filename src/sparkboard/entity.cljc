@@ -30,7 +30,7 @@
    (defn href [{:as e :entity/keys [kind id]} key]
      (when e
        (let [tag (keyword (name kind) (name key))]
-         (routes/href tag (keyword (str (name kind) "-id")) id)))))
+         (routes/href [tag {(keyword (str (name kind) "-id")) id}])))))
 
 
 (ui/defview card:compact
@@ -38,7 +38,7 @@
   [{:as   entity
     :keys [entity/title image/avatar]}]
   [:a.flex.relative
-   {:href  (routes/href (routes/entity entity :show))
+   {:href  (routes/href (routes/entity-route entity :show))
     :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
             "overflow-hidden rounded-lg"
             "h-12 sm:h-16 bg-card text-card-txt border border-white"]}
