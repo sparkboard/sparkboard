@@ -387,10 +387,10 @@
                            (tr :tr/invalid-email)))))
 
 (def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative")
-(def primary-button :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer)
+(def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer.text-base)
 
 (v/defview submit-form [!form label]
-  [primary-button {:type     "submit"
+  [btn-primary {:type        "submit"
                    :disabled (not (forms/submittable? !form))}
    label])
 

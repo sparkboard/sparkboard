@@ -48,18 +48,6 @@
                        [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
                        [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
 
-(ui/defview header [account child]
-  (let [{:as          account
-         :keys        [account-id]
-         display-name :account/display-name} account]
-    [:div.entity-header
-     [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href 'sparkboard.app.account/show {:account-id account-id})} display-name]
-     child
-     [new-menu {:account-id account-id}]
-     [header/chat account]
-     [header/account]]))
-
 (q/defquery db:account-orgs
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
@@ -116,11 +104,38 @@
      [:a.gray-link {:target "_blank"
                     :href   "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]))
 
+(def down-arrow (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4"))
+
 (comment
   (p/-> (routes/POST `sparkboard.app.account/sign-in
                      {:account/email    ""
                       :account/password "123123123"})
         js/console.log))
+
+(ui/defview header [account child]
+  (let [{:as          account
+         :keys        [entity/id]
+         display-name :account/display-name} account
+        params  {:account-id [:entity/id id]}
+        recents (when-let [recent-ids (db:recent-ids params)]
+                  (filterv (comp recent-ids :entity/id)
+                           (db:all params)))]
+    [:div.entity-header
+     [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
+      {:href (routes/href 'sparkboard.app.account/show params)} display-name]
+     child
+     (apply radix/dropdown-menu
+            {:trigger
+             [:div.btn-light (tr :tr/recent) down-arrow]}
+            (map (fn [entity]
+                   [{:on-select #(routes/set-path! (routes/entity entity :show))} (:entity/title entity)])
+                 recents))
+     (radix/dropdown-menu {:trigger
+                           [:div.btn-light (tr :tr/new) down-arrow]}
+                          [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                          [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)])
+     [header/chat account]
+     [header/account]]))
 
 (ui/defview account:continue-with [{:keys [route]}]
   (ui/with-form [!account {:account/email    (?email :init "")
@@ -171,30 +186,23 @@
    :endpoint/public? true}
   [params]
   (if (db/get :env/config :account-id)
-    (let [?filter    (h/use-callback (forms/field))
-          all        (db:all {})
-          recents    (filterv (comp (db:recent-ids {}) :entity/id) all)
-          account    (db/get :env/config :account)
-          title      (v/from-element :div.font-medium.text-xl.px-2)]
-      [:div
+    (let [?filter (h/use-callback (forms/field))
+          all     (db:all {})
+          account (db/get :env/config :account)
+          title   (v/from-element :div.font-medium.text-xl.px-2)
+          section (v/from-element :div.flex.flex-col.gap-2)]
+      [:div.divide-y
        [header account nil]
 
-       (if (seq all)
-         [:div.px-body.flex.flex-col.gap-8.mt-8
-          [:div.flex.flex-col.gap-4
-           [title (tr :tr/recent)]
-           (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
-                 (map entity/row)
-                 recents)]
+       (when-let [{:keys [org board project]} (-> (group-by :entity/kind all)
+                                                  (update-vals #(->> (sequence (ui/filtered @?filter) %)
+                                                                     (sort-by :entity/created-at u/compare:desc)))
+                                                  (u/guard seq))]
+         [:div.p-body.flex.flex-col.gap-8
           (when (> (count all) 6)
             [ui/filter-field ?filter])
-          (let [{:keys [org board project]} (-> (group-by :entity/kind all)
-                                                (update-vals #(->> (sequence (ui/filtered @?filter) %)
-                                                                   (sort-by :entity/created-at u/compare:desc))))
-                section (v/from-element :div.flex.flex-col.gap-2)
-                limit   (partial ui/truncate-items {:limit 10})]
-
-            [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-8
+          (let [limit   (partial ui/truncate-items {:limit 10})]
+            [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-2.md:gap-8.-mx-2
              (when (seq project)
                [section
                 [title (tr :tr/projects)]
@@ -206,13 +214,13 @@
              (when (seq org)
                [section
                 [title (tr :tr/orgs)]
-                (limit (map entity/row org))])])]
-         [:div.p-body
-          [ui/hero
-           (ui/show-markdown
-             (tr :tr/start-board-new))
-           [:a.btn.btn-primary.py-3.px-6.text-lg.mt-6 {:href (routes/href 'sparkboard.app.board/new)}
-            (tr :tr/create-first-board)]]])])
+                (limit (map entity/row org))])])])
+       [:div.p-body
+        (ui/show-markdown
+          (tr :tr/start-board-new))
+        [ui/btn-primary {:class "mt-6"
+                         :href (routes/href 'sparkboard.app.board/new)}
+         (tr :tr/create-first-board)]]])
     (ui/redirect `sign-in)))
 
 #?(:clj
