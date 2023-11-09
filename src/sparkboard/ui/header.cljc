@@ -81,7 +81,7 @@
     [:<>
      (radix/dropdown-menu
        {:trigger [:div.flex.items-center [:img.rounded-full.h-8.w-8 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
-       [{:on-click #(routes/set-path! 'sparkboard.app.account/home)} (tr :tr/home)]
+       [{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
        [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
        (into [{:sub?    true
                :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))]

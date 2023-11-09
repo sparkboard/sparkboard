@@ -54,7 +54,7 @@
          display-name :account/display-name} account]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href 'sparkboard.app.account/home {:account-id account-id})} display-name]
+      {:href (routes/href 'sparkboard.app.account/show {:account-id account-id})} display-name]
      child
      [new-menu {:account-id account-id}]
      [header/chat account]
@@ -166,7 +166,7 @@
       [radix/tab-root]
       [account:continue-with params]]]))
 
-(ui/defview home
+(ui/defview show
   {:route            "/"
    :endpoint/public? true}
   [params]
