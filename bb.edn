@@ -19,10 +19,10 @@
                  (shell "yarn shadow-cljs -A:dev:nio:local clj-run sparkboard.build/start 3000"))
          cljs (do (shell "yarn install")
                   (shell "yarn shadow-cljs release web"))
-         clj (do (run 'compile-scrypt)
-                 (shell "clojure -A:nio -X:aot")
+         clj (do (shell "clojure -A:nio -X:aot")
                  (shell "clojure -A:nio -X:uberjar"))
-         build (do (run 'cljs)
+         build (do (run 'compile-scrypt)
+                   (run 'cljs)
                    (run 'clj))
          fly:set-secrets (let [path (str "src/." (name env) ".config.edn")]
                            (if-let [secrets (slurp path)]
