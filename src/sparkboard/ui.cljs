@@ -219,7 +219,7 @@
     [:div.flex.relative.items-stretch.flex-auto
      [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
       (v/props (text-props ?field)
-               {:class ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
+               {:class       ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
                 :placeholder "Search..."
                 :on-key-down #(when (= "Escape" (.-key ^js %))
                                 (reset! ?field nil))})]
@@ -293,8 +293,8 @@
                        (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
                                                                             (.append "files" file)))
                                          :form ?field]
-                                        (reset! ?field asset)
-                                        ((auto-submit-handler ?field)))))}]]
+                         (reset! ?field asset)
+                         ((auto-submit-handler ?field)))))}]]
      (show-field-messages ?field)]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
@@ -390,8 +390,8 @@
 (def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer.text-base)
 
 (v/defview submit-form [!form label]
-  [btn-primary {:type        "submit"
-                   :disabled (not (forms/submittable? !form))}
+  [btn-primary {:type     "submit"
+                :disabled (not (forms/submittable? !form))}
    label])
 
 (defview redirect [to]

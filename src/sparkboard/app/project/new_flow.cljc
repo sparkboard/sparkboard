@@ -30,7 +30,11 @@
 
 (def form (v/from-element :form.flex.flex-col.items-stretch.gap-6.items-start.outline-6.outline.outline-black.rounded-lg.p-6.flex.flex-col.gap-6))
 (def submit (v/from-element :input.btn.btn-primary.px-6.py-3.self-start))
-(def tag (v/from-element :div.inline-flex.items-center.gap-1.text-sm.border.rounded-lg.px-2.py-1))
+(def tag (v/from-element :div.inline-flex.items-center.gap-2.text-sm.outline.outline-1.outline-gray-300.rounded-lg.px-4.py-2.hover:bg-gray-100.cursor-pointer))
+(def tag-detail (v/from-element :div.text-sm.outline-gray-300.flex))
+(def tag-detail-label (v/from-element :div.flex.items-center.gap-2.outline-1.outline-gray-300.outline.h-10.px-3.rounded-l-lg.whitespace-nowrap.flex-none {:class "min-w-[150px]"}))
+(def tag-detail-input (v/from-element :input.h-10.flex-auto.px-3.form-text.rounded-r-lg.rounded-l-none {:placeholder "Add details..."}))
+(def tag-icon (v/from-element :div))
 
 (ui/defview start
   {:route ["/b/" ['entity/id :board-id] "/new"]}
@@ -92,37 +96,35 @@
           [:input.form-text.w-60 {:placeholder "What do you need?"}]
           [form-hint "Suggestions"]
           [:div.flex.flex-wrap.gap-2
-           [tag "Designer 🎨"]
-           [tag "Programmer 💻"]
-           [tag "Project Manager 📅"]
-           [tag "Beta testers 🧪"]
-           [tag "Mentoring 🧠"]
-           [tag "Investor intros 💰"]]]])
+           [tag "Designer" [tag-icon "🎨"]]
+           [tag "Programmer" [tag-icon "💻"]]
+           [tag "Project Manager" [tag-icon "📅"]]
+           [tag "Beta testers" [tag-icon "🧪"]]
+           [tag "Mentoring" [tag-icon "🧠"]]
+           [tag "Investor intros" [tag-icon "💰"]]]]])
 
       [ui/show-markdown "Example with content - when you click on a tag, you can add details:"]
 
-      (let [detail-input (v/from-element :input.h-10.flex-auto.px-3.border-l.border-gray-300.border-1.text-gray-500 {:placeholder "Add details..."})
-            selected-item (v/from-element :div.text-sm.border.rounded-lg.pl-3.items-center.flex.gap-3)]
-        (ui/with-form [!project {:entity/title  ?title
-                                 :project/board board-id}]
-          [form
-           {:ref       (ui/use-autofocus-ref)
-            :on-submit (fn [e]
-                         (.preventDefault e)
-                         (ui/with-submission [result (db:new! {:project @!project})
-                                              :form !project]
-                           (prn result)
-                           (routes/set-path! 'sparkboard.app.board/show {:board-id board-id})))}
+      (ui/with-form [!project {:entity/title  ?title
+                               :project/board board-id}]
+        [form
+         {:ref       (ui/use-autofocus-ref)
+          :on-submit (fn [e]
+                       (.preventDefault e)
+                       (ui/with-submission [result (db:new! {:project @!project})
+                                            :form !project]
+                         (prn result)
+                         (routes/set-path! 'sparkboard.app.board/show {:board-id board-id})))}
 
-           [field
-            [form-label "Looking for:"]
-            [:div.grid.gap-4
-             [:input.form-text.w-60 {:placeholder "What do you need?"}]
-             [selected-item "Programmer 💻" [detail-input {:value "We plan to use Rust"}]]
-             [selected-item "Beta testers 🧪" [detail-input {:value "Android and iOS, anyone interested in unicorns!"}]]
-             [selected-item "Mentoring 🧠" [detail-input]]]
-            [form-hint "Suggestions"]
-            [:div.flex.flex-wrap.gap-2
-             [tag "Designer 🎨"]
-             [tag " Project Manager 📅"]
-             [tag "Investor intros 💰"]]]]))]]))
+         [field
+          [form-label "Looking for:"]
+          [:div.grid.gap-3
+           [:input.form-text.w-60 {:placeholder "What do you need?"}]
+           [tag-detail [tag-detail-label "Programmer" [tag-icon "💻"]] [tag-detail-input {:value "We plan to use Rust"}]]
+           [tag-detail [tag-detail-label "Beta testers" [tag-icon "🧪"]] [tag-detail-input {:value "Android and iOS, anyone interested in unicorns!"}]]
+           [tag-detail [tag-detail-label "Mentoring" [tag-icon "🧠"]] [tag-detail-input]]]
+          [form-hint "Suggestions"]
+          [:div.flex.flex-wrap.gap-2
+           [tag "Designer" [tag-icon "🎨"]]
+           [tag " Project Manager" [tag-icon "📅"]]
+           [tag "Investor intros" [tag-icon "💰"]]]]])]]))

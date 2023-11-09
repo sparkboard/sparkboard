@@ -91,6 +91,7 @@
   (render))
 
 (comment
+  (routes/href ['sparkboard.app.board/new])
   @routes/!routes
   (db/transact! [[:db/retractEntity :test]])
   (db/transact! [#_{:db/id :a :b 1}

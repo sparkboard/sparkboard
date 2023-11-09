@@ -285,4 +285,5 @@
   (routes/by-tag 'sparkboard.app.org/db:read
                  :query)
   (restart-server! 3000)
+  (routes/resolve ['sparkboard.app.board/new])
   )

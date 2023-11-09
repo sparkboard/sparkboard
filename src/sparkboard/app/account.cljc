@@ -202,7 +202,7 @@
          [:div.p-body.flex.flex-col.gap-8
           (when (> (count all) 6)
             [ui/filter-field ?filter])
-          (let [limit   (partial ui/truncate-items {:limit 10})]
+          (let [limit (partial ui/truncate-items {:limit 10})]
             [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-2.md:gap-8.-mx-2
              (when (seq project)
                [section
@@ -217,11 +217,12 @@
                 [title (tr :tr/orgs)]
                 (limit (map entity/row org))])])])
        [:div.p-body
-        (ui/show-markdown
-          (tr :tr/start-board-new))
-        [ui/btn-primary {:class "mt-6"
-                         :href (routes/href ['sparkboard.app.board/new])}
-         (tr :tr/create-first-board)]]])
+        [ui/hero
+         (ui/show-markdown
+           (tr :tr/start-board-new))
+         [:a.btn.btn-primary.btn-base {:class "mt-6"
+                                       :href  (routes/href ['sparkboard.app.board/new])}
+          (tr :tr/create-first-board)]]]])
     (ui/redirect `sign-in)))
 
 #?(:clj

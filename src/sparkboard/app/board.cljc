@@ -189,48 +189,47 @@
     board))
 
 (ui/defview new
-  {:route ["/b/" "new"]}
+  {:route ["/b/" "new"]
+   :view/target :modal}
   [{:as params :keys [route]}]
   (let [account (db/get :env/config :account)
         owners  (some->> (account/db:account-orgs {})
                          seq
                          (cons (entity/account-as-entity account)))]
-    [:<>
-     [account/header account nil]
-     (forms/with-form [!board (u/prune
-                                {:entity/title  ?title
-                                 :entity/domain ?domain
-                                 :board/owner   [:entity/id (uuid (?owner
-                                                                    :init
-                                                                    (or (-> params :query-params :org)
-                                                                        (str (-> (db/get :env/config :account)
-                                                                                 :entity/id)))))]})
-                       :required [?title ?domain]]
-       [:form
-        {:class     ui/form-classes
-         :on-submit (fn [^js e]
-                      (.preventDefault e)
-                      (ui/with-submission [result (db:new! {:board @!board})
-                                           :form !board]
-                        (routes/set-path! `show {:board-id (:entity/id result)})))
-         :ref       (ui/use-autofocus-ref)}
-        [:h2.text-2xl (tr :tr/new-board)]
+    (forms/with-form [!board (u/prune
+                               {:entity/title  ?title
+                                :entity/domain ?domain
+                                :board/owner   [:entity/id (uuid (?owner
+                                                                   :init
+                                                                   (or (-> params :query-params :org)
+                                                                       (str (-> (db/get :env/config :account)
+                                                                                :entity/id)))))]})
+                      :required [?title ?domain]]
+      [:form
+       {:class     ui/form-classes
+        :on-submit (fn [^js e]
+                     (.preventDefault e)
+                     (ui/with-submission [result (db:new! {:board @!board})
+                                          :form !board]
+                       (routes/set-path! `show {:board-id (:entity/id result)})))
+        :ref       (ui/use-autofocus-ref)}
+       [:h2.text-2xl (tr :tr/new-board)]
 
-        (when owners
-          [:div.flex.flex-col.gap-2
-           [ui/input-label {} (tr :tr/owner)]
-           (->> owners
-                (map (fn [{:keys [entity/id entity/title image/avatar]}]
-                       (v/x [radix/select-item {:value (str id)
-                                                :text  title
-                                                :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}])))
-                (apply radix/select-menu {:value           @?owner
-                                          :on-value-change (partial reset! ?owner)}))])
+       (when owners
+         [:div.flex.flex-col.gap-2
+          [ui/input-label {} (tr :tr/owner)]
+          (->> owners
+               (map (fn [{:keys [entity/id entity/title image/avatar]}]
+                      (v/x [radix/select-item {:value (str id)
+                                               :text  title
+                                               :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}])))
+               (apply radix/select-menu {:value           @?owner
+                                         :on-value-change (partial reset! ?owner)}))])
 
-        [ui/text-field ?title {:label (tr :tr/title)}]
-        (domain/show-domain-field ?domain)
-        (ui/show-field-messages !board)
-        [ui/submit-form !board (tr :tr/create)]])]))
+       [ui/text-field ?title {:label (tr :tr/title)}]
+       (domain/show-domain-field ?domain)
+       (ui/show-field-messages !board)
+       [ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
   {:route ["/b/" ['entity/id :board-id] "/register"]}

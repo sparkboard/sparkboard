@@ -169,10 +169,14 @@
 
     .form-text {
         @apply
-        flex w-full rounded px-3 py-2 placeholder-gray-400 outline-default
+        flex w-full rounded px-3 py-2 placeholder-gray-400
 
         bg-back
-        outline outline-1 border-none
+        outline
+        outline-gray-300 focus:outline-blue-500
+        outline-1 focus:outline-2
+
+        border-none focus:border-none
 
         text-sm
         disabled:cursor-not-allowed disabled:opacity-50
@@ -199,6 +203,12 @@
         ring-offset-back bg-primary text-primary-txt
         hover:bg-primary/90 focus-visible:bg-primary/90
         disabled:bg-primary
+    }
+
+    .btn-base {
+        @apply
+        text-base
+        px-4 py-2
     }
 
     .btn-transp {
