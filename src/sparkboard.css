@@ -115,10 +115,12 @@
         color: white;
         text-decoration-color: rgba(255, 255, 255, 0.7);
     }
+
     .text-white a:hover {
         color: white;
         text-decoration-color: rgba(255, 255, 255, 1);
     }
+
     .px-body {
         @apply px-2 sm:px-6
     }
@@ -158,6 +160,22 @@
 }
 
 @layer components {
+    /* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
+    .auto-size {
+        @apply grid
+    }
+
+    .auto-size > :not(textarea) {
+        @apply whitespace-pre-wrap invisible
+    }
+
+    .auto-size > textarea {
+        @apply resize-none overflow-hidden
+    }
+
+    .auto-size > * {
+        grid-area: 1 / 1 / 2 / 2;
+    }
 
     .gap-body {
         @apply sm:gap-6
@@ -175,6 +193,7 @@
         outline
         outline-gray-300 focus:outline-blue-500
         outline-1 focus:outline-2
+        outline-offset-0 focus:outline-offset-0
 
         border-none focus:border-none
 

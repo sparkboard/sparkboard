@@ -13,7 +13,7 @@
 (def menu-content-classes (v/classes ["rounded bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
                                       "focus:outline-none z-50"
-                                      "gap-1 py-2 px-1"]))
+                                      "gap-1 py-1 px-0"]))
 (def menu-content (v/from-element :el dm/Content {:sideOffset        4
                                                   :collision-padding 16
                                                   :align             "end"

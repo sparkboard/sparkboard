@@ -495,3 +495,13 @@
                     (some-> x
                             (j/call :querySelector "input, textarea")
                             (j/call :focus)))))
+
+(v/defview auto-size [props]
+  (let [v! (h/use-state "")
+        props (merge props {:value (:value props @v!)
+                            :on-change (:on-change props
+                                         #(reset! v! (j/get-in % [:target :value])))})]
+    [:div.auto-size
+     [:div (select-keys props [:class :style])
+      (str (:value props) " ")]
+     [:textarea props]]))
