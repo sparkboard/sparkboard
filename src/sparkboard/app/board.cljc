@@ -189,7 +189,7 @@
     board))
 
 (ui/defview new
-  {:route ["/b/" "new"]
+  {:route       ["/b/" "new"]
    :view/target :modal}
   [{:as params :keys [route]}]
   (let [account (db/get :env/config :account)
@@ -227,8 +227,7 @@
                                          :on-value-change (partial reset! ?owner)}))])
 
        [ui/text-field ?title {:label (tr :tr/title)}]
-       (domain/show-domain-field ?domain)
-       (ui/show-field-messages !board)
+       (domain/domain-field ?domain)
        [ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
@@ -255,7 +254,12 @@
     - [ ] no members? invite / set up registration
       (:entity/title, :entity/domain, ...)"]
    #_[ui/pprinted
-    (db/touch board)]])
+      (db/touch board)]])
+
+(ui/defview header [board]
+  [header/entity board
+   [header/btn {:icon [icons/settings]
+                :href (routes/href ['sparkboard.app.board/settings {:board-id (sch/wrap-id board)}])}]])
 
 (ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}
@@ -264,9 +268,7 @@
         !current-tab (h/use-state (tr :tr/projects))
         ?filter      (h/use-state nil)]
     [:<>
-     [header/entity board
-      [header/btn {:icon [icons/settings]
-                   :href (routes/href ['sparkboard.app.board/settings params])}]]
+     [header board]
      [:div.p-body
 
       [:div.flex.gap-4.items-stretch
@@ -321,11 +323,67 @@
   (q/pull entity/fields board-id))
 
 (ui/defview settings
-  {:route       ["/b/" ['entity/id :board-id] "/settings"]
-   :view/target :modal}
+  {:route ["/b/" ['entity/id :board-id] "/settings"]}
   [params]
   (let [board (db:settings {:board-id (:board-id params)})]
-    [:pre (ui/pprinted (seq board))]))
+    [:<>
+     ;; TODO
+
+     ;; field types
+     ;; - text
+     ;; - checkboxes (sharing buttons)
+     ;; - color picker (sticky color)
+     ;; - image upload (logo)
+     ;; - plain text (invitation email text)
+     ;;
+     ;; fields should save independently on blur, with ability to cancel.
+     ;; use inside-out forms to handle state/validation.
+     ;; errors should show up in the UI.
+
+
+     ;; edit board settings individually.
+     ;; - :entity/title
+     ;; - :entity/domain
+     ;; - :board/project-sharing-buttons
+     ;; - :board/sticky-color
+     ;; - :board/member-tags
+     ;; - :board/project-fields
+     ;; - :board/member-fields
+     ;; - :board/registration-invitation-email-text
+     ;; - :board/registration-newsletter-field?
+     ;; - :board/registration-open?
+     ;; - :board/registration-message
+     ;; - :board/registration-url-override
+     ;; - :board/registration-codes
+     #_(forms/with-form [!org (u/keep-changes org
+                                            {:entity/id          org-id
+                                             :entity/title       (?title :label (tr :tr/title))
+                                             :entity/description (?description :label (tr :tr/description))
+                                             :entity/domain      ?domain
+                                             :image/avatar       (?logo :label (tr :tr/image.logo))
+                                             :image/background   (?background :label (tr :tr/image.background))})
+                       :validators {?domain [domain/domain-valid-string
+                                             (domain/domain-availability-validator)]}
+                       :init org
+                       :form/auto-submit #(routes/POST [:org/edit params] %)]
+       [:<>
+        (header/entity org)
+
+        [:div {:class ui/form-classes}
+
+         (ui/show-field-messages !org)
+         (ui/text-field ?title)
+         (ui/prose-field ?description)
+         (domain/domain-field ?domain)
+         [:div.flex.flex-col.gap-2
+          [ui/input-label {} (tr :tr/images)]
+          [:div.flex.gap-6
+           (ui/image-field ?logo)
+           (ui/image-field ?background)]]
+         [:a.btn.btn-primary.p-4 {:href (routes/entity org :show)} (tr :tr/done)]]])
+
+     [header board]
+     [:pre (ui/pprinted (seq board))]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

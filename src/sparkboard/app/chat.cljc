@@ -293,7 +293,7 @@
              (sort-by :entity/created-at)
              (map (partial chat-message params))
              doall)]
-       [ui/auto-height-textarea
+       [ui/auto-size
         {:class       [search-classes
                        "m-1 whitespace-pre-wrap min-h-[38px] flex-none"]
          :type        "text"

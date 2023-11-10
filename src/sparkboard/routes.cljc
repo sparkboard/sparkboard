@@ -205,7 +205,7 @@
                             alias-of
                             (merge (-> (if (:ns &env)
                                          (:meta (ana/resolve &env alias-of))
-                                         (meta (resolve alias-of)))
+                                         (meta (clojure.core/resolve alias-of)))
                                        (u/select-by (comp #{"view"} namespace)))
                                    {:endpoint {:view route}}))]
        `(do
@@ -251,7 +251,6 @@
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [route & {:as options}]
-  {:pre [(symbol? route)]}
   (if (vector? route)
     (apply path-for route)
     (cond-> (bidi/path-for @!routes route options)

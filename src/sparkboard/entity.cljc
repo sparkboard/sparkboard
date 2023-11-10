@@ -3,11 +3,14 @@
             [malli.util :as mu]
             [re-db.api :as db]
             [sparkboard.app.domain :as domains]
+            [sparkboard.authorize :as az]
             [sparkboard.routes :as routes]
+            [sparkboard.schema :as sch]
             [sparkboard.util :as u]
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
             [yawn.view :as v]
+            [sparkboard.query :as q]
             #?(:clj [sparkboard.server.datalevin :as dl])))
 
 ;; common entity fields
@@ -77,11 +80,16 @@
      (let [entity-id  (dl/resolve-id entity-id)
            account-id (dl/resolve-id account-id)]
        (or (= entity-id account-id)                         ;; entity _is_ account
-           (-> (dl/entity [:member/entity+account [entity-id account-id]])
-               :member/roles
-               (set/intersection #{:role/admin :role/collaborate})
-               seq
-               boolean)))))
+           (->> (dl/entity [:member/entity+account [entity-id account-id]])
+                :member/roles
+                (some #{:role/owner :role/admin :role/collaborate})
+                boolean)))))
+
+#?(:clj
+   (defn assert-can-edit! [entity-id account-id]
+     (when-not (can-edit? entity-id account-id)
+       (throw (ex-info "Validation failed"
+                       {:response {:status 400}})))))
 
 #?(:cljs
    (v/defview show-filtered-results
@@ -93,3 +101,14 @@
         (into [:div.card-grid]
               (map card:compact)
               results)])))
+
+(q/defx save-attribute!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} e a v]
+  (let [e (sch/wrap-id e)
+        _ (assert-can-edit! e account-id)
+        {:as entity :keys [entity/kind entity/id]} (db/entity e)
+        pv (get entity a)]
+    (validate/assert v a)
+    (db/transact! [[:db/add e a v]])
+    {:db/id id}))

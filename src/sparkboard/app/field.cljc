@@ -1,6 +1,15 @@
 (ns sparkboard.app.field
   (:require [sparkboard.schema :as sch :refer [s- ?]]))
 
+;; TODO
+;; views for:
+;; - listing the fields (specs) defined for an org/board
+;; - adding/removing fields (specs) of an org/board
+
+;; - displaying the value of a field
+;; - editing a field's value
+
+
 (sch/register!
   {:image/url             {s- :http/url}
 

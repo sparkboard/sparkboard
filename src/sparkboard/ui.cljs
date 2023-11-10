@@ -119,7 +119,7 @@
       (when-let [submit! (:auto-submit !form)]
         (forms/watch-promise ?field
                              (u/p-when (forms/valid?+ !form)
-                                       (submit! @!form)))))))
+                               (submit! @!form)))))))
 
 (defview input-label [props content]
   [:label.block.text-oreground-muted.text-sm.font-medium
@@ -129,21 +129,23 @@
 (defn field-id [?field]
   (str "field-" (goog/getUid ?field)))
 
-(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class))
+(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :wrap :unwrap))
 
 (defn compseq [& fs]
   (fn [& args]
     (doseq [f fs] (apply f args))))
 
-(defn text-props [?field]
+
+(defn text-props [?field {:keys [wrap unwrap persisted-value]
+                          :or {wrap identity unwrap identity}}]
   {:id          (field-id ?field)
-   :value       (or @?field "")
-   :on-change   (fn [e]
-                  (js/console.log (.. e -target -checked))
-                  ((forms/change-handler ?field) e))
-   :on-blur     (compseq (forms/blur-handler ?field)
-                         (auto-submit-handler ?field))
-   :on-focus    (forms/focus-handler ?field)
+   :value       (or (unwrap @?field) "")
+   :persisted-value (or (unwrap persisted-value) "")
+   :on-change (fn [e]
+                ((forms/change-handler ?field {:parse-value (or wrap #(u/guard % (complement str/blank?)))}) e))
+   :on-blur (compseq (forms/blur-handler ?field)
+                     (auto-submit-handler ?field))
+   :on-focus (forms/focus-handler ?field)
    :on-key-down #(when (= "Enter" (.-key ^js %))
                    ((auto-submit-handler ?field) %))})
 
@@ -160,13 +162,42 @@
   (when-let [postfix (or (:postfix props)
                          (:postfix (meta ?field))
                          (and (:loading? ?field)
-                              [icons/loading "w-4 h-4 text-txt/40"]))]
+                              [icons/loading "w-4 h-4 text-txt/40"])
+                         (and (some-> (:persisted-value props)
+                                      (not= (:value props)))
+                              [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
     [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix]))
+
+(defn keydown-handler [bindings]
+  (let [handler (keydownHandler (clj->js bindings))]
+    (fn [e] (handler #js{} e))))
 
 (defn text-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field & [props]]
-  (let [{:as props :keys [multi-line wrapper-class]} (merge props (:props (meta ?field)))]
+  (let [{:as   props
+         :keys [multi-line
+                wrap
+                unwrap
+                wrapper-class
+                on-save
+                persisted-value]
+         :or   {wrap   identity
+                unwrap identity}} (merge props (:props (meta ?field)))
+        blur!   (fn [& _] (some-> js/window.event.target (j/call :blur)))
+        cancel! (fn [& _]
+                  (blur!)
+                  (reset! ?field persisted-value))
+        props   (v/merge-props props
+                               (text-props ?field props)
+                               {:class [(when (:invalid (forms/types (forms/visible-messages ?field)))
+                                          "outline-invalid")]}
+                               (when on-save
+                                 {:on-key-down
+                                  (keydown-handler {:Enter  #(u/p-when (forms/valid?+ ?field)
+                                                               (on-save @?field))
+                                                    :Escape blur!
+                                                    :Meta-. cancel!})}))]
     (v/x
       [:div.gap-2.flex.flex-col.relative
        {:class wrapper-class}
@@ -174,24 +205,21 @@
        [:div.flex.relative
         [(if multi-line
            :textarea.form-text
-           :input.form-text)
-         (v/props (text-props ?field)
-                  (pass-props props)
-                  {:class [(when (:invalid (forms/types (forms/visible-messages ?field)))
-                             "outline-invalid")]})]
+           :input.form-text) (pass-props props)]
         (show-postfix ?field props)]
        (show-field-messages ?field)])))
 
-(defn prose-props [?field]
-  {:value     (or (:prose/string @?field) "")
-   :on-change (fn [e]
-                (reset! ?field
-                        (when-let [value (u/guard (.. ^js e -target -value) seq)]
-                          {:prose/format :prose.format/markdown
-                           :prose/string value})))})
+(defn wrap-prose [value]
+  (when-not (str/blank? value)
+    {:prose/format :prose.format/markdown
+     :prose/string value}))
+
+(def unwrap-prose :prose/string)
 
 (defn prose-field [?field & [props]]
-  (text-field ?field (v/merge-props props (prose-props ?field))))
+  (text-field ?field (merge props
+                            {:wrap   wrap-prose
+                             :unwrap unwrap-prose})))
 
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
@@ -218,7 +246,7 @@
   (let [loading? (or (:loading? ?field) (:loading? attrs))]
     [:div.flex.relative.items-stretch.flex-auto
      [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
-      (v/props (text-props ?field)
+      (v/props (text-props ?field nil)
                {:class       ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
                 :placeholder "Search..."
                 :on-key-down #(when (= "Escape" (.-key ^js %))
@@ -390,9 +418,11 @@
 (def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer.text-base)
 
 (v/defview submit-form [!form label]
-  [btn-primary {:type     "submit"
-                :disabled (not (forms/submittable? !form))}
-   label])
+  [:<>
+   (show-field-messages !form)
+   [btn-primary {:type     "submit"
+                 :disabled (not (forms/submittable? !form))}
+    label]])
 
 (defview redirect [to]
   (h/use-effect #(routes/set-path! to)))
@@ -448,10 +478,6 @@
      [:textarea
       (update props :style merge {:height (some-> @!text-height (+ 2))})]]))
 
-(defn keydown-handler [bindings]
-  (let [handler (keydownHandler (clj->js bindings))]
-    (fn [e] (handler #js{} e))))
-
 (defclass ErrorBoundary
   (extends react/Component)
   (constructor [this props] (super props))
@@ -497,8 +523,8 @@
                             (j/call :focus)))))
 
 (v/defview auto-size [props]
-  (let [v! (h/use-state "")
-        props (merge props {:value (:value props @v!)
+  (let [v!    (h/use-state "")
+        props (merge props {:value     (:value props @v!)
                             :on-change (:on-change props
                                          #(reset! v! (j/get-in % [:target :value])))})]
     [:div.auto-size

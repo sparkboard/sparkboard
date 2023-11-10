@@ -91,7 +91,6 @@
                           org-id)
                     (remove :project/sticky?))}))
 
-
 (q/defquery db:edit!
   {:endpoint {:post ["/o/" ['entity/id :org-id] "/settings"]}}
   [{:keys [account]} {:keys [org-id]
@@ -100,18 +99,17 @@
     (db/transact! [org])
     {:body org}))
 
-
-(q/defquery db:new!
-  {:endpoint {:post ["/o/" "new"]}}
-  [{:keys [account]} {org :body}]
-  (let [org    (-> (dl/new-entity org :org :by (:db/id account))
+(q/defx db:new!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id org]}]
+  (let [org    (-> (dl/new-entity org :org :by account-id)
                    (entity/conform :org/as-map))
         member (-> {:member/entity  org
-                    :member/account (:db/id account)
+                    :member/account account-id
                     :member/roles   #{:role/owner}}
                    (dl/new-entity :member))]
     (db/transact! [member])
-    {:body org}))
+    org))
 
 (ui/defview show
   {:route ["/o/" ['entity/id :org-id]]}
@@ -119,7 +117,7 @@
   (forms/with-form [_ ?q]
     (let [{:as   org
            :keys [entity/description]} (db:read params)
-          q      (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
+          q     (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
           [result set-result!] (h/use-state nil)
           title (v/from-element :h3.font-medium.text-lg.pt-6)]
       (h/use-effect
@@ -137,7 +135,7 @@
 
        (header/entity org
          [header/btn {:icon [icons/settings]
-                      :href (routes/path-for 'sparkboard.app.org/edit params)}]
+                      :href (routes/path-for 'sparkboard.app.org/settings params)}]
          #_[:div
             {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                       title "?"))
@@ -170,36 +168,32 @@
            [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
             (map entity/row (:board/_owner org))]])]])))
 
-(ui/defview edit
+(defn persist-props [?field entity k]
+  {:persisted-value (k entity)
+   :on-save         #(forms/try-submit+ ?field
+                                        (entity/save-attribute! nil (:entity/id entity) k %))})
+
+(defn persisted [entity field-type attribute & [props]]
+  (let [?field (h/use-memo #(forms/field :init (get entity attribute)
+                                         :attribute attribute))]
+    [field-type ?field (persist-props ?field entity attribute)]))
+
+(ui/defview settings
   {:route ["/o/" ['entity/id :org-id] "/settings"]}
   [{:as params :keys [org-id]}]
-  (let [org (sparkboard.app.org/db:edit params)]
-    (forms/with-form [!org (u/keep-changes org
-                                           {:entity/id          org-id
-                                            :entity/title       (?title :label (tr :tr/title))
-                                            :entity/description (?description :label (tr :tr/description))
-                                            :entity/domain      ?domain
-                                            :image/avatar       (?logo :label (tr :tr/image.logo))
-                                            :image/background   (?background :label (tr :tr/image.background))})
-                      :validators {?domain [domain/domain-valid-string
-                                            (domain/domain-availability-validator)]}
-                      :init org
-                      :form/auto-submit #(routes/POST [:org/edit params] %)]
-      [:<>
-       (header/entity org)
+  (let [org (sparkboard.app.org/db:edit params)
+        field (partial persisted org)]
+    [:<>
+     (header/entity org)
+     [:div {:class ui/form-classes}
+      (field ui/text-field :entity/title)
+      (field ui/prose-field :entity/description)
+      ;; TODO - saving a domain does not work, it gets a {:domain/name _} but expects a lookup ref
+      (field domain/domain-field :entity/domain)
+      ;; TODO - uploading an image does not work
+      (field ui/image-field :image/avatar {:label (tr :tr/image.logo)})
 
-       [:div {:class ui/form-classes}
-
-        (ui/show-field-messages !org)
-        (ui/text-field ?title)
-        (ui/prose-field ?description)
-        (domain/show-domain-field ?domain)
-        [:div.flex.flex-col.gap-2
-         [ui/input-label {} (tr :tr/images)]
-         [:div.flex.gap-6
-          (ui/image-field ?logo)
-          (ui/image-field ?background)]]
-        [:a.btn.btn-primary.p-4 {:href (routes/entity org :show)} (tr :tr/done)]]])))
+      ]]))
 
 (ui/defview new
   {:route       ["/o/" "new"]
@@ -213,11 +207,10 @@
      {:class     ui/form-classes
       :on-submit (fn [e]
                    (.preventDefault e)
-                   (ui/with-submission [result (routes/POST [:org/new params] @!org)
+                   (ui/with-submission [result (db:new! {:org @!org})
                                         :form !org]
-                                       (routes/set-path! :org/read {:org-id (:entity/id result)})))}
+                     (routes/set-path! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (tr :tr/new-org)]
      [ui/text-field ?title {:label (tr :tr/title)}]
-     (domain/show-domain-field ?domain)
-     (ui/show-field-messages !org)
+     (domain/domain-field ?domain)
      [ui/submit-form !org (tr :tr/create)]]))

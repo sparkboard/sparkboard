@@ -58,3 +58,17 @@
 
 (defmacro transition [expr]
   `(~'sparkboard.ui/startTransition (fn [] ~expr)))
+
+(defmacro with-let
+  "Within a reaction, evaluates bindings once, memoizing the results."
+  [bindings & body]
+  (let [finally (some-> (last body)
+                        (u/guard #(and (list? %) (= 'finally (first %))))
+                        rest)
+        body    (cond-> body finally drop-last)]
+    `(let [~@(mapcat (fn [[sym value]]
+                       [sym `(~'yawn.hooks/use-memo (fn [] ~value))])
+                     (partition 2 bindings))]
+       ~(when (seq finally)
+          `(~'yawn.hooks/use-effect (fn [] (fn [] ~@finally))))
+       ~@body)))

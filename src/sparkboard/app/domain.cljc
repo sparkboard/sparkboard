@@ -98,12 +98,10 @@
          (forms/debounce 300))))
 
 #?(:cljs
-   (defn show-domain-field [?domain]
-     (ui/text-field ?domain {:label         (tr :tr/domain-name)
-                             :auto-complete "off"
-                             :spell-check   false
-                             :placeholder   (or (:placeholder ?domain))
-                             :postfix       [:span.text-sm.text-gray-500 ".sparkboard.com"]
-                             :on-change     (fn [^js e]
-                                              (reset! ?domain {:domain/name (qualify-domain (normalize-domain (.. e -target -value)))}))
-                             :value         (or (unqualify-domain (:domain/name @?domain)) "")})))
+   (defn domain-field [?domain & [props]]
+     (ui/text-field ?domain (merge {:wrap          (fn [v] {:domain/name (qualify-domain (normalize-domain v))})
+                                    :unwrap        (comp unqualify-domain :domain/name)
+                                    :auto-complete "off"
+                                    :spell-check   false
+                                    :postfix       [:span.text-sm.text-gray-500 ".sparkboard.com"]}
+                                   props))))

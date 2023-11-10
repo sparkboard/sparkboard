@@ -9,10 +9,13 @@
             [re-db.api :as db]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
+            [sparkboard.authorize :as az]
             [sparkboard.routes :as routes]
+            [sparkboard.schema :as sch]
             [sparkboard.util :as u]
-            [re-db.sync.entity-diff-2 :as entity-diff])
-  #?(:cljs (:require-macros sparkboard.query)))
+            [re-db.sync.entity-diff-2 :as entity-diff]
+            [sparkboard.validate :as validate])
+  #?(:cljs (:require-macros [sparkboard.query :as q])))
 
 (def ws:default-options
   "Websocket config fallbacks"
@@ -183,3 +186,4 @@
     re-db.api/*conn*
     @re-db.api/*conn*
     [:entity/id #uuid "adc4e6a6-a97e-330b-8e0a-94268505bf37"]))
+

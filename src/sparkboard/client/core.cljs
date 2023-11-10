@@ -75,7 +75,12 @@
                         :props      {:type        "password"
                                      :placeholder (tr :tr/password)}
                         :validators [(forms/min-length 8)]}
-     :entity/domain    {:validators [domain/domain-valid-string
+     :entity/title     {:validators [(forms/min-length 3)]
+                        :label (tr :tr/title)}
+     :entity/description {:label (tr :tr/description)}
+
+     :entity/domain    {:label      (tr :tr/domain-name)
+                        :validators [domain/domain-valid-string
                                      (domain/domain-availability-validator)]}})
   )
 
