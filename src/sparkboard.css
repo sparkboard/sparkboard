@@ -204,8 +204,10 @@
     .btn {
         @apply
         inline-flex items-center justify-center cursor-pointer
-        font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none
-        rounded-md px-3 focus-visible:outline-none text-sm no-underline
+        font-medium text-base
+        transition-colors disabled:opacity-50 disabled:pointer-events-none
+        rounded-md px-3 focus-visible:outline-none no-underline
+
     }
 
     .btn-light {

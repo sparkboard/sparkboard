@@ -64,7 +64,6 @@
 
 
          [field
-          [form-label "Project title"]
           [ui/text-field ?title]]
 
          ;; here is where we would loop through the "project fields" which are defined

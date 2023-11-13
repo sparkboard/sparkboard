@@ -24,6 +24,11 @@
             [shadow.cljs.modern :refer [defclass]])
   (:require-macros [sparkboard.ui :refer [defview with-submission]]))
 
+(defn loading-bar [& [class]]
+  [:div.relative
+   {:class class}
+   [:div.loading-bar]])
+
 (defonce ^js Markdown (md))
 
 (defview show-markdown
@@ -161,8 +166,6 @@
 (defn show-postfix [?field props]
   (when-let [postfix (or (:postfix props)
                          (:postfix (meta ?field))
-                         (and (:loading? ?field)
-                              [icons/loading "w-4 h-4 text-txt/40"])
                          (and (some-> (:persisted-value props)
                                       (not= (:value props)))
                               [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
@@ -206,7 +209,9 @@
         [(if multi-line
            :textarea.form-text
            :input.form-text) (pass-props props)]
-        (show-postfix ?field props)]
+        (show-postfix ?field props)
+        (when (:loading? ?field)
+          [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[2px]"}])]
        (show-field-messages ?field)])))
 
 (defn wrap-prose [value]
@@ -264,11 +269,6 @@
     [:div.px-body.my-4
      [:div.text-destructive.border-2.border-destructive.rounded.shadow.p-4
       (str error)]]))
-
-(defn loading-bar [& [class]]
-  [:div.relative
-   {:class class}
-   [:div.loading-bar]])
 
 (defn upload-icon [class]
   [:svg {:class class :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
@@ -453,30 +453,6 @@
         [:div.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
          (v/merge-props {:class class} props)
          (initials txt)]))))
-
-(defview auto-height-textarea [{:as props :keys [value]}]
-  (let [!text-element (h/use-ref nil)
-        !text-height  (h/use-state nil)]
-    (h/use-effect
-      (fn []
-        (reset! !text-height
-                (some-> @!text-element
-                        (j/call :getBoundingClientRect)
-                        (j/get :height))))
-      [@!text-element value])
-    [:<>
-     [:div.bg-black {:class (:class props)
-                     :style (merge (:style props)
-                                   {:color      "white"
-                                    :visibility "hidden"
-                                    :position   "absolute"
-                                    :left       0
-                                    :top        0})
-                     :ref   !text-element}
-      (:value props)
-      (when (= \newline (last (:value props))) " ")]
-     [:textarea
-      (update props :style merge {:height (some-> @!text-height (+ 2))})]]))
 
 (defclass ErrorBoundary
   (extends react/Component)

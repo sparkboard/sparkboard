@@ -114,10 +114,10 @@
 (ui/defview show
   {:route ["/o/" ['entity/id :org-id]]}
   [params]
-  (forms/with-form [_ ?q]
+  (forms/with-form [_ ?filter]
     (let [{:as   org
            :keys [entity/description]} (db:read params)
-          q     (ui/use-debounced-value (u/guard @?q #(> (count %) 2)) 500)
+          q     (ui/use-debounced-value (u/guard @?filter #(> (count %) 2)) 500)
           [result set-result!] (h/use-state nil)
           title (v/from-element :h3.font-medium.text-lg.pt-6)]
       (h/use-effect
@@ -127,7 +127,7 @@
               (set-result! {:loading? true})
               (p/let [result (db:search-once {:org-id (:org-id params)
                                               :q      q})]
-                (when (= q @?q)
+                (when (= q @?filter)
                   (set-result! {:value result
                                 :q     q}))))))
         [q])
@@ -140,9 +140,7 @@
             {:on-click #(when (js/window.confirm (str "Really delete organization "
                                                       title "?"))
                           (routes/POST :org/delete params))}]
-
-         [:a.btn.btn-light {:href (routes/href ['sparkboard.app.board/new
-                                                {:query-params {:org-id (:entity/id org)}}])} (tr :tr/new-board)])
+         )
 
        [:div.p-body.whitespace-pre
         "This is the landing page for an organization. Its purpose is to provide a quick overview of the organization and list its boards.
@@ -154,7 +152,12 @@
         ]
        [:div.p-body (ui/show-prose description)]
        [:div.p-body
-        [ui/filter-field ?q {:loading? (:loading? result)}]
+        [:div.flex.gap-4.items-stretch
+         [ui/filter-field ?filter {:loading? (:loading? result)}]
+         [:a.btn.btn-light.flex.items-center.px-3
+          {:href (routes/href ['sparkboard.app.board/new
+                               {:query-params {:org-id (:entity/id org)}}])}
+          (tr :tr/new-board)]]
         [ui/error-view result]
         (if (seq q)
           (for [[kind results] (dissoc (:value result) :q)
@@ -168,32 +171,32 @@
            [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
             (map entity/row (:board/_owner org))]])]])))
 
-(defn persist-props [?field entity k]
-  {:persisted-value (k entity)
-   :on-save         #(forms/try-submit+ ?field
-                                        (entity/save-attribute! nil (:entity/id entity) k %))})
-
-(defn persisted [entity field-type attribute & [props]]
-  (let [?field (h/use-memo #(forms/field :init (get entity attribute)
-                                         :attribute attribute))]
-    [field-type ?field (persist-props ?field entity attribute)]))
+(defn use-persisted [entity field-type attribute props]
+  (let [persisted-value (get entity attribute)
+        ?field          (h/use-memo #(forms/field :init persisted-value
+                                                  :attribute attribute)
+                                    ;; create a new field when the persisted value changes
+                                    (h/use-deps persisted-value))]
+    [field-type ?field (merge {:persisted-value persisted-value
+                               :on-save         #(forms/try-submit+ ?field
+                                                   (entity/save-attribute! nil (:entity/id entity) attribute %))}
+                              props)]))
 
 (ui/defview settings
   {:route ["/o/" ['entity/id :org-id] "/settings"]}
   [{:as params :keys [org-id]}]
-  (let [org (sparkboard.app.org/db:edit params)
-        field (partial persisted org)]
+  (let [org (sparkboard.app.org/db:edit params)]
     [:<>
      (header/entity org)
      [:div {:class ui/form-classes}
-      (field ui/text-field :entity/title)
-      (field ui/prose-field :entity/description)
-      ;; TODO - saving a domain does not work, it gets a {:domain/name _} but expects a lookup ref
-      (field domain/domain-field :entity/domain)
+      (use-persisted org ui/text-field :entity/title nil)
+      (use-persisted org ui/prose-field :entity/description nil)
+      (use-persisted org domain/domain-field :entity/domain nil)
       ;; TODO - uploading an image does not work
-      (field ui/image-field :image/avatar {:label (tr :tr/image.logo)})
+      (use-persisted org ui/image-field :image/avatar {:label (tr :tr/image.logo)})
 
       ]]))
+
 
 (ui/defview new
   {:route       ["/o/" "new"]

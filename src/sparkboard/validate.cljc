@@ -63,6 +63,7 @@
 
 
 (comment
+
  (messages-by-path [:map {:closed true} :entity/title]
                    {:entity/title nil})
  (= (messages-by-path [:map [:x :email]] {:x "foo"})

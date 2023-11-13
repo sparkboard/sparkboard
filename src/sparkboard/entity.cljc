@@ -110,5 +110,5 @@
         {:as entity :keys [entity/kind entity/id]} (db/entity e)
         pv (get entity a)]
     (validate/assert v a)
-    (db/transact! [[:db/add e a v]])
+    (db/transact! [{:db/id e a v}])
     {:db/id id}))

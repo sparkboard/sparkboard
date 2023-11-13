@@ -26,7 +26,6 @@
                                (? :domain/url)
                                (? :domain/owner)]})})
 
-
 (defn normalize-domain [domain]
   (-> domain
       (str/lower-case)
