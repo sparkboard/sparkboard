@@ -1,20 +1,21 @@
 (ns sparkboard.app.org
-  (:require #?(:clj [sparkboard.server.datalevin :as dl])
-            [inside-out.forms :as forms]
+  (:require [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.app.domain :as domain]
+            [sparkboard.app.entity :as entity]
             [sparkboard.app.member :as member]
             [sparkboard.authorize :as az]
-            [sparkboard.entity :as entity]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.query :as q]
             [sparkboard.routes :as routes]
             [sparkboard.schema :as sch :refer [? s-]]
+            [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]
             [sparkboard.ui.header :as header]
             [sparkboard.ui.icons :as icons]
             [sparkboard.util :as u]
+            [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
@@ -95,7 +96,7 @@
   {:endpoint {:post ["/o/" ['entity/id :org-id] "/settings"]}}
   [{:keys [account]} {:keys [org-id]
                       org   :body}]
-  (let [org (entity/conform (assoc org :entity/id org-id) :org/as-map)]
+  (let [org (validate/conform (assoc org :entity/id org-id) :org/as-map)]
     (db/transact! [org])
     {:body org}))
 
@@ -103,7 +104,7 @@
   {:prepare [az/with-account-id!]}
   [{:keys [account-id org]}]
   (let [org    (-> (dl/new-entity org :org :by account-id)
-                   (entity/conform :org/as-map))
+                   (validate/conform :org/as-map))
         member (-> {:member/entity  org
                     :member/account account-id
                     :member/roles   #{:role/owner}}
@@ -171,17 +172,6 @@
            [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
             (map entity/row (:board/_owner org))]])]])))
 
-(defn use-persisted [entity field-type attribute props]
-  (let [persisted-value (get entity attribute)
-        ?field          (h/use-memo #(forms/field :init persisted-value
-                                                  :attribute attribute)
-                                    ;; create a new field when the persisted value changes
-                                    (h/use-deps persisted-value))]
-    [field-type ?field (merge {:persisted-value persisted-value
-                               :on-save         #(forms/try-submit+ ?field
-                                                   (entity/save-attribute! nil (:entity/id entity) attribute %))}
-                              props)]))
-
 (ui/defview settings
   {:route ["/o/" ['entity/id :org-id] "/settings"]}
   [{:as params :keys [org-id]}]
@@ -189,11 +179,11 @@
     [:<>
      (header/entity org)
      [:div {:class ui/form-classes}
-      (use-persisted org ui/text-field :entity/title nil)
-      (use-persisted org ui/prose-field :entity/description nil)
-      (use-persisted org domain/domain-field :entity/domain nil)
+      (entity/use-persisted org ui/text-field :entity/title nil)
+      (entity/use-persisted org ui/prose-field :entity/description nil)
+      (entity/use-persisted org domain/domain-field :entity/domain nil)
       ;; TODO - uploading an image does not work
-      (use-persisted org ui/image-field :image/avatar {:label (tr :tr/image.logo)})
+      (entity/use-persisted org ui/image-field :image/avatar {:label (tr :tr/image.logo)})
 
       ]]))
 

@@ -272,7 +272,8 @@
 (defn resolve [route & args]
   (cond (string? route) (match-path route)
         (vector? route) (apply resolve route)
-        (symbol? route) (match-path (apply path-for route args))))
+        (symbol? route) (let [path (apply path-for route args)]
+                          (match-path path))))
 
 (defn href [match]
   (if (map? match)

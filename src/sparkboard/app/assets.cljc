@@ -1,7 +1,8 @@
 (ns sparkboard.app.assets
   (:require #?(:clj [ring.util.response :as resp])
-            #?(:clj [sparkboard.server.assets :as assets])
+            #?(:clj [sparkboard.authorize :as az])
             #?(:clj [sparkboard.server.datalevin :as dl])
+            #?(:clj [sparkboard.server.assets :as assets])
             [bidi.bidi :as bidi]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.util :as u]
@@ -79,3 +80,10 @@
            (assets/asset-link asset))
          301)
        (resp/not-found "Asset not found"))))
+
+#?(:clj
+   (defn upload!
+     {:endpoint {:post ["/upload"]}
+      :prepare  [az/with-account-id!]}
+     [req {:keys [account-id]}]
+     (assets/upload! req {:account-id account-id})))

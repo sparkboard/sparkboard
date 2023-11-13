@@ -1,20 +1,15 @@
 (ns sparkboard.query
   (:refer-clojure :exclude [use ..])
   (:require #?(:clj [org.httpkit.server :as httpkit])
-            #?(:clj [backtick])
-            #?(:cljs [yawn.hooks :as h :refer [use-deref]])
-            [clojure.pprint :refer [pprint]]
+            [yawn.hooks :as h]
             [applied-science.js-interop :as j]
             [promesa.core :as p]
             [re-db.api :as db]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
-            [sparkboard.authorize :as az]
             [sparkboard.routes :as routes]
-            [sparkboard.schema :as sch]
             [sparkboard.util :as u]
-            [re-db.sync.entity-diff-2 :as entity-diff]
-            [sparkboard.validate :as validate])
+            [re-db.sync.entity-diff-2 :as entity-diff])
   #?(:cljs (:require-macros [sparkboard.query :as q])))
 
 (def ws:default-options

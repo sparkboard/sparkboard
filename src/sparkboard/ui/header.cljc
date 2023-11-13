@@ -42,7 +42,7 @@
 
 (ui/defview chats-list []
   (let [params {:account-id (db/get :env/config :account-id)}
-        chats (chat/db:chats-list params)]
+        chats  (chat/db:chats-list params)]
     (if (seq chats)
       [:div.flex.flex-col
        (->> chats
@@ -54,19 +54,24 @@
 
 (ui/defview chat [entity]
   (let [!open? (h/use-state false)
-        unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))]
+        unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))
+        unread 3]
     [:el Popover/Root
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
      [:el Popover/Trigger
-      [:div.btn-light.relative
+      [:div.relative
        ;; unread-count bubble
        (when unread
          [:div
-          {:class ["absolute top-[-5px] right-[-5px] "
-                   "w-3 h-3 rounded-full"
+          {:style {:width    10
+                   :height   10
+                   :top      -3
+                   :right -3
+                   :position "absolute"}
+           :class ["rounded-full"
                    "bg-blue-500"]}])
-       [icons/chat-bubble-bottom-center-text "w-7 h-7"]]]
+       [icons/chat-bubble-left "w-7 h-7 text-gray-300 hover:text-gray-400"]]]
      [:el Popover/Portal
       {:container (yu/find-or-create-element :radix-modal)}
       [:Suspense {}
@@ -97,7 +102,14 @@
              [:a.contents {:href entity-href}
               [:img.h-10.w-10
                {:src (ui/asset-src avatar :avatar)}]])
-           [:a.contents {:href entity-href} [:h3 title]]
+
+           [:h3 [:a.contents {:href entity-href} title]
+            (when-let [settings-route (and
+                                        ;; TODO - user can edit this entity
+                                        (routes/entity-route entity 'settings))]
+              [radix/dropdown-menu {:trigger [:div.hover:bg-gray-200.rounded-lg.flex.items-center.justify-center.w-7.h-7.ml-1
+                                              [icons/chevron-down "w-4 h-4"]]}
+               [{:on-select #(routes/set-path! settings-route)} "Settings"]])]
            [:div.flex-grow]]
           (concat children
                   [[chat entity]

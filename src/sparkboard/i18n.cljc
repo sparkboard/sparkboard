@@ -1,6 +1,5 @@
 (ns sparkboard.i18n
   (:require [sparkboard.authorize :as az]
-            [sparkboard.validate :as vd]
             [re-db.api :as db]
             [taoensso.tempura :as tempura]
             [sparkboard.query :as q])
@@ -283,7 +282,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 (q/defx set-locale!
   {:prepare [az/with-account-id]}
   [{:keys [i18n/locale account-id]}]
-  (vd/assert locale :i18n/locale)
+  ((resolve 'sparkboard.validate/assert) locale :i18n/locale)
   {:http/response
    (if account-id
      (do (re-db.api/transact! [[:db/add account-id :account/locale locale]])

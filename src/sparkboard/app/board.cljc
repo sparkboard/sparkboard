@@ -6,7 +6,7 @@
             [sparkboard.app.domain :as domain]
             [sparkboard.app.member :as member]
             [sparkboard.authorize :as az]
-            [sparkboard.entity :as entity]
+            [sparkboard.app.entity :as entity]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.query :as q]
             [sparkboard.routes :as routes]
@@ -165,21 +165,21 @@
                                          (= account-id owner-id)
                                          ;; account is editor of this board (existing)
                                          (when-let [existing-board (dl/entity (:entity/id board))]
-                                           (entity/can-edit? (:db/id existing-board) account-id))
+                                           (validate/can-edit? (:db/id existing-board) account-id))
                                          ;; account is admin of board's org
-                                         (entity/can-edit? owner-id account-id))))]]]))
+                                         (validate/can-edit? owner-id account-id))))]]]))
   (defn db:authorize-create! [board account-id]
     ;; confirm that owner is account, or account is admin of org
     (validate/assert board [:map [:board/owner
                                   [:fn {:error/message "Not authorized."}
                                    (fn [owner]
-                                     (entity/can-edit? owner account-id))]]])))
+                                     (validate/can-edit? owner account-id))]]])))
 
 (q/defx db:new!
   {:prepare [az/with-account-id!]}
   [{:keys [board account-id]}]
   (let [board  (-> (dl/new-entity board :board :by account-id)
-                   (entity/conform :board/as-map))
+                   (validate/conform :board/as-map))
         _      (db:authorize-create! board account-id)
         member (-> {:member/entity  board
                     :member/account account-id
@@ -195,7 +195,7 @@
   (let [account (db/get :env/config :account)
         owners  (some->> (account/db:account-orgs {})
                          seq
-                         (cons (entity/account-as-entity account)))]
+                         (cons (account/account-as-entity account)))]
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
                                 :entity/domain ?domain
@@ -255,11 +255,8 @@
       (:entity/title, :entity/domain, ...)"]
    #_[ui/pprinted
       (db/touch board)]])
-
-(ui/defview header [board]
-  [header/entity board
-   [header/btn {:icon [icons/settings]
-                :href (routes/href ['sparkboard.app.board/settings {:board-id (sch/wrap-id board)}])}]])
+(comment
+  (routes/href ['sparkboard.app.board/settings {:board-id (sch/wrap-id #uuid"a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")}]))
 
 (ui/defview show
   {:route ["/b/" ['entity/id :board-id]]}
@@ -268,7 +265,7 @@
         !current-tab (h/use-state (tr :tr/projects))
         ?filter      (h/use-state nil)]
     [:<>
-     [header board]
+     [header/entity board]
      [:div.p-body
 
       [:div.flex.gap-4.items-stretch
@@ -298,17 +295,17 @@
 
        [radix/tab-content {:value (tr :tr/members)}
         (into [:div.grid]
-              (comp (map #(merge (entity/account-as-entity (:member/account %))
+              (comp (map #(merge (account/account-as-entity (:member/account %))
                                  (db/touch %)))
                     (map entity/row))
               (db:members {:board-id board-id}))
         ]]]]))
 
-(q/defx db:edit!
+(q/defx db:settings!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id board]}]
   (db:authorize-edit! board account-id)
-  (let [board (entity/conform board :board/as-map)]
+  (let [board (validate/conform board :board/as-map)]
     (db:authorize-edit! board account-id)
     (db/transact! [board])
     board))
@@ -324,6 +321,20 @@
 
 (ui/defview settings
   {:route ["/b/" ['entity/id :board-id] "/settings"]}
+  [{:as params :keys [board-id]}]
+  (let [board (db:settings params)]
+    [:<>
+     (header/entity board)
+     [:div {:class ui/form-classes}
+      (entity/use-persisted board ui/text-field :entity/title nil)
+      (entity/use-persisted board ui/prose-field :entity/description nil)
+      (entity/use-persisted board domain/domain-field :entity/domain nil)
+      ;; TODO - uploading an image does not work
+      (entity/use-persisted board ui/image-field :image/avatar {:label (tr :tr/image.logo)})
+      ]]))
+
+(ui/defview settings-2
+  {:route ["/b/" ['entity/id :board-id] "/settings-2"]}
   [params]
   (let [board (db:settings {:board-id (:board-id params)})]
     [:<>
@@ -355,34 +366,9 @@
      ;; - :board/registration-message
      ;; - :board/registration-url-override
      ;; - :board/registration-codes
-     #_(forms/with-form [!org (u/keep-changes org
-                                            {:entity/id          org-id
-                                             :entity/title       (?title :label (tr :tr/title))
-                                             :entity/description (?description :label (tr :tr/description))
-                                             :entity/domain      ?domain
-                                             :image/avatar       (?logo :label (tr :tr/image.logo))
-                                             :image/background   (?background :label (tr :tr/image.background))})
-                       :validators {?domain [domain/domain-valid-string
-                                             (domain/domain-availability-validator)]}
-                       :init org
-                       :form/auto-submit #(routes/POST [:org/edit params] %)]
-       [:<>
-        (header/entity org)
 
-        [:div {:class ui/form-classes}
 
-         (ui/show-field-messages !org)
-         (ui/text-field ?title)
-         (ui/prose-field ?description)
-         (domain/domain-field ?domain)
-         [:div.flex.flex-col.gap-2
-          [ui/input-label {} (tr :tr/images)]
-          [:div.flex.gap-6
-           (ui/image-field ?logo)
-           (ui/image-field ?background)]]
-         [:a.btn.btn-primary.p-4 {:href (routes/entity org :show)} (tr :tr/done)]]])
-
-     [header board]
+     [header/entity board]
      [:pre (ui/pprinted (seq board))]]))
 
 (comment

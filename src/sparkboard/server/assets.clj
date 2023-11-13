@@ -79,8 +79,6 @@
                                       stream)))
 
 (defn upload!
-  {:endpoint {:post ["/upload"]}
-   :prepare [az/with-account-id!]}
   [req {:keys [account-id]}]
   (let [{{:keys [filename tempfile content-type size]} "files"} (:multipart-params req)]
     (sv/assert size [:and 'number? [:<= (* 20 1000 1000)]]

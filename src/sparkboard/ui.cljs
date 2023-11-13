@@ -21,6 +21,7 @@
             [sparkboard.query-params :as query-params]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.icons :as icons]
+            [sparkboard.app.assets :as assets]
             [shadow.cljs.modern :refer [defclass]])
   (:require-macros [sparkboard.ui :refer [defview with-submission]]))
 
@@ -116,16 +117,6 @@
                nil)}
      content]))
 
-(defn auto-submit-handler [?field]
-  (fn [& _]
-    (let [!form (->> (iterate forms/parent ?field)
-                     (take-while identity)
-                     last)]
-      (when-let [submit! (:auto-submit !form)]
-        (forms/watch-promise ?field
-                             (u/p-when (forms/valid?+ !form)
-                               (submit! @!form)))))))
-
 (defview input-label [props content]
   [:label.block.text-oreground-muted.text-sm.font-medium
    (v/props props)
@@ -141,18 +132,16 @@
     (doseq [f fs] (apply f args))))
 
 
-(defn text-props [?field {:keys [wrap unwrap persisted-value]
-                          :or {wrap identity unwrap identity}}]
-  {:id          (field-id ?field)
-   :value       (or (unwrap @?field) "")
-   :persisted-value (or (unwrap persisted-value) "")
-   :on-change (fn [e]
-                ((forms/change-handler ?field {:parse-value (or wrap #(u/guard % (complement str/blank?)))}) e))
-   :on-blur (compseq (forms/blur-handler ?field)
-                     (auto-submit-handler ?field))
-   :on-focus (forms/focus-handler ?field)
-   :on-key-down #(when (= "Enter" (.-key ^js %))
-                   ((auto-submit-handler ?field) %))})
+(defn text-props [?field {:keys [value wrap unwrap persisted-value]
+                          :or   {wrap identity unwrap identity}}]
+  (cond-> {:id        (field-id ?field)
+           :value     (or (unwrap @?field) "")
+           :on-change (fn [e]
+                        ((forms/change-handler ?field {:parse-value (or wrap #(u/guard % (complement str/blank?)))}) e))
+           :on-blur   (forms/blur-handler ?field)
+           :on-focus  (forms/focus-handler ?field)}
+          persisted-value
+          (assoc :persisted-value (or (unwrap persisted-value) ""))))
 
 (defn show-field-messages [?field]
   (when-let [messages (seq (forms/visible-messages ?field))]
@@ -229,18 +218,19 @@
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field attrs]
+  ;; TODO handle on-save
   (let [messages (forms/visible-messages ?field)]
+    (prn messages)
     [:<>
      [:input.h-5.w-5.rounded.border-gray-300.text-primary.focus:outline-primary
       (v/props {:type      "checkbox"
                 :on-blur   (forms/blur-handler ?field)
                 :on-focus  (forms/focus-handler ?field)
-                :on-change (compseq #(reset! ?field (.. ^js % -target -checked))
-                                    (auto-submit-handler ?field))
+                :on-change #(reset! ?field (.. ^js % -target -checked))
                 :checked   (or @?field false)
                 :class     (if (:invalid (forms/types messages))
-                             "outline-default"
-                             "outline-invalid")})]
+                             "outline-invalid"
+                             "outline-default")})]
      (when (seq messages)
        (into [:div.mt-1] (map view-message) messages))]))
 
@@ -289,41 +279,59 @@
     (if (contains? @!loaded url)
       url
       fallback)))
+(routes/path-for `assets/upload!)
 
-(defview image-field [?field]
+(defview image-field [?field props]
   (let [src            (asset-src @?field :card)
         loading?       (:loading? ?field)
         !selected-blob (h/use-state nil)
-        thumbnail      (use-loaded-image src @!selected-blob)]
-    [:div.flex.flex-col.gap-3.relative.shadow-sm.border.p-3.rounded-lg
-     (when loading?
-       [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
+        !dragging?     (h/use-state false)
+        thumbnail      (use-loaded-image src @!selected-blob)
+        on-file        (fn [file]
+                         (forms/touch! ?field)
+                         (reset! !selected-blob (js/URL.createObjectURL file))
+                         (with-submission [asset (routes/POST `assets/upload! (doto (js/FormData.)
+                                                                                (.append "files" file)))
+                                           :form ?field]
+                           (reset! ?field asset)
+                           (when-let [on-save (:on-save props)]
+                             (on-save asset))))]
+    ;; TODO handle on-save
+    [:div.gap-2.flex.flex-col.relative
      (show-label ?field)
-     [:label.block.w-32.h-32.relative.rounded.cursor-pointer.flex.items-center.justify-center
-      (v/props {:class ["border-primary/20 bg-back"
-                        "text-muted-txt hover:text-txt"]
-                :for   (field-id ?field)}
-               (when thumbnail
-                 {:class "bg-contain bg-no-repeat bg-center shadow-inner"
-                  :style {:background-image (css-url thumbnail)}}))
+     [:div.flex.flex-col.items-center.justify-center.p-3.gap-3.relative
+      {:class         ["outline outline-1"
+                       "rounded-lg"
+                       (if @!dragging?
+                         "outline-2 outline-blue-500"
+                         "outline-gray-300")]
+       :on-drag-over  (fn [^js e]
+                        (.preventDefault e)
+                        (reset! !dragging? true))
+       :on-drag-leave (fn [^js e]
+                        (reset! !dragging? false))
+       :on-drop       (fn [^js e]
+                        (.preventDefault e)
+                        (some-> (j/get-in e [:dataTransfer :files 0]) on-file))}
+      (when loading?
+        [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
+      [:label.block.w-32.h-32.relative.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
+       (v/props {:class [
+                         "text-muted-txt hover:text-txt"]
+                 :for   (field-id ?field)}
+                (when thumbnail
+                  {:class "bg-contain bg-no-repeat bg-center"
+                   :style {:background-image (css-url thumbnail)}}))
 
-      (when-not thumbnail
-        (upload-icon "w-6 h-6 m-auto"))
+       (when-not thumbnail
+         (upload-icon "w-6 h-6 m-auto"))
 
-      [:input.hidden
-       {:id        (field-id ?field)
-        :type      "file"
-        :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
-        :on-change (fn [e]
-                     (forms/touch! ?field)
-                     (when-let [file (j/get-in e [:target :files 0])]
-                       (reset! !selected-blob (js/URL.createObjectURL file))
-                       (with-submission [asset (routes/POST :asset/upload (doto (js/FormData.)
-                                                                            (.append "files" file)))
-                                         :form ?field]
-                         (reset! ?field asset)
-                         ((auto-submit-handler ?field)))))}]]
-     (show-field-messages ?field)]))
+       [:input.hidden
+        {:id        (field-id ?field)
+         :type      "file"
+         :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
+         :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]
+      (show-field-messages ?field)]]))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 

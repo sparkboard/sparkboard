@@ -9,7 +9,7 @@
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
             [sparkboard.query :as q]
-            [sparkboard.entity :as entity]
+            [sparkboard.app.entity :as entity]
             [re-db.api :as db]
             [yawn.view :as v]
             [sparkboard.ui.radix :as radix]

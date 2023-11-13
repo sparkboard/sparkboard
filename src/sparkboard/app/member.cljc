@@ -3,7 +3,7 @@
             #?(:clj [sparkboard.authorize :as az])
             #?(:clj [sparkboard.server.datalevin :as dl])
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.entity :as entity]
+            [sparkboard.app.entity :as entity]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.ui :as ui]
             [sparkboard.query :as q]

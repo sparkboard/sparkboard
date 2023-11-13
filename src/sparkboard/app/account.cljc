@@ -8,7 +8,7 @@
     [promesa.core :as p]
     [re-db.api :as db]
     [sparkboard.authorize :as az]
-    [sparkboard.entity :as entity]
+    [sparkboard.app.entity :as entity]
     [sparkboard.i18n :refer [tr]]
     [sparkboard.routes :as routes]
     [sparkboard.schema :as sch :refer [?]]
@@ -245,3 +245,9 @@
       :endpoint/public? true}
      [req params]
      (account/google-landing req params)))
+
+
+(defn account-as-entity [account]
+  (u/select-as account {:entity/id            :entity/id
+                        :account/display-name :entity/title
+                        :image/avatar         :image/avatar}))
