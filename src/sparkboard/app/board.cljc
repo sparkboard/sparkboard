@@ -301,15 +301,6 @@
               (db:members {:board-id board-id}))
         ]]]]))
 
-(q/defx db:settings!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id board]}]
-  (db:authorize-edit! board account-id)
-  (let [board (validate/conform board :board/as-map)]
-    (db:authorize-edit! board account-id)
-    (db/transact! [board])
-    board))
-
 (q/defquery db:settings
   {:prepare [az/with-account-id!
              (fn [_ {:as params :keys [board-id account-id]}]
@@ -329,47 +320,37 @@
       (entity/use-persisted board ui/text-field :entity/title nil)
       (entity/use-persisted board ui/prose-field :entity/description nil)
       (entity/use-persisted board domain/domain-field :entity/domain nil)
-      ;; TODO - uploading an image does not work
       (entity/use-persisted board ui/image-field :image/avatar {:label (tr :tr/image.logo)})
+
+      ;; TODO
+      ;; - :board/member-fields
+      ;; - :board/project-fields
+      ;; - :board/project-sharing-buttons
+      ;; - :board/member-tags
+
+      ;; Registration
+      ;; - :board/registration-invitation-email-text
+      ;; - :board/registration-newsletter-field?
+      ;; - :board/registration-open?
+      ;; - :board/registration-message
+      ;; - :board/registration-url-override
+      ;; - :board/registration-codes
+
+      ;; Theming
+      ;; - border radius
+      ;; - headline font
+      ;; - accent color
+
+      ;; Sponsors
+      ;; - logo area with tiered sizes/visibility
+
+      ;; Sticky Notes
+      ;; - schema: a new entity type (not a special kind of project)
+      ;; - modify migration based on ^new schema
+      ;; - color is picked per sticky note
+      ;; - sticky notes can include images/videos
+
       ]]))
-
-(ui/defview settings-2
-  {:route ["/b/" ['entity/id :board-id] "/settings-2"]}
-  [params]
-  (let [board (db:settings {:board-id (:board-id params)})]
-    [:<>
-     ;; TODO
-
-     ;; field types
-     ;; - text
-     ;; - checkboxes (sharing buttons)
-     ;; - color picker (sticky color)
-     ;; - image upload (logo)
-     ;; - plain text (invitation email text)
-     ;;
-     ;; fields should save independently on blur, with ability to cancel.
-     ;; use inside-out forms to handle state/validation.
-     ;; errors should show up in the UI.
-
-
-     ;; edit board settings individually.
-     ;; - :entity/title
-     ;; - :entity/domain
-     ;; - :board/project-sharing-buttons
-     ;; - :board/sticky-color
-     ;; - :board/member-tags
-     ;; - :board/project-fields
-     ;; - :board/member-fields
-     ;; - :board/registration-invitation-email-text
-     ;; - :board/registration-newsletter-field?
-     ;; - :board/registration-open?
-     ;; - :board/registration-message
-     ;; - :board/registration-url-override
-     ;; - :board/registration-codes
-
-
-     [header/entity board]
-     [:pre (ui/pprinted (seq board))]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

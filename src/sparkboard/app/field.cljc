@@ -38,6 +38,23 @@
                                :field.type/prose
                                :field.type/prose]}
 
+   :link-list/link        {:todo "Tighten validation after cleaning up db"
+                           s-    [:map {:closed true}
+                                  (? [:text :string])
+                                  [:url :string]]}
+   :field-option/color    {s- :html/color},
+   :field-option/default  {s- :string},
+   :field-option/label    {s- :string},
+   :field-option/value    {s- :string},
+   :video/type            {s- [:enum
+                               :video.type/youtube-id
+                               :video.type/youtube-url
+                               :video.type/vimeo-url]}
+   :video/value           {s- :string}
+   :video/entry           {s- [:map {:closed true}
+                               :video/value
+                               :video/type]}
+
    :field-entry/id        sch/unique-uuid
    :field-entry/field     (sch/ref :one)
    :field-entry/value     {s- [:multi {:dispatch 'first}
@@ -62,22 +79,7 @@
                                :field-entry/id
                                :field-entry/field
                                :field-entry/value]}
-   :link-list/link        {:todo "Tighten validation after cleaning up db"
-                           s-    [:map {:closed true}
-                                  (? [:text :string])
-                                  [:url :string]]}
-   :field-option/color    {s- :html/color},
-   :field-option/default  {s- :string},
-   :field-option/label    {s- :string},
-   :field-option/value    {s- :string},
-   :video/type            {s- [:enum
-                               :video.type/youtube-id
-                               :video.type/youtube-url
-                               :video.type/vimeo-url]}
-   :video/value           {s- :string}
-   :video/entry           {s- [:map {:closed true}
-                               :video/value
-                               :video/type]}
+
    :field/as-map          {:doc  "Description of a field."
                            :todo ["Field specs should be definable at a global, org or board level."
                                   "Orgs/boards should be able to override/add field.spec options."
