@@ -85,14 +85,14 @@
     {:db/id id}))
 
 #?(:cljs
-   (defn use-persisted [entity field-type attribute props]
+   (defn use-persisted [entity attribute field-view & [props]]
      (let [persisted-value (get entity attribute)
            ?field          (h/use-memo #(forms/field :init persisted-value
                                                      :attribute attribute
                                                      props)
                                        ;; create a new field when the persisted value changes
                                        (h/use-deps persisted-value))]
-       [field-type ?field (merge {:persisted-value persisted-value
+       [field-view ?field (merge {:persisted-value persisted-value
                                   :on-save         #(forms/try-submit+ ?field
                                                       (save-attribute! nil (:entity/id entity) attribute %))}
                                  props)])))

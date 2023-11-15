@@ -179,11 +179,11 @@
     [:<>
      (header/entity org)
      [:div {:class ui/form-classes}
-      (entity/use-persisted org ui/text-field :entity/title nil)
-      (entity/use-persisted org ui/prose-field :entity/description nil)
-      (entity/use-persisted org domain/domain-field :entity/domain nil)
+      (entity/use-persisted org :entity/title ui/text-field)
+      (entity/use-persisted org :entity/description ui/prose-field)
+      (entity/use-persisted org :entity/domain domain/domain-field)
       ;; TODO - uploading an image does not work
-      (entity/use-persisted org ui/image-field :image/avatar {:label (tr :tr/image.logo)})
+      (entity/use-persisted org :image/avatar ui/image-field {:label (tr :tr/image.logo)})
 
       ]]))
 

@@ -54,8 +54,7 @@
 
 (ui/defview chat [entity]
   (let [!open? (h/use-state false)
-        unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))
-        unread 3]
+        unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))]
     [:el Popover/Root
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
@@ -71,7 +70,7 @@
                    :position "absolute"}
            :class ["rounded-full"
                    "bg-blue-500"]}])
-       [icons/chat-bubble-left "w-7 h-7 text-gray-300 hover:text-gray-400"]]]
+       [icons/chat-bubble-left "w-7 h-7 text-gray-300 hover:text-gray-400 -mb-[2px]"]]]
      [:el Popover/Portal
       {:container (yu/find-or-create-element :radix-modal)}
       [:Suspense {}
@@ -85,7 +84,7 @@
   (if-let [account (db/get :env/config :account)]
     [:<>
      (radix/dropdown-menu
-       {:trigger [:div.flex.items-center [:img.rounded-full.h-8.w-8 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
+       {:trigger [:div.flex.items-center [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
        [{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
        [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
        (into [{:sub?    true

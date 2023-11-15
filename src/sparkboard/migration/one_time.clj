@@ -147,10 +147,6 @@
                                     #_(mapv (fn [[k m]] (assoc m :firebase/id k))))
             :else (throw (ex-info (str "Unknown coll " k) {:coll k}))))))
 
-(defn account-uuid [email]
-  (assert (str/includes? email "@") "account-uuid requires email address")
-  (sb.dl/to-uuid :account email))
-
 (def !members-raw
   (delay (into []
                (remove #(or (:deleted %)
@@ -166,12 +162,37 @@
           (map (juxt :localId :email))
           @!accounts)))
 
+(defn firebase-account->email [account where]
+  (or (@!firebaseAccount->email account)
+      (throw (ex-info (str "Firebase email not found for " account) {:account account
+                                                                     :where where}))))
+
+(def to-uuid
+  (memoize
+    (fn [kind s]
+      (let [s (:$oid s s)]
+        (cond (uuid? s) (do (assert (= kind (sch/kind s))
+                                    (str "wrong kind. expected " kind, "got " (sch/kind s) ". id: " s))
+                            s)
+              (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sch/kind (second s)))
+                                                               (throw (ex-info (str "unexpected uuid kind: " kind " " s " ")
+                                                                               {:expected-kind kind
+                                                                                :actual-kind   (sch/kind (second s))
+                                                                                :s             s
+                                                                                })))
+                                                             (second s))
+              (string? s) (sb.dl/to-uuid kind (if (and (= kind :account)
+                                                       (not (str/includes? s "@")))
+                                                (firebase-account->email s 186)
+                                                s))
+              :else (throw (ex-info "Invalid UUID" {:s s :kind kind})))))))
+
 (def !member-id->account-uuid
   (delay
     (into {}
           (map (fn [member]
                  [(-> member :_id get-oid)
-                  (account-uuid (-> member :firebaseAccount (@!firebaseAccount->email)))]))
+                  (to-uuid :account (-> member :firebaseAccount (firebase-account->email 179)))]))
           @!members-raw)))
 
 (def !member-id->board-id
@@ -190,23 +211,6 @@
           (keep #(-> % get-oid (@!member-id->account-uuid)))
           member-id)
     (@!member-id->account-uuid (get-oid member-id))))
-
-(def to-uuid
-  (memoize
-    (fn [kind s]
-      (let [s (:$oid s s)]
-        (cond (uuid? s) (do (assert (= kind (sch/kind s))
-                                    (str "wrong kind. expected " kind, "got " (sch/kind s) ". id: " s))
-                            s)
-              (and (vector? s) (= :entity/id (first s))) (do (when-not (= kind (sch/kind (second s)))
-                                                               (throw (ex-info (str "unexpected uuid kind: " kind " " s " ")
-                                                                               {:expected-kind kind
-                                                                                :actual-kind   (sch/kind (second s))
-                                                                                :s             s
-                                                                                })))
-                                                             (second s))
-              (string? s) (sb.dl/to-uuid kind s)
-              :else (throw (ex-info "Invalid UUID" {:s s :kind kind})))))))
 
 (defn composite-uuid [kind & ss]
   (to-uuid kind (->> ss
@@ -234,10 +238,10 @@
 
 (def !account->member-docs
   (delay
-    (-> (read-coll :member/as-map)
+    (-> @!members-raw
         (->> (group-by :firebaseAccount))
         (dissoc nil)
-        (update-keys #(some->> % (@!firebaseAccount->email) account-uuid))
+        (update-keys (partial to-uuid :account))
         (update-vals #(->> %
                            (sort-by (comp bson-id-timestamp get-oid :_id)))))))
 
@@ -318,21 +322,24 @@
                                        ::defaults} first) changes)
          doc           (prepare doc)
          apply-changes (fn [doc]
-
-                         (some->> (reduce (fn [m [a f]]
-                                            (try
-                                              (if (= a ::always)
-                                                (f m)
-                                                (if-some [v (some-value (m a))]
-                                                  (f m a v)
-                                                  (dissoc m a)))
-                                              (catch Exception e
-                                                (clojure.pprint/pprint {:a   a
-                                                                        :doc m})
-                                                (throw e))))
-                                          doc
-                                          changes)
-                                  (merge defaults)))]
+                         (try
+                           (some->> (reduce (fn [m [a f]]
+                                              (try
+                                                (if (= a ::always)
+                                                  (f m)
+                                                  (if-some [v (some-value (m a))]
+                                                    (f m a v)
+                                                    (dissoc m a)))
+                                                (catch Exception e
+                                                  (clojure.pprint/pprint {:a   a
+                                                                          :doc m})
+                                                  (throw e))))
+                                            doc
+                                            changes)
+                                    (merge defaults))
+                           (catch Exception e
+                             (prn :failed-doc doc)
+                             (throw e))))]
      (when doc
        (if (sequential? doc)
          (into [] (keep apply-changes) doc)
@@ -690,7 +697,7 @@
                                        "allowPublicViewing" (rename :entity/public?)
                                        "images" parse-image-urls
                                        "showOrgTab" (rename :org/show-org-tab?)
-                                       "creator" (uuid-ref-as :account :entity/created-by)
+                                       "creator" rm
                                        "boardTemplate" (uuid-ref-as :board :org/default-board-template)
                                        "socialFeed" (rename :entity/social-feed)]
               :slack.user/as-map      [::prepare (partial flat-map :slack.user/id identity)
@@ -757,14 +764,13 @@
                                                                   _       (assert (= (:kind account) :account))]]
                                                         {:entity/id      (composite-uuid :member (:uuid ent) (:uuid account))
                                                          :entity/kind    :member
-                                                         :member/account (uuid-ref :account
-                                                                                   (@!firebaseAccount->email (:uuid account)))
+                                                         :member/account (uuid-ref :account (:uuid account))
                                                          :member/entity  (:ref ent)
-                                                         :member/roles   (into (into #{}
-                                                                                     (comp (filter val)
-                                                                                           (map key)
-                                                                                           (map role-kw))
-                                                                                     role-map))})))
+                                                         :member/roles   (into #{}
+                                                                               (comp (filter val)
+                                                                                     (map key)
+                                                                                     (map role-kw))
+                                                                               role-map)})))
                                                e-u-r))]
               ::firebase              ["socialFeed" (xf (partial change-keys
                                                                  ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
@@ -774,10 +780,10 @@
               :account/as-map         [::prepare (fn [accounts]
                                                    (->> accounts
                                                         (keep (fn [{:as account [provider] :providerUserInfo}]
-                                                                (let [entity-id (account-uuid (:email account))]
-                                                                  (when-let [most-recent-member-doc (last (@!account->member-docs entity-id))]
+                                                                (let [account-id (to-uuid :account (:email account))]
+                                                                  (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
                                                                     (assoc-some-value {}
-                                                                                      :entity/id entity-id
+                                                                                      :entity/id account-id
                                                                                       :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
                                                                                       :image/avatar (when-let [src (or (some-> (:picture most-recent-member-doc)
                                                                                                                                (u/guard #(not (str/starts-with? % "/images"))))
@@ -826,7 +832,7 @@
                                                          :entity/id (composite-uuid :member
                                                                                     (to-uuid :board (:boardId m))
                                                                                     (-> (:firebaseAccount m)
-                                                                                        (@!firebaseAccount->email)
+                                                                                        (firebase-account->email 834)
                                                                                         account-uuid)))
                                                   (dissoc a)))
                                        :boardId (uuid-ref-as :board :member/entity)
@@ -1165,8 +1171,12 @@
   "Converts doc according to `changes`"
   (memoize
     (fn [k]
-      (->> (read-coll k)
-           (change-keys (changes-for k))))))
+      (try
+        (->> (read-coll k)
+             (change-keys (changes-for k)))
+        (catch Exception e
+          (prn :failed-in k)
+          (throw e))))))
 
 (defn explain-errors! []
   (sch/install-malli-schemas!)
@@ -1214,6 +1224,18 @@
     @!found))
 
 (comment
+
+  (->> colls
+       (mapcat read-coll)
+       (filter (partial contains-somewhere? "b014b8bd-195a-3d40-8ef3-2ea7f0ad6eab"))
+       )
+  (sch/kind #uuid "b014b8bd-195a-3d40-8ef3-2ea7f0ad6eab")
+
+  (do (doall (for [k colls]
+               (do (prn k)
+                   (coll-entities k))))
+      nil)
+
   (first (map :chat/key (coll-entities :chat/as-map)))
   (coll? {})
 
@@ -1278,6 +1300,7 @@
   (mapv (juxt identity mg/generate) (vals @sch/!entity-schemas))
 
   (clojure.core/time (count (root-entities)))
+  (firebase-account->email "m_5898a0e8f869e80400b2cfef" :foo)
 
   #_(def missing (->> (root-entities)
                       (filter (partial contains-somewhere? #uuid "4d2b41ae-5fe2-36c9-955d-0b9b0b10770b"))

@@ -16,7 +16,8 @@
             [sparkboard.ui :as ui]
             [yawn.root :as root]
             [sparkboard.app :as app]                        ;; includes all endpoints
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [re-db.in-memory :as mem]))
 
 (ui/defview dev-info [{:as match :keys [modal]}]
   (into [:div.flex.justify-center.gap-2.fixed.left-0.bottom-0.border {:style {:z-index 9000}}]
@@ -67,21 +68,21 @@
                 validator
                 (update :validators conj validator))))
   (forms/set-global-meta!
-    {:account/email    {:el         ui/text-field
-                        :props      {:type        "email"
-                                     :placeholder (tr :tr/email)}
-                        :validators [ui/email-validator]}
-     :account/password {:el         ui/text-field
-                        :props      {:type        "password"
-                                     :placeholder (tr :tr/password)}
-                        :validators [(forms/min-length 8)]}
-     :entity/title     {:validators [(forms/min-length 3)]
-                        :label (tr :tr/title)}
+    {:account/email      {:el         ui/text-field
+                          :props      {:type        "email"
+                                       :placeholder (tr :tr/email)}
+                          :validators [ui/email-validator]}
+     :account/password   {:el         ui/text-field
+                          :props      {:type        "password"
+                                       :placeholder (tr :tr/password)}
+                          :validators [(forms/min-length 8)]}
+     :entity/title       {:validators [(forms/min-length 3)]
+                          :label      (tr :tr/title)}
      :entity/description {:label (tr :tr/description)}
 
-     :entity/domain    {:label      (tr :tr/domain-name)
-                        :validators [domain/domain-valid-string
-                                     (domain/domain-availability-validator)]}})
+     :entity/domain      {:label      (tr :tr/domain-name)
+                          :validators [domain/domain-valid-string
+                                       (domain/domain-availability-validator)]}})
   )
 
 (defn ^:dev/after-load init-endpoints! []
@@ -103,5 +104,15 @@
                  {:db/id :test3 :a :b}
                  {:db/id :test2}])
   (:test2 (:eav @(db/conn)))
+  (db/transact!
+    [{:member/roles        #{:role/admin}
+      :member/last-visited #inst "2023-11-13T19:04:42.238-00:00"
+
+      :entity/kind         :board
+      :entity/title        "Huebert's Projects"
+      :image/avatar        {:asset/id       #uuid "225f7a0a-9db1-4d0d-924a-17a110fe84dd"
+                            :asset/provider {:s3/bucket-host "https://dev.r2.sparkboard.com"}}
+      :db/id               [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]}])
+
   )
 

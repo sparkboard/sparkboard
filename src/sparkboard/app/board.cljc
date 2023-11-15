@@ -317,10 +317,11 @@
     [:<>
      (header/entity board)
      [:div {:class ui/form-classes}
-      (entity/use-persisted board ui/text-field :entity/title nil)
-      (entity/use-persisted board ui/prose-field :entity/description nil)
-      (entity/use-persisted board domain/domain-field :entity/domain nil)
-      (entity/use-persisted board ui/image-field :image/avatar {:label (tr :tr/image.logo)})
+      (entity/use-persisted board :entity/title ui/text-field )
+      (entity/use-persisted board :entity/description ui/prose-field)
+      (entity/use-persisted board :entity/domain domain/domain-field)
+      (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
+
 
       ;; TODO
       ;; - :board/member-fields

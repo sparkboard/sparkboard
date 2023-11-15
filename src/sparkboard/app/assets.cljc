@@ -20,7 +20,7 @@
                                                 :s3/bucket-host]}
 
    :s3/bucket-name                         sch/unique-id-str
-   :s3/bucket-host                         {s- :string}
+   :s3/bucket-host                         sch/unique-id-str
    :s3/endpoint                            {s- :string}
 
    :asset/id                               sch/unique-uuid
