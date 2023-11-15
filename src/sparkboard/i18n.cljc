@@ -33,7 +33,25 @@
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
 See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict                                             ;; grouped for easy generation of multiple languages
-    {:tr/start-board-new                 {:en "### Start Something New\nNo boards yet? Start a hackathon and bring people together to solve problems."
+    {:field.type/video                   {:en "Video"
+                                          :fr "Vidéo"
+                                          :es "Video"},
+     :field.type/select                  {:en "Select"
+                                          :fr "Sélectionner"
+                                          :es "Seleccionar"},
+     :field.type/link-list               {:en "Link list"
+                                          :fr "Liste de liens"
+                                          :es "Lista de enlaces"},
+     :field.type/images                  {:en "Images"
+                                          :fr "Images"
+                                          :es "Imágenes"},
+     :field.type/prose                   {:en "Prose"
+                                          :fr "Prose"
+                                          :es "Prosa"},
+     :tr/member-fields                   {:en "Member fields"
+                                          :fr "Champs de membre"
+                                          :es "Campos de miembro"},
+     :tr/start-board-new                 {:en "### Start Something New\nNo boards yet? Start a hackathon and bring people together to solve problems."
                                           :fr "### Commencez quelque chose de nouveau\nPas encore de tableaux ? Démarrez un hackathon et rassemblez des personnes pour résoudre des problèmes."
                                           :es "### Comienza algo nuevo\n¿Aún no hay tableros? Inicie un hackathon y reúna a las personas para resolver problemas."}
      :tr/create-first-board              {:en "Create your first board"

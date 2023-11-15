@@ -117,13 +117,21 @@
                nil)}
      content]))
 
-(defview input-label [props content]
-  [:label.block.text-oreground-muted.text-sm.font-medium
-   (v/props props)
-   content])
+(def input-label (v/from-element :label.block.text-foreground-muted.text-sm.font-medium))
+(def input-wrapper (v/from-element :div.gap-2.flex.flex-col.relative))
 
 (defn field-id [?field]
   (str "field-" (goog/getUid ?field)))
+
+(v/defview auto-size [props]
+  (let [v!    (h/use-state "")
+        props (merge props {:value     (:value props @v!)
+                            :on-change (:on-change props
+                                         #(reset! v! (j/get-in % [:target :value])))})]
+    [:div.auto-size
+     [:div (select-keys props [:class :style])
+      (str (:value props) " ")]
+     [:textarea props]]))
 
 (defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :wrap :unwrap))
 
@@ -191,13 +199,13 @@
                                                     :Escape blur!
                                                     :Meta-. cancel!})}))]
     (v/x
-      [:div.gap-2.flex.flex-col.relative
+      [input-wrapper
        {:class wrapper-class}
        (show-label ?field props)
        [:div.flex.relative
-        [(if multi-line
-           :textarea.form-text
-           :input.form-text) (pass-props props)]
+        (if multi-line
+          [auto-size (v/merge-props {:class "form-text"} (pass-props props))]
+          [:input.form-text (pass-props props)])
         (show-postfix ?field props)
         (when (:loading? ?field)
           [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[2px]"}])]
@@ -211,9 +219,12 @@
 (def unwrap-prose :prose/string)
 
 (defn prose-field [?field & [props]]
-  (text-field ?field (merge props
-                            {:wrap   wrap-prose
-                             :unwrap unwrap-prose})))
+  ;; TODO
+  ;; multi-line markdown editor with formatting
+  (text-field ?field (merge {:wrap   wrap-prose
+                             :unwrap unwrap-prose
+                             :multi-line true}
+                            props)))
 
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
@@ -422,7 +433,7 @@
                          (when-not (re-find #"^[^@]+@[^@]+$" v)
                            (tr :tr/invalid-email)))))
 
-(def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative")
+(def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative text-sm")
 (def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer.text-base)
 
 (v/defview submit-form [!form label]
@@ -505,13 +516,3 @@
                     (some-> x
                             (j/call :querySelector "input, textarea")
                             (j/call :focus)))))
-
-(v/defview auto-size [props]
-  (let [v!    (h/use-state "")
-        props (merge props {:value     (:value props @v!)
-                            :on-change (:on-change props
-                                         #(reset! v! (j/get-in % [:target :value])))})]
-    [:div.auto-size
-     [:div (select-keys props [:class :style])
-      (str (:value props) " ")]
-     [:textarea props]]))

@@ -198,11 +198,11 @@
                 chat/last-message]} chat
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
-    [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.cursor-pointer.rounded-lg.items-center
+    [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.cursor-pointer.rounded-lg.items-center.text-sm.w-full
      {:href  (routes/href [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} other]
-     [:div.flex.flex-col.w-full
+     [:div.flex.flex-col.w-full.overflow-hidden
       [:div.flex.items-center
        [:div.font-bold.flex-auto (:account/display-name other)]
        [:div.w-2.h-2.rounded-full.flex-none
@@ -217,7 +217,7 @@
 (ui/defview chats-sidebar [{:as             chat
                             :keys           [account-id]
                             current-chat-id :chat-id}]
-  [:div.flex.flex-col.px-1.py-2
+  [:div.flex.flex-col.px-1.py-2.w-full
    #_[member-search nil]
    (->> (db:chats-list nil)
         (map (partial chat-snippet {:current-chat-id current-chat-id
@@ -309,8 +309,8 @@
    :route       "/chats"}
   [params]
   (let [chat-selected? (or (:chat-id params) (:other-id params))]
-    [:div {:class ["h-screen w-screen md:h-[80vh] md:w-[80vw] max-w-[800px] flex items-stretch"
-                   "height-100p flex divide-x items-stretch bg-gray-100"]}
+    [:div {:class ["h-screen w-screen md:h-[90vh] md:w-[80vw] max-w-[800px] flex"
+                   "height-100p flex divide-x bg-gray-100"]}
      [:div.flex.flex-none.overflow-y-auto.w-48.md:w-64
       [chats-sidebar params]]
      [:div.flex.flex-auto.flex-col.relative.m-2

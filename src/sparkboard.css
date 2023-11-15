@@ -204,7 +204,7 @@
     .btn {
         @apply
         inline-flex items-center justify-center cursor-pointer
-        font-medium text-base
+        font-medium
         transition-colors disabled:opacity-50 disabled:pointer-events-none
         rounded-md px-3 focus-visible:outline-none no-underline
 
@@ -227,9 +227,7 @@
     }
 
     .btn-base {
-        @apply
-        text-base
-        px-4 py-2
+        @apply px-4 py-2
     }
 
     .btn-transp {

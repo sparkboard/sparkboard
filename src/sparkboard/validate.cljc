@@ -104,7 +104,9 @@
    (defn assert-can-edit! [entity-id account-id]
      (when-not (can-edit? entity-id account-id)
        (throw (ex-info "Validation failed"
-                       {:response {:status 400}})))))
+                       {:response {:status 400
+                                   :body {:error "validation failed"
+                                          :inside-out.forms/messages-by-path {() ["You do not have permission to edit this entity"]}}}})))))
 
 
 

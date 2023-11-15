@@ -1,5 +1,10 @@
 (ns sparkboard.app.field
-  (:require [sparkboard.schema :as sch :refer [s- ?]]))
+  (:require [sparkboard.app.entity :as entity]
+            [sparkboard.schema :as sch :refer [s- ?]]
+            [sparkboard.ui :as ui]
+            [sparkboard.ui.icons :as icons]
+            [sparkboard.i18n :refer [tr]]
+            [sparkboard.ui.radix :as radix]))
 
 ;; TODO
 ;; views for:
@@ -35,7 +40,6 @@
                                :field.type/video
                                :field.type/select
                                :field.type/link-list
-                               :field.type/prose
                                :field.type/prose]}
 
    :link-list/link        {:todo "Tighten validation after cleaning up db"
@@ -95,3 +99,55 @@
                                   (? :field/show-as-filter?)
                                   (? :field/show-at-create?)
                                   (? :field/show-on-card?)]}})
+
+(def icons {:field.type/video     icons/play-circle
+            :field.type/select    icons/queue-list:mini
+            :field.type/link-list icons/link:mini
+            :field.type/images    icons/photo:mini
+            :field.type/prose     icons/pencil-square:mini})
+
+
+(ui/defview field-editor
+  {:key :entity/id}
+  [{:as field :field/keys [id type hint label]}]
+  (let [icon (icons type)]
+    [:div.rounded.p-2.gap-2.flex
+     [:div.bg-white.p-1.rounded.shadow.cursor-grab.self-start
+      [icon "flex-none w-5 h-5"]]
+     [:div.font-medium.flex-auto.flex.flex-col label
+      [:div.flex.flex-col
+       [:div.text-gray-500 (tr type)]
+       [:div.text-gray-500 hint]]]
+     [icons/ellipsis-horizontal "w-5 h-5"]]))
+
+;; TODO
+;; 1. add a new field
+;; 2. edit an existing field's common attributes
+;;    - :field/label
+;;    - :field/hint
+;;    - :field/required?
+;;    - :field/show-as-filter?
+;;    - :field/show-at-create?
+;;    - :field/show-on-card?
+;; 3. edit an existing field's type-specific attributes
+;;    - select: options (:field-option/color,
+;;                       :field-option/value,
+;;                       :field-option/label)
+;; 4. re-order fields
+;; 5. remove fields (with confirmation)
+
+
+(ui/defview fields-editor [entity attribute]
+  [:<>
+   [:div.flex.flex-col.gap-2.divide-y
+    (->> (get entity attribute)
+         (sort-by :field/order)
+         (map field-editor)
+         doall)]
+   [:div
+    (apply radix/dropdown-menu {:trigger
+                                [:div.flex.gap-2.btn.btn-light.px-4.py-2.relative
+                                 "Add"
+                                 [icons/chevron-down "w-4 h-4"]]}
+           (for [[type icon] icons]
+             [{:on-select #()} [:div.flex.gap-3.items-center [icon "w-4 h-4"] (tr type)]]))]])

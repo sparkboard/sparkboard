@@ -399,7 +399,7 @@
     (->> (coll-entities :board/as-map)
          (mapcat (juxt :board/member-fields :board/project-fields))
          (mapcat identity)
-         (map (juxt :field/id identity))
+         (map (juxt :entity/id identity))
          (into {}))))
 
 (defn prose [s]
@@ -455,7 +455,7 @@
                                     (fnil conj [])
                                     {:field-entry/id    (composite-uuid :entry target-id field-id)
                                      :field-entry/value [field-type entry-value]
-                                     :field-entry/field [:field/id field-id]})))))
+                                     :field-entry/field [:entity/id field-id]})))))
                   m
                   field-ks)
           (catch Exception e
@@ -566,7 +566,7 @@
                                 (let [managed-by (:entity/id m)]
                                   (assoc m a
                                            (try (->> v
-                                                     (flat-map :field/id
+                                                     (flat-map :entity/id
                                                                #(composite-uuid :field
                                                                                 managed-by
                                                                                 (to-uuid :field %)))
@@ -1298,6 +1298,11 @@
 
   ;; generate examples for every schema entry
   (mapv (juxt identity mg/generate) (vals @sch/!entity-schemas))
+
+  (db/transact! (apply concat
+                       (for [field (db/where [:field/id])]
+                         [[:db/retract (:db/id field) :field/id]
+                          [:db/add (:db/id field) :entity/id (:field/id field)]])))
 
   (clojure.core/time (count (root-entities)))
   (firebase-account->email "m_5898a0e8f869e80400b2cfef" :foo)

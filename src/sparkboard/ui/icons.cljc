@@ -93,7 +93,7 @@
 
 (defn chat-bubble-left [& [classes]]
   (v/x
-    [:svg {:class classes :xmlns "http://www.w3.org/2000/svg" :fill "currentColor" :viewBox "0 0 24 24" :stroke-width "1.25"  :stroke "currentColor"}
+    [:svg {:class classes :xmlns "http://www.w3.org/2000/svg" :fill "currentColor" :viewBox "0 0 24 24" :stroke-width "1.25" :stroke "currentColor"}
      [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"}]]))
 
 (defn chat-bubble-oval-left [& [classes]]
@@ -126,3 +126,24 @@
   (v/x
     [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor" :class classes}
      [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M12 4.5v15m7.5-7.5h-15"}]]))
+
+(defn play-circle [& [classes]]
+  (v/x
+    [:svg {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+     [:path {:fill-rule "evenodd" :d "M2 10a8 8 0 1116 0 8 8 0 01-16 0zm6.39-2.908a.75.75 0 01.766.027l3.5 2.25a.75.75 0 010 1.262l-3.5 2.25A.75.75 0 018 12.25v-4.5a.75.75 0 01.39-.658z" :clip-rule "evenodd"}]]))
+
+(defn queue-list:mini [& [classes]]
+  (v/x
+    [:svg {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+     [:path {:d "M2 4.5A2.5 2.5 0 014.5 2h11a2.5 2.5 0 010 5h-11A2.5 2.5 0 012 4.5zM2.75 9.083a.75.75 0 000 1.5h14.5a.75.75 0 000-1.5H2.75zM2.75 12.663a.75.75 0 000 1.5h14.5a.75.75 0 000-1.5H2.75zM2.75 16.25a.75.75 0 000 1.5h14.5a.75.75 0 100-1.5H2.75z"}]]))
+
+(defn link:mini [& [classes]]
+  (v/x
+    [:svg {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+     [:path {:d "M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z"}]
+     [:path {:d "M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z"}]]))
+
+(defn photo:mini [& [classes]]
+  (v/x
+    [:svg {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+     [:path {:fill-rule "evenodd" :d "M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" :clip-rule "evenodd"}]]))

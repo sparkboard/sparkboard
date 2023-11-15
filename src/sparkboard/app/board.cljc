@@ -4,6 +4,7 @@
             [re-db.api :as db]
             [sparkboard.app.account :as account]
             [sparkboard.app.domain :as domain]
+            [sparkboard.app.field :as field]
             [sparkboard.app.member :as member]
             [sparkboard.authorize :as az]
             [sparkboard.app.entity :as entity]
@@ -308,7 +309,20 @@
                                    account-id)
                params)]}
   [{:keys [board-id]}]
-  (q/pull entity/fields board-id))
+  (q/pull  `[~@entity/fields
+             {:board/member-fields [:field/hint
+                                    :entity/id
+                                    :field/label
+                                    :field/default-value
+                                    {:field/options [:field-option/color
+                                                     :field-option/value
+                                                     :field-option/label]}
+                                    :field/order
+                                    :field/required?
+                                    :field/show-as-filter?
+                                    :field/show-at-create?
+                                    :field/show-on-card?
+                                    :field/type]}] board-id))
 
 (ui/defview settings
   {:route ["/b/" ['entity/id :board-id] "/settings"]}
@@ -322,7 +336,9 @@
       (entity/use-persisted board :entity/domain domain/domain-field)
       (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
 
-
+      [ui/input-wrapper
+       [ui/input-label (tr :tr/member-fields)]
+       (field/fields-editor board :board/member-fields)]
       ;; TODO
       ;; - :board/member-fields
       ;; - :board/project-fields
