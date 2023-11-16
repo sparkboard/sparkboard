@@ -136,10 +136,10 @@
          :or   {cancel (tr :tr/cancel)}} @!state]
     [:el alert/Root (v/props @!state)
      [:el alert/Portal
-      [:el.overlay.bg-white.opacity-90.z-3 alert/Overlay]
-      [:el.overlay-content.z-4.rounded-lg.p-6.flex-v.gap-4 alert/Content
-       [:el.font-bold alert/Title title]
-       [:el alert/Description description]
+      [:el.overlay.z-3 alert/Overlay]
+      [:el.overlay-content.z-4.rounded-lg.p-7.flex-v.gap-4.relative.z-10.bg-white alert/Content
+       (when title [:el.font-bold alert/Title title])
+       (when description [:el alert/Description description])
        body
        [:div.flex.gap-3.justify-end
         [:el alert/Cancel cancel]
@@ -152,12 +152,3 @@
                         {:open           true
                          :on-open-change (fn [open?]
                                            (when-not open? (reset! !state nil)))})))
-#_(defn tabs [& sections]
-    (v/x
-      [:el tabs/Root
-       (into [:el tabs/List]
-             (map-indexed (fn [i [trigger _]]
-                            (v/x [tabs/Trigger {:value i} trigger])) sections))
-       (into [:el tabs/Content]
-             (map-indexed (fn [i [trigger _]]
-                            (v/x [tabs/Content {:value i} trigger])) sections))]))

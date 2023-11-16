@@ -195,13 +195,13 @@
           [:div.hover:bg-gray-300.p-1.cursor-pointer.rounded-full
            {:on-click (fn [_]
                         (radix/open-alert! !alert
-                                           {:title  (tr :tr/confirm-delete-option)
-                                            :body   [:div.flex-v.gap-3
-                                                     [:div.border.rounded-lg.px-4.py-3 @?label]
+                                           {:body   [:div.text-center.flex-v.gap-3
+                                                     [icons/trash "mx-auto w-8 h-8 text-red-600"]
+                                                     [:div.text-2xl (tr :tr/confirm)]
                                                      [:div (tr :tr/cannot-be-undone)]]
-                                            :cancel [:div.btn.btn-light.px-6.py-4.text-lg {:on-click #(radix/close-alert! !alert)}
+                                            :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
                                                      (tr :tr/cancel)]
-                                            :action [:div.btn.bg-red-700.text-white.px-6.py-4.text-lg
+                                            :action [:div.btn.destruct
                                                      {:on-click (fn [_]
                                                                   (forms/remove-many! ?option)
                                                                   (p/do (save!)

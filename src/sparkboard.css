@@ -113,8 +113,8 @@
 @layer utilities {
 
     .overlay {
-        animation: overlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
-        @apply fixed inset-0
+
+        @apply fixed inset-0 bg-white opacity-40
     }
     .overlay-content {
         position: fixed;
@@ -124,7 +124,10 @@
         width: 90vw;
         max-width: 500px;
         max-height: 85vh;
-        box-shadow: hsl(206 22% 7% / 35%) 0 10px 38px -10px, hsl(206 22% 7% / 20%) 0 10px 20px -15px;
+        /* box-shadow order argument order: x y blur spread color
+
+         */
+        box-shadow: hsl(206 22% 7% / 20%) 0 10px 95px -10px, hsl(206 22% 7% / 10%) 0 10px 20px -15px;
         animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -226,8 +229,19 @@
         inline-flex items-center justify-center cursor-pointer
         font-medium
         transition-colors disabled:opacity-50 disabled:pointer-events-none
-        rounded-md px-3 focus-visible:outline-none no-underline
+        rounded-md no-underline
+        px-3 py-2 text-sm
 
+    }
+
+    .btn.btn-lg {
+        @apply text-lg px-4 py-3
+    }
+    .btn.destruct {
+        @apply bg-red-600 hover:bg-red-700 text-white
+    }
+    .btn.thin {
+        @apply border border-gray-200 hover:border-gray-300
     }
 
     .btn-light {

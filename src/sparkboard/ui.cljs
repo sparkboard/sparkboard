@@ -309,7 +309,7 @@
   (let [loading? (or (:loading? ?field) (:loading? attrs))]
     [:div.flex.relative.items-stretch.flex-auto
      [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
-      (v/props (common-props ?field (j/get [:target :value]) {:unwrap #(or % "")})
+      (v/props (common-props ?field (j/get-in [:target :value]) {:unwrap #(or % "")})
                {:class       ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
                 :placeholder "Search..."
                 :on-key-down #(when (= "Escape" (.-key ^js %))

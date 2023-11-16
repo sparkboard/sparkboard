@@ -36,9 +36,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     {:tr/cancel                          {:en "Cancel"
                                           :fr "Annuler"
                                           :es "Cancelar"}
-     :tr/confirm-delete-option           {:en "Are you sure you want to delete this option?"
-                                          :fr "Êtes-vous sûr de vouloir supprimer cette option ?"
-                                          :es "¿Estás seguro de que quieres eliminar esta opción?"}
+     :tr/confirm                         {:en "Are you sure?"
+                                          :fr "Êtes-vous sûr ?"
+                                          :es "¿Estás seguro?"}
      :tr/cannot-be-undone                {:en "This cannot be undone."
                                           :fr "Ceci ne peut pas être annulé."
                                           :es "Esto no se puede deshacer."}
