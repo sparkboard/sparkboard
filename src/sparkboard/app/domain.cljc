@@ -48,11 +48,9 @@
   (let [domain (qualify-domain domain)]
     {:available?
      (and (re-matches #"^[a-z0-9-.]+$" domain)
-          (nil? (db/get [:domain/name domain] :domain/name)))
+          (empty?
+            (:entity/_domain (db/entity [:domain/name domain]))))
      :domain domain}))
-
-(comment
-  (into {} (db/entity [:domain/name "opengeneva.sparkboard.com"])))
 
 (defn domain-valid-string [v _]
   (when-let [v (unqualify-domain (:domain/name v))]
@@ -66,7 +64,8 @@
 #?(:cljs
    (defn domain-availability-validator []
      (-> (fn [v {:keys [field]}]
-           (when (not= (:init field) v)
+           (when (not= (:domain/name (:init field))
+                       (:domain/name v))
              (when-let [v (:domain/name v)]
                (when (>= (count v) 3)
                  (p/let [res (check-availability {:domain v})]
@@ -80,8 +79,11 @@
 
 #?(:cljs
    (defn domain-field [?domain & [props]]
-     (ui/text-field ?domain (merge {:wrap          (fn [v] {:domain/name (qualify-domain (normalize-domain v))})
-                                    :unwrap        (comp unqualify-domain :domain/name)
+     (ui/text-field ?domain (merge {:wrap          (fn [v]
+                                                     (when-not (str/blank? v)
+                                                       {:domain/name (qualify-domain (normalize-domain v))}))
+                                    :unwrap        (fn [v]
+                                                     (or (some-> v :domain/name unqualify-domain) ""))
                                     :auto-complete "off"
                                     :spell-check   false
                                     :postfix       [:span.text-sm.text-gray-500 ".sparkboard.com"]}

@@ -125,7 +125,7 @@
                         badges]} (db:show-project params)]
     [:<>
      #_[ui/entity-header board]
-     [:div.p-body.flex.flex-col.gap-2
+     [:div.p-body.flex-v.gap-2
       [:div.flex.items-start.gap-2
        [:h1.font-bold.text-xl.flex-auto title]
        [radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
@@ -135,7 +135,7 @@
          (into [:ul]
                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
                badges)])
-      [:section.flex.flex-col.gap-2.items-start
+      [:section.flex-v.gap-2.items-start
        [:h3.uppercase.text-sm (tr :tr/support-project)]
        [:div.flex.gap-2
 
@@ -146,7 +146,7 @@
                      "❤️ Love"]]
           [btn {:key label} label])]]
 
-      #_[:section.flex.flex-col.gap-2.items-start
+      #_[:section.flex-v.gap-2.items-start
          [:h3.uppercase.text-sm (tr :tr/support-project)]
 
          [:div.flex.gap-2
@@ -169,7 +169,7 @@
 
          [:div.flex.gap-2
           [btn "❤️ Love"]]]
-      #_[:section.flex.flex-col.gap-2.items-start
+      #_[:section.flex-v.gap-2.items-start
          [:h3.uppercase.text-sm (tr :tr/support-project)]
 
          [:div.flex.gap-2

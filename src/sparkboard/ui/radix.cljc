@@ -1,22 +1,27 @@
 (ns sparkboard.ui.radix
-  (:require #?(:cljs ["@radix-ui/react-dialog" :as dialog])
+  (:require #?(:cljs ["@radix-ui/react-alert-dialog" :as alert])
+            #?(:cljs ["@radix-ui/react-dialog" :as dialog])
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
             [sparkboard.ui.icons :as icons]
             [yawn.view :as v]
-            [yawn.util]))
+            [yawn.util]
+            [sparkboard.i18n :refer [tr]]
+            [sparkboard.ui :as ui]
+            [yawn.hooks :as h]))
 
 (def menu-root (v/from-element :el dm/Root {:modal false}))
 (def menu-sub-root (v/from-element :el dm/Sub))
 (def menu-portal (v/from-element :el dm/Portal {:container (yawn.util/find-or-create-element :radix-modal)}))
-(def menu-content-classes (v/classes ["rounded bg-popover text-popover-txt  "
+(def menu-content-classes (v/classes ["text-sm"
+                                      "rounded-sm bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
                                       "focus:outline-none z-50"
                                       "gap-1 py-1 px-0"]))
 (def menu-content (v/from-element :el dm/Content {:sideOffset        4
                                                   :collision-padding 16
-                                                  :align             "end"
+                                                  :align             "start"
                                                   :class             menu-content-classes}))
 (def menu-sub-content (v/from-element :el dm/SubContent {:class             menu-content-classes
                                                          :collision-padding 16
@@ -120,6 +125,33 @@
                 {:value value
                  :class "flex items-center"} title]))
         (into [:<>]))])
+
+(ui/defview alert [!state]
+  (let [{:as   props
+         :keys [title
+                description
+                body
+                cancel
+                action]
+         :or   {cancel (tr :tr/cancel)}} @!state]
+    [:el alert/Root (v/props @!state)
+     [:el alert/Portal
+      [:el.overlay.bg-white.opacity-90.z-3 alert/Overlay]
+      [:el.overlay-content.z-4.rounded-lg.p-6.flex-v.gap-4 alert/Content
+       [:el.font-bold alert/Title title]
+       [:el alert/Description description]
+       body
+       [:div.flex.gap-3.justify-end
+        [:el alert/Cancel cancel]
+        [:el alert/Action action]]]]]))
+
+(defn close-alert! [!state] (reset! !state nil))
+
+(defn open-alert! [!state props]
+  (reset! !state (merge props
+                        {:open           true
+                         :on-open-change (fn [open?]
+                                           (when-not open? (reset! !state nil)))})))
 #_(defn tabs [& sections]
     (v/x
       [:el tabs/Root

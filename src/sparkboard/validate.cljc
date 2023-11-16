@@ -90,23 +90,34 @@
          (assert (-> (mu/optional-keys schema)
                      (mu/assoc :entity/domain (mu/optional-keys :domain/as-map)))))))
 
-#?(:clj
-   (defn can-edit? [entity-id account-id]
-     (let [entity-id  (dl/resolve-id entity-id)
-           account-id (dl/resolve-id account-id)]
-       (or (= entity-id account-id)                         ;; entity _is_ account
-           (->> (dl/entity [:member/entity+account [entity-id account-id]])
-                :member/roles
-                (some #{:role/owner :role/admin :role/collaborate})
-                boolean)))))
+(defn editing-role? [roles]
+  (boolean (some #{:role/owner :role/admin :role/collaborate} roles)))
+
+(defn can-edit? [entity-id account-id]
+  (let [entity-id  (dl/resolve-id entity-id)
+        account-id (dl/resolve-id account-id)]
+    (or (= entity-id account-id)                            ;; entity _is_ account
+        #?(:clj (->> (dl/entity [:member/entity+account [entity-id account-id]])
+                     :member/roles
+                     editing-role?)
+           :cljs (editing-role? (db/get entity-id :member/roles))))))
+
+(defn permission-denied! []
+  (ex-info "Permission denied"
+           {:response {:status 400
+                       :body   {:error                             "Permission denied"
+                                :inside-out.forms/messages-by-path {() ["Permission denied"]}}}}))
+
+(defn validation-failed! [reason]
+  (ex-info "Validation failed"
+           {:response {:status 400
+                       :body   {:error                             "validation failed"
+                                :inside-out.forms/messages-by-path {() [reason]}}}}))
 
 #?(:clj
    (defn assert-can-edit! [entity-id account-id]
      (when-not (can-edit? entity-id account-id)
-       (throw (ex-info "Validation failed"
-                       {:response {:status 400
-                                   :body {:error "validation failed"
-                                          :inside-out.forms/messages-by-path {() ["You do not have permission to edit this entity"]}}}})))))
+       (permission-denied!))))
 
 
 

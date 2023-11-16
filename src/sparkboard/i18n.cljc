@@ -33,24 +33,36 @@
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
 See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
   (ungroup-dict                                             ;; grouped for easy generation of multiple languages
-    {:field.type/video                   {:en "Video"
-                                          :fr "Vidéo"
-                                          :es "Video"},
-     :field.type/select                  {:en "Select"
-                                          :fr "Sélectionner"
-                                          :es "Seleccionar"},
-     :field.type/link-list               {:en "Link list"
-                                          :fr "Liste de liens"
-                                          :es "Lista de enlaces"},
-     :field.type/images                  {:en "Images"
-                                          :fr "Images"
-                                          :es "Imágenes"},
-     :field.type/prose                   {:en "Prose"
-                                          :fr "Prose"
-                                          :es "Prosa"},
-     :tr/member-fields                   {:en "Member fields"
-                                          :fr "Champs de membre"
-                                          :es "Campos de miembro"},
+    {:tr/cancel                          {:en "Cancel"
+                                          :fr "Annuler"
+                                          :es "Cancelar"}
+     :tr/confirm-delete-option           {:en "Are you sure you want to delete this option?"
+                                          :fr "Êtes-vous sûr de vouloir supprimer cette option ?"
+                                          :es "¿Estás seguro de que quieres eliminar esta opción?"}
+     :tr/cannot-be-undone                {:en "This cannot be undone."
+                                          :fr "Ceci ne peut pas être annulé."
+                                          :es "Esto no se puede deshacer."}
+     :tr/delete                          {:en "Delete"
+                                          :fr "Supprimer"
+                                          :es "Eliminar"}
+     :tr/field-type                      {:en "Field type"
+                                          :fr "Type de champ"
+                                          :es "Tipo de campo"},
+     :tr/video-field                     {:en "Video field"
+                                          :fr "Champ vidéo"
+                                          :es "Campo de video"},
+     :tr/selection-menu                  {:en "Selection menu"
+                                          :fr "Menu de sélection"
+                                          :es "Menú de selección"},
+     :tr/web-links                       {:en "Web links"
+                                          :fr "Liens Web"
+                                          :es "Enlaces web"},
+     :tr/image-field                     {:en "Image field"
+                                          :fr "Champ d'image"
+                                          :es "Campo de imagen"},
+     :tr/text-field                      {:en "Text field"
+                                          :fr "Champ de texte"
+                                          :es "Campo de texto"},
      :tr/start-board-new                 {:en "### Start Something New\nNo boards yet? Start a hackathon and bring people together to solve problems."
                                           :fr "### Commencez quelque chose de nouveau\nPas encore de tableaux ? Démarrez un hackathon et rassemblez des personnes pour résoudre des problèmes."
                                           :es "### Comienza algo nuevo\n¿Aún no hay tableros? Inicie un hackathon y reúna a las personas para resolver problemas."}
@@ -93,6 +105,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/projects                        {:en "Projects"
                                           :fr "Projets"
                                           :es "Proyectos"},
+     :tr/project-fields                  {:en "Project fields"
+                                          :fr "Champs de projet"
+                                          :es "Campos de proyecto"},
+     :tr/member-fields                   {:en "Member fields"
+                                          :fr "Champs de membre"
+                                          :es "Campos de miembro"},
      :tr/new-member                      {:en "New member"
                                           :fr "Nouveau membre"
                                           :es "Nuevo miembro"},
@@ -264,6 +282,30 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/owner                           {:en "Owner"
                                           :fr "Propriétaire"
                                           :es "Propietario"}
+     :tr/label                           {:en "Label"
+                                          :fr "Étiquette"
+                                          :es "Etiqueta"}
+     :tr/hint                            {:en "Hint"
+                                          :fr "Indice"
+                                          :es "Pista"}
+     :tr/required                        {:en "Required"
+                                          :fr "Obligatoire"
+                                          :es "Requerido"}
+     :tr/filter                          {:en "Show as filter"
+                                          :fr "Afficher comme filtre"
+                                          :es "Mostrar como filtro"}
+     :tr/show-at-registration            {:en "Show at registration"
+                                          :fr "Afficher à l'inscription"
+                                          :es "Mostrar en el registro"}
+     :tr/show-on-card                    {:en "Show on card"
+                                          :fr "Afficher sur la carte"
+                                          :es "Mostrar en la tarjeta"}
+     :tr/untitled                        {:en "Untitled"
+                                          :fr "Sans titre"
+                                          :es "Sin título"}
+     :tr/options                         {:en "Options"
+                                          :fr "Options"
+                                          :es "Opciones"}
      :tr/find-a-member                   {:en "Find a member"
                                           :fr "Trouver un membre"
                                           :es "Encontrar un miembro"}}))

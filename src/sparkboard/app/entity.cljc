@@ -8,7 +8,8 @@
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
             [yawn.view :as v]
-            [sparkboard.routes :as routes]))
+            [sparkboard.routes :as routes]
+            [malli.util :as mu]))
 
 (sch/register!
   (merge
@@ -29,7 +30,7 @@
      :entity/title              {:doc         "Title of entity, for card/header display."
                                  s-           :string
                                  :db/fulltext true}
-     :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message]}
+     :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message :field]}
      :entity/description        {:doc         "Description of an entity (for card/header display)"
                                  s-           :prose/as-map
                                  :db/fulltext true}
@@ -76,13 +77,33 @@
 (q/defx save-attribute!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} e a v]
-  (let [e  (sch/wrap-id e)
-        _  (validate/assert-can-edit! e account-id)
-        {:as entity :keys [entity/kind entity/id]} (db/entity e)
-        pv (get entity a)]
-    (validate/assert v a)
-    (db/transact! [{:db/id e a v}])
+  (let [e             (sch/wrap-id e)
+        _             (validate/assert-can-edit! e account-id)
+        {:as entity :keys [entity/id entity/kind]} (db/entity e)
+        pv            (get entity a)
+        parent-schema (-> (keyword (if kind (name kind) (namespace a)) "as-map")
+                          (@sch/!malli-registry))
+        required?     (-> parent-schema
+                          (@sch/!malli-registry)
+                          (mu/find a)
+                          (mu/-required-map-entry?))
+        txs           (if (nil? v)
+                        [[:db/retract e a]]
+                        [{:db/id e a v}])]
+    (when (and required? (nil? v))
+      (validate/validation-failed! "Required field"))
+    (when (some? v)
+      (validate/assert {a v} (mu/select-keys parent-schema [a])))
+    (db/transact! txs)
     {:db/id id}))
+
+(-> :field/as-map
+    (@sch/!malli-registry)
+    (mu/find :field/hint)
+    (mu/-required-map-entry?))
+
+;; how to determine if a field is required or optional in a malli map schema?
+
 
 #?(:cljs
    (defn use-persisted [entity attribute field-view & [props]]

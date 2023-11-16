@@ -70,7 +70,6 @@
 
 (def firebase-colls {:org/as-map             "org"
                      :board/as-map           "settings"
-                     :domain/as-map          "domain"
                      :collection/as-map      "collection"
                      :roles/as-map           "roles"
                      :slack.user/as-map      "slack-user"
@@ -165,7 +164,7 @@
 (defn firebase-account->email [account where]
   (or (@!firebaseAccount->email account)
       (throw (ex-info (str "Firebase email not found for " account) {:account account
-                                                                     :where where}))))
+                                                                     :where   where}))))
 
 (def to-uuid
   (memoize
@@ -192,7 +191,7 @@
     (into {}
           (map (fn [member]
                  [(-> member :_id get-oid)
-                  (to-uuid :account (-> member :firebaseAccount (firebase-account->email 179)))]))
+                  (to-uuid :account (:firebaseAccount member))]))
           @!members-raw)))
 
 (def !member-id->board-id
@@ -354,18 +353,43 @@
      :id-string id-string
      :ref       (uuid-ref kind id-string)}))
 
-(defn parse-domain-target [s]
+(defn parse-domain-target [target]
   ;; TODO - domains that point to URLs should be "owned" by someone
-  (if (str/starts-with? s "redirect:")
-    {:domain/url (-> (subs s 9)
+  (if (str/starts-with? target "redirect:")
+    {:domain/url (-> (subs target 9)
                      (str/replace "%3A" ":")
                      (str/replace "%2F" "/"))}
 
-    (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id s)]
+    (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id target)]
       (if (= [kind id-string] [:site "account"])
         {:domain/url "https://account.sparkboard.com"}
         (when-not (missing-uuid? uuid)
           {:entity/_domain [{:entity/id uuid}]})))))
+
+(def !entity->domain
+  (delay
+    (->> ((read-firebase) "domain")
+         (keep (fn [[name target]]
+                 (let [[kind v] (if (str/starts-with? target "redirect:")
+                                  [:domain/url (-> (subs target 9)
+                                                   (str/replace "%3A" ":")
+                                                   (str/replace "%2F" "/"))]
+                                  (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id target)]
+                                    (if (= [kind id-string] [:site "account"])
+                                      [:domain/url "https://account.sparkboard.com"]
+                                      [:entity/id uuid])))]
+                   (when (= kind :entity/id)
+                     [v {:domain/name (unmunge-domain name)}]))))
+         (into {}))))
+
+(comment
+  (db/transact! (for [[entity-id entry] @!entity->domain
+                      :when (db/get [:entity/id entity-id])]
+                  {:entity/id     entity-id
+                   :entity/domain entry})))
+
+(defn lookup-domain [m]
+  (assoc-some-value m :entity/domain (@!entity->domain (:entity/id m))))
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 
@@ -453,7 +477,8 @@
                                     ;; question, how to have uniqueness
                                     ;; based on tuple of [field-spec/id, field/target]
                                     (fnil conj [])
-                                    {:field-entry/id    (composite-uuid :entry target-id field-id)
+                                    {:entity/kind       :field-entry
+                                     :entity/id         (composite-uuid :entry target-id field-id)
                                      :field-entry/value [field-type entry-value]
                                      :field-entry/field [:entity/id field-id]})))))
                   m
@@ -516,6 +541,7 @@
 
 (def changes {:board/as-map
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
+               ::always lookup-domain
                ::defaults {:board/registration-open? true
                            :entity/public?           true
                            :board/owner              (uuid-ref :org "base")}
@@ -580,7 +606,7 @@
                                                                  (dissoc "id" "name")
                                                                  (rename-keys {"type"         :field/type
                                                                                "showOnCard"   :field/show-on-card?
-                                                                               "showAtCreate" :field/show-at-create?
+                                                                               "showAtCreate" :field/show-at-registration?
                                                                                "showAsFilter" :field/show-as-filter?
                                                                                "required"     :field/required?
                                                                                "hint"         :field/hint
@@ -600,7 +626,8 @@
                                                                                                          first
                                                                                                          (get "value")))
                                                                  (update :field/order #(or % (swap! !orders inc)))
-                                                                 (update :field/type parse-field-type)))))
+                                                                 (update :field/type parse-field-type)
+                                                                 (assoc :entity/kind :field)))))
                                                 (catch Exception e (prn a v) (throw e))))))]
                  ["groupFields" (& field-xf (rename :board/project-fields))
                   "userFields" (& field-xf (rename :board/member-fields))])
@@ -691,6 +718,7 @@
               :org/as-map             [::prepare (partial flat-map :entity/id (partial to-uuid :org))
                                        ::defaults {:entity/public? true}
                                        ::always (add-kind :org)
+                                       ::always lookup-domain
                                        "languageDefault" (rename :entity/locale-default)
                                        "localeSupport" (rename :entity/locale-suggestions)
                                        "title" (rename :entity/title)
@@ -742,9 +770,6 @@
                                        ::always (remove-when (comp (partial missing-entity? :project/as-map) :slack.channel/project))
                                        "team-id" (& (xf (partial vector :slack.team/id))
                                                     (rename :slack.channel/slack.team))]
-              :domain/as-map          [::prepare (partial mapv (fn [[name target]]
-                                                                 (merge {:domain/name (unmunge-domain name)}
-                                                                        (parse-domain-target target))))]
               :collection/as-map      [::prepare (partial flat-map :entity/id (partial to-uuid :collection))
                                        ::always (add-kind :collection)
                                        "title" (rename :entity/title)
@@ -831,9 +856,7 @@
                                                   (assoc :entity/created-at (bson-id-timestamp (get-oid v))
                                                          :entity/id (composite-uuid :member
                                                                                     (to-uuid :board (:boardId m))
-                                                                                    (-> (:firebaseAccount m)
-                                                                                        (firebase-account->email 834)
-                                                                                        account-uuid)))
+                                                                                    (to-uuid :account (:firebaseAccount m))))
                                                   (dissoc a)))
                                        :boardId (uuid-ref-as :board :member/entity)
 

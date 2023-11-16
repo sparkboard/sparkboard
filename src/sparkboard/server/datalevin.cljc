@@ -1,10 +1,10 @@
 (ns sparkboard.server.datalevin
-  #?(:clj (:require [datalevin.core :as dl]
-                    [datalevin.search-utils :as sut]
-                    [re-db.integrations.datalevin]
-                    [sparkboard.schema :as sch]
-                    [sparkboard.server.env :as env]
-                    [re-db.api :as db])))
+  (:require #?(:clj [datalevin.core :as dl])
+            #?(:clj [datalevin.search-utils :as sut])
+            #?(:clj [re-db.integrations.datalevin])
+            #?(:clj [sparkboard.server.env :as env])
+            [sparkboard.schema :as sch]
+            [re-db.api :as db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Setup
@@ -64,14 +64,17 @@
 #?(:clj
    (defn pull [expr id] (dl/pull @conn expr id)))
 
-#?(:clj
-   (defn entid [id] (dl/entid @conn id)))
+(defn entid [id]
+  #?(:clj (dl/entid @conn id)
+     :cljs id))
 
-#?(:clj
-   (defn resolve-id [id] (entid (sch/wrap-id id))))
 
-#?(:clj
-   (defn entity [id] (dl/entity @conn (resolve-id id))))
+(defn resolve-id [id]
+  (entid (sch/wrap-id id)))
+
+(defn entity [id]
+  #?(:clj  (dl/entity @conn (resolve-id id))
+     :cljs (db/entity id)))
 
 #?(:clj
    (defn transact! [txs]

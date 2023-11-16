@@ -44,7 +44,7 @@
 
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:trigger
-                        [:div.btn-light (tr :tr/new) (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4")]}
+                        [:div.btn-light (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]}
                        [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
                        [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
 
@@ -104,7 +104,7 @@
      [:a.gray-link {:target "_blank"
                     :href   "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]))
 
-(def down-arrow (icons/chevron-down-mini "ml-1 -mr-1 w-4 h-4"))
+(def down-arrow (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4"))
 
 (comment
   (p/-> (routes/POST `sparkboard.app.account/sign-in
@@ -143,7 +143,7 @@
                            :account/password (?password :init "")}
                  :required [?email ?password]]
     (let [!step (h/use-state :email)]
-      [:form.flex-grow.m-auto.gap-6.flex.flex-col.max-w-sm.px-4
+      [:form.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
        {:on-submit (fn [^js e]
                      (.preventDefault e)
                      (case @!step
@@ -154,7 +154,7 @@
                                    (prn :res res))))}
 
 
-       [:div.flex.flex-col.gap-2
+       [:div.flex-v.gap-2
         [ui/text-field ?email]
         (when (= :password @!step)
           [ui/text-field ?password {:id "account-password"}])
@@ -174,9 +174,9 @@
   [params]
   (if (db/get :env/config :account-id)
     (ui/redirect `home)
-    [:div.h-screen.flex.flex-col
+    [:div.h-screen.flex-v
      [header/lang "absolute top-0 right-0 p-4"]
-     [:div.flex.flex-col.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
+     [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
       {:class ["bg-secondary rounded-lg border border-txt/05"]}
       [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
       [radix/tab-root]
@@ -191,7 +191,7 @@
           all     (db:all {})
           account (db/get :env/config :account)
           title   (v/from-element :div.font-medium.text-xl.px-2)
-          section (v/from-element :div.flex.flex-col.gap-2)]
+          section (v/from-element :div.flex-v.gap-2)]
       [:div.divide-y
        [header account nil]
 
@@ -199,7 +199,7 @@
                                                   (update-vals #(->> (sequence (ui/filtered @?filter) %)
                                                                      (sort-by :entity/created-at u/compare:desc)))
                                                   (u/guard seq))]
-         [:div.p-body.flex.flex-col.gap-8
+         [:div.p-body.flex-v.gap-8
           (when (> (count all) 6)
             [ui/filter-field ?filter])
           (let [limit (partial ui/truncate-items {:limit 10})]

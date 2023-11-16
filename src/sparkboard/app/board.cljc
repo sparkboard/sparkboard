@@ -154,27 +154,14 @@
        (remove :entity/archived?)
        (mapv (db/pull `[~@entity/fields]))))
 
-(q/server
-  (defn db:authorize-edit! [board account-id]
-    (validate/assert board [:map [:board/owner
-                                  [:fn {:error/message "Not authorized."}
-                                   (fn [owner]
-                                     (let [account-id (dl/resolve-id account-id)
-                                           owner-id   (dl/resolve-id owner)]
-                                       (or
-                                         ;; board is owned by this account
-                                         (= account-id owner-id)
-                                         ;; account is editor of this board (existing)
-                                         (when-let [existing-board (dl/entity (:entity/id board))]
-                                           (validate/can-edit? (:db/id existing-board) account-id))
-                                         ;; account is admin of board's org
-                                         (validate/can-edit? owner-id account-id))))]]]))
-  (defn db:authorize-create! [board account-id]
-    ;; confirm that owner is account, or account is admin of org
-    (validate/assert board [:map [:board/owner
-                                  [:fn {:error/message "Not authorized."}
-                                   (fn [owner]
-                                     (validate/can-edit? owner account-id))]]])))
+(defn db:authorize-edit! [board account-id]
+  (when-not (or (validate/can-edit? board account-id)
+                (validate/can-edit? (:board/owner board) account-id))
+    (validate/permission-denied!)))
+
+(defn db:authorize-create! [board account-id]
+  (when-not (validate/can-edit? (:board/owner board) account-id)
+    (validate/permission-denied!)))
 
 (q/defx db:new!
   {:prepare [az/with-account-id!]}
@@ -217,7 +204,7 @@
        [:h2.text-2xl (tr :tr/new-board)]
 
        (when owners
-         [:div.flex.flex-col.gap-2
+         [:div.flex-v.gap-2
           [ui/input-label {} (tr :tr/owner)]
           (->> owners
                (map (fn [{:keys [entity/id entity/title image/avatar]}]
@@ -304,25 +291,16 @@
 
 (q/defquery db:settings
   {:prepare [az/with-account-id!
-             (fn [_ {:as params :keys [board-id account-id]}]
-               (db:authorize-edit! (dl/entity board-id)
-                                   account-id)
+             (az/with-roles :board-id)
+             (fn [_ {:as params :keys [member/roles board-id account-id]}]
+               (validate/assert-can-edit! board-id account-id)
                params)]}
-  [{:keys [board-id]}]
-  (q/pull  `[~@entity/fields
-             {:board/member-fields [:field/hint
-                                    :entity/id
-                                    :field/label
-                                    :field/default-value
-                                    {:field/options [:field-option/color
-                                                     :field-option/value
-                                                     :field-option/label]}
-                                    :field/order
-                                    :field/required?
-                                    :field/show-as-filter?
-                                    :field/show-at-create?
-                                    :field/show-on-card?
-                                    :field/type]}] board-id))
+  [{:keys [board-id member/roles]}]
+  (some->
+    (q/pull `[~@entity/fields
+              {:board/member-fields  ~field/field-keys}
+              {:board/project-fields ~field/field-keys}] board-id)
+    (merge {:member/roles roles})))
 
 (ui/defview settings
   {:route ["/b/" ['entity/id :board-id] "/settings"]}
@@ -336,9 +314,8 @@
       (entity/use-persisted board :entity/domain domain/domain-field)
       (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
 
-      [ui/input-wrapper
-       [ui/input-label (tr :tr/member-fields)]
-       (field/fields-editor board :board/member-fields)]
+      (field/fields-editor board :board/member-fields)
+      (field/fields-editor board :board/project-fields)
       ;; TODO
       ;; - :board/member-fields
       ;; - :board/project-fields
@@ -374,3 +351,4 @@
    [:li "suggested locales:" (str (:entity/locale-suggestions board))]
    [:li "default locale:" (str (:i18n/default-locale board))]
    [:li "extra-translations:" (str (:i18n/locale-dicts board))]])
+

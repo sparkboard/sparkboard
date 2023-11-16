@@ -172,7 +172,7 @@
 (ui/defview member-search [params]
   (let [!search-term (h/use-state "")]
     [:<>
-     [:div.flex.flex-col.relative.px-1.py-2
+     [:div.flex-v.relative.px-1.py-2
       [:input.w-full
        {:class       search-classes
         :value       @!search-term
@@ -202,7 +202,7 @@
      {:href  (routes/href [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} other]
-     [:div.flex.flex-col.w-full.overflow-hidden
+     [:div.flex-v.w-full.overflow-hidden
       [:div.flex.items-center
        [:div.font-bold.flex-auto (:account/display-name other)]
        [:div.w-2.h-2.rounded-full.flex-none
@@ -217,7 +217,7 @@
 (ui/defview chats-sidebar [{:as             chat
                             :keys           [account-id]
                             current-chat-id :chat-id}]
-  [:div.flex.flex-col.px-1.py-2.w-full
+  [:div.flex-v.px-1.py-2.w-full
    #_[member-search nil]
    (->> (db:chats-list nil)
         (map (partial chat-snippet {:current-chat-id current-chat-id
@@ -228,7 +228,7 @@
   [{:keys [account-id]} {:keys [chat.message/content
                                 entity/created-by
                                 entity/id]}]
-  [:div.p-2.flex.flex-col
+  [:div.p-2.flex-v
    {:class ["max-w-[600px] rounded-[12px]"
             (if (sch/id= account-id created-by)
               "bg-blue-500 text-white place-self-end"
@@ -262,7 +262,7 @@
           keydown-handler    (fn [e]
                                (when ((ui/keydown-handler
                                         {:Enter
-                                         (fn []
+                                         (fn [e]
                                            (reset! !response {:pending true})
                                            (p/let [response (db:new-message!
                                                               params
@@ -287,7 +287,7 @@
       [:<>
        [chat-header {:account-id account-id
                      :chat       chat}]
-       [:div.flex-auto.overflow-y-scroll.flex.flex-col.gap-3.p-2.border-t
+       [:div.flex-auto.overflow-y-scroll.flex-v.gap-3.p-2.border-t
         {:ref !scrollable-window}
         (->> messages
              (sort-by :entity/created-at)

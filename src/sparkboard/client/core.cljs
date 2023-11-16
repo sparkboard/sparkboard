@@ -68,21 +68,29 @@
                 validator
                 (update :validators conj validator))))
   (forms/set-global-meta!
-    {:account/email      {:el         ui/text-field
-                          :props      {:type        "email"
-                                       :placeholder (tr :tr/email)}
-                          :validators [ui/email-validator]}
-     :account/password   {:el         ui/text-field
-                          :props      {:type        "password"
-                                       :placeholder (tr :tr/password)}
-                          :validators [(forms/min-length 8)]}
-     :entity/title       {:validators [(forms/min-length 3)]
-                          :label      (tr :tr/title)}
-     :entity/description {:label (tr :tr/description)}
+    {:account/email               {:el         ui/text-field
+                            :props      {:type        "email"
+                                         :placeholder (tr :tr/email)}
+                            :validators [ui/email-validator]}
+     :account/password            {:el         ui/text-field
+                            :props      {:type        "password"
+                                         :placeholder (tr :tr/password)}
+                            :validators [(forms/min-length 8)]}
+     :entity/title                {:validators [(forms/min-length 3)]
+                            :label      (tr :tr/title)}
+     :board/project-fields        {:label (tr :tr/project-fields)}
+     :board/member-fields         {:label (tr :tr/member-fields)}
 
-     :entity/domain      {:label      (tr :tr/domain-name)
-                          :validators [domain/domain-valid-string
-                                       (domain/domain-availability-validator)]}})
+     :field/label                 {:label (tr :tr/label)}
+     :field/hint                  {:label (tr :tr/hint)}
+     :field/required?             {:label (tr :tr/required)}
+     :field/show-as-filter?       {:label (tr :tr/filter)}
+     :field/show-at-registration? {:label (tr :tr/show-at-registration)}
+     :field/show-on-card?         {:label (tr :tr/show-on-card)}
+     :entity/description          {:label (tr :tr/description)}
+     :entity/domain               {:label      (tr :tr/domain-name)
+                                   :validators [domain/domain-valid-string
+                                                (domain/domain-availability-validator)]}})
   )
 
 (defn ^:dev/after-load init-endpoints! []

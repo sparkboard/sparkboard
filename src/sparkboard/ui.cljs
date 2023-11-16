@@ -6,6 +6,7 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [clojure.pprint :refer [pprint]]
+            [clojure.set :as set]
             [clojure.string :as str]
             [inside-out.forms :as forms]
             [inside-out.macros]
@@ -117,8 +118,8 @@
                nil)}
      content]))
 
-(def input-label (v/from-element :label.block.text-foreground-muted.text-sm.font-medium))
-(def input-wrapper (v/from-element :div.gap-2.flex.flex-col.relative))
+(def input-label (v/from-element :label.block.text-foreground-muted.font-medium))
+(def input-wrapper (v/from-element :div.gap-2.flex-v.relative))
 
 (defn field-id [?field]
   (str "field-" (goog/getUid ?field)))
@@ -133,23 +134,55 @@
       (str (:value props) " ")]
      [:textarea props]]))
 
-(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :wrap :unwrap))
+(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :on-change-value :wrap :unwrap))
 
 (defn compseq [& fs]
   (fn [& args]
     (doseq [f fs] (apply f args))))
 
+(defn maybe-save-field [?field props value]
+  (when-let [on-save (and (not= value (:persisted-value props))
+                          (:on-save props))]
+    (forms/try-submit+ ?field
+      (on-save value))))
 
-(defn text-props [?field {:keys [value wrap unwrap persisted-value]
-                          :or   {wrap identity unwrap identity}}]
+(defn common-props [?field
+                    get-value
+                    {:as   props
+                     :keys [wrap
+                            unwrap
+                            on-save
+                            on-change-value
+                            on-change
+                            persisted-value]
+                     :or   {wrap identity unwrap identity}}]
   (cond-> {:id        (field-id ?field)
-           :value     (or (unwrap @?field) "")
+           :value     (unwrap @?field)
            :on-change (fn [e]
-                        ((forms/change-handler ?field {:parse-value (or wrap #(u/guard % (complement str/blank?)))}) e))
-           :on-blur   (forms/blur-handler ?field)
+                        (let [new-value (wrap (get-value e))]
+                          (reset! ?field new-value)
+                          (when on-change-value
+                            (pass-props (on-change-value new-value)))
+                          (when on-change
+                            (on-change e))))
+           :on-blur   (fn [e]
+                        (prn :blur)
+                        (maybe-save-field ?field props @?field)
+                        ((forms/blur-handler ?field) e))
            :on-focus  (forms/focus-handler ?field)}
           persisted-value
-          (assoc :persisted-value (or (unwrap persisted-value) ""))))
+          (assoc :persisted-value (unwrap persisted-value))))
+
+(defn color-field [?field props]
+  (let [get-value (j/get-in [:target :value])]
+    [:input (-> (v/merge-props
+                  (common-props ?field get-value props)
+                  {:on-blur (fn [e]
+                              (reset! ?field (get-value e))
+                              (maybe-save-field ?field props (get-value e)))
+                   :type    "color"})
+                (update :value #(or % "#cccccc")))]))
+
 
 (defn show-field-messages [?field]
   (when-let [messages (seq (forms/visible-messages ?field))]
@@ -166,10 +199,11 @@
                          (and (some-> (:persisted-value props)
                                       (not= (:value props)))
                               [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
-    [:div.pointer-events-none.absolute.inset-y-0.right-0.flex.items-center.pr-3 postfix]))
+    [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.flex.items-start.p-2 postfix]))
 
 (defn keydown-handler [bindings]
-  (let [handler (keydownHandler (clj->js bindings))]
+  (let [handler (keydownHandler (reduce-kv (fn [out k f]
+                                             (j/!set out (name k) (fn [_ _ _] (f js/window.event)))) #js{} bindings))]
     (fn [e] (handler #js{} e))))
 
 (defn text-field
@@ -184,31 +218,39 @@
                 persisted-value]
          :or   {wrap   identity
                 unwrap identity}} (merge props (:props (meta ?field)))
-        blur!   (fn [& _] (some-> js/window.event.target (j/call :blur)))
-        cancel! (fn [& _]
-                  (blur!)
-                  (reset! ?field persisted-value))
+        blur!   (fn [e] (j/call-in e [:target :blur]))
+        cancel! (fn [e]
+                  (reset! ?field persisted-value)
+                  (blur! e))
         props   (v/merge-props props
-                               (text-props ?field props)
-                               {:class [(when (:invalid (forms/types (forms/visible-messages ?field)))
-                                          "outline-invalid")]}
-                               (when on-save
-                                 {:on-key-down
-                                  (keydown-handler {:Enter  #(u/p-when (forms/valid?+ ?field)
-                                                               (on-save @?field))
-                                                    :Escape blur!
-                                                    :Meta-. cancel!})}))]
+
+                               (common-props ?field
+                                             (j/get-in [:target :value])
+                                             (merge {:wrap   #(when-not (str/blank? %) %)
+                                                     :unwrap #(or % "")} props))
+
+                               {:class ["pr-8"
+                                        (when (:invalid (forms/types (forms/visible-messages ?field)))
+                                          "outline-invalid")]
+                                :on-key-down
+                                (keydown-handler {(if multi-line
+                                                    :Meta-Enter
+                                                    :Enter) #(when on-save
+                                                               (j/call % :preventDefault)
+                                                               (maybe-save-field ?field props @?field))
+                                                  :Escape   blur!
+                                                  :Meta-.   cancel!})})]
     (v/x
       [input-wrapper
        {:class wrapper-class}
        (show-label ?field props)
-       [:div.flex.relative
+       [:div.flex-v.relative
         (if multi-line
-          [auto-size (v/merge-props {:class "form-text"} (pass-props props))]
+          [auto-size (v/merge-props {:class "form-text w-full"} (pass-props props))]
           [:input.form-text (pass-props props)])
         (show-postfix ?field props)
         (when (:loading? ?field)
-          [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[2px]"}])]
+          [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
        (show-field-messages ?field)])))
 
 (defn wrap-prose [value]
@@ -221,29 +263,44 @@
 (defn prose-field [?field & [props]]
   ;; TODO
   ;; multi-line markdown editor with formatting
-  (text-field ?field (merge {:wrap   wrap-prose
-                             :unwrap unwrap-prose
+  (text-field ?field (merge {:wrap       wrap-prose
+                             :unwrap     unwrap-prose
                              :multi-line true}
                             props)))
 
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
-  [?field attrs]
+  [?field props]
   ;; TODO handle on-save
-  (let [messages (forms/visible-messages ?field)]
-    (prn messages)
-    [:<>
-     [:input.h-5.w-5.rounded.border-gray-300.text-primary.focus:outline-primary
-      (v/props {:type      "checkbox"
-                :on-blur   (forms/blur-handler ?field)
-                :on-focus  (forms/focus-handler ?field)
-                :on-change #(reset! ?field (.. ^js % -target -checked))
-                :checked   (or @?field false)
-                :class     (if (:invalid (forms/types messages))
-                             "outline-invalid"
-                             "outline-default")})]
-     (when (seq messages)
-       (into [:div.mt-1] (map view-message) messages))]))
+  (let [messages (forms/visible-messages ?field)
+        loading? (:loading? ?field)
+        props    (-> (v/merge-props (common-props ?field
+                                                  (j/get-in [:target :checked])
+                                                  props)
+                                    {:type      "checkbox"
+                                     :on-blur   (forms/blur-handler ?field)
+                                     :on-focus  (forms/focus-handler ?field)
+                                     :on-change #(let [value (.. ^js % -target -checked)]
+                                                   (maybe-save-field ?field props value))
+                                     :class     [(when loading? "invisible")
+                                                 (if (:invalid (forms/types messages))
+                                                   "outline-invalid"
+                                                   "outline-default")]})
+                     (set/rename-keys {:value :checked})
+                     (update :checked boolean))
+        ]
+    [:div.flex.flex-col.gap-1.relative
+     [:label.relative.flex
+      (when loading?
+        [:div.h-5.w-5.inline-flex.items-center.justify-center.absolute
+         [loading:spinner "h-3 w-3"]])
+      [:input.h-5.w-5.rounded.border-gray-300.text-primary
+       (pass-props props)]
+      [:div.flex-v.gap-1.ml-2
+       (when-let [label (:label ?field)]
+         [:div label])
+       (when (seq messages)
+         (into [:div.text-gray-500] (map view-message) messages))]]]))
 
 (defn field-props [?field & [props]]
   (v/props (:props (meta ?field)) props))
@@ -252,7 +309,7 @@
   (let [loading? (or (:loading? ?field) (:loading? attrs))]
     [:div.flex.relative.items-stretch.flex-auto
      [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
-      (v/props (text-props ?field nil)
+      (v/props (common-props ?field (j/get [:target :value]) {:unwrap #(or % "")})
                {:class       ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
                 :placeholder "Search..."
                 :on-key-down #(when (= "Escape" (.-key ^js %))
@@ -305,12 +362,11 @@
                                                                                 (.append "files" file)))
                                            :form ?field]
                            (reset! ?field asset)
-                           (when-let [on-save (:on-save props)]
-                             (on-save asset))))]
+                           (maybe-save-field ?field props asset)))]
     ;; TODO handle on-save
-    [:div.gap-2.flex.flex-col.relative
+    [:div.gap-2.flex-v.relative
      (show-label ?field)
-     [:div.flex.flex-col.items-center.justify-center.p-3.gap-3.relative
+     [:div.flex-v.items-center.justify-center.p-3.gap-3.relative
       {:class         ["outline outline-1"
                        "rounded-lg"
                        (if @!dragging?
@@ -350,8 +406,6 @@
   (defn malli-validator [schema]
     (fn [v _]
       (vd/humanized schema v))))
-
-
 
 (defn merge-async
   "Accepts a collection of {:loading?, :error, :value} maps, returns a single map:
@@ -497,11 +551,11 @@
 
 (defview truncate-items [{:keys [limit expander unexpander]
                           :or   {expander   (fn [n]
-                                              [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600
+                                              [:div.flex-v.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600
                                                #_[icons/chevron-down "w-6 h-6"]
                                                #_[icons/ellipsis-horizontal "w-8"]
                                                (str "+ " n)])
-                                 unexpander [:div.flex.flex-col.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
+                                 unexpander [:div.flex-v.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
   (let [item-count  (count items)
         !expanded?  (h/use-state false)
         expandable? (> item-count limit)]

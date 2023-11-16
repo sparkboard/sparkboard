@@ -32,7 +32,7 @@
     (db/transact! [project]))
   (select-keys project [:entity/id]))
 
-(def form (v/from-element :div.flex.flex-col.items-stretch.gap-6.items-start.outline-6.outline.outline-black.rounded-lg.p-6.flex.flex-col.gap-6 {:on-submit (fn [^js e] (.preventDefault e))}))
+(def form (v/from-element :div.flex-v.items-stretch.gap-6.items-start.outline-6.outline.outline-black.rounded-lg.p-6.flex-v.gap-6 {:on-submit (fn [^js e] (.preventDefault e))}))
 (def submit (v/from-element :input.btn.btn-primary.px-6.py-3.self-start))
 (def tag (v/from-element :div.inline-flex.items-center.gap-2.text-sm.outline.outline-1.outline-gray-300.rounded-lg.px-4.py-2.hover:bg-gray-100.cursor-pointer))
 (def tag-detail (v/from-element :div.text-sm.outline-gray-300.flex.relative))
@@ -53,12 +53,12 @@
 (ui/defview start
   {:route ["/b/" ['entity/id :board-id] "/new"]}
   [{:keys [board-id]}]
-  (let [field      :div.flex.flex-col.gap-3
+  (let [field      :div.flex-v.gap-3
         form-label :div.text-primary.text-sm.font-medium.flex.items-center
         form-hint  :div.text-gray-500.text-sm]
     [:<>
      [header/entity (board/db:board {:board-id board-id})]
-     [:div.p-body.flex.flex-col.gap-8
+     [:div.p-body.flex-v.gap-8
 
       [ui/show-markdown "Creating a new project is a multi-step process."]
 
@@ -145,7 +145,7 @@
           [form
            [field
             [form-label "Help wanted:"]
-            [:div.flex.flex-col.gap-2
+            [:div.flex-v.gap-2
              (for [{:as ?child :syms [?title ?detail ?complete]} ?items]
                [:div.flex.w-full.gap-2.items-start {:key (goog/getUid ?child)}
                 [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
@@ -193,7 +193,7 @@
           [form
            [field
             [form-label "Help wanted:"]
-            [:div.flex.flex-col.gap-2
+            [:div.flex-v.gap-2
              (for [{:as ?child :syms [?title ?detail ?complete]} ?items]
                [:div.flex.w-full.gap-2.items-start.group.cursor-pointer {:key (goog/getUid ?child)}
                 (if editor?

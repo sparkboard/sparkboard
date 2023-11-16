@@ -167,7 +167,7 @@
              [title (tr (keyword "tr" (name kind)))]
              [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
               (map entity/row results)]])
-          [:div.flex.flex-col.gap-2
+          [:div.flex-v.gap-2
            [title (tr :tr/boards)]
            [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
             (map entity/row (:board/_owner org))]])]])))

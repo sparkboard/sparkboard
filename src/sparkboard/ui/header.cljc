@@ -8,6 +8,7 @@
             [sparkboard.ui :as ui]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
+            [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.util :as yu]
             [sparkboard.util :as u]))
@@ -44,7 +45,7 @@
   (let [params {:account-id (db/get :env/config :account-id)}
         chats  (chat/db:chats-list params)]
     (if (seq chats)
-      [:div.flex.flex-col
+      [:div.flex-v
        (->> chats
             (take 6)
             (map (partial chat/chat-snippet params)))
@@ -99,16 +100,15 @@
     (into [:div.entity-header
            (when avatar
              [:a.contents {:href entity-href}
-              [:img.h-10.w-10
+              [:img.h-10
                {:src (ui/asset-src avatar :avatar)}]])
 
            [:h3 [:a.contents {:href entity-href} title]
-            (when-let [settings-route (and
-                                        ;; TODO - user can edit this entity
-                                        (routes/entity-route entity 'settings))]
-              [radix/dropdown-menu {:trigger [:div.hover:bg-gray-200.rounded-lg.flex.items-center.justify-center.w-7.h-7.ml-1
-                                              [icons/chevron-down "w-4 h-4"]]}
-               [{:on-select #(routes/set-path! settings-route)} "Settings"]])]
+            (when-let [settings-path (and
+                                        (validate/can-edit? entity (db/get :env/config :account-id))
+                                        (some-> (routes/entity-route entity 'settings)
+                                                routes/path-for))]
+              [:a.p-2.text-gray-400.hover:text-gray-700 {:href settings-path} [icons/settings "w-5"]])]
            [:div.flex-grow]]
           (concat children
                   [[chat entity]
