@@ -368,3 +368,7 @@
         transform: translate(-50%, -50%) scale(1);
     }
 }
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}

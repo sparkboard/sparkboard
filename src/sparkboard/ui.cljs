@@ -176,12 +176,13 @@
 (defn color-field [?field props]
   (let [get-value (j/get-in [:target :value])]
     [:input (-> (v/merge-props
+                  props
                   (common-props ?field get-value props)
                   {:on-blur (fn [e]
                               (reset! ?field (get-value e))
                               (maybe-save-field ?field props (get-value e)))
                    :type    "color"})
-                (update :value #(or % "#cccccc")))]))
+                (update :value #(or % "#ffffff")))]))
 
 
 (defn show-field-messages [?field]

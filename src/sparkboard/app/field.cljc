@@ -135,13 +135,13 @@
 
 (def field-types {:field.type/video     {:icon  icons/play-circle
                                          :label (tr :tr/video-field)}
-                  :field.type/select    {:icon  icons/queue-list:mini
+                  :field.type/select    {:icon  icons/queue-list
                                          :label (tr :tr/selection-menu)}
-                  :field.type/link-list {:icon  icons/link:mini
+                  :field.type/link-list {:icon  icons/link
                                          :label (tr :tr/web-links)}
-                  :field.type/images    {:icon  icons/photo:mini
+                  :field.type/images    {:icon  icons/photo
                                          :label (tr :tr/image-field)}
-                  :field.type/prose     {:icon  icons/pencil-square:mini
+                  :field.type/prose     {:icon  icons/pencil-square
                                          :label (tr :tr/text-field)}})
 
 (defonce !alert (r/atom nil))
@@ -167,6 +167,9 @@
             (catch js/Error e "#000000"))
        "#000000")))
 
+(defn blank? [color]
+  (or (empty? color) (= "#ffffff" color) (= "rgb(255, 255, 255)" color)))
+
 (ui/defview options-field [?field {:keys [on-save
                                           persisted-value]}]
   (let [memo-by [(str (map :field-option/value persisted-value))]
@@ -185,35 +188,38 @@
        [ui/input-label (tr :tr/options)]
        (when (:loading? ?options)
          [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
-       (for [{:as ?option :syms [?label ?value ?color]} ?options]
-         [:div.flex.gap-1.items-center {:key @?value}
-          [:div.text-lg.text-gray-500.hover:text-black.pr-2.cursor-grab.active:cursor-grabbing.w-5 "✥"]
-          [ui/text-field ?label (assoc props :wrapper-class "flex-auto"
-                                             :style {:background-color @?color
-                                                     :color            (contrasting-text-color @?color)})]
-          [ui/color-field ?color (assoc props :class "w-5")]
-          [:div.hover:bg-gray-300.p-1.cursor-pointer.rounded-full
-           {:on-click (fn [_]
-                        (radix/open-alert! !alert
-                                           {:body   [:div.text-center.flex-v.gap-3
-                                                     [icons/trash "mx-auto w-8 h-8 text-red-600"]
-                                                     [:div.text-2xl (tr :tr/confirm)]
-                                                     [:div (tr :tr/cannot-be-undone)]]
-                                            :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
-                                                     (tr :tr/cancel)]
-                                            :action [:div.btn.destruct
-                                                     {:on-click (fn [_]
-                                                                  (forms/remove-many! ?option)
-                                                                  (p/do (save!)
-                                                                        (radix/close-alert! !alert)))}
-                                                     (tr :tr/delete)]}))}
-           [icons/close "w-4 h-4"]]])
+       [:div.bg-white.rounded-lg.border.flex-v.gap-1.py-1
+        (for [{:as ?option :syms [?label ?value ?color]} ?options]
+          [:div.flex.gap-1.items-center {:key @?value}
+           [:div.text-lg.text-gray-500.hover:text-black.text-center.cursor-grab.active:cursor-grabbing.pl-2.pr-1 "•"]
+           [ui/text-field ?label (assoc props :wrapper-class "flex-auto border-none"
+                                              :class "outline-none rounded-sm relative focus:z-2 px-1"
+                                              :style {:background-color @?color
+                                                      :color            (contrasting-text-color @?color)})]
+           [ui/color-field ?color (assoc props :class ["w-9 h-9 rounded-sm"
+                                                       (when (blank? @?color) "border")])]
+           [:div.hover:text-red-700.pr-1.cursor-pointer.rounded-full
+            {:on-click (fn [_]
+                         (radix/open-alert! !alert
+                                            {:body   [:div.text-center.flex-v.gap-3
+                                                      [icons/trash "mx-auto w-8 h-8 text-red-600"]
+                                                      [:div.text-2xl (tr :tr/confirm)]
+                                                      [:div (tr :tr/cannot-be-undone)]]
+                                             :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
+                                                      (tr :tr/cancel)]
+                                             :action [:div.btn.destruct
+                                                      {:on-click (fn [_]
+                                                                   (forms/remove-many! ?option)
+                                                                   (p/do (save!)
+                                                                         (radix/close-alert! !alert)))}
+                                                      (tr :tr/delete)]}))}
+            [icons/trash "w-4 h-4 mx-2"]]])]
        (let [?new (h/use-memo #(forms/field :init "") memo-by)]
          [:form.flex.gap-2.ml-6 {:on-submit (fn [^js e]
                                               (.preventDefault e)
                                               (forms/add-many! ?options {'?value (str (random-uuid))
                                                                          '?label @?new
-                                                                         '?color "#cccccc"})
+                                                                         '?color "#ffffff"})
                                               (forms/try-submit+ ?new (save!)))}
           [ui/text-field ?new {:placeholder "Option label" :wrapper-class "flex-auto"}]
           [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
@@ -244,16 +250,16 @@
     [:div.flex-v.relative
 
      ;; label row
-     [:div.flex.gap-2.items-start.hover:bg-gray-100.py-2
+     [:div.flex.gap-3.items-stretch.hover:bg-gray-100.px-3
       {:class (when expanded? "bg-gray-100")}
 
       ;; draggable icon
       [:div.flex.flex-none.items-center.cursor-grab.active:cursor-grabbing.relative
-       [(:icon field-type) "w-5 h-5 ml-2"]
+       [(:icon field-type) "w-8 h-8 text-gray-400"]
        [:span.absolute.group-hover:opacity-100.transition.opacity-0.text-lg {:class "right-[35px]"} "✥"]]
 
       ;; expandable label group
-      [:div.flex.flex-auto.items-start.cursor-pointer.group {:on-click #(expand! not)}
+      [:div.flex.flex-auto.items-center.cursor-pointer.group.py-4 {:on-click #(expand! not)}
        [:div.flex-auto.flex-v.gap-2
         (or (-> (:field/label field)
                 (u/guard (complement str/blank?)))
@@ -261,8 +267,8 @@
 
 
        ;; expansion arrow
-       [:div.flex.items-center.px-2.group-hover:text-black.text-gray-500
-        [icons/chevron-double-down:mini (str "w-4 mt-[2px]" (when expanded? " rotate-180"))]]]]
+       [:div.flex.items-center.group-hover:text-black.text-gray-500
+        [icons/chevron-double-down:mini (str "w-4" (when expanded? " rotate-180"))]]]]
      (when expanded?
        (field-editor-detail attribute field))]))
 
