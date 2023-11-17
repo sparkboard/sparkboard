@@ -1,6 +1,7 @@
 (ns sparkboard.query
   (:refer-clojure :exclude [use ..])
   (:require #?(:clj [org.httpkit.server :as httpkit])
+            [clojure.pprint :refer [pprint]]
             [yawn.hooks :as h]
             [applied-science.js-interop :as j]
             [promesa.core :as p]
@@ -123,7 +124,7 @@
 
 #?(:cljs
    (defn deref! [qvec]
-     (let [{:keys [value error loading?]} @(sync/$query @ws:channel (normalize-vec qvec))]
+     (let [{:as result :keys [value error loading?]} @(sync/$query @ws:channel (normalize-vec qvec))]
        (cond error (throw (ex-info error {:query qvec}))
              loading? (throw loading?)
              :else value))))

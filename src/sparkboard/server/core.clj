@@ -159,10 +159,7 @@
 (memo/defn-memo $txs [ref]
   (r/catch
     (sync.entity/$txs :entity/id ref)
-    (fn [e]
-      (println "Error in $resolve-query")
-      (println e)
-      {:error (ex-message e)})))
+    (fn [e] {:error (ex-message e)})))
 
 (defn resolve-query [[id params :as qvec]]
   (try (let [endpoint  (routes/by-tag id :query)
@@ -177,9 +174,7 @@
              $query    (q/from-var query-var)]
          ($txs ($query params)))
        (catch Exception e
-         ;; TODO test this case
-         (prn :resolve-query-error e)
-         ($txs (r/atom e)))))
+         (r/reaction {:error (ex-message e)}))))
 
 (comment
   (random-uuid)

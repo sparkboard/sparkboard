@@ -43,7 +43,8 @@
                                                 (? :account.provider.google/sub)]}})
 
 (ui/defview new-menu [params]
-  (radix/dropdown-menu {:trigger
+  (radix/dropdown-menu {:id :new-menu
+                        :trigger
                         [:div.btn-light (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]}
                        [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
                        [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
@@ -125,7 +126,8 @@
       {:href (routes/href ['sparkboard.app.account/show params])} display-name]
      child
      (apply radix/dropdown-menu
-            {:trigger
+            {:id :show-recents
+             :trigger
              [:div.btn-light (tr :tr/recent) down-arrow]}
             (map (fn [entity]
                    [{:on-select #(routes/set-path! (routes/entity-route entity 'show) entity)}

@@ -309,8 +309,9 @@
     [:<>
      (header/entity board)
      [:div {:class ui/form-classes}
-      (entity/use-persisted board :entity/title ui/text-field )
-      (entity/use-persisted board :entity/description ui/prose-field)
+      (entity/use-persisted board :entity/title ui/text-field {:inline? true
+                                                               :class "text-lg"})
+      (entity/use-persisted board :entity/description ui/prose-field {:inline? true})
       (entity/use-persisted board :entity/domain domain/domain-field)
       (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
 

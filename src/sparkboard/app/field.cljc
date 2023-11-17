@@ -133,15 +133,15 @@
                  :field/show-on-card?
                  :field/type])
 
-(def field-types {:field.type/video     {:icon  icons/play-circle
+(def field-types {:field.type/video     {:icon  icons/video
                                          :label (tr :tr/video-field)}
-                  :field.type/select    {:icon  icons/queue-list
+                  :field.type/select    {:icon  icons/dropdown-menu
                                          :label (tr :tr/selection-menu)}
-                  :field.type/link-list {:icon  icons/link
+                  :field.type/link-list {:icon  icons/link-2
                                          :label (tr :tr/web-links)}
                   :field.type/images    {:icon  icons/photo
                                          :label (tr :tr/image-field)}
-                  :field.type/prose     {:icon  icons/pencil-square
+                  :field.type/prose     {:icon  icons/text
                                          :label (tr :tr/text-field)}})
 
 (defonce !alert (r/atom nil))
@@ -188,34 +188,39 @@
        [ui/input-label (tr :tr/options)]
        (when (:loading? ?options)
          [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
-       [:div.bg-white.rounded-lg.border.flex-v.gap-1.py-1
+       [:div.flex-v.gap-2.py-1
         (for [{:as ?option :syms [?label ?value ?color]} ?options]
-          [:div.flex.gap-1.items-center {:key @?value}
-           [:div.text-lg.text-gray-500.hover:text-black.text-center.cursor-grab.active:cursor-grabbing.pl-2.pr-1 "•"]
-           [ui/text-field ?label (assoc props :wrapper-class "flex-auto border-none"
-                                              :class "outline-none rounded-sm relative focus:z-2 px-1"
+          [:div.flex.gap-2.items-center.group.relative.-ml-6 {:key @?value}
+           [:div.flex.flex-none.items-center.justify-center.icon-gray.relative
+            {:class ["w-6 -mr-2"
+                     "opacity-0 group-hover:opacity-100"
+                     "cursor-grab active:cursor-grabbing"]}
+            [icons/drag-dots "w-4"]]
+           [ui/text-field ?label (assoc props :wrapper-class "flex-auto"
+                                              :class "rounded-sm relative focus:z-2"
                                               :style {:background-color @?color
                                                       :color            (contrasting-text-color @?color)})]
-           [ui/color-field ?color (assoc props :class ["w-9 h-9 rounded-sm"
-                                                       (when (blank? @?color) "border")])]
-           [:div.hover:text-red-700.pr-1.cursor-pointer.rounded-full
-            {:on-click (fn [_]
-                         (radix/open-alert! !alert
-                                            {:body   [:div.text-center.flex-v.gap-3
-                                                      [icons/trash "mx-auto w-8 h-8 text-red-600"]
-                                                      [:div.text-2xl (tr :tr/confirm)]
-                                                      [:div (tr :tr/cannot-be-undone)]]
-                                             :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
-                                                      (tr :tr/cancel)]
-                                             :action [:div.btn.destruct
-                                                      {:on-click (fn [_]
-                                                                   (forms/remove-many! ?option)
-                                                                   (p/do (save!)
-                                                                         (radix/close-alert! !alert)))}
-                                                      (tr :tr/delete)]}))}
-            [icons/trash "w-4 h-4 mx-2"]]])]
+           [ui/color-field ?color (assoc props :class ["w-9 h-9"])]
+           [radix/dropdown-menu {:id :field-option
+                                 :trigger [:div.p-1.relative.icon-gray
+                                           [icons/ellipsis-horizontal "w-4 h-4"]]}
+            [{:on-select (fn [_]
+                           (radix/open-alert! !alert
+                                              {:body   [:div.text-center.flex-v.gap-3
+                                                        [icons/trash "mx-auto w-8 h-8 text-red-600"]
+                                                        [:div.text-2xl (tr :tr/confirm)]
+                                                        [:div (tr :tr/cannot-be-undone)]]
+                                               :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
+                                                        (tr :tr/cancel)]
+                                               :action [:div.btn.destruct
+                                                        {:on-click (fn [_]
+                                                                     (forms/remove-many! ?option)
+                                                                     (p/do (save!)
+                                                                           (radix/close-alert! !alert)))}
+                                                        (tr :tr/delete)]}))}
+             "Remove"]]])]
        (let [?new (h/use-memo #(forms/field :init "") memo-by)]
-         [:form.flex.gap-2.ml-6 {:on-submit (fn [^js e]
+         [:form.flex.gap-2 {:on-submit (fn [^js e]
                                               (.preventDefault e)
                                               (forms/add-many! ?options {'?value (str (random-uuid))
                                                                          '?label @?new
@@ -226,15 +231,20 @@
        #_[ui/pprinted @?options]])))
 
 (ui/defview field-editor-detail [attribute field]
-  [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-9.pr-7.pt-1.pb-6
+  [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-1.pb-6
 
    [:div.col-span-2.flex-v.gap-3
-    (entity/use-persisted field :field/label ui/text-field {:multi-line true})
-    (entity/use-persisted field :field/hint ui/text-field {:multi-line true})]
+    (entity/use-persisted field :field/label ui/text-field {:inline? true
+                                                            :class "bg-white p-2"
+                                                            :multi-line true})
+    (entity/use-persisted field :field/hint ui/text-field {:inline? true
+                                                           :class "bg-white p-2 text-xs"
+                                                           :multi-line true
+                                                           :placeholder "Further instructions"})]
 
    (when (= :field.type/select (:field/type field))
      (entity/use-persisted field :field/options options-field))
-   [:div.flex.items-center.gap-2.col-span-2
+   #_[:div.flex.items-center.gap-2.col-span-2
     [:span.font-semibold.text-xs.uppercase (:label (field-types (:field/type field)))]]
    (entity/use-persisted field :field/required? ui/checkbox-field)
    (entity/use-persisted field :field/show-as-filter? ui/checkbox-field)
@@ -255,8 +265,9 @@
 
       ;; draggable icon
       [:div.flex.flex-none.items-center.cursor-grab.active:cursor-grabbing.relative
-       [(:icon field-type) "w-8 h-8 text-gray-400"]
-       [:span.absolute.group-hover:opacity-100.transition.opacity-0.text-lg {:class "right-[35px]"} "✥"]]
+       [(:icon field-type) "w-6 h-6 text-gray-400"]
+       [:span.absolute.group-hover:opacity-100.transition.opacity-0.text-lg {:class "right-[35px]"}
+        [icons/drag-dots "w-4 h-4"]]]
 
       ;; expandable label group
       [:div.flex.flex-auto.items-center.cursor-pointer.group.py-4 {:on-click #(expand! not)}
@@ -265,9 +276,8 @@
                 (u/guard (complement str/blank?)))
             [:span.text-gray-500 (tr :tr/untitled)])]
 
-
        ;; expansion arrow
-       [:div.flex.items-center.group-hover:text-black.text-gray-500
+       [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
         [icons/chevron-double-down:mini (str "w-4" (when expanded? " rotate-180"))]]]]
      (when expanded?
        (field-editor-detail attribute field))]))
@@ -283,9 +293,10 @@
            doall)]
      [:div
       [radix/alert !alert]
-      (apply radix/dropdown-menu {:trigger
+      (apply radix/dropdown-menu {:id :add-field
+                                  :trigger
                                   [:div.flex.gap-2.btn.btn-light.px-4.py-2.relative
                                    "Add"
                                    [icons/chevron-down "w-4 h-4"]]}
              (for [[type {:keys [icon label]}] field-types]
-               [{:on-select #()} [:div.flex.gap-3.items-center [icon "w-4 h-4"] label]]))]]))
+               [{:on-select #()} [:div.flex.gap-3.items-center.h-8 [icon "w-5 h-5"] label]]))]]))

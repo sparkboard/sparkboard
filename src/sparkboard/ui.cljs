@@ -118,7 +118,7 @@
                nil)}
      content]))
 
-(def input-label (v/from-element :label.block.text-foreground-muted.font-medium))
+(def input-label (v/from-element :label.block.font-bold.text-xs.opacity-70))
 (def input-wrapper (v/from-element :div.gap-2.flex-v.relative))
 
 (defn field-id [?field]
@@ -130,11 +130,11 @@
                             :on-change (:on-change props
                                          #(reset! v! (j/get-in % [:target :value])))})]
     [:div.auto-size
-     [:div (select-keys props [:class :style])
+     [:div.bg-black (select-keys props [:class :style])
       (str (:value props) " ")]
-     [:textarea props]]))
+     [:textarea (assoc props :rows 1)]]))
 
-(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :on-change-value :wrap :unwrap))
+(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :on-change-value :wrap :unwrap :inline?))
 
 (defn compseq [& fs]
   (fn [& args]
@@ -175,23 +175,23 @@
 
 (defn color-field [?field props]
   (let [get-value (j/get-in [:target :value])]
-    [:input (-> (v/merge-props
-                  props
-                  (common-props ?field get-value props)
-                  {:on-blur (fn [e]
-                              (reset! ?field (get-value e))
-                              (maybe-save-field ?field props (get-value e)))
-                   :type    "color"})
-                (update :value #(or % "#ffffff")))]))
+    [:input.form-input-border
+     (-> (v/merge-props
+           (pass-props props)
+           (common-props ?field get-value props)
+           {:on-blur (fn [e]
+                       (reset! ?field (get-value e))
+                       (maybe-save-field ?field props (get-value e)))
+            :type    "color"})
+         (update :value #(or % "#ffffff")))]))
 
 
 (defn show-field-messages [?field]
   (when-let [messages (seq (forms/visible-messages ?field))]
     (v/x (into [:div.gap-3.text-sm] (map view-message messages)))))
 
-(defn show-label [?field & [props]]
-  (when-let [label (or (:label props)
-                       (:label (meta ?field)))]
+(defn show-label [?field & [label]]
+  (when-let [label (or label (:label ?field))]
     [input-label {:for (field-id ?field)} label]))
 
 (defn show-postfix [?field props]
@@ -211,7 +211,8 @@
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field & [props]]
   (let [{:as   props
-         :keys [multi-line
+         :keys [inline?
+                multi-line
                 wrap
                 unwrap
                 wrapper-class
@@ -224,15 +225,19 @@
                   (reset! ?field persisted-value)
                   (blur! e))
         props   (v/merge-props props
-
                                (common-props ?field
                                              (j/get-in [:target :value])
                                              (merge {:wrap   #(when-not (str/blank? %) %)
                                                      :unwrap #(or % "")} props))
 
                                {:class ["pr-8"
+                                        (if inline?
+                                          "form-inline"
+                                          "form-input-border")
                                         (when (:invalid (forms/types (forms/visible-messages ?field)))
                                           "outline-invalid")]
+                                :placeholder (or (:placeholder props)
+                                                 (when inline? (or (:label props) (:label ?field))))
                                 :on-key-down
                                 (keydown-handler {(if multi-line
                                                     :Meta-Enter
@@ -244,7 +249,7 @@
     (v/x
       [input-wrapper
        {:class wrapper-class}
-       (show-label ?field props)
+       (when-not inline? (show-label ?field (:label props)))
        [:div.flex-v.relative
         (if multi-line
           [auto-size (v/merge-props {:class "form-text w-full"} (pass-props props))]
@@ -366,7 +371,7 @@
                            (maybe-save-field ?field props asset)))]
     ;; TODO handle on-save
     [:div.gap-2.flex-v.relative
-     (show-label ?field)
+     (show-label ?field (:label props))
      [:div.flex-v.items-center.justify-center.p-3.gap-3.relative
       {:class         ["outline outline-1"
                        "rounded-lg"
@@ -488,7 +493,7 @@
                          (when-not (re-find #"^[^@]+@[^@]+$" v)
                            (tr :tr/invalid-email)))))
 
-(def form-classes "flex flex-col gap-8 p-6 max-w-lg mx-auto bg-back relative text-sm")
+(def form-classes "flex flex-col gap-4 p-6 max-w-lg mx-auto bg-back relative text-sm")
 (def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer.text-base)
 
 (v/defview submit-form [!form label]

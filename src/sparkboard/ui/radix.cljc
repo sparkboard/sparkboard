@@ -13,7 +13,6 @@
 
 (def menu-root (v/from-element :el dm/Root {:modal false}))
 (def menu-sub-root (v/from-element :el dm/Sub))
-(def menu-portal (v/from-element :el dm/Portal {:container (yawn.util/find-or-create-element :radix-modal)}))
 (def menu-content-classes (v/classes ["text-sm"
                                       "rounded-sm bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
@@ -53,13 +52,13 @@
 (def menu-trigger (v/from-element :el.focus-visible:outline-none.flex.items-stretch dm/Trigger))
 (def menu-sub-trigger (v/from-element :el.focus-visible:outline-none dm/SubTrigger {:class (menu-item-classes false)}))
 
-(defn dropdown-menu [{:keys [trigger sub?]} & children]
+(defn dropdown-menu [{:keys [id trigger sub?] :or {id :radix-portal}} & children]
   (let [root-el    (if sub? menu-sub-root menu-root)
         trigger-el (if sub? menu-sub-trigger menu-trigger)
         content-el (if sub? menu-sub-content menu-content)]
     [root-el
      [trigger-el trigger]
-     [menu-portal
+     [:el dm/Portal {:container (yawn.util/find-or-create-element id)}
       (into [content-el]
             (map (fn [[props & children]]
                    (if (:trigger props)

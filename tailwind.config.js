@@ -8,6 +8,7 @@ module.exports = {
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",
                 back: "hsl(var(--back))",
+                "focus-accent": "hsl(var(--focus-accent))",
                 badge: {
                     DEFAULT: "hsl(var(--badge))",
                     txt: "hsl(var(--badge-txt))",

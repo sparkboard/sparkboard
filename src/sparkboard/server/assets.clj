@@ -37,7 +37,7 @@
 
 
 (def amazonica-config
-  ;; s3 (or compatible store) config for amazonica
+  ;; s3 (/compatible) config for amazonica
   (-> (:s3 env/config)
       (u/select-as {:s3/access-key-id     :access-key
                     :s3/secret-access-key :secret-key
@@ -113,8 +113,8 @@
   (let [param-string (images/param-string query-params)
         lookup-ref   [:asset.variant/provider+params [(:db/id provider) param-string]]]
     (or (dl/entity lookup-ref)
-        (do (dl/transact! [(-> #:asset.variant{:provider     (:db/id provider)
-                                               :param-string param-string}
+        (do (dl/transact! [(-> #:asset.variant{:provider (:db/id provider)
+                                               :params   param-string}
                                (validate/assert :asset.variant/as-map)
                                (assoc :db/id -1))])
             (dl/entity lookup-ref)))))
@@ -151,7 +151,7 @@
 (defn variant-link [asset variant]
   (str (provider-link (:asset.variant/provider variant) asset)
        "_"
-       (:asset.variant/param-string variant)))
+       (:asset.variant/params variant)))
 
 (defn url-stream [url]
   (let [conn (.openConnection (java.net.URL. url))]
@@ -168,7 +168,7 @@
   (when-let [param-string (and (resizable? (ensure-content-type! asset))
                                (images/param-string query-params))]
     (if-let [variant (->> (:asset/variants asset)
-                          (filter (comp #{param-string} :asset.variant/param-string))
+                          (filter (comp #{param-string} :asset.variant/params))
                           first)]
       (variant-link asset variant)
       (let [asset-stream (url-stream (asset-link asset))

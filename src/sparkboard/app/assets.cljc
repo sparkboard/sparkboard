@@ -42,15 +42,15 @@
                                                 (? :entity/created-at)]}
 
 
-   :asset.variant/param-string             {s- :string}
+   :asset.variant/params                   {s- :string}
    :asset.variant/provider                 (sch/ref :one :asset.provider/as-map)
 
    :asset.variant/provider+params          (merge {:db/tupleAttrs [:asset.variant/provider
-                                                                   :asset.variant/param-string]}
+                                                                   :asset.variant/params]}
                                                   sch/unique-id)
 
    :asset.variant/as-map                   {s- [:map {:closed true}
-                                                :asset.variant/param-string
+                                                :asset.variant/params
                                                 :asset.variant/provider]}
 
 
