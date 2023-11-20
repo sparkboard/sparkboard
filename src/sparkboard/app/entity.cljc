@@ -148,7 +148,7 @@
   {:key :entity/id}
   [{:as   entity
     :keys [entity/title image/avatar]}]
-  [:a.flex.relative.gap-3.items-center.hover:bg-gray-100.rounded-lg.p-2
+  [:a.flex.relative.gap-3.items-center.hover:bg-gray-100.rounded-lg.p-2.cursor-default
    {:href (routes/entity entity :show)}
    [ui/avatar {:size 10} entity]
    [:div.line-clamp-2.leading-snug title]])

@@ -59,19 +59,19 @@
     [:el Popover/Root
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
-     [:el Popover/Trigger
-      [:div.relative
+     [:el Popover/Trigger {:as-child true}
+      [:button.relative.flex.items-center.icon-light-gray
        ;; unread-count bubble
        (when unread
          [:div
           {:style {:width    10
                    :height   10
-                   :top      -3
+                   :top      4
                    :right -3
                    :position "absolute"}
            :class ["rounded-full"
-                   "bg-blue-500"]}])
-       [icons/chat-bubble-left "w-7 h-7 text-gray-300 hover:text-gray-400 -mb-[2px]"]]]
+                   "bg-focus-accent focus-visible:bg-black"]}])
+       [icons/chat-bubble-left "w-7 h-7 -mb-[2px]"]]]
      [:el Popover/Portal
       {:container (yu/find-or-create-element :radix-modal)}
       [:Suspense {}
@@ -108,7 +108,7 @@
                                         (validate/can-edit? entity (db/get :env/config :account-id))
                                         (some-> (routes/entity-route entity 'settings)
                                                 routes/path-for))]
-              [:a.p-2.text-gray-400.hover:text-gray-700 {:href settings-path} [icons/settings "w-5"]])]
+              [:a.p-2.icon-light-gray {:href settings-path} [icons/settings "w-5"]])]
            [:div.flex-grow]]
           (concat children
                   [[chat entity]

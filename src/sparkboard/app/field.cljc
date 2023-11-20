@@ -265,7 +265,7 @@
 
       ;; draggable icon
       [:div.flex.flex-none.items-center.cursor-grab.active:cursor-grabbing.relative
-       [(:icon field-type) "w-6 h-6 text-gray-400"]
+       [(:icon field-type) "w-6 h-6 text-gray-700"]
        [:span.absolute.group-hover:opacity-100.transition.opacity-0.text-lg {:class "right-[35px]"}
         [icons/drag-dots "w-4 h-4"]]]
 
@@ -295,7 +295,7 @@
       [radix/alert !alert]
       (apply radix/dropdown-menu {:id :add-field
                                   :trigger
-                                  [:div.flex.gap-2.btn.btn-light.px-4.py-2.relative
+                                  [:button.flex.gap-2.btn.btn-light.px-4.py-2.relative
                                    "Add"
                                    [icons/chevron-down "w-4 h-4"]]}
              (for [[type {:keys [icon label]}] field-types]

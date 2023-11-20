@@ -230,12 +230,12 @@
                                              (merge {:wrap   #(when-not (str/blank? %) %)
                                                      :unwrap #(or % "")} props))
 
-                               {:class ["pr-8"
-                                        (if inline?
-                                          "form-inline"
-                                          "form-input-border")
-                                        (when (:invalid (forms/types (forms/visible-messages ?field)))
-                                          "outline-invalid")]
+                               {:class       ["pr-8"
+                                              (if inline?
+                                                "form-inline"
+                                                "form-input-border")
+                                              (when (:invalid (forms/types (forms/visible-messages ?field)))
+                                                "outline-invalid")]
                                 :placeholder (or (:placeholder props)
                                                  (when inline? (or (:label props) (:label ?field))))
                                 :on-key-down
@@ -335,9 +335,7 @@
       (str error)]]))
 
 (defn upload-icon [class]
-  [:svg {:class class :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
-   [:path {:d "M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z"}]
-   [:path {:d "M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"}]])
+  [:svg {:class class :width "15" :height "15" :viewBox "0 0 15 15" :fill "none" :xmlns "http://www.w3.org/2000/svg"} [:path {:d "M7.81825 1.18188C7.64251 1.00615 7.35759 1.00615 7.18185 1.18188L4.18185 4.18188C4.00611 4.35762 4.00611 4.64254 4.18185 4.81828C4.35759 4.99401 4.64251 4.99401 4.81825 4.81828L7.05005 2.58648V9.49996C7.05005 9.74849 7.25152 9.94996 7.50005 9.94996C7.74858 9.94996 7.95005 9.74849 7.95005 9.49996V2.58648L10.1819 4.81828C10.3576 4.99401 10.6425 4.99401 10.8182 4.81828C10.994 4.64254 10.994 4.35762 10.8182 4.18188L7.81825 1.18188ZM2.5 9.99997C2.77614 9.99997 3 10.2238 3 10.5V12C3 12.5538 3.44565 13 3.99635 13H11.0012C11.5529 13 12 12.5528 12 12V10.5C12 10.2238 12.2239 9.99997 12.5 9.99997C12.7761 9.99997 13 10.2238 13 10.5V12C13 13.104 12.1062 14 11.0012 14H3.99635C2.89019 14 2 13.103 2 12V10.5C2 10.2238 2.22386 9.99997 2.5 9.99997Z" :fill "currentColor" :fill-rule "evenodd" :clip-rule "evenodd"}]])
 
 (defn use-loaded-image [url fallback]
   (let [!loaded (h/use-state #{})]
@@ -368,16 +366,17 @@
                                                                                 (.append "files" file)))
                                            :form ?field]
                            (reset! ?field asset)
-                           (maybe-save-field ?field props asset)))]
+                           (maybe-save-field ?field props asset)))
+        !input (h/use-ref)]
     ;; TODO handle on-save
-    [:div.gap-2.flex-v.relative
+    [:label.gap-2.flex-v.relative
+     {:for (field-id ?field)}
      (show-label ?field (:label props))
-     [:div.flex-v.items-center.justify-center.p-3.gap-3.relative
-      {:class         ["outline outline-1"
-                       "rounded-lg"
+     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.focus-outline
+      {:on-click #(j/call @!input :click)
+       :class         ["rounded-lg"
                        (if @!dragging?
-                         "outline-2 outline-blue-500"
-                         "outline-gray-300")]
+                         "outline-2 outline-focus-accent")]
        :on-drag-over  (fn [^js e]
                         (.preventDefault e)
                         (reset! !dragging? true))
@@ -388,19 +387,21 @@
                         (some-> (j/get-in e [:dataTransfer :files 0]) on-file))}
       (when loading?
         [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
-      [:label.block.w-32.h-32.relative.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
-       (v/props {:class [
-                         "text-muted-txt hover:text-txt"]
-                 :for   (field-id ?field)}
+      [:div.block.relative.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
+       (v/props {:class ["text-muted-txt hover:text-txt"
+                         (if thumbnail
+                           "w-32 h-32"
+                           "w-10 h-10")]}
                 (when thumbnail
                   {:class "bg-contain bg-no-repeat bg-center"
                    :style {:background-image (css-url thumbnail)}}))
 
        (when-not thumbnail
-         (upload-icon "w-6 h-6 m-auto"))
+         (upload-icon "w-5 h-5 m-auto"))
 
        [:input.hidden
         {:id        (field-id ?field)
+         :ref !input
          :type      "file"
          :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
          :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]

@@ -11,6 +11,7 @@
             [sparkboard.ui :as ui]
             [yawn.hooks :as h]))
 
+
 (def menu-root (v/from-element :el dm/Root {:modal false}))
 (def menu-sub-root (v/from-element :el dm/Sub))
 (def menu-content-classes (v/classes ["text-sm"
@@ -33,38 +34,40 @@
          (str "cursor-pointer hover:bg-primary/5 "
               "data-[highlighted]:bg-primary/5 data-[highlighted]:outline-none"))))
 
-
 (defn menu-item [props & children]
   (let [checks?   (contains? props :selected)
         selected? (:selected props)]
-    (v/x [:el dm/Item (v/props {:class         [(menu-item-classes selected?)
-                                                (when checks? "pl-8")]
-                                :data-selected (:selected props false)}
-                               (dissoc props :selected))
-          (when checks?
-            [:span.absolute.inset-y-0.left-0.flex.items-center.pl-2.text-txt.inline-flex
-             {:class         "data-[selected=false]:hidden data-[highlighted]:bg-gray-100 hover:bg-gray-100"
-              :data-selected (:selected props)}
-             [icons/checkmark "h-4 w-4"]])
-          children])))
+    (v/x
+      [:el dm/Item (v/props {:class         [(menu-item-classes selected?)
+                                             (when checks? "pl-8")]
+                             :data-selected (:selected props false)}
+                            (dissoc props :selected))
+       (when checks?
+         [:span.absolute.inset-y-0.left-0.flex.items-center.pl-2.text-txt.inline-flex
+          {:class         "data-[selected=false]:hidden data-[highlighted]:bg-gray-100 hover:bg-gray-100"
+           :data-selected (:selected props)}
+          [icons/checkmark "h-4 w-4"]])
+       children])))
 
 
-(def menu-trigger (v/from-element :el.focus-visible:outline-none.flex.items-stretch dm/Trigger))
-(def menu-sub-trigger (v/from-element :el.focus-visible:outline-none dm/SubTrigger {:class (menu-item-classes false)}))
+(def menu-trigger (v/from-element :el dm/Trigger {:as-child true}))
+(def menu-sub-trigger (v/from-element :el dm/SubTrigger {:class (menu-item-classes false)}))
+
 
 (defn dropdown-menu [{:keys [id trigger sub?] :or {id :radix-portal}} & children]
   (let [root-el    (if sub? menu-sub-root menu-root)
         trigger-el (if sub? menu-sub-trigger menu-trigger)
         content-el (if sub? menu-sub-content menu-content)]
-    [root-el
-     [trigger-el trigger]
-     [:el dm/Portal {:container (yawn.util/find-or-create-element id)}
-      (into [content-el]
-            (map (fn [[props & children]]
-                   (if (:trigger props)
-                     (apply dropdown-menu (assoc props :sub? true) children)
-                     (into [menu-item props] children)))
-                 children))]]))
+    (v/x
+      [root-el
+       [trigger-el trigger]
+       [:el dm/Portal {:container (yawn.util/find-or-create-element id)}
+        (into [content-el]
+              (map (fn [[props & children]]
+                     (if (:trigger props)
+                       (apply dropdown-menu (assoc props :sub? true) children)
+                       (into [menu-item props] children)))
+                   children))]])))
 
 (defn select-menu [{:as props :keys [placeholder]} & children]
   (v/x
