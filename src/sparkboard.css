@@ -233,7 +233,6 @@
     .form-text {
         @apply
         flex w-full px-3 py-2 placeholder-gray-400
-        text-sm
         disabled:cursor-not-allowed disabled:opacity-50
     }
 
@@ -252,17 +251,17 @@
 
     }
 
+    .focus-outline {
+        @apply
+        focus-visible:accent-outline
+    }
     .default-outline {
         @apply
-        outline outline-1 outline-gray-300
+        outline outline-1 outline-gray-300 focus-outline
     }
     .accent-outline {
         @apply
         outline outline-focus-accent outline-2
-    }
-    .focus-outline {
-        @apply
-        focus-visible:accent-outline
     }
 
     .form-inline:focus {
@@ -305,6 +304,10 @@
         ring-offset-back bg-primary text-primary-txt
         hover:bg-primary/90 focus-visible:bg-primary/90
         disabled:bg-primary
+    }
+    .btn-darken {
+        @apply
+        hover:bg-black/10 focus-visible:bg-black/10 focus-visible:outline-none
     }
 
     .btn-base {

@@ -278,7 +278,7 @@
 
       ;; expansion arrow
       [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
-       [icons/chevron-double-down:mini (str "w-4" (when expanded? " rotate-180"))]]]
+       [icons/chevron-down:mini (str "w-4" (when expanded? " rotate-180"))]]]
      (when expanded?
        (field-editor-detail attribute field))]))
 

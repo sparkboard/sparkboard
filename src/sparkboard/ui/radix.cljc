@@ -4,6 +4,7 @@
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
+            #?(:cljs ["@radix-ui/react-tooltip" :as tooltip])
             [sparkboard.ui.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
@@ -14,8 +15,7 @@
 
 (def menu-root (v/from-element :el dm/Root {:modal false}))
 (def menu-sub-root (v/from-element :el dm/Sub))
-(def menu-content-classes (v/classes ["text-sm"
-                                      "rounded-sm bg-popover text-popover-txt  "
+(def menu-content-classes (v/classes ["rounded-sm bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
                                       "focus:outline-none z-50"
                                       "gap-1 py-1 px-0"]))
@@ -28,7 +28,7 @@
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-3 py-1 rounded mx-1 relative hover:outline-0  "
+  (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100"
        (if selected?
          "text-txt/50 cursor-default "
          (str "cursor-pointer hover:bg-primary/5 "
@@ -69,18 +69,20 @@
                        (into [menu-item props] children)))
                    children))]])))
 
-(defn select-menu [{:as props :keys [placeholder]} & children]
+(defn select-menu [{:as props :keys [placeholder id] :or {id :radix-select}} & children]
   (v/x
-    [:el sel/Root (v/props {:tabindex 0} (dissoc props :trigger :placeholder))
-     [:el.form-text.flex sel/Trigger
-      [:el sel/Value {:placeholder placeholder}]
+    [:el sel/Root (dissoc props :trigger :placeholder)
+     [:el.bg-white.flex.items-center.rounded.default-outline.px-3.whitespace-nowrap.gap-1 sel/Trigger
+      [:el sel/Value {:placeholder (v/x placeholder)}]
       [:div.flex-grow]
       [:el sel/Icon (icons/chevron-down "w-5 h-5")]]
-     [:el sel/Portal
-      [:el.bg-back.rounded-lg.shadow.border.border-txt.border-2.py-1 sel/Content
+
+     [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
+      [:el sel/Content {:class menu-content-classes}
        [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto w-4 h-4")]
-       (into [:el sel/Viewport {}] children)
-       [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto w-4 h-4")]]]]))
+       [:el sel/Viewport {} children]
+       [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto w-4 h-4")]
+       [:el sel/Arrow]]]]))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))
@@ -89,11 +91,12 @@
 (v/defview select-item
   {:key (fn [value _] value)}
   [{:keys [value text icon]}]
-  (v/x [:el sel/Item {:class      (menu-item-classes false)
-                      :value      value
-                      :text-value text}
-        [:el sel/ItemText [:div.flex.gap-2 icon text]]
-        [:el sel/ItemIndicator]]))
+  (v/x
+    [:el sel/Item {:class      (menu-item-classes false)
+                   :value      value
+                   :text-value text}
+     [:el sel/ItemText [:div.flex.gap-2 icon text]]
+     [:el sel/ItemIndicator]]))
 
 (defn dialog [{:props/keys [root
                             content]} & body]
@@ -154,3 +157,15 @@
                         {:open           true
                          :on-open-change (fn [open?]
                                            (when-not open? (reset! !state nil)))})))
+
+(defn tooltip [tip child]
+  (v/x
+    [:el tooltip/Provider {:delay-duration 200}
+     [:el tooltip/Root
+      [:el tooltip/Trigger child]
+      [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
+       [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
+        tip
+        [:el tooltip/Arrow]]]]])
+
+  )

@@ -36,12 +36,42 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     {:tr/cancel                          {:en "Cancel"
                                           :fr "Annuler"
                                           :es "Cancelar"}
+     :tr/community-actions               {:en "Community actions"
+                                          :fr "Actions communautaires"
+                                          :es "Acciones comunitarias"}
+     :tr/community-actions-add           {:en "Add up to 3 buttons to encourage visitors to support your project in specific way."
+                                          :fr "Ajoutez jusqu'à 3 boutons pour encourager les visiteurs à soutenir votre projet de manière spécifique."
+                                          :es "Agregue hasta 3 botones para alentar a los visitantes a apoyar su proyecto de manera específica."}
      :tr/confirm                         {:en "Are you sure?"
                                           :fr "Êtes-vous sûr ?"
                                           :es "¿Estás seguro?"}
      :tr/cannot-be-undone                {:en "This cannot be undone."
                                           :fr "Ceci ne peut pas être annulé."
                                           :es "Esto no se puede deshacer."}
+     :tr/copy-link                       {:en "Copy link"
+                                          :fr "Copier le lien"
+                                          :es "Copiar enlace"}
+     :tr/start-chat                      {:en "Start chat"
+                                          :fr "Démarrer le chat"
+                                          :es "Iniciar chat"}
+     :tr/hover-text                      {:en "Hover text"
+                                          :fr "Texte de survol"
+                                          :es "Texto de desplazamiento"}
+     :tr/other                           {:en "Other"
+                                          :fr "Autre"
+                                          :es "Otro"}
+     :tr/action                          {:en "Action"
+                                          :fr "Action"
+                                          :es "Acción"}
+     :tr/share                           {:en "Share"
+                                          :fr "Partager"
+                                          :es "Compartir"}
+     :tr/join-our-team                   {:en "Join our team"
+                                          :fr "Rejoignez notre équipe"
+                                          :es "Únete a nuestro equipo"}
+     :tr/invest                          {:en "Invest"
+                                          :fr "Investir"
+                                          :es "Invertir"}
      :tr/delete                          {:en "Delete"
                                           :fr "Supprimer"
                                           :es "Eliminar"}
