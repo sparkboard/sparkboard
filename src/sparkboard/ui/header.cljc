@@ -60,14 +60,15 @@
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
      [:el Popover/Trigger {:as-child true}
-      [:button.relative.flex.items-center.icon-light-gray
+      [:button.relative.flex.items-center.icon-light-gray.px-1
        ;; unread-count bubble
        (when unread
          [:div
-          {:style {:width    10
-                   :height   10
-                   :top      4
-                   :right -3
+          {:style {:width  10
+                   :height 10
+                   :top    "50%"
+                   :margin-top -14
+                   :right 2
                    :position "absolute"}
            :class ["rounded-full"
                    "bg-focus-accent focus-visible:bg-black"]}])
@@ -85,7 +86,7 @@
   (if-let [account (db/get :env/config :account)]
     [:<>
      (radix/dropdown-menu
-       {:trigger [:div.flex.items-center [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
+       {:trigger [:button.flex.items-center.focus-visible:accent-outline.rounded.px-1 [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
        [{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
        [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
        (into [{:sub?    true
@@ -103,12 +104,12 @@
               [:img.h-10
                {:src (ui/asset-src avatar :avatar)}]])
 
-           [:h3 [:a.contents {:href entity-href} title]
-            (when-let [settings-path (and
-                                        (validate/can-edit? entity (db/get :env/config :account-id))
-                                        (some-> (routes/entity-route entity 'settings)
-                                                routes/path-for))]
-              [:a.p-2.icon-light-gray {:href settings-path} [icons/settings "w-5"]])]
+           [:h3 [:a.contents {:href entity-href} title]]
+           (when-let [settings-path (and
+                                      (validate/can-edit? entity (db/get :env/config :account-id))
+                                      (some-> (routes/entity-route entity 'settings)
+                                              routes/path-for))]
+             [:a.px-1.icon-light-gray.flex.items-center {:href settings-path} [icons/gear "w-6 h-6"]])
            [:div.flex-grow]]
           (concat children
                   [[chat entity]

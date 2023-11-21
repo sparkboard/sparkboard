@@ -135,7 +135,7 @@
       [:div
 
        (header/entity org
-         [header/btn {:icon [icons/settings]
+         [header/btn {:icon [icons/gear]
                       :href (routes/path-for 'sparkboard.app.org/settings params)}]
          #_[:div
             {:on-click #(when (js/window.confirm (str "Really delete organization "

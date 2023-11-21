@@ -115,11 +115,11 @@
 @layer utilities {
 
     .icon-gray {
-        @apply text-gray-500 hover:text-black focus-visible:text-focus-accent focus-visible:outline-none cursor-default
+        @apply text-gray-500 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2 cursor-default
     }
 
     .icon-light-gray {
-        @apply text-gray-300 hover:text-black focus-visible:text-focus-accent focus-visible:outline-none cursor-default
+        @apply text-gray-300 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2 cursor-default
     }
 
     .overlay {
@@ -252,10 +252,17 @@
 
     }
 
-    .focus-outline {
+    .default-outline {
         @apply
         outline outline-1 outline-gray-300
-        focus-visible:outline-focus-accent focus-visible:outline-2
+    }
+    .accent-outline {
+        @apply
+        outline outline-focus-accent outline-2
+    }
+    .focus-outline {
+        @apply
+        focus-visible:accent-outline
     }
 
     .form-inline:focus {
@@ -264,7 +271,7 @@
 
     .btn {
         @apply
-        inline-flex items-center justify-center cursor-pointer
+        inline-flex items-center justify-center
         font-medium
         transition-colors disabled:opacity-50 disabled:pointer-events-none
         rounded-md no-underline
@@ -287,7 +294,7 @@
     .btn-light {
         @apply
         ring-offset-back cursor-default
-        border border-primary/10 hover:bg-black/5  focus-visible:border-primary/60
+        border border-primary/10 hover:bg-black/5  focus-visible:border-focus-accent
         text-primary/80
         rounded-lg
         inline-flex items-center justify-center py-1 px-3

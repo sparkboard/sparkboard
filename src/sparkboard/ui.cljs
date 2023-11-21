@@ -372,7 +372,7 @@
     [:label.gap-2.flex-v.relative
      {:for (field-id ?field)}
      (show-label ?field (:label props))
-     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.focus-outline
+     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.focus-outline.default-outline
       {:on-click #(j/call @!input :click)
        :class         ["rounded-lg"
                        (if @!dragging?
