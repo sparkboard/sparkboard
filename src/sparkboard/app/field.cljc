@@ -21,8 +21,10 @@
 ;; - confirm before removing a field (radix alert?)
 ;; - re-order options
 ;; - add a new field
+;;   - (def blanks {<type> <template>})
 ;;   - an entity/add-multi! endpoint for adding a new cardinality/many entity
 ;;     (in this case, a new :field which is pointed to by :board/member-fields or :board/project-fields)
+;;   - entity/remove-multi! endpoint; use db/isComponent to determine whether the target is retracted?
 ;; - remove a field
 ;;   - an entity/retract-multi! endpoint
 
@@ -260,25 +262,23 @@
     [:div.flex-v.relative
 
      ;; label row
-     [:div.flex.gap-3.items-stretch.hover:bg-gray-100.px-3
-      {:class (when expanded? "bg-gray-100")}
-
-      ;; draggable icon
-      [:div.flex.flex-none.items-center.cursor-grab.active:cursor-grabbing.relative
-       [(:icon field-type) "w-6 h-6 text-gray-700"]
-       [:span.absolute.group-hover:opacity-100.transition.opacity-0.text-lg {:class "right-[35px]"}
-        [icons/drag-dots "w-4 h-4"]]]
-
+     [:div.flex.gap-3.p-3.items-stretch.hover:bg-gray-100.relative.group.cursor-default
+      {:class (when expanded? "bg-gray-100")
+       :on-click #(expand! not)}
       ;; expandable label group
-      [:div.flex.flex-auto.items-center.cursor-pointer.group.py-4 {:on-click #(expand! not)}
-       [:div.flex-auto.flex-v.gap-2
-        (or (-> (:field/label field)
-                (u/guard (complement str/blank?)))
-            [:span.text-gray-500 (tr :tr/untitled)])]
 
-       ;; expansion arrow
-       [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
-        [icons/chevron-double-down:mini (str "w-4" (when expanded? " rotate-180"))]]]]
+      [:div.w-5.-ml-8.flex.items-center.justify-center.hover:cursor-grab.active:cursor-grabbing.opacity-0.group-hover:opacity-50
+       {:on-click #(.stopPropagation %)}
+       [icons/drag-dots "w-4"]]
+      [(:icon field-type) "w-6 h-6 text-gray-700 self-center"]
+      [:div.flex-auto.flex-v.gap-2
+       (or (-> (:field/label field)
+               (u/guard (complement str/blank?)))
+           [:span.text-gray-500 (tr :tr/untitled)])]
+
+      ;; expansion arrow
+      [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
+       [icons/chevron-double-down:mini (str "w-4" (when expanded? " rotate-180"))]]]
      (when expanded?
        (field-editor-detail attribute field))]))
 

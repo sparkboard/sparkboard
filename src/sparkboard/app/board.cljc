@@ -45,8 +45,10 @@
    :board/sticky-color                       {:doc "Border color for sticky projects"
                                               s-   :html/color}
    :board/member-tags                        (sch/ref :many :tag/as-map)
-   :board/project-fields                     (sch/ref :many :field/as-map)
-   :board/member-fields                      (sch/ref :many :field/as-map)
+   :board/project-fields                     (merge (sch/ref :many :field/as-map)
+                                                    sch/component)
+   :board/member-fields                      (merge (sch/ref :many :field/as-map)
+                                                    sch/component)
    :board/registration-invitation-email-text {:doc "Body of email sent when inviting a user to a board."
                                               s-   :string},
    :board/registration-newsletter-field?     {:doc "During registration, request permission to send the user an email newsletter"
