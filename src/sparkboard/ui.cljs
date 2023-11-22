@@ -5,6 +5,7 @@
             ["linkify-element" :as linkify-element]
             ["react" :as react]
             [applied-science.js-interop :as j]
+            [cljs.reader :as edn]
             [clojure.pprint :refer [pprint]]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -166,7 +167,6 @@
                           (when on-change
                             (on-change e))))
            :on-blur   (fn [e]
-                        (prn :blur)
                         (maybe-save-field ?field props @?field)
                         ((forms/blur-handler ?field) e))
            :on-focus  (forms/focus-handler ?field)}
@@ -175,7 +175,7 @@
 
 (defn color-field [?field props]
   (let [get-value (j/get-in [:target :value])]
-    [:input.form-input-border
+    [:input.default-ring.rounded
      (-> (v/merge-props
            (pass-props props)
            (common-props ?field get-value props)
@@ -233,7 +233,7 @@
                                {:class       ["pr-8"
                                               (if inline?
                                                 "form-inline"
-                                                "form-input-border")
+                                                "default-ring rounded")
                                               (when (:invalid (forms/types (forms/visible-messages ?field)))
                                                 "outline-invalid")]
                                 :placeholder (or (:placeholder props)
@@ -372,7 +372,7 @@
     [:label.gap-2.flex-v.relative
      {:for (field-id ?field)}
      (show-label ?field (:label props))
-     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.default-outline
+     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.default-ring
       {:on-click #(j/call @!input :click)
        :class         ["rounded-lg"
                        (if @!dragging?
@@ -577,3 +577,5 @@
                     (some-> x
                             (j/call :querySelector "input, textarea")
                             (j/call :focus)))))
+
+(def read-string (partial edn/read-string {:readers {'uuid uuid}}))

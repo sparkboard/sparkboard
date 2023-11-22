@@ -113,13 +113,15 @@
 }
 
 @layer utilities {
-
+    .cursor-drag {
+        @apply cursor-grab active:cursor-grabbing
+    }
     .icon-gray {
-        @apply text-gray-500 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2 cursor-default
+        @apply text-gray-500 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2
     }
 
     .icon-light-gray {
-        @apply text-gray-300 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2 cursor-default
+        @apply text-gray-300 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2
     }
 
     .overlay {
@@ -220,16 +222,6 @@
         @apply underline underline-offset-4 hover:text-black px-1
     }
 
-    .form-input-border {
-        @apply
-        rounded
-        outline
-        outline-gray-300 focus-visible:outline-blue-500
-        outline-1 focus:outline-2
-        outline-offset-0 focus:outline-offset-0
-        border-none focus:border-none
-    }
-
     .form-text {
         @apply
         flex w-full px-3 py-2 placeholder-gray-400
@@ -251,17 +243,26 @@
 
     }
 
-    .focus-outline {
+    .focus-ring {
+        @apply ring-0 focus-visible:ring focus-visible:ring-2 ring-focus-accent border-none outline-none
+    }
+    .focus-within-ring {
         @apply
-        focus-visible:accent-outline
+        ring ring-1 ring-gray-300 border-none outline-none
+        focus-within:ring-2 focus-within:ring-focus-accent
+    }
+    .default-ring {
+        @apply
+        ring ring-1 ring-gray-300 border-none outline-none
+        focus:ring-2 focus:ring-focus-accent
     }
     .default-outline {
         @apply
-        outline outline-1 outline-gray-300 focus-outline
+        outline outline-1 outline-gray-300 border-none ring-0
+        focus:outline-2 focus:outline-focus-accent
     }
-    .accent-outline {
-        @apply
-        outline outline-focus-accent outline-2
+    .default-border {
+        @apply border border-gray-300 outline-none ring-0 focus:border-2 focus:border-focus-accent
     }
 
     .form-inline:focus {
@@ -292,11 +293,12 @@
 
     .btn-light {
         @apply
-        ring-offset-back cursor-default
-        border border-primary/10 hover:bg-black/5  focus-visible:border-focus-accent
+        cursor-default
+        hover:bg-black/5
         text-primary/80
         rounded-lg
         inline-flex items-center justify-center py-1 px-3
+        default-ring
     }
 
     .btn-primary {
@@ -421,4 +423,8 @@
 
 input[type="color"]::-webkit-color-swatch-wrapper {
     padding: 0;
+}
+
+::-webkit-color-swatch, ::-moz-color-swatch, ::-webkit-color-swatch-wrapper {
+    border-color: transparent !important;
 }

@@ -13,7 +13,6 @@
 
 (sch/register!
   (merge
-
     {:tag/id               unique-uuid
      :tag/background-color {s- :html/color},
      :tag/label            {s- :string},,
@@ -31,9 +30,9 @@
                                  s-           :string
                                  :db/fulltext true}
      :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message :field]}
-     :entity/description        {:doc         "Description of an entity (for card/header display)"
-                                 s-           :prose/as-map
-                                 :db/fulltext true}
+     :entity/description        {:doc "Description of an entity (for card/header display)"
+                                 s-   :prose/as-map
+                                 #_#_:db/fulltext true}
      :entity/field-entries      (merge (sch/ref :many :field-entry/as-map)
                                        sch/component)
      :entity/video              {:doc "Primary video for project (distinct from fields)"
@@ -90,17 +89,37 @@
         txs           (if (nil? v)
                         [[:db/retract e a]]
                         [{:db/id e a v}])]
+
     (when (and required? (nil? v))
       (validate/validation-failed! "Required field"))
+
     (when (some? v)
       (validate/assert {a v} (mu/select-keys parent-schema [a])))
-    (db/transact! txs)
+    (try
+      (db/transact! txs)
+      (catch Exception e (def E e) (throw e)))
+
     {:db/id id}))
 
-(-> :field/as-map
-    (@sch/!malli-registry)
-    (mu/find :field/hint)
-    (mu/-required-map-entry?))
+(q/defx set-order!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} e a order-attr side target destination]
+  (let [target      (db/get (sch/wrap-id target) :db/id)
+        destination (db/get (sch/wrap-id target) :db/id)
+        siblings    (->> (db/get (sch/wrap-id e) a)
+                         (sort-by order-attr)
+                         (map :db/id)
+                         (remove target)
+                         (reduce (fn [out x]
+                                   (if (= destination x)
+                                     (into out (case side :before [target x]
+                                                          :after [x target]))
+                                     (conj out x))) []))
+        txs (map-indexed (fn [i x]
+                           [:db/add [:entity/id (db/get x :entity/id)] order-attr i]) siblings)]
+    (prn :will-set txs)
+    #_(db/transact! txs)
+    txs))
 
 ;; how to determine if a field is required or optional in a malli map schema?
 

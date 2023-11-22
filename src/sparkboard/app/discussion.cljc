@@ -9,7 +9,7 @@
      :post/comments      (merge (sch/ref :many :comment/as-map)
                                 sch/component)
      :post/text          {s-           :prose/as-map
-                          :db/fulltext true}
+                          :db/fulltext false}
      :post/do-not-follow (merge
                            {:doc "Members who should not auto-follow this post after replying to it"}
                            (sch/ref :many))

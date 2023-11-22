@@ -135,7 +135,7 @@
 
   (->> entities
        (filter (partial
-                 one-time/contains-somewhere? #uuid "add545dd-2c20-3d45-944f-aaf3448b74a1")))
+                 one-time/contains-somewhere? (read-string "#:prose{:format :prose.format/markdown, :string \"--- how is financial literacy transmitted?\\n * from someone who is financially literate;\\n\\t\\tstudents? issue of trust/privacy,\\n\\t\\tvolunteer from the bank,\\n\\t*books\\n\\t*on campus/hall, there is a presence where bankers can show their face and answer questions\\n\\t*workshops with a big public (e.g. UBS at glocals.com): give a group presentation, have account managers lined up\\n\\t*coaching\\n\\t*games, brings ease, relaxation\\n\\t*banks presence/helpdesk\"}"))))
 
 
   *e
@@ -147,3 +147,4 @@
 ;; - try ingesting the schema via ChatGPT 3.5, ada, babbage and use that to
 ;;   write queries (hopefully gpt4 isn't necessary)
 ;; https://github.com/wkok/openai-clojure
+

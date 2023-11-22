@@ -28,7 +28,7 @@
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100"
+  (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 "
        (if selected?
          "text-txt/50 cursor-default "
          (str "cursor-pointer hover:bg-primary/5 "
@@ -72,10 +72,10 @@
 (defn select-menu [{:as props :keys [placeholder id] :or {id :radix-select}} & children]
   (v/x
     [:el sel/Root (dissoc props :trigger :placeholder)
-     [:el.bg-white.flex.items-center.rounded.default-outline.px-3.whitespace-nowrap.gap-1 sel/Trigger
+     [:el.bg-white.flex.items-center.rounded.default-ring.px-3.whitespace-nowrap.gap-1.disabled:text-gray-500.group sel/Trigger
       [:el sel/Value {:placeholder (v/x placeholder)}]
       [:div.flex-grow]
-      [:el sel/Icon (icons/chevron-down "w-5 h-5")]]
+      [:el.group-disabled:invisible sel/Icon (icons/chevron-down "w-5 h-5")]]
 
      [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
       [:el sel/Content {:class menu-content-classes}

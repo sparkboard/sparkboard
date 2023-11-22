@@ -130,7 +130,7 @@
      [:div.p-body.flex-v.gap-6
       [:div.flex.items-start.gap-2
        [:h1.font-bold.text-xl.flex-auto title]
-       [radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
+       #_[radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
       (ui/show-prose description)
       (when-let [badges badges]
         [:section
@@ -155,9 +155,9 @@
                               (when-not (some #{label} (map (comp deref '?label) ?actions))
                                 (v/x
                                   [:<>
-                                   [:div.default-outline.rounded.inline-flex.divide-x.bg-white
+                                   [:div.default-ring.rounded.inline-flex.divide-x.bg-white
                                     [:div.p-3.whitespace-nowrap label]]
-                                   [action-picker {:value (some-> action str)}]
+                                   [action-picker {:value (some-> action str) :disabled true}]
                                    [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {'?label label '?action action})}]]])))]
           [:section.flex-v.gap-3
            [:div
@@ -166,7 +166,7 @@
              [:div.flex.flex-wrap.gap-3
               (seq (for [{:syms [?label ?action ?hover-text]} actions]
                      [radix/tooltip @?hover-text
-                      [:div.default-outline.rounded.inline-flex.items-center.divide-x
+                      [:div.default-ring.rounded.inline-flex.items-center.divide-x
                        {:key @?label}
                        [:div.p-3.whitespace-nowrap @?label]]]))])
            [:div.bg-gray-100.rounded.p-3.gap-3.flex-v
@@ -185,7 +185,7 @@
                                                                                              :hover-text '?hover-text}))
                                     (forms/clear! !new-action)
                                     (.focus @!label-ref))}
-                  [:input.text-gray-500.default-outline.form-text.rounded.p-3
+                  [:input.default-ring.form-text.rounded.p-3
                    {:ref         !label-ref
                     :value       (or @?label "")
                     :on-change   (forms/change-handler ?label)
@@ -194,7 +194,7 @@
                   [action-picker {}]
                   [:div.flex.gap-3
                    (when @?label
-                     [:input.text-gray-500.bg-gray-200.rounded.p-3.flex-auto.focus-outline
+                     [:input.text-gray-500.bg-gray-200.rounded.p-3.flex-auto.focus-ring
                       {:value       (or @?hover-text "")
                        :on-change   (forms/change-handler ?hover-text)
                        :style       {:min-width 150}

@@ -86,7 +86,7 @@
   (if-let [account (db/get :env/config :account)]
     [:<>
      (radix/dropdown-menu
-       {:trigger [:button.flex.items-center.focus-visible:accent-outline.rounded.px-1 [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
+       {:trigger [:button.flex.items-center.focus-ring.rounded.px-1 [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
        [{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
        [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
        (into [{:sub?    true
@@ -109,7 +109,7 @@
                                       (validate/can-edit? entity (db/get :env/config :account-id))
                                       (some-> (routes/entity-route entity 'settings)
                                               routes/path-for))]
-             [:a.px-1.icon-light-gray.flex.items-center {:href settings-path} [icons/gear "w-6 h-6"]])
+             [:a.px-1.icon-light-gray.flex.items-center {:tab-index 0 :href settings-path} [icons/gear "w-6 h-6"]])
            [:div.flex-grow]]
           (concat children
                   [[chat entity]

@@ -1,5 +1,6 @@
 (ns sparkboard.app.field
-  (:require [clojure.set :as set]
+  (:require [applied-science.js-interop :as j]
+            [clojure.set :as set]
             [clojure.string :as str]
             [inside-out.forms :as forms]
             [sparkboard.app.entity :as entity]
@@ -196,15 +197,16 @@
            [:div.flex.flex-none.items-center.justify-center.icon-gray.relative
             {:class ["w-6 -mr-2"
                      "opacity-0 group-hover:opacity-100"
-                     "cursor-grab active:cursor-grabbing"]}
+                     "cursor-drag"]}
             [icons/drag-dots "w-4"]]
            [ui/text-field ?label (assoc props :wrapper-class "flex-auto"
                                               :class "rounded-sm relative focus:z-2"
                                               :style {:background-color @?color
                                                       :color            (contrasting-text-color @?color)})]
-           [ui/color-field ?color (assoc props :class ["w-9 h-9"])]
-           [radix/dropdown-menu {:id :field-option
-                                 :trigger [:div.p-1.relative.icon-gray
+           [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
+            [ui/color-field ?color (assoc props :style {:top -10 :left -10 :width 100 :height 100 :position "absolute"})]]
+           [radix/dropdown-menu {:id      :field-option
+                                 :trigger [:button.p-1.relative.icon-gray.cursor-default
                                            [icons/ellipsis-horizontal "w-4 h-4"]]}
             [{:on-select (fn [_]
                            (radix/open-alert! !alert
@@ -223,11 +225,11 @@
              "Remove"]]])]
        (let [?new (h/use-memo #(forms/field :init "") memo-by)]
          [:form.flex.gap-2 {:on-submit (fn [^js e]
-                                              (.preventDefault e)
-                                              (forms/add-many! ?options {'?value (str (random-uuid))
-                                                                         '?label @?new
-                                                                         '?color "#ffffff"})
-                                              (forms/try-submit+ ?new (save!)))}
+                                         (.preventDefault e)
+                                         (forms/add-many! ?options {'?value (str (random-uuid))
+                                                                    '?label @?new
+                                                                    '?color "#ffffff"})
+                                         (forms/try-submit+ ?new (save!)))}
           [ui/text-field ?new {:placeholder "Option label" :wrapper-class "flex-auto"}]
           [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
        #_[ui/pprinted @?options]])))
@@ -236,41 +238,79 @@
   [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-1.pb-6
 
    [:div.col-span-2.flex-v.gap-3
-    (entity/use-persisted field :field/label ui/text-field {:inline? true
-                                                            :class "bg-white p-2"
+    (entity/use-persisted field :field/label ui/text-field {:class      "bg-white"
                                                             :multi-line true})
-    (entity/use-persisted field :field/hint ui/text-field {:inline? true
-                                                           :class "bg-white p-2 text-xs"
-                                                           :multi-line true
+    (entity/use-persisted field :field/hint ui/text-field {:class       "bg-white text-xs"
+                                                           :multi-line  true
                                                            :placeholder "Further instructions"})]
 
    (when (= :field.type/select (:field/type field))
      (entity/use-persisted field :field/options options-field))
    #_[:div.flex.items-center.gap-2.col-span-2
-    [:span.font-semibold.text-xs.uppercase (:label (field-types (:field/type field)))]]
+      [:span.font-semibold.text-xs.uppercase (:label (field-types (:field/type field)))]]
    (entity/use-persisted field :field/required? ui/checkbox-field)
    (entity/use-persisted field :field/show-as-filter? ui/checkbox-field)
    (when (= attribute :board/member-fields)
      (entity/use-persisted field :field/show-at-registration? ui/checkbox-field))
    (entity/use-persisted field :field/show-on-card? ui/checkbox-field)])
 
+#?(:cljs
+   (defn element-center-y [el]
+     (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
+       (+ y (/ height 2)))))
+
 (ui/defview field-editor
   {:key (fn [attribute field] (:entity/id field))}
   [attribute field]
   (let [field-type (field-types (:field/type field))
-        [expanded? expand!] (h/use-state false)]
-    [:div.flex-v.relative
-
+        [expanded? expand!] (h/use-state false)
+        !dragging? (h/use-state false)
+        !dropping? (h/use-state false)
+        dropping?  (h/use-deferred-value @!dropping?)
+        read-data  (fn [e] (try
+                             (ui/read-string (j/call-in e [:dataTransfer :getData] (str attribute)))
+                             (catch js/Error e nil)))
+        write-data (fn [e data]
+                     (j/call-in e [:dataTransfer :setData] (str attribute)
+                                (pr-str data)))]
+    [:div.flex-v.relative.border-b
      ;; label row
-     [:div.flex.gap-3.p-3.items-stretch.hover:bg-gray-100.relative.group.cursor-default
-      {:class (when expanded? "bg-gray-100")
-       :on-click #(expand! not)}
+     [:div.flex.gap-3.p-3.items-stretch.hover:bg-gray-100.relative.group.cursor-default.relative
+      {:class         (when expanded? "bg-gray-100")
+       :draggable     true
+       :data-dragging dropping?
+       :on-drag-over  (j/fn [^js {:as e :keys [clientY currentTarget]}]
+                        (j/call e :preventDefault)
+                        (when (some #{(str attribute)} (.. e -dataTransfer -types))
+                          (reset! !dropping? (if (< clientY (element-center-y currentTarget))
+                                               :before
+                                               :after))))
+       :on-drag-leave (fn [^js e]
+                        (j/call e :preventDefault)
+                        (reset! !dropping? false))
+       :on-drop       (fn [^js e]
+                        (.preventDefault e)
+                        (reset! !dropping? false)
+                        (when-let [target (-> (read-data e)
+                                              (u/guard #(= attribute (:attribute %))))]
+                          ;; TODO
+                          ;; move field to new position
+                          (prn target)))
+       :on-drag-end   (fn [^js e]
+                        (reset! !dragging? false))
+       :on-drag-start (fn [^js e]
+                        (prn :on-drag-start)
+                        (reset! !dragging? true)
+                        (write-data e {:target    (sch/wrap-id (:entity/id field))
+                                       :attribute attribute}))
+       :on-click      #(expand! not)}
+      (when dropping?
+        [:div.absolute.bg-focus-accent
+         {:class ["h-[4px] z-[99] inset-x-0 rounded"
+                  (case dropping? :before "top-0"
+                                  :after "bottom-[-5px]" nil)]}])
       ;; expandable label group
-
-      [:div.w-5.-ml-8.flex.items-center.justify-center.hover:cursor-grab.active:cursor-grabbing.opacity-0.group-hover:opacity-50
-       {:on-click #(.stopPropagation %)}
-       [icons/drag-dots "w-4"]]
-      [(:icon field-type) "w-6 h-6 text-gray-700 self-center"]
+      [(:icon field-type) "cursor-drag w-6 h-6 text-gray-700 self-center"]
       [:div.flex-auto.flex-v.gap-2
        (or (-> (:field/label field)
                (u/guard (complement str/blank?)))
@@ -286,7 +326,7 @@
   (let [?field (forms/field :attribute attribute)]
     [ui/input-wrapper
      (when-let [label (or (:label ?field) (tr attribute))] [ui/input-label label])
-     [:div.flex-v.divide-y.border.rounded
+     [:div.flex-v.border.rounded
       (->> (get entity attribute)
            (sort-by :field/order)
            (map (partial field-editor attribute))
