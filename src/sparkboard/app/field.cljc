@@ -11,6 +11,7 @@
             [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
             [yawn.hooks :as h]
+            [yawn.view :as v]
             [re-db.api :as db]
             [re-db.reactive :as r]
             [promesa.core :as p]))
@@ -173,6 +174,127 @@
 (defn blank? [color]
   (or (empty? color) (= "#ffffff" color) (= "rgb(255, 255, 255)" color)))
 
+#?(:cljs
+   (defn element-center-y [el]
+     (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
+       (+ y (/ height 2)))))
+
+(defn orderable-props
+  [{:keys [group-id
+           id
+           on-move
+           !should-drag?]}]
+  (let [transfer-data (fn [e data]
+                        (j/call-in e [:dataTransfer :setData] (str group-id)
+                                   (pr-str data)))
+
+        receive-data  (fn [e]
+                        (try
+                          (ui/read-string (j/call-in e [:dataTransfer :getData] (str group-id)))
+                          (catch js/Error e nil)))
+
+        data-matches? (fn [e]
+                        (some #{(str group-id)} (j/get-in e [:dataTransfer :types])))
+        [active-drag set-drag!] (h/use-state nil)
+        [active-drop set-drop!] (h/use-state nil)
+        !should-drag? (h/use-ref false)]
+    [{:on-mouse-down #(reset! !should-drag? true)
+      :on-mouse-up   #(reset! !should-drag? false)}
+     {:draggable     true
+      :data-dragging active-drag
+      :data-dropping active-drop
+      :on-drag-over  (j/fn [^js {:as e :keys [clientY currentTarget]}]
+                       (j/call e :preventDefault)
+                       (when (data-matches? e)
+                         (set-drop! (if (< clientY (element-center-y currentTarget))
+                                      :before
+                                      :after))))
+      :on-drag-leave (fn [^js e]
+                       (j/call e :preventDefault)
+                       (set-drop! nil))
+      :on-drop       (fn [^js e]
+                       (.preventDefault e)
+                       (set-drop! nil)
+                       (when-let [source (receive-data e)]
+                         (on-move {:destination id
+                                   :source      source
+                                   :side        active-drop})))
+      :on-drag-end   (fn [^js e]
+                       (set-drag! nil))
+      :on-drag-start (fn [^js e]
+                       (if @!should-drag?
+                         (do
+                           (set-drag! true)
+                           (transfer-data e id))
+                         (.preventDefault e)))}
+     (when active-drop
+       (v/x [:div.absolute.bg-focus-accent
+             {:class ["h-[4px] z-[99] inset-x-0 rounded"
+                      (case active-drop
+                        :before "top-[-2px]"
+                        :after "bottom-[-2px]" nil)]}]))]))
+
+(defn re-order [xs source side destination]
+  {:post [(= (count %) (count xs))]}
+  (let [out (reduce (fn [out x]
+                      (if (= x destination)
+                        (into out (case side :before [source destination]
+                                             :after [destination source]))
+                        (conj out x)))
+                    []
+                    (remove #{source} xs))]
+    (when-not (= (count out) (count xs))
+      (throw (ex-info "re-order failed, destination not found" {:source source :destination destination})))
+    out))
+
+(ui/defview show-option [{:keys [?options save!]} {:as ?option :syms [?label ?value ?color]}]
+  (let [[handle-props drag-props indicator]
+        (orderable-props {:group-id (goog/getUid ?options)
+                          :id       (:sym ?option)
+                          :on-move  (fn [{:keys [source side destination]}]
+                                      (forms/swap-many! ?options re-order
+                                                        (get ?options source)
+                                                        side
+                                                        (get ?options destination))
+                                      (save!))})]
+    [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
+     (merge {:key @?value}
+            drag-props)
+     [:div
+      indicator
+      [:div.flex.flex-none.items-center.justify-center.icon-gray
+       (merge handle-props
+              {:class ["w-6 -mr-2"
+                       "opacity-0 group-hover:opacity-100"
+                       "cursor-drag"]})
+       [icons/drag-dots "w-4"]]]
+     [ui/text-field ?label {:on-save       save!
+                            :wrapper-class "flex-auto"
+                            :class         "rounded-sm relative focus:z-2"
+                            :style         {:background-color @?color
+                                            :color            (contrasting-text-color @?color)}}]
+     [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
+      [ui/color-field ?color {:on-save save!
+                              :style   {:top -10 :left -10 :width 100 :height 100 :position "absolute"}}]]
+     [radix/dropdown-menu {:id      :field-option
+                           :trigger [:button.p-1.relative.icon-gray.cursor-default
+                                     [icons/ellipsis-horizontal "w-4 h-4"]]}
+      [{:on-select (fn [_]
+                     (radix/open-alert! !alert
+                                        {:body   [:div.text-center.flex-v.gap-3
+                                                  [icons/trash "mx-auto w-8 h-8 text-red-600"]
+                                                  [:div.text-2xl (tr :tr/confirm)]
+                                                  [:div (tr :tr/cannot-be-undone)]]
+                                         :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
+                                                  (tr :tr/cancel)]
+                                         :action [:div.btn.destruct
+                                                  {:on-click (fn [_]
+                                                               (forms/remove-many! ?option)
+                                                               (p/do (save!)
+                                                                     (radix/close-alert! !alert)))}
+                                                  (tr :tr/delete)]}))}
+       "Remove"]]]))
+
 (ui/defview options-field [?field {:keys [on-save
                                           persisted-value]}]
   (let [memo-by [(str (map :field-option/value persisted-value))]
@@ -185,44 +307,14 @@
                                                                                                  :field-option/color ?color}) @?field))))
                                        memo-by)]
 
-    (let [save! (fn [& _] (on-save (mapv u/prune @?options)))
-          props {:on-save save!}]
+    (let [save! (fn [& _] (on-save (mapv u/prune @?options)))]
       [:div.col-span-2.flex-v.gap-3
        [ui/input-label (tr :tr/options)]
        (when (:loading? ?options)
          [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
-       [:div.flex-v.gap-2.py-1
-        (for [{:as ?option :syms [?label ?value ?color]} ?options]
-          [:div.flex.gap-2.items-center.group.relative.-ml-6 {:key @?value}
-           [:div.flex.flex-none.items-center.justify-center.icon-gray.relative
-            {:class ["w-6 -mr-2"
-                     "opacity-0 group-hover:opacity-100"
-                     "cursor-drag"]}
-            [icons/drag-dots "w-4"]]
-           [ui/text-field ?label (assoc props :wrapper-class "flex-auto"
-                                              :class "rounded-sm relative focus:z-2"
-                                              :style {:background-color @?color
-                                                      :color            (contrasting-text-color @?color)})]
-           [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-            [ui/color-field ?color (assoc props :style {:top -10 :left -10 :width 100 :height 100 :position "absolute"})]]
-           [radix/dropdown-menu {:id      :field-option
-                                 :trigger [:button.p-1.relative.icon-gray.cursor-default
-                                           [icons/ellipsis-horizontal "w-4 h-4"]]}
-            [{:on-select (fn [_]
-                           (radix/open-alert! !alert
-                                              {:body   [:div.text-center.flex-v.gap-3
-                                                        [icons/trash "mx-auto w-8 h-8 text-red-600"]
-                                                        [:div.text-2xl (tr :tr/confirm)]
-                                                        [:div (tr :tr/cannot-be-undone)]]
-                                               :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
-                                                        (tr :tr/cancel)]
-                                               :action [:div.btn.destruct
-                                                        {:on-click (fn [_]
-                                                                     (forms/remove-many! ?option)
-                                                                     (p/do (save!)
-                                                                           (radix/close-alert! !alert)))}
-                                                        (tr :tr/delete)]}))}
-             "Remove"]]])]
+       (into [:div.flex-v]
+             (map (partial show-option {:?options ?options
+                                        :save!    save!}) ?options))
        (let [?new (h/use-memo #(forms/field :init "") memo-by)]
          [:form.flex.gap-2 {:on-submit (fn [^js e]
                                          (.preventDefault e)
@@ -254,62 +346,33 @@
      (entity/use-persisted field :field/show-at-registration? ui/checkbox-field))
    (entity/use-persisted field :field/show-on-card? ui/checkbox-field)])
 
-#?(:cljs
-   (defn element-center-y [el]
-     (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
-       (+ y (/ height 2)))))
-
 (ui/defview field-editor
-  {:key (fn [attribute field] (:entity/id field))}
-  [attribute field]
+  {:key (fn [attribute order-by field] (:entity/id field))}
+  [attribute order-by field]
   (let [field-type (field-types (:field/type field))
         [expanded? expand!] (h/use-state false)
-        !dragging? (h/use-state false)
-        !dropping? (h/use-state false)
-        dropping?  (h/use-deferred-value @!dropping?)
-        read-data  (fn [e] (try
-                             (ui/read-string (j/call-in e [:dataTransfer :getData] (str attribute)))
-                             (catch js/Error e nil)))
-        write-data (fn [e data]
-                     (j/call-in e [:dataTransfer :setData] (str attribute)
-                                (pr-str data)))]
+        [handle-props drag-props indicator] (orderable-props {:group-id attribute
+                                                              :id       (sch/wrap-id (:entity/id field))
+                                                              :on-move
+                                                              (fn [{:as args :keys [source destination side]}]
+                                                                (p/-> (entity/order-ref! {:attribute   attribute
+                                                                                          :order-by    order-by
+                                                                                          :source      source
+                                                                                          :side        side
+                                                                                          :destination destination})
+                                                                      db/transact!))})]
     [:div.flex-v.relative.border-b
      ;; label row
      [:div.flex.gap-3.p-3.items-stretch.hover:bg-gray-100.relative.group.cursor-default.relative
-      {:class         (when expanded? "bg-gray-100")
-       :draggable     true
-       :data-dragging dropping?
-       :on-drag-over  (j/fn [^js {:as e :keys [clientY currentTarget]}]
-                        (j/call e :preventDefault)
-                        (when (some #{(str attribute)} (.. e -dataTransfer -types))
-                          (reset! !dropping? (if (< clientY (element-center-y currentTarget))
-                                               :before
-                                               :after))))
-       :on-drag-leave (fn [^js e]
-                        (j/call e :preventDefault)
-                        (reset! !dropping? false))
-       :on-drop       (fn [^js e]
-                        (.preventDefault e)
-                        (reset! !dropping? false)
-                        (when-let [target (-> (read-data e)
-                                              (u/guard #(= attribute (:attribute %))))]
-                          ;; TODO
-                          ;; move field to new position
-                          (prn target)))
-       :on-drag-end   (fn [^js e]
-                        (reset! !dragging? false))
-       :on-drag-start (fn [^js e]
-                        (prn :on-drag-start)
-                        (reset! !dragging? true)
-                        (write-data e {:target    (sch/wrap-id (:entity/id field))
-                                       :attribute attribute}))
-       :on-click      #(expand! not)}
-      (when dropping?
-        [:div.absolute.bg-focus-accent
-         {:class ["h-[4px] z-[99] inset-x-0 rounded"
-                  (case dropping? :before "top-0"
-                                  :after "bottom-[-5px]" nil)]}])
+      (v/merge-props
+        drag-props
+        {:class    (when expanded? "bg-gray-100")
+         :on-click #(expand! not)})
+      indicator
       ;; expandable label group
+      [:div.w-5.-ml-8.flex.items-center.justify-center.hover:cursor-grab.active:cursor-grabbing.opacity-0.group-hover:opacity-50
+       handle-props
+       [icons/drag-dots "w-4"]]
       [(:icon field-type) "cursor-drag w-6 h-6 text-gray-700 self-center"]
       [:div.flex-auto.flex-v.gap-2
        (or (-> (:field/label field)
@@ -329,7 +392,7 @@
      [:div.flex-v.border.rounded
       (->> (get entity attribute)
            (sort-by :field/order)
-           (map (partial field-editor attribute))
+           (map (partial field-editor attribute :field/order))
            doall)]
      [:div
       [radix/alert !alert]

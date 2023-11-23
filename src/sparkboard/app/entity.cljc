@@ -101,24 +101,39 @@
 
     {:db/id id}))
 
-(q/defx set-order!
+(defn reverse-attr [a]
+  (keyword (namespace a) (str "_" (name a))))
+
+(q/defx order-ref!
   {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e a order-attr side target destination]
-  (let [target      (db/get (sch/wrap-id target) :db/id)
-        destination (db/get (sch/wrap-id target) :db/id)
-        siblings    (->> (db/get (sch/wrap-id e) a)
-                         (sort-by order-attr)
-                         (map :db/id)
-                         (remove target)
-                         (reduce (fn [out x]
-                                   (if (= destination x)
-                                     (into out (case side :before [target x]
-                                                          :after [x target]))
-                                     (conj out x))) []))
-        txs (map-indexed (fn [i x]
-                           [:db/add [:entity/id (db/get x :entity/id)] order-attr i]) siblings)]
-    (prn :will-set txs)
-    #_(db/transact! txs)
+  [{:as   args
+    :keys [account-id
+           attribute
+           order-by
+           source
+           side
+           destination]}]
+  (let [source         (db/entity source)
+        source-id      (:db/id source)
+        destination    (db/entity destination)
+        destination-id (:db/id destination)
+        parent         (-> source
+                           (get (reverse-attr attribute))
+                           first)
+        sibling-ids    (->> (get parent attribute)
+                            (sort-by order-by)
+                            (map :db/id))
+        siblings       (->> sibling-ids
+                            (remove #{source-id})
+                            vec
+                            (reduce (fn [out destination]
+                                      (if (= destination-id destination)
+                                        (into out (case side :before [source-id destination]
+                                                             :after [destination source-id]))
+                                        (conj out destination))) []))
+        txs            (map-indexed (fn [i x]
+                                      [:db/add [:entity/id (db/get x :entity/id)] order-by i]) siblings)]
+    (db/transact! txs)
     txs))
 
 ;; how to determine if a field is required or optional in a malli map schema?
