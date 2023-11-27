@@ -1,6 +1,8 @@
 (ns sparkboard.app.entity
   (:require [inside-out.forms :as forms]
             [sparkboard.schema :as sch :refer [s- unique-uuid ?]]
+            [sparkboard.ui.icons :as icons]
+            [sparkboard.ui.radix :as radix]
             [yawn.hooks :as h]
             [sparkboard.query :as q]
             [sparkboard.authorize :as az]
@@ -178,14 +180,24 @@
    [:div.flex.items-center.px-3.leading-snug
     [:div.line-clamp-2 title]]])
 
+(ui/defview ellipsis-dropdown [entity]
+  (when-let [route (and (validate/editing-role? (:member/roles entity))
+                        (some-> (routes/entity-route entity :settings) routes/href))]
+    [radix/dropdown-menu {:id       :entity-settings
+                          :trigger  [:div.hover:bg-gray-200.rounded-full.icon-gray.w-10.h-10.flex.items-center.justify-center.focus-visible:bg-gray-200.mx-1.self-center
+                                     [icons/ellipsis-horizontal "w-4 h-5"]]
+                          :children [[{:on-select #(routes/set-path! route)} "Settings"]]}]))
+
 (ui/defview row
   {:key :entity/id}
   [{:as   entity
-    :keys [entity/title image/avatar]}]
-  [:a.flex.relative.gap-3.items-center.hover:bg-gray-100.rounded-lg.p-2.cursor-default
-   {:href (routes/entity entity :show)}
-   [ui/avatar {:size 10} entity]
-   [:div.line-clamp-2.leading-snug title]])
+    :keys [entity/title image/avatar member/roles]}]
+  [:div.flex.hover:bg-gray-100.rounded-lg
+   [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
+    {:href (routes/entity entity :show)}
+    [ui/avatar {:size 10} entity]
+    [:div.line-clamp-2.leading-snug.flex-grow title]]
+   [ellipsis-dropdown entity]])
 
 (ui/defview show-filtered-results
   {:key :title}

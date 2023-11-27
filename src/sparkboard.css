@@ -117,11 +117,14 @@
         @apply cursor-grab active:cursor-grabbing
     }
     .icon-gray {
-        @apply text-gray-500 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2
+        @apply text-gray-500 hover:text-black focus-ring
+    }
+    .focus-bg-gray-100 {
+        @apply focus-visible:border-none focus-visible:outline-none focus-visible:ring-0 focus-visible:bg-gray-100
     }
 
     .icon-light-gray {
-        @apply text-gray-300 hover:text-black focus-visible:outline-focus-accent focus-visible:outline-2
+        @apply text-gray-300 hover:text-black focus-ring
     }
 
     .overlay {
@@ -364,7 +367,7 @@
         animation-timing-function: linear;
         z-index: 50;
 
-        @apply absolute inset-0
+        @apply absolute
     }
 
 

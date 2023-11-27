@@ -43,11 +43,11 @@
                                                 (? :account.provider.google/sub)]}})
 
 (ui/defview new-menu [params]
-  (radix/dropdown-menu {:id :new-menu
+  (radix/dropdown-menu {:id       :new-menu
                         :trigger
-                        [:div.btn-light (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]}
-                       [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
-                       [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]))
+                        [:div.btn-light (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
+                        :children [[{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                                   [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]]}))
 
 (q/defquery db:account-orgs
   {:endpoint {:query true}
@@ -125,18 +125,16 @@
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
       {:href (routes/href ['sparkboard.app.account/show params])} display-name]
      child
-     (apply radix/dropdown-menu
-            {:id :show-recents
-             :trigger
-             [:div.btn-light (tr :tr/recent) down-arrow]}
-            (map (fn [entity]
-                   [{:on-select #(routes/set-path! (routes/entity-route entity 'show) entity)}
-                    (:entity/title entity)])
-                 recents))
-     (radix/dropdown-menu {:trigger
-                           [:div.btn-light (tr :tr/new) down-arrow]}
-                          [{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
-                          [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)])
+     (radix/dropdown-menu
+       {:id       :show-recents
+        :trigger  [:div.btn-light (tr :tr/recent) down-arrow]
+        :children (map (fn [entity]
+                         [{:on-select #(routes/set-path! (routes/entity-route entity 'show) entity)}
+                          (:entity/title entity)])
+                       recents)})
+     (radix/dropdown-menu {:trigger [:div.btn-light (tr :tr/new) down-arrow]
+                           :children [[{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                                      [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]]})
      [header/chat account]
      [header/account]]))
 
@@ -189,18 +187,19 @@
    :endpoint/public? true}
   [params]
   (if (db/get :env/config :account-id)
-    (let [?filter (h/use-callback (forms/field))
-          all     (db:all {})
-          account (db/get :env/config :account)
-          title   (v/from-element :div.font-medium.text-xl.px-2)
-          section (v/from-element :div.flex-v.gap-2)]
+    (let [?filter  (h/use-callback (forms/field))
+          all      (db:all {})
+          account  (db/get :env/config :account)
+          title    (v/from-element :div.font-medium.text-xl.px-2)
+          section  (v/from-element :div.flex-v.gap-2)
+          entities (-> (group-by :entity/kind all)
+                       (update-vals #(->> (sequence (ui/filtered @?filter) %)
+                                          (sort-by :entity/created-at u/compare:desc)))
+                       (u/guard seq))]
       [:div.divide-y
        [header account nil]
 
-       (when-let [{:keys [org board project]} (-> (group-by :entity/kind all)
-                                                  (update-vals #(->> (sequence (ui/filtered @?filter) %)
-                                                                     (sort-by :entity/created-at u/compare:desc)))
-                                                  (u/guard seq))]
+       (when-let [{:keys [org board project]} entities]
          [:div.p-body.flex-v.gap-8
           (when (> (count all) 6)
             [ui/filter-field ?filter])
@@ -219,12 +218,13 @@
                 [title (tr :tr/orgs)]
                 (limit (map entity/row org))])])])
        [:div.p-body
-        [ui/hero
-         (ui/show-markdown
-           (tr :tr/start-board-new))
-         [:a.btn.btn-primary.btn-base {:class "mt-6"
-                                       :href  (routes/href ['sparkboard.app.board/new])}
-          (tr :tr/create-first-board)]]]])
+        (when (empty? (:board entities))
+          [ui/hero
+           (ui/show-markdown
+             (tr :tr/start-board-new))
+           [:a.btn.btn-primary.btn-base {:class "mt-6"
+                                         :href  (routes/href ['sparkboard.app.board/new])}
+            (tr :tr/create-first-board)]])]])
     (ui/redirect `sign-in)))
 
 #?(:clj

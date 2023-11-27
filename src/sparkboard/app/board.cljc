@@ -208,13 +208,14 @@
        (when owners
          [:div.flex-v.gap-2
           [ui/input-label {} (tr :tr/owner)]
-          (->> owners
-               (map (fn [{:keys [entity/id entity/title image/avatar]}]
-                      (v/x [radix/select-item {:value (str id)
-                                               :text  title
-                                               :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}])))
-               (apply radix/select-menu {:value           @?owner
-                                         :on-value-change (partial reset! ?owner)}))])
+          (radix/select-menu {:value           @?owner
+                              :on-value-change (partial reset! ?owner)
+                              :options
+                              (->> owners
+                                   (map (fn [{:keys [entity/id entity/title image/avatar]}]
+                                          (v/x [radix/select-item {:value (str id)
+                                                                   :text  title
+                                                                   :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}]))))})])
 
        [ui/text-field ?title {:label (tr :tr/title)}]
        (domain/domain-field ?domain)

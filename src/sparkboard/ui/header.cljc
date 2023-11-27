@@ -3,6 +3,7 @@
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.app.chat :as chat]
+            [sparkboard.app.entity :as entity]
             [sparkboard.i18n :as i :refer [tr]]
             [sparkboard.routes :as routes]
             [sparkboard.ui :as ui]
@@ -37,9 +38,9 @@
 (ui/defview lang [classes]
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
                                                    classes]}
-   (apply radix/dropdown-menu
-          {:trigger [icons/languages "w-5 h-5"]}
-          (lang-menu-content))])
+   (radix/dropdown-menu
+     {:trigger [icons/languages "w-5 h-5"]
+      :children (lang-menu-content)})])
 
 (ui/defview chats-list []
   (let [params {:account-id (db/get :env/config :account-id)}
@@ -49,7 +50,8 @@
        (->> chats
             (take 6)
             (map (partial chat/chat-snippet params)))
-       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2 {:href (routes/href [`chat/chats])}
+       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
+        {:href (routes/href [`chat/chats])}
         (tr :tr/view-all)]]
       (tr :tr/no-messages))))
 
@@ -60,7 +62,7 @@
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
      [:el Popover/Trigger {:as-child true}
-      [:button.relative.flex.items-center.icon-light-gray.px-1
+      [:button.relative.flex.items-center.icon-light-gray.px-1.rounded {:tab-index 0}
        ;; unread-count bubble
        (when unread
          [:div
@@ -86,11 +88,13 @@
   (if-let [account (db/get :env/config :account)]
     [:<>
      (radix/dropdown-menu
-       {:trigger [:button.flex.items-center.focus-ring.rounded.px-1 [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]}
-       [{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
-       [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
-       (into [{:sub?    true
-               :trigger [icons/languages "w-5 h-5"]}] (lang-menu-content)))]
+       {:trigger  [:button.flex.items-center.focus-ring.rounded.px-1 {:tab-index 0}
+                   [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]
+        :children [[{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
+                   [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
+                   [{:sub?     true
+                     :trigger  [icons/languages "w-5 h-5"]
+                     :children (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/href ['sparkboard.app.account/sign-in])} (tr :tr/continue-with-email)]))
 
@@ -105,14 +109,11 @@
                {:src (ui/asset-src avatar :avatar)}]])
 
            [:h3 [:a.contents {:href entity-href} title]]
-           (when-let [settings-path (and
-                                      (validate/can-edit? entity (db/get :env/config :account-id))
-                                      (some-> (routes/entity-route entity 'settings)
-                                              routes/path-for))]
-             [:a.px-1.icon-light-gray.flex.items-center {:tab-index 0 :href settings-path} [icons/gear "w-6 h-6"]])
+
            [:div.flex-grow]]
           (concat children
-                  [[chat entity]
+                  [(entity/ellipsis-dropdown entity)
+                   [chat entity]
                    [account]]))))
 
 (defn entity [entity & children] (entity* entity children))

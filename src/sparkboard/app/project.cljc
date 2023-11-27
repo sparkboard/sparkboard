@@ -10,6 +10,7 @@
             [sparkboard.ui :as ui]
             [sparkboard.query :as q]
             [sparkboard.app.entity :as entity]
+            [sparkboard.app.field :as field]
             [re-db.api :as db]
             [yawn.view :as v]
             [sparkboard.ui.radix :as radix]
@@ -109,11 +110,80 @@
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
 (def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
+(ui/defview community-actions [project]
+  (forms/with-form [!actions (?actions :many {:label ?label :action ?action :hover-text ?hover-text})]
+    (let [action-picker (fn [props]
+                          [radix/select-menu
+                           (v/merge-props props
+                                          {:id          :project-action
+                                           :can-edit? true
+                                           :placeholder [:span.text-gray-500 (tr :tr/choose-action)]
+                                           :options     [[radix/select-item {:text  (tr :tr/copy-link)
+                                                                             :value "LINK"}]
+                                                         [radix/select-item {:text  (tr :tr/start-chat)
+                                                                             :value "CHAT"}]]})])
+          add-btn       (fn [props]
+                          (v/x [:button.p-3.text-gray-500.items-center.inline-flex.btn-darken.flex-none.rounded props
+                                [icons/plus "w-5 h-5"]]))
+          sample        (fn [label action]
+                          (when-not (some #{label} (map (comp deref '?label) ?actions))
+                            (v/x
+                              [:<>
+                               [:div.default-ring.rounded.inline-flex.divide-x.bg-white
+                                [:div.p-3.whitespace-nowrap label]]
+                               [action-picker {:value (some-> action str) :disabled true}]
+                               [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {'?label label '?action action})}]]])))]
+      [:section.flex-v.gap-3
+       [:div
+        [:div.font-semibold.text-lg (tr :tr/community-actions)]]
+       (when-let [actions (seq ?actions)]
+         [:div.flex.flex-wrap.gap-3
+          (seq (for [{:syms [?label ?action ?hover-text]} actions]
+                 [radix/tooltip @?hover-text
+                  [:div.default-ring.rounded.inline-flex.items-center.divide-x
+                   {:key @?label}
+                   [:div.p-3.whitespace-nowrap @?label]]]))])
+       [:div.bg-gray-100.rounded.p-3.gap-3.flex-v
+        [:div.text-base.text-gray-500 (tr :tr/community-actions-add)]
+        [:div.grid.gap-3 {:style {:grid-template-columns "0fr 0fr 1fr"}}
+         (sample (str "🔗 " (tr :tr/share)) "LINK")
+         (sample (str "🤝 " (tr :tr/join-our-team)) "CHAT")
+         (sample (str "💰 " (tr :tr/invest)) "CHAT")
+         (forms/with-form [!new-action {:label ?label :action ?action :hover-text ?hover-text}]
+           (let [!label-ref (h/use-ref)]
+             [:form.contents {:on-submit
+                              (fn [^js e]
+                                (.preventDefault e)
+                                (forms/add-many! ?actions (set/rename-keys @!new-action {:label      '?label
+                                                                                         :action     '?action
+                                                                                         :hover-text '?hover-text}))
+                                (forms/clear! !new-action)
+                                (.focus @!label-ref))}
+              [:input.default-ring.form-text.rounded.p-3
+               {:ref         !label-ref
+                :value       (or @?label "")
+                :on-change   (forms/change-handler ?label)
+                :style       {:min-width 150}
+                :placeholder (str (tr :tr/other) "...")}]
+              [action-picker {}]
+              [:div.flex.gap-3
+               (when @?label
+                 [:input.text-gray-500.bg-gray-200.rounded.p-3.flex-auto.focus-ring
+                  {:value       (or @?hover-text "")
+                   :on-change   (forms/change-handler ?hover-text)
+                   :style       {:min-width 150}
+                   :placeholder (tr :tr/hover-text)}])
+               [add-btn {:type "submit"}]]]))]]
 
-(q/defquery db:show-project
+       ])))
+
+(q/defquery db:read
   [{:keys [project-id]}]
-  (q/pull [:*
-           {:project/board entity/fields}] project-id))
+  (q/pull `[~@entity/fields
+            {:entity/field-entries [:*]}
+            {:project/board
+             [~@entity/fields
+              {:board/project-fields ~field/field-keys}]}] project-id))
 
 (ui/defview show
   {:route       ["/p/" ['entity/id :project-id]]
@@ -123,13 +193,16 @@
          :entity/keys  [title
                         description
                         video]
+         :member/keys  [roles]
          :project/keys [board
-                        badges]} (db:show-project params)]
+                        badges]} (db:read params)
+        can-edit? (validate/editing-role? roles)
+        entries   (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
     [:<>
      #_[ui/entity-header board]
      [:div.p-body.flex-v.gap-6
       [:div.flex.items-start.gap-2
-       [:h1.font-bold.text-xl.flex-auto title]
+       [:h1.font-semibold.text-3xl.flex-auto title]
        #_[radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
       (ui/show-prose description)
       (when-let [badges badges]
@@ -137,132 +210,10 @@
          (into [:ul]
                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
                badges)])
-
-
-      (forms/with-form [!actions (?actions :many {:label ?label :action ?action :hover-text ?hover-text})]
-        (let [action-picker (fn [props]
-                              [radix/select-menu (v/merge-props props
-                                                                {:id          :project-action
-                                                                 :placeholder [:span.text-gray-400 (tr :tr/action)]})
-                               [radix/select-item {:text  (tr :tr/copy-link)
-                                                   :value "LINK"}]
-                               [radix/select-item {:text  (tr :tr/start-chat)
-                                                   :value "CHAT"}]])
-              add-btn       (fn [props]
-                              (v/x [:button.p-3.text-gray-500.items-center.inline-flex.btn-darken.flex-none.rounded props
-                                    [icons/plus "w-5 h-5"]]))
-              sample        (fn [label action]
-                              (when-not (some #{label} (map (comp deref '?label) ?actions))
-                                (v/x
-                                  [:<>
-                                   [:div.default-ring.rounded.inline-flex.divide-x.bg-white
-                                    [:div.p-3.whitespace-nowrap label]]
-                                   [action-picker {:value (some-> action str) :disabled true}]
-                                   [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {'?label label '?action action})}]]])))]
-          [:section.flex-v.gap-3
-           [:div
-            [:div.font-semibold.text-lg (tr :tr/community-actions)]]
-           (when-let [actions (seq ?actions)]
-             [:div.flex.flex-wrap.gap-3
-              (seq (for [{:syms [?label ?action ?hover-text]} actions]
-                     [radix/tooltip @?hover-text
-                      [:div.default-ring.rounded.inline-flex.items-center.divide-x
-                       {:key @?label}
-                       [:div.p-3.whitespace-nowrap @?label]]]))])
-           [:div.bg-gray-100.rounded.p-3.gap-3.flex-v
-            [:div.text-base.text-gray-500 (tr :tr/community-actions-add)]
-            [:div.grid.gap-3 {:style {:grid-template-columns "0fr 0fr 1fr"}}
-             (sample (str "🔗 " (tr :tr/share)) "LINK")
-             (sample (str "🤝 " (tr :tr/join-our-team)) "CHAT")
-             (sample (str "💰 " (tr :tr/invest)) "CHAT")
-             (forms/with-form [!new-action {:label ?label :action ?action :hover-text ?hover-text}]
-               (let [!label-ref (h/use-ref)]
-                 [:form.contents {:on-submit
-                                  (fn [^js e]
-                                    (.preventDefault e)
-                                    (forms/add-many! ?actions (set/rename-keys @!new-action {:label      '?label
-                                                                                             :action     '?action
-                                                                                             :hover-text '?hover-text}))
-                                    (forms/clear! !new-action)
-                                    (.focus @!label-ref))}
-                  [:input.default-ring.form-text.rounded.p-3
-                   {:ref         !label-ref
-                    :value       (or @?label "")
-                    :on-change   (forms/change-handler ?label)
-                    :style       {:min-width 150}
-                    :placeholder (str (tr :tr/other) "...")}]
-                  [action-picker {}]
-                  [:div.flex.gap-3
-                   (when @?label
-                     [:input.text-gray-500.bg-gray-200.rounded.p-3.flex-auto.focus-ring
-                      {:value       (or @?hover-text "")
-                       :on-change   (forms/change-handler ?hover-text)
-                       :style       {:min-width 150}
-                       :placeholder (tr :tr/hover-text)}])
-                   [add-btn {:type "submit"}]]]))]]
-
-           ]))
-
-
-
+      (map (partial field/show-entry project) entries)
       [:section.flex-v.gap-2.items-start.mt-32
-       [:h3.uppercase.text-sm "Actions"]
 
-       [:div.flex.gap-2
-
-        (for [label ["💰 Donate"
-                     "🤝 Join our team"
-                     "🤲 Lend a hand"
-                     "? Contribute something..."
-                     "❤️ Love"]]
-          [btn {:key label} label])]]
-
-      #_[:section.flex-v.gap-2.items-start
-         [:h3.uppercase.text-sm (tr :tr/support-project)]
-
-         [:div.flex.gap-2
-          [btn "🧠 Mentor"]
-          [hint {:class "flex gap-2"}
-           [chiclet "Finance"]
-           [chiclet "Marketing"]]]
-
-         [:div.flex.gap-2
-          [btn "💰 Donate"]
-          [hint "Currently raising a seed round"]]
-
-         [:div.flex.gap-2
-          [btn "🤝 Join our team"]
-          [hint {:class "flex gap-2"} [chiclet "Designer"]]]
-
-         [:div.flex.gap-2
-          [btn "🔗 Share"]
-          [hint "Send our video to your friends"]]
-
-         [:div.flex.gap-2
-          [btn "❤️ Love"]]]
-      #_[:section.flex-v.gap-2.items-start
-         [:h3.uppercase.text-sm (tr :tr/support-project)]
-
-         [:div.flex.gap-2
-          [btn "🤲 Lend a hand"]
-          [hint {:class "flex gap-2"}
-           [chiclet "Skill A"]
-           [chiclet "Task B"]]]
-
-         [:div.flex.gap-2
-          [btn "💰 Donate"]
-          [hint "We are seeking funds to _"]]
-
-         [:div.flex.gap-2
-          [btn "🤝 Join our team"]
-          [hint {:class "flex gap-2"} [chiclet "Designer"]]]
-
-         [:div.flex.gap-2
-          [btn "🔗 Share"]
-          [hint "Send our video to your friends"]]
-
-         [:div.flex.gap-2
-          [btn "❤️ Love"]]]
+       [community-actions project]]
       (when-let [vid video]
         [:section [:h3 (tr :tr/video)]
          [video-field vid]])]]))

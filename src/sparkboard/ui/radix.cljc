@@ -8,9 +8,7 @@
             [sparkboard.ui.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
-            [sparkboard.i18n :refer [tr]]
-            [sparkboard.ui :as ui]
-            [yawn.hooks :as h]))
+            [sparkboard.i18n :refer [tr]]))
 
 
 (def menu-root (v/from-element :el dm/Root {:modal false}))
@@ -54,7 +52,7 @@
 (def menu-sub-trigger (v/from-element :el dm/SubTrigger {:class (menu-item-classes false)}))
 
 
-(defn dropdown-menu [{:keys [id trigger sub?] :or {id :radix-portal}} & children]
+(defn dropdown-menu [{:keys [id trigger sub? children] :or {id :radix-portal}}]
   (let [root-el    (if sub? menu-sub-root menu-root)
         trigger-el (if sub? menu-sub-trigger menu-trigger)
         content-el (if sub? menu-sub-content menu-content)]
@@ -65,22 +63,29 @@
         (into [content-el]
               (map (fn [[props & children]]
                      (if (:trigger props)
-                       (apply dropdown-menu (assoc props :sub? true) children)
+                       (dropdown-menu (assoc props :sub? true))
                        (into [menu-item props] children)))
                    children))]])))
 
-(defn select-menu [{:as props :keys [placeholder id] :or {id :radix-select}} & children]
+(defn select-menu [{:as     props :keys [placeholder id
+                                         can-edit?]
+                    options :options
+                    :or     {id :radix-select}}]
   (v/x
-    [:el sel/Root (dissoc props :trigger :placeholder)
-     [:el.bg-white.flex.items-center.rounded.default-ring.px-3.whitespace-nowrap.gap-1.disabled:text-gray-500.group sel/Trigger
+    [:el sel/Root (cond-> (dissoc props :trigger :placeholder :options :read-only?)
+                          (not can-edit?) (assoc :disabled true))
+     [:el.bg-white.flex.items-center.rounded.whitespace-nowrap.gap-1.group.default-ring.px-3 sel/Trigger
+      {:class [(if can-edit?
+                 "disabled:text-gray-400"
+                 "text-gray-900")]}
       [:el sel/Value {:placeholder (v/x placeholder)}]
       [:div.flex-grow]
-      [:el.group-disabled:invisible sel/Icon (icons/chevron-down "w-5 h-5")]]
-
+      (when can-edit?
+        [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down "w-5 h-5")])]
      [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
       [:el sel/Content {:class menu-content-classes}
        [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto w-4 h-4")]
-       [:el sel/Viewport {} children]
+       (into [:el sel/Viewport {}] options)
        [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto w-4 h-4")]
        [:el sel/Arrow]]]]))
 
@@ -89,13 +94,13 @@
 (def select-group (v/from-element :el sel/Group))
 
 (v/defview select-item
-  {:key (fn [value _] value)}
+  {:key :value}
   [{:keys [value text icon]}]
   (v/x
     [:el sel/Item {:class      (menu-item-classes false)
                    :value      value
                    :text-value text}
-     [:el sel/ItemText [:div.flex.gap-2 icon text]]
+     [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
      [:el sel/ItemIndicator]]))
 
 (defn dialog [{:props/keys [root
@@ -131,7 +136,7 @@
                  :class "flex items-center"} title]))
         (into [:<>]))])
 
-(ui/defview alert [!state]
+(v/defview alert [!state]
   (let [{:as   props
          :keys [title
                 description
@@ -159,13 +164,15 @@
                                            (when-not open? (reset! !state nil)))})))
 
 (defn tooltip [tip child]
-  (v/x
-    [:el tooltip/Provider {:delay-duration 200}
-     [:el tooltip/Root
-      [:el tooltip/Trigger child]
-      [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
-       [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
-        tip
-        [:el tooltip/Arrow]]]]])
+  (if (seq tip)
+    (v/x
+      [:el tooltip/Provider {:delay-duration 200}
+       [:el tooltip/Root
+        [:el tooltip/Trigger child]
+        [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
+         [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
+          tip
+          [:el tooltip/Arrow]]]]])
+    child)
 
   )

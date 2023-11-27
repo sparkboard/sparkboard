@@ -57,6 +57,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/hover-text                      {:en "Hover text"
                                           :fr "Texte de survol"
                                           :es "Texto de desplazamiento"}
+     :tr/choose-action                   {:en "Choose an action"
+                                          :fr "Choisissez une action"
+                                          :es "Elija una acción"}
      :tr/other                           {:en "Other"
                                           :fr "Autre"
                                           :es "Otro"}

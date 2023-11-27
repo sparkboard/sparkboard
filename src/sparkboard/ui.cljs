@@ -16,6 +16,7 @@
             [re-db.react]
             [sparkboard.client.sanitize :as sanitize]
             [sparkboard.i18n :as i]
+            [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]
@@ -63,7 +64,7 @@
               #(re-find (re-pattern (str "(?i)" match-text)) (:entity/title %))
               identity))))
 
-(defn pprinted [x]
+(defn pprinted [x & _]
   [:pre.whitespace-pre-wrap (with-out-str (pprint x))])
 
 (def safe-html sanitize/safe-html)
@@ -119,7 +120,7 @@
                nil)}
      content]))
 
-(def input-label (v/from-element :label.block.font-bold.text-xs.opacity-70))
+(def input-label (v/from-element :label.block.font-bold.text-base))
 (def input-wrapper (v/from-element :div.gap-2.flex-v.relative))
 
 (defn field-id [?field]
@@ -135,7 +136,12 @@
       (str (:value props) " ")]
      [:textarea (assoc props :rows 1)]]))
 
-(defn pass-props [props] (dissoc props :multi-line :postfix :wrapper-class :persisted-value :on-save :on-change-value :wrap :unwrap :inline?))
+(defn pass-props [props] (dissoc props
+                                 :multi-line :postfix :wrapper-class
+                                 :persisted-value :on-save :on-change-value
+                                 :wrap :unwrap
+                                 :inline?
+                                 :can-edit?))
 
 (defn compseq [& fs]
   (fn [& args]
@@ -184,6 +190,21 @@
                        (maybe-save-field ?field props (get-value e)))
             :type    "color"})
          (update :value #(or % "#ffffff")))]))
+
+(defn select-field [?field {:as props :keys [label options]}]
+  [input-wrapper
+   [input-label label]
+   [radix/select-menu (-> (common-props ?field identity (assoc props
+                                                          :on-change #(maybe-save-field ?field props @?field)))
+                          (set/rename-keys {:on-change :on-value-change})
+                          (assoc :can-edit? (:can-edit? props)
+                                 :options (->> options
+                                               (map (fn [{:field-option/keys [label value color]}]
+                                                      (radix/select-item {:text  label
+                                                                          :value value})))
+                                               doall)))]
+   (when true #_(:loading? ?field)
+     [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
 
 (defn show-field-messages [?field]
@@ -367,13 +388,13 @@
                                            :form ?field]
                            (reset! ?field asset)
                            (maybe-save-field ?field props asset)))
-        !input (h/use-ref)]
+        !input         (h/use-ref)]
     ;; TODO handle on-save
     [:label.gap-2.flex-v.relative
      {:for (field-id ?field)}
      (show-label ?field (:label props))
      [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.default-ring
-      {:on-click #(j/call @!input :click)
+      {:on-click      #(j/call @!input :click)
        :class         ["rounded-lg"
                        (if @!dragging?
                          "outline-2 outline-focus-accent")]
@@ -401,7 +422,7 @@
 
        [:input.hidden
         {:id        (field-id ?field)
-         :ref !input
+         :ref       !input
          :type      "file"
          :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
          :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]

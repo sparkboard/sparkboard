@@ -272,16 +272,17 @@
 (defn resolve [route & args]
   (cond (string? route) (match-path route)
         (vector? route) (apply resolve route)
-        (symbol? route) (let [path (apply path-for route args)]
+        (symbol? route) (when-let [path (apply path-for route args)]
                           (match-path path))))
 
 (defn href [match]
-  (if (map? match)
-    (let [{:match/keys [path endpoints]} match]
-      (if (= :modal (-> endpoints :view :view/target))
-        (merge-query {:modal path})
-        path))
-    (href (resolve match))))
+  (when match
+    (if (map? match)
+      (let [{:match/keys [path endpoints]} match]
+        (if (= :modal (-> endpoints :view :view/target))
+          (merge-query {:modal path})
+          path))
+      (href (resolve match)))))
 
 (comment
   (resolve "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")

@@ -10,6 +10,7 @@
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
+            [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]
             [re-db.api :as db]
@@ -148,6 +149,41 @@
                   :field.type/prose     {:icon  icons/text
                                          :label (tr :tr/text-field)}})
 
+(ui/defview show-select [?field {:field/keys [label options]} entry]
+  [:div.flex-v.gap-2
+   [ui/input-label label]
+   [radix/select-menu {:value      (:select/value @?field)
+                       :id         (str (:entity/id entry))
+                       :read-only? (:can-edit? ?field)
+                       :options    (->> options
+                                        (map (fn [{:field-option/keys [label value color]}]
+                                               (radix/select-item {:text  label
+                                                                   :value value})))
+                                        doall)}]])
+
+(ui/defview show-entry
+  {:key (fn [_ {:keys [entity/id]}] id)}
+  [parent {:as entry :field-entry/keys [field]
+           [value-type value] :field-entry/value}]
+  (let [{:field/keys [label]} field
+        ?field (h/use-memo #(forms/field :init value)
+                           [(str (:entity/id entry))])
+        props  {:label     label
+                :can-edit? (validate/editing-role? (:member/roles parent))
+                :on-save   (fn [x]
+                             (entity/save-attribute! nil (:entity/id entry) :field-entry/value [(:field/type field) x]))}]
+    (case (:field/type field)
+      :field.type/video [ui/pprinted value props]
+      :field.type/select [ui/select-field ?field (merge props
+                                                        {:wrap            (fn [x] {:select/value x})
+                                                         :unwrap          :select/value
+                                                         :persisted-value value
+                                                         :options         (:field/options field)})]
+      :field.type/link-list [ui/pprinted value props]
+      :field.type/images [ui/pprinted value props]
+      :field.type/prose [ui/prose-field ?field props]
+      (str "no match" field))))
+
 (defonce !alert (r/atom nil))
 
 #?(:cljs
@@ -179,60 +215,61 @@
      (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
        (+ y (/ height 2)))))
 
-(defn orderable-props
-  [{:keys [group-id
-           id
-           on-move
-           !should-drag?]}]
-  (let [transfer-data (fn [e data]
-                        (j/call-in e [:dataTransfer :setData] (str group-id)
-                                   (pr-str data)))
+#?(:cljs
+   (defn orderable-props
+     [{:keys [group-id
+              id
+              on-move
+              !should-drag?]}]
+     (let [transfer-data (fn [e data]
+                           (j/call-in e [:dataTransfer :setData] (str group-id)
+                                      (pr-str data)))
 
-        receive-data  (fn [e]
-                        (try
-                          (ui/read-string (j/call-in e [:dataTransfer :getData] (str group-id)))
-                          (catch js/Error e nil)))
+           receive-data  (fn [e]
+                           (try
+                             (ui/read-string (j/call-in e [:dataTransfer :getData] (str group-id)))
+                             (catch js/Error e nil)))
 
-        data-matches? (fn [e]
-                        (some #{(str group-id)} (j/get-in e [:dataTransfer :types])))
-        [active-drag set-drag!] (h/use-state nil)
-        [active-drop set-drop!] (h/use-state nil)
-        !should-drag? (h/use-ref false)]
-    [{:on-mouse-down #(reset! !should-drag? true)
-      :on-mouse-up   #(reset! !should-drag? false)}
-     {:draggable     true
-      :data-dragging active-drag
-      :data-dropping active-drop
-      :on-drag-over  (j/fn [^js {:as e :keys [clientY currentTarget]}]
-                       (j/call e :preventDefault)
-                       (when (data-matches? e)
-                         (set-drop! (if (< clientY (element-center-y currentTarget))
-                                      :before
-                                      :after))))
-      :on-drag-leave (fn [^js e]
-                       (j/call e :preventDefault)
-                       (set-drop! nil))
-      :on-drop       (fn [^js e]
-                       (.preventDefault e)
-                       (set-drop! nil)
-                       (when-let [source (receive-data e)]
-                         (on-move {:destination id
-                                   :source      source
-                                   :side        active-drop})))
-      :on-drag-end   (fn [^js e]
-                       (set-drag! nil))
-      :on-drag-start (fn [^js e]
-                       (if @!should-drag?
-                         (do
-                           (set-drag! true)
-                           (transfer-data e id))
-                         (.preventDefault e)))}
-     (when active-drop
-       (v/x [:div.absolute.bg-focus-accent
-             {:class ["h-[4px] z-[99] inset-x-0 rounded"
-                      (case active-drop
-                        :before "top-[-2px]"
-                        :after "bottom-[-2px]" nil)]}]))]))
+           data-matches? (fn [e]
+                           (some #{(str group-id)} (j/get-in e [:dataTransfer :types])))
+           [active-drag set-drag!] (h/use-state nil)
+           [active-drop set-drop!] (h/use-state nil)
+           !should-drag? (h/use-ref false)]
+       [{:on-mouse-down #(reset! !should-drag? true)
+         :on-mouse-up   #(reset! !should-drag? false)}
+        {:draggable     true
+         :data-dragging active-drag
+         :data-dropping active-drop
+         :on-drag-over  (j/fn [^js {:as e :keys [clientY currentTarget]}]
+                          (j/call e :preventDefault)
+                          (when (data-matches? e)
+                            (set-drop! (if (< clientY (element-center-y currentTarget))
+                                         :before
+                                         :after))))
+         :on-drag-leave (fn [^js e]
+                          (j/call e :preventDefault)
+                          (set-drop! nil))
+         :on-drop       (fn [^js e]
+                          (.preventDefault e)
+                          (set-drop! nil)
+                          (when-let [source (receive-data e)]
+                            (on-move {:destination id
+                                      :source      source
+                                      :side        active-drop})))
+         :on-drag-end   (fn [^js e]
+                          (set-drag! nil))
+         :on-drag-start (fn [^js e]
+                          (if @!should-drag?
+                            (do
+                              (set-drag! true)
+                              (transfer-data e id))
+                            (.preventDefault e)))}
+        (when active-drop
+          (v/x [:div.absolute.bg-focus-accent
+                {:class ["h-[4px] z-[99] inset-x-0 rounded"
+                         (case active-drop
+                           :before "top-[-2px]"
+                           :after "bottom-[-2px]" nil)]}]))])))
 
 (defn re-order [xs source side destination]
   {:post [(= (count %) (count xs))]}
@@ -276,24 +313,24 @@
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
       [ui/color-field ?color {:on-save save!
                               :style   {:top -10 :left -10 :width 100 :height 100 :position "absolute"}}]]
-     [radix/dropdown-menu {:id      :field-option
-                           :trigger [:button.p-1.relative.icon-gray.cursor-default
-                                     [icons/ellipsis-horizontal "w-4 h-4"]]}
-      [{:on-select (fn [_]
-                     (radix/open-alert! !alert
-                                        {:body   [:div.text-center.flex-v.gap-3
-                                                  [icons/trash "mx-auto w-8 h-8 text-red-600"]
-                                                  [:div.text-2xl (tr :tr/confirm)]
-                                                  [:div (tr :tr/cannot-be-undone)]]
-                                         :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
-                                                  (tr :tr/cancel)]
-                                         :action [:div.btn.destruct
-                                                  {:on-click (fn [_]
-                                                               (forms/remove-many! ?option)
-                                                               (p/do (save!)
-                                                                     (radix/close-alert! !alert)))}
-                                                  (tr :tr/delete)]}))}
-       "Remove"]]]))
+     [radix/dropdown-menu {:id       :field-option
+                           :trigger  [:button.p-1.relative.icon-gray.cursor-default
+                                      [icons/ellipsis-horizontal "w-4 h-4"]]
+                           :children [[{:on-select (fn [_]
+                                                     (radix/open-alert! !alert
+                                                                        {:body   [:div.text-center.flex-v.gap-3
+                                                                                  [icons/trash "mx-auto w-8 h-8 text-red-600"]
+                                                                                  [:div.text-2xl (tr :tr/confirm)]
+                                                                                  [:div (tr :tr/cannot-be-undone)]]
+                                                                         :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
+                                                                                  (tr :tr/cancel)]
+                                                                         :action [:div.btn.destruct
+                                                                                  {:on-click (fn [_]
+                                                                                               (forms/remove-many! ?option)
+                                                                                               (p/do (save!)
+                                                                                                     (radix/close-alert! !alert)))}
+                                                                                  (tr :tr/delete)]}))}
+                                       "Remove"]]}]]))
 
 (ui/defview options-field [?field {:keys [on-save
                                           persisted-value]}]
@@ -396,10 +433,9 @@
            doall)]
      [:div
       [radix/alert !alert]
-      (apply radix/dropdown-menu {:id :add-field
-                                  :trigger
-                                  [:button.flex.gap-2.btn.btn-light.px-4.py-2.relative
-                                   "Add"
-                                   [icons/chevron-down "w-4 h-4"]]}
-             (for [[type {:keys [icon label]}] field-types]
-               [{:on-select #()} [:div.flex.gap-3.items-center.h-8 [icon "w-5 h-5"] label]]))]]))
+      (radix/dropdown-menu {:id       :add-field
+                            :trigger  [:button.flex.gap-2.btn.btn-light.px-4.py-2.relative
+                                       "Add"
+                                       [icons/chevron-down "w-4 h-4"]]
+                            :children (for [[type {:keys [icon label]}] field-types]
+                                        [{:on-select #()} [:div.flex.gap-3.items-center.h-8 [icon "w-5 h-5"] label]])})]]))
