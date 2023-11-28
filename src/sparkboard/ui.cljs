@@ -53,7 +53,7 @@
                :page   {:op "bound" :width 1200}})
 
 (defn asset-src [asset variant]
-  (when-let [id (:asset/id asset)]
+  (when-let [id (:entity/id asset)]
     (str "/assets/" id
          (some-> (variants variant) query-params/query-string))))
 
@@ -153,6 +153,10 @@
     (forms/try-submit+ ?field
       (on-save value))))
 
+(defn show-label [?field & [label]]
+  (when-let [label (or label (:label ?field))]
+    [input-label {:for (field-id ?field)} label]))
+
 (defn common-props [?field
                     get-value
                     {:as   props
@@ -193,7 +197,7 @@
 
 (defn select-field [?field {:as props :keys [label options]}]
   [input-wrapper
-   [input-label label]
+   (show-label ?field label)
    [radix/select-menu (-> (common-props ?field identity (assoc props
                                                           :on-change #(maybe-save-field ?field props @?field)))
                           (set/rename-keys {:on-change :on-value-change})
@@ -203,17 +207,12 @@
                                                       (radix/select-item {:text  label
                                                                           :value value})))
                                                doall)))]
-   (when true #_(:loading? ?field)
+   (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
-
 
 (defn show-field-messages [?field]
   (when-let [messages (seq (forms/visible-messages ?field))]
     (v/x (into [:div.gap-3.text-sm] (map view-message messages)))))
-
-(defn show-label [?field & [label]]
-  (when-let [label (or label (:label ?field))]
-    [input-label {:for (field-id ?field)} label]))
 
 (defn show-postfix [?field props]
   (when-let [postfix (or (:postfix props)
@@ -427,6 +426,14 @@
          :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
          :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]
       (show-field-messages ?field)]]))
+
+(defn images-field [?field {:as props :keys [label]}]
+  [:div
+   (map-indexed (fn [i {:keys [image/url]}]
+                  [:div.relative {:key url}
+                   [:div.inset-0.bg-black.absolute.opacity-10]
+                   [:img {:src url}]])
+                @?field)])
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 

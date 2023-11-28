@@ -141,10 +141,3 @@
   *e
   (start "3000")
   )
-
-;; TODO
-;; playground for writing datalevin queries using plain english
-;; - try ingesting the schema via ChatGPT 3.5, ada, babbage and use that to
-;;   write queries (hopefully gpt4 isn't necessary)
-;; https://github.com/wkok/openai-clojure
-

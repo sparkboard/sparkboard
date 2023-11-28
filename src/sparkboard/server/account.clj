@@ -81,7 +81,7 @@
                      :entity/id
                      :account/display-name
                      :account/email
-                     {:image/avatar [:asset/id]}
+                     {:image/avatar [:entity/id]}
                      :account/locale])
 
 (defn account-cookie [id expires]

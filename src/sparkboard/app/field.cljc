@@ -82,31 +82,57 @@
    :video/entry                 {s- [:map {:closed true}
                                      :video/value
                                      :video/type]}
-
+   :images/assets               (sch/ref :many :asset/as-map)
+   :images/order                {s- [:sequential :entity/id]}
+   :link-list/links             {s- [:sequential :link-list/link]}
+   :select/value                {s- :string}
    :field-entry/field           (sch/ref :one)
-   :field-entry/value           {s- [:multi {:dispatch 'first}
-                                     [:field.type/images
-                                      [:tuple 'any?
-                                       [:sequential [:map {:closed true} :image/url]]]]
-                                     [:field.type/link-list
-                                      [:tuple 'any?
-                                       [:map {:closed true}
-                                        [:link-list/items
-                                         [:sequential :link-list/link]]]]]
-                                     [:field.type/select
-                                      [:tuple 'any?
-                                       [:map {:closed true}
-                                        [:select/value :string]]]]
-                                     [:field.type/prose
-                                      [:tuple 'any?
-                                       :prose/as-map]]
-                                     [:field.type/video :video/value
-                                      [:tuple 'any? :video/entry]]]}
+   :field-entry/type            {s- :field/type}
    :field-entry/as-map          {s- [:map {:closed true}
                                      :entity/id
                                      :entity/kind
+                                     :field-entry/type
                                      :field-entry/field
-                                     :field-entry/value]}
+                                     (? :images/assets)
+                                     (? :images/order)
+                                     (? :video/type)
+                                     (? :video/value)
+                                     (? :select/value)
+                                     (? :link-list/links)
+                                     (? :prose/format)
+                                     (? :prose/string)]
+                                 #_(let [common-fields [:entity/id
+                                                        :entity/kind
+                                                        :field-entry/type
+                                                        :field-entry/field]]
+                                     `[:multi {:dispatch :field-entry/type}
+                                       [:field.type/images
+                                        [:map {:closed true}
+                                         ~@common-fields
+                                         :images/assets
+                                         :images/order]]
+
+                                       [:field.type/video
+                                        [:map {:closed true}
+                                         ~@common-fields
+                                         :video/type
+                                         :video/value]]
+
+                                       [:field.type/select
+                                        [:map {:closed true}
+                                         ~@common-fields
+                                         :select/value]]
+
+                                       [:field.type/link-list
+                                        [:map {:closed true}
+                                         ~@common-fields
+                                         :link-list/links]]
+
+                                       [:field.type/prose
+                                        [:map {:closed true}
+                                         ~@common-fields
+                                         :prose/format
+                                         :prose/string]]])}
 
    :field/as-map                {:doc  "Description of a field."
                                  :todo ["Field specs should be definable at a global, org or board level."
@@ -161,17 +187,29 @@
                                                                    :value value})))
                                         doall)}]])
 
+(defn entry-value [entry]
+  (select-keys entry [:images/assets
+                      :images/order
+                      :video/type
+                      :video/value
+                      :select/value
+                      :link-list/links
+                      :prose/format
+                      :prose/string]))
+
 (ui/defview show-entry
   {:key (fn [_ {:keys [entity/id]}] id)}
-  [parent {:as entry :field-entry/keys [field]
-           [value-type value] :field-entry/value}]
+  [parent {:as entry :field-entry/keys [field]}]
   (let [{:field/keys [label]} field
-        ?field (h/use-memo #(forms/field :init value)
+        value  (entry-value entry)
+        ?field (h/use-memo #(forms/field :init (entry-value entry))
                            [(str (:entity/id entry))])
         props  {:label     label
                 :can-edit? (validate/editing-role? (:member/roles parent))
                 :on-save   (fn [x]
-                             (entity/save-attribute! nil (:entity/id entry) :field-entry/value [(:field/type field) x]))}]
+                             (entity/save-attributes! nil
+                                                      (:entity/id entry)
+                                                      x))}]
     (case (:field/type field)
       :field.type/video [ui/pprinted value props]
       :field.type/select [ui/select-field ?field (merge props
@@ -180,14 +218,14 @@
                                                          :persisted-value value
                                                          :options         (:field/options field)})]
       :field.type/link-list [ui/pprinted value props]
-      :field.type/images [ui/pprinted value props]
+      :field.type/images [ui/images-field ?field props]
       :field.type/prose [ui/prose-field ?field props]
       (str "no match" field))))
 
 (defonce !alert (r/atom nil))
 
-#?(:cljs
-   (defn contrasting-text-color [bg-color]
+(defn contrasting-text-color [bg-color]
+  #?(:cljs
      (if bg-color
        (try (let [[r g b] (if (= \# (first bg-color))
                             (let [bg-color (if (= 4 (count bg-color))
@@ -210,17 +248,18 @@
 (defn blank? [color]
   (or (empty? color) (= "#ffffff" color) (= "rgb(255, 255, 255)" color)))
 
-#?(:cljs
-   (defn element-center-y [el]
+
+(defn element-center-y [el]
+  #?(:cljs
      (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
        (+ y (/ height 2)))))
 
-#?(:cljs
-   (defn orderable-props
-     [{:keys [group-id
-              id
-              on-move
-              !should-drag?]}]
+(defn orderable-props
+  [{:keys [group-id
+           id
+           on-move
+           !should-drag?]}]
+  #?(:cljs
      (let [transfer-data (fn [e data]
                            (j/call-in e [:dataTransfer :setData] (str group-id)
                                       (pr-str data)))

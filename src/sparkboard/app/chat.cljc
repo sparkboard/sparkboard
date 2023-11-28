@@ -105,9 +105,9 @@
    :chat/read-last
    {:chat/entity [:entity/id
                   :entity/title
-                  {:image/avatar [:asset/id]}]}
+                  {:image/avatar [:entity/id]}]}
    {:chat/participants [:account/display-name
-                        {:image/avatar [:asset/id]}
+                        {:image/avatar [:entity/id]}
                         :entity/id]}])
 
 (def message-fields

@@ -146,7 +146,7 @@
        (mapv (db/pull `[~@entity/fields
                         {:member/account [:entity/id
                                           :entity/kind
-                                          {:image/avatar [:asset/id]}
+                                          {:image/avatar [:entity/id]}
                                           :account/display-name]}]))))
 
 (q/defquery db:projects

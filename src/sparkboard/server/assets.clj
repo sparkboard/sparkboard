@@ -32,8 +32,9 @@
 (defn link-asset
   "Return a database entity for an asset that is an external link"
   [url]
-  {:asset/id   (dl/to-uuid :asset url)
-   :asset/link url})
+  {:entity/id   (dl/to-uuid :asset url)
+   :entity/kind :asset
+   :asset/link  url})
 
 
 (def amazonica-config
@@ -93,15 +94,16 @@
                             :size         size
                             :content-type content-type
                             :stream       (io/input-stream tempfile)})
-      (dl/transact! [(-> #:asset{:provider          (:db/id provider)
-                                 :id                asset-id
-                                 :size              size
-                                 :content-type      content-type
-                                 :entity/created-at (java.util.Date.)
-                                 :entity/created-by account-id}
+      (dl/transact! [(-> {:asset/provider     (:db/id provider)
+                          :asset/size         size
+                          :asset/content-type content-type
+                          :entity/id          asset-id
+                          :entity/kind        :asset
+                          :entity/created-at  (java.util.Date.)
+                          :entity/created-by  account-id}
                          (validate/assert :asset/as-map))])
       {:status 200
-       :body   {:asset/id asset-id}})))
+       :body   {:entity/id asset-id}})))
 
 (defn resizable? [content-type]
   (not (contains? #{"image/svg+xml" "image/gif"} content-type)))
@@ -131,18 +133,18 @@
                                          http/head
                                          :headers
                                          (get "Content-Type"))]
-           (dl/transact! [[:db/add [:asset/id (:asset/id asset)] :asset/content-type content-type]])
-           [(:asset/id asset) content-type])
+           (dl/transact! [[:db/add [:entity/id (:entity/id asset)] :asset/content-type content-type]])
+           [(:entity/id asset) content-type])
          (catch Exception e
            ;;  if this fails, mark asset as unavailable and return 404.
-           (dl/transact! [[:db/add [:asset/id (:asset/id asset)] :asset/link-failed? true]])
+           (dl/transact! [[:db/add [:entity/id (:entity/id asset)] :asset/link-failed? true]])
            (throw (ex-info "Unable to determine content type" {:status 404}))))))
 
 (defn provider-link [provider asset]
   (case (:asset.provider/type provider)
     :asset.provider/s3 (str (:s3/bucket-host provider)
                             "/"
-                            (:asset/id asset))))
+                            (:entity/id asset))))
 
 (defn asset-link [asset]
   (or (:asset/link asset)
@@ -175,7 +177,7 @@
             {:keys [bytes content-type]} (images/format asset-stream query-params)
             variant      (find-or-create-variant! @!default-provider query-params)]
         (upload-to-provider! {:provider     @!default-provider
-                              :object-key   (str (:asset/id asset) "_" param-string)
+                              :object-key   (str (:entity/id asset) "_" param-string)
                               :size         (count bytes)
                               :content-type content-type
                               :stream       (io/input-stream bytes)})

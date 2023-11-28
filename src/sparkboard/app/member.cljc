@@ -104,7 +104,7 @@
       (ensure-membership! account-id entity-id)
       (dl/q '[:find [(pull ?account [:account/display-name
                                      :entity/id
-                                     {:image/avatar [:asset/id]}]) ...]
+                                     {:image/avatar [:entity/id]}]) ...]
               :in $ ?entity ?search-term
               :where
               [?m :member/entity ?entity]
@@ -115,7 +115,7 @@
     ;; all entities I'm also a member of
     (dl/q '[:find [(pull ?your-account [:account/display-name
                                         :entity/id
-                                        {:image/avatar [:asset/id]}]) ...]
+                                        {:image/avatar [:entity/id]}]) ...]
             :in $ ?my-account ?search-term
             :where
             [?me :member/account ?my-account]

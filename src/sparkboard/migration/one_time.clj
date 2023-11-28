@@ -460,9 +460,13 @@
                           entry-value (when field-type
                                         (case field-type
                                           :field.type/images (let [v (cond-> v (string? v) vector)]
-                                                               (u/guard (into [] (map (partial hash-map :image/url) v)) seq))
-                                          :field.type/link-list {:link-list/items (mapv #(rename-keys % {:label :text
-                                                                                                         :url   :url}) v)}
+                                                               (when (seq v)
+                                                                 (let [assets (mapv assets/link-asset v)]
+                                                                   {:images/assets (set assets)
+                                                                    :images/order  (mapv :entity/id assets)})))
+                                          :field.type/link-list {:link-list/links
+                                                                 (mapv #(rename-keys % {:label :text
+                                                                                        :url   :url}) v)}
                                           :field.type/select {:select/value v}
                                           :field.type/prose (prose v)
                                           :field.type/video (video-value v)
@@ -477,10 +481,11 @@
                                     ;; question, how to have uniqueness
                                     ;; based on tuple of [field-spec/id, field/target]
                                     (fnil conj [])
-                                    {:entity/kind       :field-entry
-                                     :entity/id         (composite-uuid :entry target-id field-id)
-                                     :field-entry/value [field-type entry-value]
-                                     :field-entry/field [:entity/id field-id]})))))
+                                    (merge {:entity/kind       :field-entry
+                                            :entity/id         (composite-uuid :entry target-id field-id)
+                                            :field-entry/type  field-type
+                                            :field-entry/field [:entity/id field-id]}
+                                           entry-value))))))
                   m
                   field-ks)
           (catch Exception e

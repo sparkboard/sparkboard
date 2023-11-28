@@ -81,7 +81,7 @@
      (dl/transact! conn txs)))
 
 (defn to-ref [m id-key] [id-key (id-key m)])
-(def asset-ref #(to-ref % :asset/id))
+(def asset-ref #(to-ref % :entity/id))
 
 
 

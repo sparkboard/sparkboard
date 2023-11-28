@@ -23,7 +23,6 @@
    :s3/bucket-host                         sch/unique-id-str
    :s3/endpoint                            {s- :string}
 
-   :asset/id                               sch/unique-uuid
    :asset/content-type                     {s- :string}
    :asset/size                             {s- 'number?}
    :asset/variants                         (sch/ref :many :asset.variant/as-map)
@@ -32,7 +31,8 @@
    :asset/link-failed?                     {s- :boolean}
 
    :asset/as-map                           {s- [:map {:closed true}
-                                                :asset/id
+                                                :entity/id
+                                                :entity/kind
                                                 (? :asset/variants)
                                                 (? :asset/provider)
                                                 (? :asset/link)
@@ -64,15 +64,16 @@
 
   (sch/install-malli-schemas!)
   (m/explain :asset/as-map {:src            ""
-                            :asset/id       (random-uuid)
+                            :entity/id      (random-uuid)
+                            :entity/kind    :asset
                             :asset/provider :asset.provider/s3}))
 
 #?(:clj
    (defn serve-asset
-     {:endpoint         {:get ["/assets/" :asset/id]}
+     {:endpoint         {:get ["/assets/" ['entity/id :asset-id]]}
       :endpoint/public? true}
-     [req {:keys [asset/id query-params]}]
-     (if-let [asset (some-> (dl/entity [:asset/id (bidi/uuid id)])
+     [req {:keys [asset-id query-params]}]
+     (if-let [asset (some-> (dl/entity asset-id)
                             (u/guard (complement :asset/link-failed?)))]
        (resp/redirect
          (or

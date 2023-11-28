@@ -110,7 +110,7 @@
      [:el dialog/Portal
       [:el dialog/Overlay
        {:class "inset-0 fixed flex items-stretch md:items-start md:pt-[20px] justify-center backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid "}
-       [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none dialog/Content
+       [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none.overflow-y-auto dialog/Content
         (v/props {:class "min-w-[350px] max-w-[900px]"} content)
         body
         #_[:el.outline-none.contents dialog/Close [:div.p-2.absolute.top-0.right-0.z-10 (icons/close "w-5 h-5")]]]]]]))

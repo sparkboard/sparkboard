@@ -69,10 +69,10 @@
                                                      :entity/kind
                                                      :entity/title
                                                      {:image/avatar [:asset/link
-                                                                     :asset/id
+                                                                     :entity/id
                                                                      {:asset/provider [:s3/bucket-host]}]}
                                                      {:image/background [:asset/link
-                                                                         :asset/id
+                                                                         :entity/id
                                                                          {:asset/provider [:s3/bucket-host]}]}]}]}]
                account-id)
        :member/_account

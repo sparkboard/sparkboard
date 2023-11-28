@@ -71,37 +71,30 @@
              :entity/description
              :entity/created-at
              :entity/deleted-at
-             {:image/avatar [:asset/id]}
-             {:image/background [:asset/id]}
+             {:image/avatar [:entity/id]}
+             {:image/background [:entity/id]}
              {:entity/domain [:domain/name]}])
 
-(q/defx save-attribute!
+(q/defx save-attributes!
   {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e a v]
+  [{:keys [account-id]} e m]
   (let [e             (sch/wrap-id e)
         _             (validate/assert-can-edit! e account-id)
         {:as entity :keys [entity/id entity/kind]} (db/entity e)
-        pv            (get entity a)
-        parent-schema (-> (keyword (if kind (name kind) (namespace a)) "as-map")
+        parent-schema (-> (keyword (name kind) "as-map")
                           (@sch/!malli-registry))
-        required?     (-> parent-schema
-                          (@sch/!malli-registry)
-                          (mu/find a)
-                          (mu/-required-map-entry?))
-        txs           (if (nil? v)
-                        [[:db/retract e a]]
-                        [{:db/id e a v}])]
-
-    (when (and required? (nil? v))
-      (validate/validation-failed! "Required field"))
-
-    (when (some? v)
-      (validate/assert {a v} (mu/select-keys parent-schema [a])))
+        txs           [(assoc m :db/id e)]]
+    (validate/assert m (mu/select-keys parent-schema (keys m)))
     (try
       (db/transact! txs)
       (catch Exception e (def E e) (throw e)))
 
-    {:db/id id}))
+    {:txs txs}))
+
+(q/defx save-attribute!
+  {:prepare [az/with-account-id!]}
+  [ctx e a v]
+  (save-attributes! ctx e {a v}))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))
