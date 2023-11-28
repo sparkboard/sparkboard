@@ -293,17 +293,57 @@
                              :unwrap     unwrap-prose
                              :multi-line true}
                             props)))
+(defn parse-video-url [url]
+  (try
+    (let [youtube-patterns [#"youtube\.com/watch\?v=([^&?\s]+)"
+                            #"youtube\.com/embed/([^&?\s]+)"
+                            #"youtube\.com/v/([^&?\s]+)"
+                            #"youtu\.be/([^&?\s]+)"]
+          vimeo-pattern    #"vimeo\.com/(?:video/)?(\d+)"]
+
+      (or (some #(when-let [id (second (re-find % url))]
+                   {:type       :youtube
+                    :youtube/id id
+                    :video/url  url
+                    :video/thumbnail  (str "https://img.youtube.com/vi/" id "/hqdefault.jpg")})
+                youtube-patterns)
+          (when-let [id (second (re-find vimeo-pattern url))]
+            ;; TODO
+            ;; do not rely on `vumbnail.com`
+            ;; see
+            ;; https://stackoverflow.com/questions/1361149/get-img-thumbnails-from-vimeo
+            ;; https://github.com/ThatGuySam/vumbnail
+            {:type            :vimeo
+             :video/url       url
+             :vimeo/id        id
+             :video/thumbnail (str "https://vumbnail.com/" id ".jpg")})))
+    (catch js/Error e nil)))
 
 (defn video-field [?field & [props]]
-  [input-wrapper
-   ;; preview shows persisted value?
-   (when-let [url (:video/url @?field)]
-     ;; differentiate youtube/vimeo, show embeds
-     )
-   ;; validate that url contains vimeo.com or youtube.com
-   (text-field ?field (merge props
-                             {:wrap (partial hash-map :video/url)
-                              :unwrap :video/url}))]
+  (let [youtube-preview-image #(str "https://img.youtube.com/vi/" % "/hqdefault.jpg")
+        youtube-patterns []]
+    [input-wrapper
+     ;; preview shows persisted value?
+
+     (when-let [url (:video/url @?field)]
+       [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.group.cursor-pointer
+        {:href url
+         :target "_blank"
+         :style {:background-image (css-url (:video/thumbnail (parse-video-url url)))
+                 :background-size "cover"
+                 :background-position "center"}}
+        [icons/external-link "absolute text-white top-2 right-2 w-5 h-5 drop-shadow"]
+        [icons/play-circle "w-24 h-24 text-white drop-shadow-2xl transition-all group-hover:scale-110 "]]
+
+
+       ;; differentiate youtube/vimeo
+       ;; show preview thumbnail
+       ;; show embedded video (?) or open in new window
+       )
+     ;; validate that url contains vimeo.com or youtube.com
+     (text-field ?field (merge props
+                               {:wrap   (partial hash-map :video/url)
+                                :unwrap :video/url}))])
   )
 
 (defview checkbox-field

@@ -204,7 +204,7 @@
                                                       (:entity/id entry)
                                                       x))}]
     (case (:field/type field)
-      :field.type/video [ui/pprinted value props]
+      :field.type/video [ui/video-field ?field props]
       :field.type/select [ui/select-field ?field (merge props
                                                         {:wrap            (fn [x] {:select/value x})
                                                          :unwrap          :select/value
