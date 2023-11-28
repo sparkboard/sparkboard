@@ -435,12 +435,9 @@
 
 (defn video-value [v]
   (when (and v (not (str/blank? v)))
-    (cond (re-find #"vimeo" v) {:video/type  :video.type/vimeo-url
-                                :video/value v}
-          (re-find #"youtube" v) {:video/type  :video.type/youtube-url
-                                  :video/value v}
-          :else {:video/type  :video.type/youtube-id
-                 :video/value v})))
+    (cond (re-find #"vimeo" v) {:video/url v}
+          (re-find #"youtube" v) {:video/url v}
+          :else {:video/url (str "https://www.youtube.com/watch?v=" v)})))
 
 (defn parse-fields [managed-by-k to-k]
   (fn [m]

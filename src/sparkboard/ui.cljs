@@ -294,6 +294,18 @@
                              :multi-line true}
                             props)))
 
+(defn video-field [?field & [props]]
+  [input-wrapper
+   ;; preview shows persisted value?
+   (when-let [url (:video/url @?field)]
+     ;; differentiate youtube/vimeo, show embeds
+     )
+   ;; validate that url contains vimeo.com or youtube.com
+   (text-field ?field (merge props
+                             {:wrap (partial hash-map :video/url)
+                              :unwrap :video/url}))]
+  )
+
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]

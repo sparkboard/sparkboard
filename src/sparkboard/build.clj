@@ -129,6 +129,10 @@
          (catch Exception e!
            (prn e)
            (throw e!))))
+  (->> (db/where [[:field/type :field.type/video]])
+       (mapcat :board/_project-fields)
+       (map :entity/title)
+       )
   *e
 
   (one-time/explain-errors!)

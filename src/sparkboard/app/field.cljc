@@ -74,14 +74,9 @@
    :field-option/default        {s- :string},
    :field-option/label          {s- :string},
    :field-option/value          {s- :string},
-   :video/type                  {s- [:enum
-                                     :video.type/youtube-id
-                                     :video.type/youtube-url
-                                     :video.type/vimeo-url]}
-   :video/value                 {s- :string}
+   :video/url                 {s- :string}
    :video/entry                 {s- [:map {:closed true}
-                                     :video/value
-                                     :video/type]}
+                                     :video/url]}
    :images/assets               (sch/ref :many :asset/as-map)
    :images/order                {s- [:sequential :entity/id]}
    :link-list/links             {s- [:sequential :link-list/link]}
@@ -95,8 +90,7 @@
                                      :field-entry/field
                                      (? :images/assets)
                                      (? :images/order)
-                                     (? :video/type)
-                                     (? :video/value)
+                                     (? :video/url)
                                      (? :select/value)
                                      (? :link-list/links)
                                      (? :prose/format)
@@ -190,8 +184,7 @@
 (defn entry-value [entry]
   (select-keys entry [:images/assets
                       :images/order
-                      :video/type
-                      :video/value
+                      :video/url
                       :select/value
                       :link-list/links
                       :prose/format
