@@ -20,7 +20,7 @@
             [sparkboard.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routing]
             [sparkboard.query-params :as query-params]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.icons :as icons]
@@ -421,7 +421,7 @@
     (if (contains? @!loaded url)
       url
       fallback)))
-(routes/path-for `assets/upload!)
+(routing/path-for `assets/upload!)
 
 (defview image-field [?field props]
   (let [src            (asset-src @?field :card)
@@ -432,7 +432,7 @@
         on-file        (fn [file]
                          (forms/touch! ?field)
                          (reset! !selected-blob (js/URL.createObjectURL file))
-                         (with-submission [asset (routes/POST `assets/upload! (doto (js/FormData.)
+                         (with-submission [asset (routing/POST `assets/upload! (doto (js/FormData.)
                                                                                 (.append "files" file)))
                                            :form ?field]
                            (reset! ?field asset)
@@ -534,7 +534,7 @@
   "Given a match, shows the view, loading bar, and/or error message.
    - adds :data to params when a :query is provided"
   [{:as match :match/keys [endpoints params route]}]
-  (if-let [view (-> endpoints :view :endpoint/sym (@routes/!views))]
+  (if-let [view (-> endpoints :view :endpoint/sym (@routing/!views))]
     (when view
       [view (assoc params :account-id (db/get :env/config :account-id))])
     [pprinted match]))
@@ -583,7 +583,7 @@
     label]])
 
 (defview redirect [to]
-  (h/use-effect #(routes/set-path! to)))
+  (h/use-effect #(routing/set-path! to)))
 
 (defn initials [display-name]
   (let [words (str/split display-name #"\s+")]

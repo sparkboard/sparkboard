@@ -10,7 +10,7 @@
             [sparkboard.i18n :refer [tr]]
             [sparkboard.schema :as sch]
             [sparkboard.ui.radix :as radix]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routing]
             [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]
             [sparkboard.ui :as ui]
@@ -46,7 +46,7 @@
 
      (radix/dialog {:props/root {:open           (boolean modal)
                                  :on-open-change #(when-not %
-                                                    (routes/set-modal! nil))}}
+                                                    (routing/set-modal! nil))}}
                    [:Suspense {:fallback default-loading-bar}
                     (ui/show-match modal)])]))
 
@@ -94,7 +94,7 @@
   )
 
 (defn ^:dev/after-load init-endpoints! []
-  (routes/init-endpoints! app/client-endpoints))
+  (routing/init-endpoints! app/client-endpoints))
 
 (defn init []
   (db/merge-schema! @sch/!schema)
@@ -105,8 +105,8 @@
   (render))
 
 (comment
-  (routes/href ['sparkboard.app.board/new])
-  @routes/!routes
+  (routing/href ['sparkboard.app.board/new])
+  @routing/!routes
   (db/transact! [[:db/retractEntity :test]])
   (db/transact! [#_{:db/id :a :b 1}
                  {:db/id :test3 :a :b}
