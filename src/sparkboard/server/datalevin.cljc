@@ -46,9 +46,9 @@
   [org-id ent]
   (case (:entity/kind ent)
     :org (= org-id (:entity/id ent))
-    :board (= org-id (:board/owner ent))
-    :member (= org-id (-> ent :member/entity :board/owner))
-    :project (= org-id (:project/board ent))
+    :board (= org-id (:entity/parent ent))
+    :member (= org-id (-> ent :member/entity :entity/parent))
+    :project (= org-id (:entity/parent ent))
     false))
 
 #?(:clj

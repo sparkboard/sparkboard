@@ -28,6 +28,8 @@
             [shadow.cljs.modern :refer [defclass]])
   (:require-macros [sparkboard.ui :refer [defview with-submission]]))
 
+(defn dev? [] (= "dev" (db/get :env/config :env)))
+
 (defn loading-bar [& [class]]
   [:div.relative
    {:class class}
@@ -141,7 +143,8 @@
                                  :persisted-value :on-save :on-change-value
                                  :wrap :unwrap
                                  :inline?
-                                 :can-edit?))
+                                 :can-edit?
+                                 :label))
 
 (defn compseq [& fs]
   (fn [& args]
@@ -154,8 +157,9 @@
       (on-save value))))
 
 (defn show-label [?field & [label]]
-  (when-let [label (or label (:label ?field))]
-    [input-label {:for (field-id ?field)} label]))
+  (when-let [label (u/some-or label (:label ?field))]
+    [input-label {:class "text-label"
+                  :for (field-id ?field)} label]))
 
 (defn common-props [?field
                     get-value
@@ -204,8 +208,8 @@
                           (assoc :can-edit? (:can-edit? props)
                                  :options (->> options
                                                (map (fn [{:field-option/keys [label value color]}]
-                                                      (radix/select-item {:text  label
-                                                                          :value value})))
+                                                      {:text  label
+                                                       :value value}))
                                                doall)))]
    (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
@@ -220,7 +224,7 @@
                          (and (some-> (:persisted-value props)
                                       (not= (:value props)))
                               [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
-    [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.flex.items-start.p-2 postfix]))
+    [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix]))
 
 (defn keydown-handler [bindings]
   (let [handler (keydownHandler (reduce-kv (fn [out k f]
@@ -295,56 +299,50 @@
                             props)))
 (defn parse-video-url [url]
   (try
-    (let [youtube-patterns [#"youtube\.com/watch\?v=([^&?\s]+)"
-                            #"youtube\.com/embed/([^&?\s]+)"
-                            #"youtube\.com/v/([^&?\s]+)"
-                            #"youtu\.be/([^&?\s]+)"]
-          vimeo-pattern    #"vimeo\.com/(?:video/)?(\d+)"]
-
-      (or (some #(when-let [id (second (re-find % url))]
-                   {:type       :youtube
-                    :youtube/id id
-                    :video/url  url
-                    :video/thumbnail  (str "https://img.youtube.com/vi/" id "/hqdefault.jpg")})
-                youtube-patterns)
-          (when-let [id (second (re-find vimeo-pattern url))]
-            ;; TODO
-            ;; do not rely on `vumbnail.com`
-            ;; see
-            ;; https://stackoverflow.com/questions/1361149/get-img-thumbnails-from-vimeo
-            ;; https://github.com/ThatGuySam/vumbnail
-            {:type            :vimeo
-             :video/url       url
-             :vimeo/id        id
-             :video/thumbnail (str "https://vumbnail.com/" id ".jpg")})))
+    (or (when-let [id (some #(second (re-find % url)) [#"youtube\.com/watch\?v=([^&?\s]+)"
+                                                       #"youtube\.com/embed/([^&?\s]+)"
+                                                       #"youtube\.com/v/([^&?\s]+)"
+                                                       #"youtu\.be/([^&?\s]+)"])]
+          {:type            :youtube
+           :youtube/id      id
+           :video/url       url
+           :video/thumbnail (str "https://img.youtube.com/vi/" id "/hqdefault.jpg")})
+        (when-let [id (some #(second (re-find % url)) [#"vimeo\.com/(?:video/)?(\d+)"
+                                                       #"vimeo\.com/channels/.*/(\d+)"])]
+          {:type            :vimeo
+           :vimeo/id        id
+           :video/url       url
+           ;; 3rd party service; may be unreliable
+           ;; https://stackoverflow.com/questions/1361149/get-img-thumbnails-from-vimeo
+           ;; https://github.com/ThatGuySam/vumbnail
+           :video/thumbnail (str "https://vumbnail.com/" id ".jpg")}))
     (catch js/Error e nil)))
 
-(defn video-field [?field & [props]]
-  (let [youtube-preview-image #(str "https://img.youtube.com/vi/" % "/hqdefault.jpg")
-        youtube-patterns []]
+(defview video-field [?field {:as props :keys [can-edit?]}]
+  (let [!editing? (h/use-state (nil? @?field))]
     [input-wrapper
      ;; preview shows persisted value?
+     [:div.flex.items-center
+      [:div.flex-auto (show-label ?field (:label props))]
+      (when can-edit?
+        [:div.place-self-end [:a {:on-click #(swap! !editing? not)}
+                              [(if @!editing? icons/dash icons/chevron-down) "icon-gray"]]])]
 
+     (when (and can-edit? @!editing?)
+       (text-field ?field (merge props
+                                 {:label       nil
+                                  :placeholder "YouTube or Vimeo url"
+                                  :wrap        (partial hash-map :video/url)
+                                  :unwrap      :video/url})))
      (when-let [url (:video/url @?field)]
-       [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.group.cursor-pointer
-        {:href url
+       [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.group.cursor-pointer.relative
+        {:href   url
          :target "_blank"
-         :style {:background-image (css-url (:video/thumbnail (parse-video-url url)))
-                 :background-size "cover"
-                 :background-position "center"}}
-        [icons/external-link "absolute text-white top-2 right-2 w-5 h-5 drop-shadow"]
-        [icons/play-circle "w-24 h-24 text-white drop-shadow-2xl transition-all group-hover:scale-110 "]]
-
-
-       ;; differentiate youtube/vimeo
-       ;; show preview thumbnail
-       ;; show embedded video (?) or open in new window
-       )
-     ;; validate that url contains vimeo.com or youtube.com
-     (text-field ?field (merge props
-                               {:wrap   (partial hash-map :video/url)
-                                :unwrap :video/url}))])
-  )
+         :style  {:background-image    (css-url (:video/thumbnail (parse-video-url url)))
+                  :background-size     "cover"
+                  :background-position "center"}}
+        [icons/external-link "absolute text-white top-2 right-2 icon-sm drop-shadow"]
+        [icons/play-circle "icon-xl text-white drop-shadow-2xl transition-all group-hover:scale-110 "]])]))
 
 (defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
@@ -368,7 +366,7 @@
                      (update :checked boolean))
         ]
     [:div.flex.flex-col.gap-1.relative
-     [:label.relative.flex
+     [:label.relative.flex.items-center
       (when loading?
         [:div.h-5.w-5.inline-flex.items-center.justify-center.absolute
          [loading:spinner "h-3 w-3"]])
@@ -376,7 +374,7 @@
        (pass-props props)]
       [:div.flex-v.gap-1.ml-2
        (when-let [label (:label ?field)]
-         [:div label])
+         [:div.flex.items-center.h-5 label])
        (when (seq messages)
          (into [:div.text-gray-500] (map view-message) messages))]]]))
 
@@ -653,9 +651,15 @@
 (def hero (v/from-element :div.rounded-lg.bg-gray-100.p-6.width-full))
 
 (defn use-autofocus-ref []
-  (h/use-callback (fn [x]
-                    (some-> x
-                            (j/call :querySelector "input, textarea")
-                            (j/call :focus)))))
+  (h/use-callback (fn [^js x]
+                    (when x
+                      (if (.matches x "input, textarea")
+                        (.focus x)
+                        (some-> (.querySelector x "input, textarea") .focus))))))
 
 (def read-string (partial edn/read-string {:readers {'uuid uuid}}))
+
+(defn prevent-default [f]
+  (fn [^js e]
+    (.preventDefault e)
+    (f e)))

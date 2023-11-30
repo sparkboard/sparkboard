@@ -1,42 +1,46 @@
-{:deps {org.babashka/cli {:mvn/version "0.3.30"}}
- :tasks {:requires ([babashka.fs :as fs]
-                    [cheshire.core :as json]
-                    [clojure.java.shell :refer [sh]]
-                    [babashka.cli :as cli]
-                    [babashka.process :refer [process]]
-                    [clojure.string :as str])
-         :init (do (def apps {:staging "sparkboard-jvm-staging"
-                              :prod "sparkboard-jvm"})
-                   (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
-                   (def env (:env options :staging))
-                   (def app (:app options (apps env))))
-         server (shell "yarn shadow-cljs server -A:dev:nio:local")
-         compile-scrypt (do (shell "mkdir -p classes")
-                            ;; compile SCRYPT (for password hashing)
-                            (when-not (fs/exists? "classes/com")
-                              (shell "clojure -T:compile-java compile-java")))
-         dev (do (run 'compile-scrypt)
-                 (shell "yarn shadow-cljs -A:dev:nio:local clj-run sparkboard.build/start 3000"))
-         cljs (do (shell "yarn install")
-                  (shell "yarn shadow-cljs release web"))
-         clj (do (shell "clojure -A:nio -X:aot")
-                 (shell "clojure -A:nio -X:uberjar"))
-         build (do (run 'compile-scrypt)
-                   (run 'cljs)
-                   (run 'clj))
+{:deps  {org.babashka/cli {:mvn/version "0.3.30"}}
+ :tasks {:requires       ([babashka.fs :as fs]
+                          [cheshire.core :as json]
+                          [clojure.java.shell :refer [sh]]
+                          [babashka.cli :as cli]
+                          [babashka.process :refer [process]]
+                          [clojure.string :as str])
+         :init           (do (def apps {:staging "sparkboard-jvm-staging"
+                                        :prod    "sparkboard-jvm"})
+                             (def options (cli/parse-opts *command-line-args* {:aliases {:e :env :a :app}}))
+                             (def env (:env options :staging))
+                             (def app (:app options (apps env))))
+         server          (shell "yarn shadow-cljs server -A:dev:nio:local")
+         compile-scrypt  (do (shell "mkdir -p classes")
+                             ;; compile SCRYPT (for password hashing)
+                             (when-not (fs/exists? "classes/com")
+                               (shell "clojure -T:compile-java compile-java")))
+         dev             (do (run 'compile-scrypt)
+                             (shell "yarn shadow-cljs -A:dev:nio:local clj-run sparkboard.build/start 3000"))
+         cljs            (do (shell "yarn install")
+                             (shell "yarn shadow-cljs release web"))
+         clj             (do (shell "clojure -A:nio -X:aot")
+                             (shell "clojure -A:nio -X:uberjar"))
+         build           (do (run 'compile-scrypt)
+                             (run 'cljs)
+                             (run 'clj))
          fly:set-secrets (let [path (str "src/." (name env) ".config.edn")]
                            (if-let [secrets (slurp path)]
                              (shell {:in secrets} (str "fly -a " app " secrets set SPARKBOARD_CONFIG=-"))
                              (prn (str "No secrets found: " path))))
-         fly:down (shell (str "fly -a " app " scale count 0"))
-         fly:up (shell (str "fly -a " app " scale count 1"))
-         fly:clj (do (run 'clj) (run 'fly:deploy))
-         fly:deploy (shell (str "flyctl deploy -a " app))
-         fly:deploy-ci (shell (str "flyctl deploy -a " app " --remote-only"))
-         fly (shell (str "fly -a " app " " (str/join " " *command-line-args*)))
+         fly:down        (shell (str "fly -a " app " scale count 0"))
+         fly:up          (shell (str "fly -a " app " scale count 1"))
+         fly:clj         (do (run 'clj) (run 'fly:deploy))
+         fly:deploy      (shell (str "flyctl deploy -a " app))
+         fly:deploy-ci   (shell (str "flyctl deploy -a " app " --remote-only"))
+         fly             (shell (str "fly -a " app " " (str/join " " *command-line-args*)))
 
-         build-report (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
-         run (shell "java -jar target/sparkboard.jar")
+         build-report    (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
+         run             (shell "java -jar target/sparkboard.jar")
+
+         migrate:fetch   (yarn shadow-cljs clj-run sparkboard.migration.core/tx!)
+         migrate:tx      (do (shell "rm -rf .db/datalevin")
+                             (shell "yarn shadow-cljs clj-run sparkboard.migration.core/tx!"))
 
          ;; this step is run manually after verifying a staging build.
          staging:promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}

@@ -24,7 +24,7 @@
 (q/defx db:new!
   {:prepare [az/with-account-id!]}
   [{:as what :keys [account-id board-id project]}]
-  (validate/assert project [:map {:closed true} :entity/title :project/board])
+  (validate/assert project [:map {:closed true} :entity/title :entity/parent])
   ;; TODO authorization
   (let [project (-> project
                     ;; Auth: board allows projects to be created by current user (must be a member)
@@ -63,7 +63,7 @@
       [ui/show-markdown "Creating a new project is a multi-step process."]
 
       (ui/with-form [!project {:entity/title  ?title
-                               :project/board board-id}]
+                               :entity/parent board-id}]
         [:form
          {:ref       nil #_(ui/use-autofocus-ref)
           :on-submit (fn [e]

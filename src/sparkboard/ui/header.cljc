@@ -65,7 +65,7 @@
       [:button.relative.flex.items-center.icon-light-gray.px-1.rounded {:tab-index 0}
        ;; unread-count bubble
        (when unread
-         [:div
+         [:div.z-30
           {:style {:width  10
                    :height 10
                    :top    "50%"
@@ -74,7 +74,7 @@
                    :position "absolute"}
            :class ["rounded-full"
                    "bg-focus-accent focus-visible:bg-black"]}])
-       [icons/chat-bubble-left "w-7 h-7 -mb-[2px]"]]]
+       [icons/chat-bubble-left "icon-xl -mb-[2px]"]]]
      [:el Popover/Portal
       {:container (yu/find-or-create-element :radix-modal)}
       [:Suspense {}

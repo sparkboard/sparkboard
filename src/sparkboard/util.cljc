@@ -113,8 +113,8 @@
                         [(first args) (rest args)]
                         [nil args])
            [options args] (if (map? (first args))
-                           [(first args) (rest args)]
-                           [nil args])
+                            [(first args) (rest args)]
+                            [nil args])
            [argv body] [(first args) (rest args)]]
        [name doc options argv body])))
 
@@ -125,3 +125,17 @@
 
 (defmacro pprint [x]
   `(~'clojure.pprint/pprint ~x))
+
+(defmacro some-or [& forms]
+  (loop [forms (reverse forms)
+         out   nil]
+    (if (empty? forms)
+      out
+      (recur (rest forms)
+             `(if-some [v# ~(first forms)]
+                v#
+                ~out)))))
+
+(defmacro tapm [& vals]
+  `(tap> (hash-map ~@(->> vals
+                          (mapcat (fn [sym] `['~sym ~sym]))))))

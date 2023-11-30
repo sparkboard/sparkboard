@@ -31,6 +31,7 @@
      :entity/title              {:doc         "Title of entity, for card/header display."
                                  s-           :string
                                  :db/fulltext true}
+     :entity/parent             (sch/ref :one)
      :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message :field]}
      :entity/description        {:doc "Description of an entity (for card/header display)"
                                  s-   :prose/as-map
@@ -178,7 +179,7 @@
                         (some-> (routes/entity-route entity :settings) routes/href))]
     [radix/dropdown-menu {:id       :entity-settings
                           :trigger  [:div.hover:bg-gray-200.rounded-full.icon-gray.w-10.h-10.flex.items-center.justify-center.focus-visible:bg-gray-200.mx-1.self-center
-                                     [icons/ellipsis-horizontal "w-4 h-5"]]
+                                     [icons/ellipsis-horizontal "icon-sm"]]
                           :children [[{:on-select #(routes/set-path! route)} "Settings"]]}]))
 
 (ui/defview row

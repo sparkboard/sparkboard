@@ -29,7 +29,7 @@
   (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 "
        (if selected?
          "text-txt/50 cursor-default "
-         (str "cursor-pointer hover:bg-primary/5 "
+         (str "hover:bg-primary/5 "
               "data-[highlighted]:bg-primary/5 data-[highlighted]:outline-none"))))
 
 (defn menu-item [props & children]
@@ -67,6 +67,16 @@
                        (into [menu-item props] children)))
                    children))]])))
 
+(v/defview select-item
+  {:key :value}
+  [{:keys [value text icon]}]
+  (v/x
+    [:el sel/Item {:class      (menu-item-classes false)
+                   :value      value
+                   :text-value text}
+     [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
+     [:el sel/ItemIndicator]]))
+
 (defn select-menu [{:as     props :keys [placeholder id
                                          can-edit?]
                     options :options
@@ -81,27 +91,17 @@
       [:el sel/Value {:placeholder (v/x placeholder)}]
       [:div.flex-grow]
       (when can-edit?
-        [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down "w-5 h-5")])]
+        [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down)])]
      [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
       [:el sel/Content {:class menu-content-classes}
-       [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto w-4 h-4")]
-       (into [:el sel/Viewport {}] options)
-       [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto w-4 h-4")]
+       [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
+       (into [:el sel/Viewport {}] (map select-item) options)
+       [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
        [:el sel/Arrow]]]]))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))
 (def select-group (v/from-element :el sel/Group))
-
-(v/defview select-item
-  {:key :value}
-  [{:keys [value text icon]}]
-  (v/x
-    [:el sel/Item {:class      (menu-item-classes false)
-                   :value      value
-                   :text-value text}
-     [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
-     [:el sel/ItemIndicator]]))
 
 (defn dialog [{:props/keys [root
                             content]} & body]
@@ -163,16 +163,18 @@
                          :on-open-change (fn [open?]
                                            (when-not open? (reset! !state nil)))})))
 
-(defn tooltip [tip child]
-  (if (seq tip)
-    (v/x
-      [:el tooltip/Provider {:delay-duration 200}
-       [:el tooltip/Root
-        [:el tooltip/Trigger child]
-        [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
-         [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
-          tip
-          [:el tooltip/Arrow]]]]])
-    child)
+(defn tooltip
+  ([tip child] (tooltip {:delay-duration 200} tip child))
+  ([props tip child]
+   (if (seq tip)
+     (v/x
+       [:el tooltip/Provider props
+        [:el tooltip/Root
+         [:el.cursor-default tooltip/Trigger child]
+         [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
+          [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
+           tip
+           [:el tooltip/Arrow]]]]])
+     child))
 
   )

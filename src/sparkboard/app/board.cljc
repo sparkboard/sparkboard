@@ -37,7 +37,6 @@
                                                                 :label/member.many
                                                                 :label/project.one
                                                                 :label/project.many] :string]},
-   :board/owner                              (sch/ref :one)
    :board/instructions                       {:doc "Secondary instructions for a board, displayed above projects"
                                               s-   :prose/as-map},
    :board/max-projects-per-member            {:doc "Set a maximum number of projects a member may join"
@@ -71,8 +70,8 @@
                                                   :entity/created-at
                                                   :entity/public?
                                                   :entity/kind
+                                                  :entity/parent
 
-                                                  :board/owner
                                                   :board/registration-open?
 
                                                   (? :image/avatar)
@@ -133,7 +132,7 @@
   [{:keys [board-id member/roles]}]
   (if-let [board (db/pull `[~@entity/fields
                             :board/registration-open?
-                            {:board/owner [~@entity/fields :org/show-org-tab?]}]
+                            {:entity/parent [~@entity/fields :org/show-org-tab?]}]
                           board-id)]
     (merge board {:member/roles roles})
     (throw (ex-info "Board not found!" {:status 400}))))
@@ -152,17 +151,17 @@
 (q/defquery db:projects
   {:prepare [(az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
-  (->> (db/where [[:project/board board-id]])
+  (->> (db/where [[:entity/parent board-id]])
        (remove :entity/archived?)
        (mapv (db/pull `[~@entity/fields]))))
 
 (defn db:authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? board account-id)
-                (validate/can-edit? (:board/owner board) account-id))
+                (validate/can-edit? (:entity/parent board) account-id))
     (validate/permission-denied!)))
 
 (defn db:authorize-create! [board account-id]
-  (when-not (validate/can-edit? (:board/owner board) account-id)
+  (when-not (validate/can-edit? (:entity/parent board) account-id)
     (validate/permission-denied!)))
 
 (q/defx db:new!
@@ -189,7 +188,7 @@
     (forms/with-form [!board (u/prune
                                {:entity/title  ?title
                                 :entity/domain ?domain
-                                :board/owner   [:entity/id (uuid (?owner
+                                :entity/parent [:entity/id (uuid (?owner
                                                                    :init
                                                                    (or (-> params :query-params :org)
                                                                        (str (-> (db/get :env/config :account)
@@ -213,9 +212,9 @@
                               :options
                               (->> owners
                                    (map (fn [{:keys [entity/id entity/title image/avatar]}]
-                                          (v/x [radix/select-item {:value (str id)
-                                                                   :text  title
-                                                                   :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]}]))))})])
+                                          {:value (str id)
+                                           :text  title
+                                           :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]})))})])
 
        [ui/text-field ?title {:label (tr :tr/title)}]
        (domain/domain-field ?domain)
@@ -320,6 +319,7 @@
 
       (field/fields-editor board :board/member-fields)
       (field/fields-editor board :board/project-fields)
+
       ;; TODO
       ;; - :board/member-fields
       ;; - :board/project-fields

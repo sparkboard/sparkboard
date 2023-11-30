@@ -84,6 +84,24 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/video-field                     {:en "Video field"
                                           :fr "Champ vidéo"
                                           :es "Campo de video"},
+     :tr/video                           {:en "Video"
+                                          :fr "Vidéo"
+                                          :es "Video"},
+     :tr/menu                            {:en "Menu"
+                                          :fr "Menu"
+                                          :es "Menú"},
+     :tr/links                           {:en "Links"
+                                          :fr "Liens"
+                                          :es "Enlaces"},
+     :tr/image                           {:en "Image"
+                                          :fr "Image"
+                                          :es "Imagen"},
+     :tr/text                            {:en "Text"
+                                          :fr "Texte"
+                                          :es "Texto"},
+     :tr/add                             {:en "Add"
+                                          :fr "Ajouter"
+                                          :es "Añadir"},
      :tr/selection-menu                  {:en "Selection menu"
                                           :fr "Menu de sélection"
                                           :es "Menú de selección"},

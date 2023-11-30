@@ -75,18 +75,18 @@
                        `[:find [(pull ?board ~entity/fields) ...]
                          :in $ ?terms ?org
                          :where
-                         [?board :board/owner ?org]
+                         [?board :entity/parent ?org]
                          [(fulltext $ ?terms {:top 100}) [[?board _ _]]]])
                      q
                      org-id)
      :projects (->> (dl/q (u/template
                             `[:find [(pull ?project [~@entity/fields
                                                      :project/sticky?
-                                                     {:project/board [:entity/id]}]) ...]
+                                                     {:entity/parent [:entity/id]}]) ...]
                               :in $ ?terms ?org
                               :where
-                              [?board :board/owner ?org]
-                              [?project :project/board ?board]
+                              [?board :entity/parent ?org]
+                              [?project :entity/parent ?board]
                               [(fulltext $ ?terms {:top 100}) [[?project _ _]]]])
                           q
                           org-id)

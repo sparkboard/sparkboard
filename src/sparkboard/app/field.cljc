@@ -4,8 +4,10 @@
             [clojure.string :as str]
             [inside-out.forms :as forms]
             [sparkboard.app.entity :as entity]
+            [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.schema :as sch :refer [? s-]]
+            [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
@@ -15,7 +17,8 @@
             [yawn.view :as v]
             [re-db.api :as db]
             [re-db.reactive :as r]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            [sparkboard.query :as q]))
 
 ;; TODO
 
@@ -43,7 +46,6 @@
   {:image/url                   {s- :http/url}
 
    :field/hint                  {s- :string},
-   :field/id                    sch/unique-uuid
    :field/label                 {s- :string},
    :field/default-value         {s- :string}
    :field/options               {s- (? [:sequential :field/option])},
@@ -74,7 +76,7 @@
    :field-option/default        {s- :string},
    :field-option/label          {s- :string},
    :field-option/value          {s- :string},
-   :video/url                 {s- :string}
+   :video/url                   {s- :string}
    :video/entry                 {s- [:map {:closed true}
                                      :video/url]}
    :images/assets               (sch/ref :many :asset/as-map)
@@ -127,15 +129,17 @@
                                          ~@common-fields
                                          :prose/format
                                          :prose/string]]])}
-
+   :field/published?            {s- :boolean}
    :field/as-map                {:doc  "Description of a field."
                                  :todo ["Field specs should be definable at a global, org or board level."
                                         "Orgs/boards should be able to override/add field.spec options."
                                         "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
                                  s-    [:map {:closed true}
-                                        :field/id
+                                        :entity/id
+                                        :entity/kind
                                         :field/order
                                         :field/type
+                                        (? :field/published?)
                                         (? :field/hint)
                                         (? :field/label)
                                         (? :field/options)
@@ -158,16 +162,17 @@
                  :field/show-on-card?
                  :field/type])
 
-(def field-types {:field.type/video     {:icon  icons/video
-                                         :label (tr :tr/video-field)}
+(def field-types {:field.type/prose     {:icon  icons/text
+                                         :label (tr :tr/text)}
                   :field.type/select    {:icon  icons/dropdown-menu
-                                         :label (tr :tr/selection-menu)}
+                                         :label (tr :tr/menu)}
+                  :field.type/video     {:icon  icons/video
+                                         :label (tr :tr/video)}
                   :field.type/link-list {:icon  icons/link-2
-                                         :label (tr :tr/web-links)}
+                                         :label (tr :tr/links)}
                   :field.type/images    {:icon  icons/photo
-                                         :label (tr :tr/image-field)}
-                  :field.type/prose     {:icon  icons/text
-                                         :label (tr :tr/text-field)}})
+                                         :label (tr :tr/image)}
+                  })
 
 (ui/defview show-select [?field {:field/keys [label options]} entry]
   [:div.flex-v.gap-2
@@ -177,8 +182,8 @@
                        :read-only? (:can-edit? ?field)
                        :options    (->> options
                                         (map (fn [{:field-option/keys [label value color]}]
-                                               (radix/select-item {:text  label
-                                                                   :value value})))
+                                               {:text  label
+                                                :value value}))
                                         doall)}]])
 
 (defn entry-value [entry]
@@ -192,13 +197,14 @@
 
 (ui/defview show-entry
   {:key (fn [_ {:keys [entity/id]}] id)}
-  [parent {:as entry :field-entry/keys [field]}]
-  (let [{:field/keys [label]} field
+  [{:keys [parent entry can-edit?]}]
+  (let [{:field-entry/keys [field]} entry
+        {:field/keys [label]} field
         value  (entry-value entry)
         ?field (h/use-memo #(forms/field :init (entry-value entry))
                            [(str (:entity/id entry))])
         props  {:label     label
-                :can-edit? (validate/editing-role? (:member/roles parent))
+                :can-edit? can-edit?
                 :on-save   (fn [x]
                              (entity/save-attributes! nil
                                                       (:entity/id entry)
@@ -336,7 +342,7 @@
               {:class ["w-6 -mr-2"
                        "opacity-0 group-hover:opacity-100"
                        "cursor-drag"]})
-       [icons/drag-dots "w-4"]]]
+       [icons/drag-dots]]]
      [ui/text-field ?label {:on-save       save!
                             :wrapper-class "flex-auto"
                             :class         "rounded-sm relative focus:z-2"
@@ -399,9 +405,9 @@
   [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-1.pb-6
 
    [:div.col-span-2.flex-v.gap-3
-    (entity/use-persisted field :field/label ui/text-field {:class      "bg-white"
+    (entity/use-persisted field :field/label ui/text-field {:class      "bg-white text-sm"
                                                             :multi-line true})
-    (entity/use-persisted field :field/hint ui/text-field {:class       "bg-white text-xs"
+    (entity/use-persisted field :field/hint ui/text-field {:class       "bg-white text-sm"
                                                            :multi-line  true
                                                            :placeholder "Further instructions"})]
 
@@ -409,17 +415,18 @@
      (entity/use-persisted field :field/options options-field))
    #_[:div.flex.items-center.gap-2.col-span-2
       [:span.font-semibold.text-xs.uppercase (:label (field-types (:field/type field)))]]
-   (entity/use-persisted field :field/required? ui/checkbox-field)
-   (entity/use-persisted field :field/show-as-filter? ui/checkbox-field)
-   (when (= attribute :board/member-fields)
-     (entity/use-persisted field :field/show-at-registration? ui/checkbox-field))
-   (entity/use-persisted field :field/show-on-card? ui/checkbox-field)])
+   [:div.contents.labels-normal
+    (entity/use-persisted field :field/required? ui/checkbox-field)
+    (entity/use-persisted field :field/show-as-filter? ui/checkbox-field)
+    (when (= attribute :board/member-fields)
+      (entity/use-persisted field :field/show-at-registration? ui/checkbox-field))
+    (entity/use-persisted field :field/show-on-card? ui/checkbox-field)]])
 
 (ui/defview field-editor
-  {:key (fn [attribute order-by field] (:entity/id field))}
-  [attribute order-by field]
+  {:key (comp :entity/id :field)}
+  [{:keys [attribute order-by default-expanded? field]}]
   (let [field-type (field-types (:field/type field))
-        [expanded? expand!] (h/use-state false)
+        [expanded? expand!] (h/use-state default-expanded?)
         [handle-props drag-props indicator] (orderable-props {:group-id attribute
                                                               :id       (sch/wrap-id (:entity/id field))
                                                               :on-move
@@ -441,8 +448,8 @@
       ;; expandable label group
       [:div.w-5.-ml-8.flex.items-center.justify-center.hover:cursor-grab.active:cursor-grabbing.opacity-0.group-hover:opacity-50
        handle-props
-       [icons/drag-dots "w-4"]]
-      [(:icon field-type) "cursor-drag w-6 h-6 text-gray-700 self-center"]
+       [icons/drag-dots "icon-sm"]]
+      [(:icon field-type) "cursor-drag icon-lg text-gray-700 self-center"]
       [:div.flex-auto.flex-v.gap-2
        (or (-> (:field/label field)
                (u/guard (complement str/blank?)))
@@ -454,20 +461,76 @@
      (when expanded?
        (field-editor-detail attribute field))]))
 
+(q/defx add-field
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} e a field]
+  (validate/assert-can-edit! e account-id)
+  (let [e               (sch/wrap-id e)
+        existing-fields (->> (a (db/entity e))
+                             (sort-by :field/order))
+        field           (-> field
+                            (assoc :field/order (or (:field/order (last existing-fields))
+                                                    0)
+                                   :entity/kind :field
+                                   :entity/id (dl/new-uuid :field)))]
+    (validate/assert field :field/as-map)
+    (db/transact! [(assoc field :db/id -1)
+                   [:db/add e a -1]])
+    {:entity/id (:entity/id field)}))
+
 (ui/defview fields-editor [entity attribute]
-  (let [?field (forms/field :attribute attribute)]
-    [ui/input-wrapper
-     (when-let [label (or (:label ?field) (tr attribute))] [ui/input-label label])
-     [:div.flex-v.border.rounded
-      (->> (get entity attribute)
-           (sort-by :field/order)
-           (map (partial field-editor attribute :field/order))
+  (let [?field           (forms/field :attribute attribute)
+        !new-field       (h/use-state nil)
+        !autofocus-ref   (ui/use-autofocus-ref)
+        fields           (->> (get entity attribute)
+                              (sort-by :field/order))
+        !field-count     (h/use-ref (count fields))
+        default-expanded (let [last-id (:entity/id (last fields))
+                               id (when (= (count fields) (inc @!field-count))
+                                    last-id)]
+                           (reset! !field-count (count fields))
+                           id)]
+    [ui/input-wrapper {:class "labels-semibold"}
+     (when-let [label (or (:label ?field) (tr attribute))]
+       [ui/input-label {:class "flex items-center"}
+        label])
+     [:div.flex-v.border.rounded.labels-sm
+      (->> fields
+           (map (fn [field]
+                  (field-editor {:attribute         attribute
+                                 :order-by          :field/order
+                                 :default-expanded? (= default-expanded (:entity/id field))
+                                 :field             field})))
            doall)]
-     [:div
-      [radix/alert !alert]
-      (radix/dropdown-menu {:id       :add-field
-                            :trigger  [:button.flex.gap-2.btn.btn-light.px-4.py-2.relative
-                                       "Add"
-                                       [icons/chevron-down "w-4 h-4"]]
-                            :children (for [[type {:keys [icon label]}] field-types]
-                                        [{:on-select #()} [:div.flex.gap-3.items-center.h-8 [icon "w-5 h-5"] label]])})]]))
+     (if-let [{:as   !form
+               :syms [?type ?label]} @!new-field]
+       [:div
+        [:form.flex.gap-2.items-stretch
+         {:on-submit (ui/prevent-default
+                       (fn [e]
+                         (forms/try-submit+ !form
+                           (p/do
+                             (add-field nil (:entity/id entity) attribute @!form)
+                             (reset! !new-field nil)))))}
+         [(:icon (field-types @?type)) "icon-lg text-gray-700 self-center mx-2"]
+         [ui/text-field ?label {:label         false
+                                :ref           !autofocus-ref
+                                :placeholder   (:label ?label)
+                                :wrapper-class "flex-auto"}]
+         [:button.btn.btn-light {:type "submit"}
+          (tr :tr/add)]]
+        [:div.pl-12.py-2 (ui/show-field-messages !form)]]
+       (radix/dropdown-menu {:id       :add-field
+                             :trigger  [:div.text-sm.text-gray-500.font-normal.hover:underline.cursor-pointer.place-self-center
+                                        "Add Field"]
+                             :children (for [[type {:keys [icon label]}] field-types]
+                                         [{:on-select #(reset! !new-field
+                                                               (forms/form {:field/type       ?type
+                                                                            :field/label      ?label
+                                                                            :field/published? (case type
+                                                                                                :field.type/select false
+                                                                                                true)}
+                                                                           :init {'?type type}
+                                                                           :required [?label]))}
+                                          [:div.flex.gap-4.items-center.cursor-default [icon "text-gray-600"] label]])}))
+     [radix/alert !alert]]))

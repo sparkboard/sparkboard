@@ -34,8 +34,7 @@
                     s-   :string}
      :request/map  {s- [:map {:closed true} :request/text]}}
 
-    {:project/board             (sch/ref :one)
-     :project/open-requests     {:doc "Currently active requests for help"
+    {:project/open-requests     {:doc "Currently active requests for help"
                                  s-   [:sequential :request/map]},
      :project/team-complete?    {:doc "Project team marked sufficient"
                                  s-   :boolean}
@@ -55,7 +54,7 @@
      :project/as-map            {s- [:map {:closed true}
                                      :entity/id
                                      :entity/kind
-                                     :project/board
+                                     :entity/parent
                                      (? :entity/archived?)
                                      (? :entity/field-entries)
                                      (? :entity/video)
@@ -102,7 +101,7 @@
       :prepare  [az/with-account-id
                  (member/member:log-visit! :project-id)]}
      [{:keys [project-id]}]
-     (q/pull `[{:project/board ~entity/fields}
+     (q/pull `[{:entity/parent ~entity/fields}
                ~@entity/fields
                :project/sticky?]
              project-id)))
@@ -116,15 +115,15 @@
                           [radix/select-menu
                            (v/merge-props props
                                           {:id          :project-action
-                                           :can-edit? true
+                                           :can-edit?   true
                                            :placeholder [:span.text-gray-500 (tr :tr/choose-action)]
-                                           :options     [[radix/select-item {:text  (tr :tr/copy-link)
-                                                                             :value "LINK"}]
-                                                         [radix/select-item {:text  (tr :tr/start-chat)
-                                                                             :value "CHAT"}]]})])
+                                           :options     [{:text  (tr :tr/copy-link)
+                                                          :value "LINK"}
+                                                         {:text  (tr :tr/start-chat)
+                                                          :value "CHAT"}]})])
           add-btn       (fn [props]
                           (v/x [:button.p-3.text-gray-500.items-center.inline-flex.btn-darken.flex-none.rounded props
-                                [icons/plus "w-5 h-5"]]))
+                                [icons/plus "icon-sm scale-125"]]))
           sample        (fn [label action]
                           (when-not (some #{label} (map (comp deref '?label) ?actions))
                             (v/x
@@ -178,10 +177,11 @@
        ])))
 
 (q/defquery db:read
+  {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id]}]
   (q/pull `[~@entity/fields
             {:entity/field-entries [:*]}
-            {:project/board
+            {:entity/parent
              [~@entity/fields
               {:board/project-fields ~field/field-keys}]}] project-id))
 
@@ -189,17 +189,28 @@
   {:route       ["/p/" ['entity/id :project-id]]
    :view/target :modal}
   [params]
-  (let [{:as           project
-         :entity/keys  [title
-                        description
-                        video]
-         :member/keys  [roles]
-         :project/keys [board
-                        badges]} (db:read params)
-        can-edit? (validate/editing-role? roles)
-        entries   (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
+  (let [{:as          project
+         :entity/keys [title
+                       description
+                       video]
+         :keys        [:entity/parent
+                       :project/badges]} (db:read params)
+        !dev-edit? (h/use-state nil)
+        can-edit?  (if-some [edit? @!dev-edit?]
+                     edit?
+                     (validate/editing-role? (:member/roles project)))
+        entries    (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
     [:<>
-     #_[ui/entity-header board]
+     (when (ui/dev?)
+       [:div.p-body.bg-gray-100.border-b.flex.gap-3
+        [:div.flex-auto.text-sm [ui/pprinted (:member/roles project)]]
+        [radix/select-menu {:value           @!dev-edit?
+                            :on-value-change (partial reset! !dev-edit?)
+                            :can-edit?       true
+                            :options         [{:value nil :text "Current User"}
+                                              {:value true :text "Editor"}
+                                              {:value false :text "Viewer"}]}]])
+     #_[ui/entity-header parent]
      [:div.p-body.flex-v.gap-6
       [:div.flex.items-start.gap-2
        [:h1.font-semibold.text-3xl.flex-auto title]
@@ -210,9 +221,10 @@
          (into [:ul]
                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
                badges)])
-      (map (partial field/show-entry project) entries)
+      (map #(field/show-entry {:can-edit? can-edit?
+                               :parent    project
+                               :entry     %}) entries)
       [:section.flex-v.gap-2.items-start.mt-32
-
        [community-actions project]]
       (when-let [vid video]
         [:section [:h3 (tr :tr/video)]

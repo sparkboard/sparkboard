@@ -546,7 +546,7 @@
                ::always lookup-domain
                ::defaults {:board/registration-open? true
                            :entity/public?           true
-                           :board/owner              (uuid-ref :org "base")}
+                           :entity/parent            (uuid-ref :org "base")}
                "createdAt" (& (xf #(Date. %)) (rename :entity/created-at))
                "socialFeed" (rename :entity/social-feed)
                "localeSupport" (rename :entity/locale-suggestions)
@@ -696,7 +696,7 @@
 
                "css" (rename :board/custom-css)
                "parent" (& (xf (comp :ref parse-sparkboard-id))
-                           (rename :board/owner))
+                           (rename :entity/parent))
                "authMethods" rm
                "allowPublicViewing" (rename :entity/public?)
                "communityVoteSingle" (rename :member-vote/open?)
@@ -954,8 +954,8 @@
 
                                        :field_description (& (xf prose)
                                                              (rename :project/admin-description))
-                                       :boardId (uuid-ref-as :board :project/board)
-                                       ::always (parse-fields :project/board :entity/field-entries)
+                                       :boardId (uuid-ref-as :board :entity/parent)
+                                       ::always (parse-fields :entity/parent :entity/field-entries)
                                        :lastModifiedBy (& (xf member->account-uuid)
                                                           (uuid-ref-as :account :entity/modified-by))
                                        :tags rm             ;; no longer used - fields instead
@@ -1323,11 +1323,6 @@
 
   ;; generate examples for every schema entry
   (mapv (juxt identity mg/generate) (vals @sch/!entity-schemas))
-
-  (db/transact! (apply concat
-                       (for [field (db/where [:field/id])]
-                         [[:db/retract (:db/id field) :field/id]
-                          [:db/add (:db/id field) :entity/id (:field/id field)]])))
 
   (clojure.core/time (count (root-entities)))
   (firebase-account->email "m_5898a0e8f869e80400b2cfef" :foo)

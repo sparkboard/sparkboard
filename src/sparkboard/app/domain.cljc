@@ -79,12 +79,17 @@
 
 #?(:cljs
    (defn domain-field [?domain & [props]]
-     (ui/text-field ?domain (merge {:wrap          (fn [v]
-                                                     (when-not (str/blank? v)
-                                                       {:domain/name (qualify-domain (normalize-domain v))}))
-                                    :unwrap        (fn [v]
-                                                     (or (some-> v :domain/name unqualify-domain) ""))
-                                    :auto-complete "off"
-                                    :spell-check   false
-                                    :postfix       [:span.text-sm.text-gray-500 ".sparkboard.com"]}
-                                   props))))
+     [ui/input-wrapper
+      [ui/show-label ?domain]
+      [:div.flex.gap-2.items-stretch
+       (ui/text-field ?domain (merge {:wrap          (fn [v]
+                                                       (when-not (str/blank? v)
+                                                         {:domain/name (qualify-domain (normalize-domain v))}))
+                                      :unwrap        (fn [v]
+                                                       (or (some-> v :domain/name unqualify-domain) ""))
+                                      :auto-complete "off"
+                                      :spell-check   false
+                                      :wrapper-class "flex-auto"}
+                                     props
+                                     {:label false}))
+       [:div.flex.items-center.text-sm.text-gray-500.h-10 ".sparkboard.com"]]]))

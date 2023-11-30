@@ -96,33 +96,6 @@
           (pprint [:failed tx])
           (throw e)))))
 
-
-  (require '[sparkboard.migration.one-time :as one-time]
-           '[datalevin.core :as dl]
-           '[sparkboard.server.datalevin :as sd]
-           '[sparkboard.server.env :as env]
-           '[sparkboard.schema :as sch])
-
-  ;; reset db (may break fulltext index?)
-  (do
-    (dl/clear sd/conn)
-    (alter-var-root #'sparkboard.server.datalevin/conn (constantly (dl/get-conn (env/db-path "datalevin") {})))
-    (alter-var-root #'re-db.api/*conn* (constantly sd/conn)))
-
-  (do
-
-    (def entities (one-time/all-entities))
-
-    ;; transact schema
-    (db/merge-schema! @sch/!schema)
-    ;; upsert lookup refs
-    (db/transact! (mapcat sch/unique-keys entities))
-    ;; transact entities
-    (-> (db/transact! (one-time/all-entities))
-        :tx-data
-        count
-        (str " datoms")))
-
   ;; add entities, print and stop if one fails
   (doseq [e entities]
     (try (db/transact! [e])
