@@ -7,7 +7,7 @@
             [sparkboard.server.datalevin :as dl]
             [sparkboard.validate :as vd]
             [sparkboard.transit :as t]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.server.env :as env]
             [re-db.api :as db]
             [ring.middleware.oauth2 :as oauth2]

@@ -49,6 +49,7 @@
                                          (url-encode v)))
                           out)) 
                    [])
+           seq
            (str/join "&")
            (str "?")))
 

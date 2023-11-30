@@ -7,7 +7,7 @@
             [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.query :as q]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.schema :as sch :refer [s-]]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]

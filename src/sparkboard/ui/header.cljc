@@ -5,7 +5,7 @@
             [sparkboard.app.chat :as chat]
             [sparkboard.app.entity :as entity]
             [sparkboard.i18n :as i :refer [tr]]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.ui :as ui]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]

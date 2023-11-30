@@ -4,7 +4,7 @@
             [promesa.core :as p]
             [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]

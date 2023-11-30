@@ -1,4 +1,4 @@
-(ns sparkboard.routes
+(ns sparkboard.routing
   (:refer-clojure :exclude [resolve])
   (:require #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs ["react" :as react])
@@ -13,7 +13,7 @@
             [shadow.resource]
             [clojure.walk :as walk]
             [sparkboard.util :as u])
-  #?(:cljs (:require-macros [sparkboard.routes])))
+  #?(:cljs (:require-macros [sparkboard.routing])))
 
 (defn support-entity-ids!
   "UUIDs in routes are wrapped as [:entity/id ...] lookup refs."
@@ -219,7 +219,7 @@
                                                       :endpoint
                                                       :view] route)
                  nil))
-          (swap! sparkboard.routes/!views assoc '~(symbol (str *ns*) (str name)) (with-meta ~(or alias-of name) ~(u/select-by sym-meta (comp #{"view"} namespace))))))))
+          (swap! sparkboard.routing/!views assoc '~(symbol (str *ns*) (str name)) (with-meta ~(or alias-of name) ~(u/select-by sym-meta (comp #{"view"} namespace))))))))
 
 #?(:cljs (do
            (defonce !history (atom nil))
@@ -373,3 +373,69 @@
 
 (comment
   @!tags)
+
+(defn ensure-prefix [s prefix]
+  (if (str/starts-with? s prefix)
+    s
+    (str prefix s)))
+
+(defn trim-prefix [s prefix]
+  (if (str/starts-with? s prefix)
+    (subs s (count prefix))
+    s))
+
+(defn some-str [s]
+  (when (not= "" s)
+    s))
+
+(defn parse-path
+  "Given a `path` string, returns map of {<route-name>, <path>}
+
+  :root will contain the base route.
+
+  Uses the Angular auxiliary route format of http://root-path(name:path//name:path).
+
+  Ignores query parameters."
+  [path]
+  (let [[_ root-string auxiliary-string] (re-find #"([^(?]*)(?:\(([^(]+)\))?(\?.*)?" path)]
+    (merge {:router/root (ensure-prefix root-string "/")}
+           (->> (when auxiliary-string
+                  (str/split auxiliary-string "//"))
+                (reduce (fn [m path]
+                          (let [[_ router path] (re-find #"([^:]+)(?::?(.*))" path)]
+                            (assoc m (keyword "router" router)
+                                     ((case router "root" ensure-prefix
+                                                   trim-prefix)
+                                      path "/")))) {})))))
+
+(defn wrap
+  [[left right] s]
+  (str left s right))
+
+(defn emit-routes
+  "Given a map of the form {<route-name>, <path>},
+   emits a list of auxiliary routes, wrapped in parentheses.
+
+   :root should contain the base route, if any.
+
+   e.g. /hello(nav:details/edit//drawer:profile/photo)"
+  [routes]
+  (str
+
+    ;; root route
+    (ensure-prefix (:router/root routes "") "/")
+
+    ;; aux routes
+    (some->> (dissoc routes :router/root :query-params)
+             (keep (fn [[router path]]
+                     (assert (string? path))
+                     (when path
+                       (str (name router)
+                            (some-> path
+                                    (trim-prefix "/")
+                                    some-str
+                                    (->> (str ":")))))))
+             (seq)
+             (str/join "//")
+             (wrap "()"))
+    (query-params/query-string (get routes :query-params))))

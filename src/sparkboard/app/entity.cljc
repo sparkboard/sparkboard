@@ -10,7 +10,7 @@
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
             [yawn.view :as v]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [malli.util :as mu]))
 
 (sch/register!

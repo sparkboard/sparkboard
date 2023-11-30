@@ -8,7 +8,7 @@
             [re-db.api :as db]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.util :as u]
             [re-db.sync.entity-diff-2 :as entity-diff])
   #?(:cljs (:require-macros [sparkboard.query :as q])))

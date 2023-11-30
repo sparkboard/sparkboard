@@ -4,7 +4,7 @@
             [sparkboard.authorize :as az]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [promesa.core :as p]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.icons :as icons]

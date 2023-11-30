@@ -5,7 +5,7 @@
             [re-db.api :as db]
             [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.ui :as ui]
             [sparkboard.util :as u]

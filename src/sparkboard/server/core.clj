@@ -33,7 +33,7 @@
             [sparkboard.server.datalevin :as dl]
             [sparkboard.i18n :as i18n]
             [sparkboard.log]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.app]                                ;; includes all endpoints
             [sparkboard.server.account :as accounts]
             [sparkboard.server.env :as env]

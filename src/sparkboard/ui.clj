@@ -27,7 +27,7 @@
               name
               args)
            ~(when (:route options)
-              `(sparkboard.routes/register-route ~name ~options)))
+              `(sparkboard.routing/register-route ~name ~options)))
       `(defn ~name ~@(when options [options])
          ~argv))))
 

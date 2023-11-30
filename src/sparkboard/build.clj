@@ -6,7 +6,7 @@
             [clojure.pprint :refer [pprint]]
             [clojure.walk :as walk]
             [re-db.api :as db]
-            [sparkboard.routes :as routes]
+            [sparkboard.routing :as routes]
             [sparkboard.transit :as t]
             [sparkboard.server.core]
             [sparkboard.migration.one-time :as one-time]

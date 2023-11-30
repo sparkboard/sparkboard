@@ -10,7 +10,7 @@
     [sparkboard.authorize :as az]
     [sparkboard.app.entity :as entity]
     [sparkboard.i18n :refer [tr]]
-    [sparkboard.routes :as routes]
+    [sparkboard.routing :as routes]
     [sparkboard.schema :as sch :refer [?]]
     [sparkboard.ui :as ui]
     [sparkboard.ui.header :as header]
