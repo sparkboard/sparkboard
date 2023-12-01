@@ -199,7 +199,7 @@
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
     [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.cursor-pointer.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
-     {:href  (routes/href [`chat {:chat-id id}])
+     {:href  (routes/path-for [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} other]
      [:div.flex-v.w-full.overflow-hidden
@@ -305,7 +305,7 @@
          :value       (or message "")}]])))
 
 (ui/defview chats
-  {:view/target :modal
+  {:view/router :router/modal
    :route       "/chats"}
   [params]
   (let [chat-selected? (or (:chat-id params) (:other-id params))]
@@ -320,9 +320,11 @@
         [chat-header params])]]))
 
 (routes/register-route chat
-  {:alias-of chats
-   :route    ["/chats/" ['entity/id :chat-id]]})
+                       {:alias-of chats
+                        :route    "/chats/:chat-id"
+                        :view/router   :router/modal})
 
 (routes/register-route new-chat
-  {:alias-of chats
-   :route    ["/chats/" ['entity/id :entity-id] "/new/" ['entity/id :other-id]]})
+                       {:alias-of chats
+                        :route    "/chats/:entity-id/new/:other-id"
+                        :view/router   :router/modal})

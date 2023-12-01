@@ -178,8 +178,8 @@
     board))
 
 (ui/defview new
-  {:route       ["/b/" "new"]
-   :view/target :modal}
+  {:route       "/new/b"
+   :view/router :router/modal}
   [{:as params :keys [route]}]
   (let [account (db/get :env/config :account)
         owners  (some->> (account/db:account-orgs {})
@@ -200,7 +200,7 @@
                      (.preventDefault e)
                      (ui/with-submission [result (db:new! {:board @!board})
                                           :form !board]
-                       (routes/set-path! `show {:board-id (:entity/id result)})))
+                       (routes/nav! `show {:board-id (:entity/id result)})))
         :ref       (ui/use-autofocus-ref)}
        [:h2.text-2xl (tr :tr/new-board)]
 
@@ -221,7 +221,7 @@
        [ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
-  {:route ["/b/" ['entity/id :board-id] "/register"]}
+  {:route "/b/:board-id/register"}
   [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
@@ -231,7 +231,7 @@
      [:button {:on-click #(p/let [res (routes/POST route @!member)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)
-                                (routes/set-path! [:board/read params])
+                                (routes/nav! [:board/read params])
                                 res))}
       (tr :tr/register)]]))
 
@@ -246,10 +246,10 @@
    #_[ui/pprinted
       (db/touch board)]])
 (comment
-  (routes/href ['sparkboard.app.board/settings {:board-id (sch/wrap-id #uuid"a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")}]))
+  (routes/path-for ['sparkboard.app.board/settings {:board-id (sch/wrap-id #uuid"a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")}]))
 
 (ui/defview show
-  {:route ["/b/" ['entity/id :board-id]]}
+  {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
   (let [{:as board :keys [member/roles]} (db:board {:board-id board-id})
         !current-tab (h/use-state (tr :tr/projects))
@@ -261,7 +261,7 @@
       [:div.flex.gap-4.items-stretch
        [ui/filter-field ?filter]
        [:a.btn.btn-light.flex.items-center.px-3
-        {:href (routes/href ['sparkboard.app.project.new-flow/start {:board-id board-id}])}
+        {:href (routes/path-for ['sparkboard.app.project.new-flow/start {:board-id board-id}])}
         (tr :tr/new-project)]]
 
       (when (az/editor-role? roles)
@@ -305,7 +305,7 @@
     (merge {:member/roles roles})))
 
 (ui/defview settings
-  {:route ["/b/" ['entity/id :board-id] "/settings"]}
+  {:route "/b/:board-id/settings"}
   [{:as params :keys [board-id]}]
   (let [board (db:settings params)]
     [:<>
@@ -313,7 +313,7 @@
      [:div {:class ui/form-classes}
       (entity/use-persisted board :entity/title ui/text-field {:inline? true
                                                                :class "text-lg"})
-      (entity/use-persisted board :entity/description ui/prose-field {:inline? true :class "bg-gray-100 px-2 py-1"})
+      (entity/use-persisted board :entity/description ui/prose-field {:inline? true :class "bg-gray-100 px-3 py-3"})
       (entity/use-persisted board :entity/domain domain/domain-field)
       (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
 

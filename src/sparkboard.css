@@ -149,7 +149,7 @@
     }
 
     .icon-light-gray {
-        @apply text-gray-300 hover:text-black focus-ring
+        @apply text-gray-400 hover:text-black focus-ring
     }
 
     .overlay {

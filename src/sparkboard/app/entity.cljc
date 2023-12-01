@@ -10,7 +10,7 @@
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
             [yawn.view :as v]
-            [sparkboard.routing :as routes]
+            [sparkboard.routing :as routing]
             [malli.util :as mu]))
 
 (sch/register!
@@ -152,7 +152,7 @@
    (defn href [{:as e :entity/keys [kind id]} key]
      (when e
        (let [tag (keyword (name kind) (name key))]
-         (routes/href [tag {(keyword (str (name kind) "-id")) id}])))))
+         (routing/path-for [tag {(keyword (str (name kind) "-id")) id}])))))
 
 
 (ui/defview card:compact
@@ -160,7 +160,7 @@
   [{:as   entity
     :keys [entity/title image/avatar]}]
   [:a.flex.relative
-   {:href  (routes/href (routes/entity-route entity :show))
+   {:href  (routing/path-for (routing/entity-route entity :show))
     :class ["sm:divide-x sm:shadow sm:hover:shadow-md "
             "overflow-hidden rounded-lg"
             "h-12 sm:h-16 bg-card text-card-txt border border-white"]}
@@ -174,13 +174,13 @@
    [:div.flex.items-center.px-3.leading-snug
     [:div.line-clamp-2 title]]])
 
-(ui/defview ellipsis-dropdown [entity]
-  (when-let [route (and (validate/editing-role? (:member/roles entity))
-                        (some-> (routes/entity-route entity :settings) routes/href))]
-    [radix/dropdown-menu {:id       :entity-settings
-                          :trigger  [:div.hover:bg-gray-200.rounded-full.icon-gray.w-10.h-10.flex.items-center.justify-center.focus-visible:bg-gray-200.mx-1.self-center
-                                     [icons/ellipsis-horizontal "icon-sm"]]
-                          :children [[{:on-select #(routes/set-path! route)} "Settings"]]}]))
+
+(ui/defview dropdown-menu [entity]
+  (when-let [path (and (validate/editing-role? (:member/roles entity))
+                        (some-> (routing/entity-route entity :settings) routing/path-for))]
+    [:a.icon-light-gray.flex.items-center.justify-center.focus-visible:bg-gray-200.mx-1.self-stretch.rounded
+     {:href path}
+     [icons/gear "icon-xl"]]))
 
 (ui/defview row
   {:key :entity/id}
@@ -188,10 +188,10 @@
     :keys [entity/title image/avatar member/roles]}]
   [:div.flex.hover:bg-gray-100.rounded-lg
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
-    {:href (routes/entity entity :show)}
+    {:href (routing/entity entity :show)}
     [ui/avatar {:size 10} entity]
     [:div.line-clamp-2.leading-snug.flex-grow title]]
-   [ellipsis-dropdown entity]])
+   [dropdown-menu entity]])
 
 (ui/defview show-filtered-results
   {:key :title}

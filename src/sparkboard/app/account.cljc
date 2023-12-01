@@ -46,8 +46,8 @@
   (radix/dropdown-menu {:id       :new-menu
                         :trigger
                         [:div.btn-light (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
-                        :children [[{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
-                                   [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]]}))
+                        :children [[{:on-select #(routes/nav! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                                   [{:on-select #(routes/nav! 'sparkboard.app.org/new params)} (tr :tr/org)]]}))
 
 (q/defquery db:account-orgs
   {:endpoint {:query true}
@@ -123,18 +123,18 @@
                            (db:all params)))]
     [:div.entity-header
      [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/href ['sparkboard.app.account/show params])} display-name]
+      {:href (routes/path-for ['sparkboard.app.account/show params])} display-name]
      child
      (radix/dropdown-menu
        {:id       :show-recents
         :trigger  [:div.btn-light (tr :tr/recent) down-arrow]
         :children (map (fn [entity]
-                         [{:on-select #(routes/set-path! (routes/entity-route entity 'show) entity)}
+                         [{:on-select #(routes/nav! (routes/entity-route entity 'show) entity)}
                           (:entity/title entity)])
                        recents)})
      (radix/dropdown-menu {:trigger [:div.btn-light (tr :tr/new) down-arrow]
-                           :children [[{:on-select #(routes/set-path! 'sparkboard.app.board/new params)} (tr :tr/board)]
-                                      [{:on-select #(routes/set-path! 'sparkboard.app.org/new params)} (tr :tr/org)]]})
+                           :children [[{:on-select #(routes/nav! 'sparkboard.app.board/new params)} (tr :tr/board)]
+                                      [{:on-select #(routes/nav! 'sparkboard.app.org/new params)} (tr :tr/org)]]})
      [header/chat account]
      [header/account]]))
 
@@ -223,27 +223,27 @@
            (ui/show-markdown
              (tr :tr/start-board-new))
            [:a.btn.btn-primary.btn-base {:class "mt-6"
-                                         :href  (routes/href ['sparkboard.app.board/new])}
+                                         :href  (routes/path-for ['sparkboard.app.board/new])}
             (tr :tr/create-first-board)]])]])
     (ui/redirect `sign-in)))
 
 #?(:clj
    (defn login!
-     {:endpoint         {:post ["/login"]}
+     {:endpoint         {:post "/login"}
       :endpoint/public? true}
      [req params]
      (account/login! req params)))
 
 #?(:clj
    (defn logout!
-     {:endpoint         {:get ["/logout"]}
+     {:endpoint         {:get "/logout"}
       :endpoint/public? true}
      [req params]
      (account/logout! req params)))
 
 #?(:clj
    (defn google-landing
-     {:endpoint         {:get ["/oauth2/" "google/" "landing"]}
+     {:endpoint         {:get "/oauth2/google/landing"}
       :endpoint/public? true}
      [req params]
      (account/google-landing req params)))

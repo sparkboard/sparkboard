@@ -6,7 +6,7 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader :as edn]
-            [clojure.pprint :refer [pprint]]
+            [clojure.pprint]
             [clojure.set :as set]
             [clojure.string :as str]
             [inside-out.forms :as forms]
@@ -67,7 +67,7 @@
               identity))))
 
 (defn pprinted [x & _]
-  [:pre.whitespace-pre-wrap (with-out-str (pprint x))])
+  [:pre.whitespace-pre-wrap (with-out-str (clojure.pprint/pprint x))])
 
 (def safe-html sanitize/safe-html)
 
@@ -159,7 +159,7 @@
 (defn show-label [?field & [label]]
   (when-let [label (u/some-or label (:label ?field))]
     [input-label {:class "text-label"
-                  :for (field-id ?field)} label]))
+                  :for   (field-id ?field)} label]))
 
 (defn common-props [?field
                     get-value
@@ -199,7 +199,7 @@
             :type    "color"})
          (update :value #(or % "#ffffff")))]))
 
-(defn select-field [?field {:as props :keys [label options]}]
+(defview select-field [?field {:as props :keys [label options]}]
   [input-wrapper
    (show-label ?field label)
    [radix/select-menu (-> (common-props ?field identity (assoc props
@@ -254,10 +254,10 @@
                                              (merge {:wrap   #(when-not (str/blank? %) %)
                                                      :unwrap #(or % "")} props))
 
-                               {:class       ["pr-8"
+                               {:class       ["pr-8 rounded"
                                               (if inline?
                                                 "form-inline"
-                                                "default-ring rounded")
+                                                "default-ring")
                                               (when (:invalid (forms/types (forms/visible-messages ?field)))
                                                 "outline-invalid")]
                                 :placeholder (or (:placeholder props)
@@ -290,7 +290,7 @@
 
 (def unwrap-prose :prose/string)
 
-(defn prose-field [?field & [props]]
+(defview prose-field [?field props]
   ;; TODO
   ;; multi-line markdown editor with formatting
   (text-field ?field (merge {:wrap       wrap-prose
@@ -318,7 +318,9 @@
            :video/thumbnail (str "https://vumbnail.com/" id ".jpg")}))
     (catch js/Error e nil)))
 
-(defview video-field [?field {:as props :keys [can-edit?]}]
+(defview video-field
+  {:key goog/getUid}
+  [?field {:as props :keys [can-edit?]}]
   (let [!editing? (h/use-state (nil? @?field))]
     [input-wrapper
      ;; preview shows persisted value?
@@ -433,7 +435,7 @@
                          (forms/touch! ?field)
                          (reset! !selected-blob (js/URL.createObjectURL file))
                          (with-submission [asset (routing/POST `assets/upload! (doto (js/FormData.)
-                                                                                (.append "files" file)))
+                                                                                 (.append "files" file)))
                                            :form ?field]
                            (reset! ?field asset)
                            (maybe-save-field ?field props asset)))
@@ -477,13 +479,18 @@
          :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]
       (show-field-messages ?field)]]))
 
-(defn images-field [?field {:as props :keys [label]}]
-  [:div
-   (map-indexed (fn [i {:keys [image/url]}]
-                  [:div.relative {:key url}
-                   [:div.inset-0.bg-black.absolute.opacity-10]
-                   [:img {:src url}]])
-                @?field)])
+(defview images-field [?field {:as props :keys [label]}]
+  (let [images (->> (:images/order @?field)
+                    (map (fn [id]
+                           {:url       (asset-src (db/entity [:entity/id id]) :card)
+                            :entity/id id})))]
+    (for [{:keys [entity/id url]} images]
+      ;; TODO
+      ;; upload image,
+      ;; re-order images
+      [:div.relative {:key url}
+       [:div.inset-0.bg-black.absolute.opacity-10]
+       [:img {:src url}]])))
 
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 
@@ -533,7 +540,7 @@
 (defview show-match
   "Given a match, shows the view, loading bar, and/or error message.
    - adds :data to params when a :query is provided"
-  [{:as match :match/keys [endpoints params route]}]
+  [{:as match :match/keys [endpoints params]}]
   (if-let [view (-> endpoints :view :endpoint/sym (@routing/!views))]
     (when view
       [view (assoc params :account-id (db/get :env/config :account-id))])
@@ -583,7 +590,7 @@
     label]])
 
 (defview redirect [to]
-  (h/use-effect #(routing/set-path! to)))
+  (h/use-effect #(routing/nav! to)))
 
 (defn initials [display-name]
   (let [words (str/split display-name #"\s+")]
@@ -663,3 +670,5 @@
   (fn [^js e]
     (.preventDefault e)
     (f e)))
+
+(defn pprint [x] (clojure.pprint/pprint x))

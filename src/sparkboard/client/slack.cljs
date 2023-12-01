@@ -27,7 +27,7 @@
 (def button :a.br3.bg-blue.pa3.white.no-underline.b.mv3.db.tc)
 
 (ui/defview invite-offer
-  {:route ["/slack/" "invite-offer"]}
+  {:route "/slack/invite-offer"}
   [{{:keys [custom-token
             team-id
             invite-link
@@ -71,7 +71,7 @@
              "Sparkboard home tab"] " to link your account so that you can use Slack and Sparkboard together."]])])]))
 
 (ui/defview link-complete
-  {:route ["/slack/" "link-complete"]}
+  {:route "/slack/link-complete"}
   [{{:keys [slack sparkboard]} :query-params}]
   [section
    [:h1.tc "Thanks!"]

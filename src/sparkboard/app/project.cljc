@@ -186,8 +186,8 @@
               {:board/project-fields ~field/field-keys}]}] project-id))
 
 (ui/defview show
-  {:route       ["/p/" ['entity/id :project-id]]
-   :view/target :modal}
+  {:route       "/p/:project-id"
+   :view/router :router/modal}
   [params]
   (let [{:as          project
          :entity/keys [title
@@ -216,7 +216,7 @@
        [:h1.font-semibold.text-3xl.flex-auto title]
        #_[radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
       (ui/show-prose description)
-      (when-let [badges badges]
+      (when badges
         [:section
          (into [:ul]
                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))

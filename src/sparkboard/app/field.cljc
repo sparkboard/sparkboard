@@ -196,7 +196,7 @@
                       :prose/string]))
 
 (ui/defview show-entry
-  {:key (fn [_ {:keys [entity/id]}] id)}
+  {:key (comp :entity/id :entry)}
   [{:keys [parent entry can-edit?]}]
   (let [{:field-entry/keys [field]} entry
         {:field/keys [label]} field
@@ -210,13 +210,13 @@
                                                       (:entity/id entry)
                                                       x))}]
     (case (:field/type field)
-      :field.type/video [ui/video-field ?field props]
-      :field.type/select [ui/select-field ?field (merge props
+      :field.type/video "" #_[ui/video-field ?field props]
+      :field.type/select "" #_[ui/select-field ?field (merge props
                                                         {:wrap            (fn [x] {:select/value x})
                                                          :unwrap          :select/value
                                                          :persisted-value value
                                                          :options         (:field/options field)})]
-      :field.type/link-list [ui/pprinted value props]
+      :field.type/link-list "" #_[ui/pprinted value props]
       :field.type/images [ui/images-field ?field props]
       :field.type/prose [ui/prose-field ?field props]
       (str "no match" field))))

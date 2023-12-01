@@ -97,10 +97,6 @@
    (defn subscribe [qvec]
      @(sync/$query @ws:channel (normalize-vec qvec))))
 
-(comment
-  (routes/by-tag 'sparkboard.app.org/db:read :query)
-  @routes/!tags)
-
 #?(:cljs
    (defn use-cached-result [{:as result :keys [loading? value]}]
      (let [!last-value (h/use-state value)]

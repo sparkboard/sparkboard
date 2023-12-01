@@ -45,7 +45,7 @@
 
 (q/defx db:delete!
   "Mutation fn. Retracts organization by given org-id."
-  {:endpoint {:post ["/o/" ['entity/id :org-id] "/delete"]}}
+  {:endpoint {:post "/o/:org-id/delete"}}
   [_req {:keys [org-id]}]
   ;; auth: user is admin of org
   ;; todo: retract org and all its boards, projects, etc.?
@@ -92,11 +92,11 @@
                           org-id)
                     (remove :project/sticky?))}))
 
-(q/defquery db:edit!
-  {:endpoint {:post ["/o/" ['entity/id :org-id] "/settings"]}}
-  [{:keys [account]} {:keys [org-id]
-                      org   :body}]
-  (let [org (validate/conform (assoc org :entity/id org-id) :org/as-map)]
+(q/defx db:edit!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} {:as org :keys [entity/id]}]
+  (validate/assert-can-edit! id account-id)
+  (let [org (validate/conform org :org/as-map)]
     (db/transact! [org])
     {:body org}))
 
@@ -113,7 +113,7 @@
     org))
 
 (ui/defview show
-  {:route ["/o/" ['entity/id :org-id]]}
+  {:route "/o/:org-id"}
   [params]
   (forms/with-form [_ ?filter]
     (let [{:as   org
@@ -156,8 +156,8 @@
         [:div.flex.gap-4.items-stretch
          [ui/filter-field ?filter {:loading? (:loading? result)}]
          [:a.btn.btn-light.flex.items-center.px-3
-          {:href (routes/href ['sparkboard.app.board/new
-                               {:query-params {:org-id (:entity/id org)}}])}
+          {:href (routes/path-for ['sparkboard.app.board/new
+                                   {:query-params {:org-id (:entity/id org)}}])}
           (tr :tr/new-board)]]
         [ui/error-view result]
         (if (seq q)
@@ -173,7 +173,7 @@
             (map entity/row (:board/_owner org))]])]])))
 
 (ui/defview settings
-  {:route ["/o/" ['entity/id :org-id] "/settings"]}
+  {:route "/o/:org-id/settings"}
   [{:as params :keys [org-id]}]
   (let [org (sparkboard.app.org/db:edit params)]
     [:<>
@@ -189,8 +189,8 @@
 
 
 (ui/defview new
-  {:route       ["/o/" "new"]
-   :view/target :modal}
+  {:route       "/new/o"
+   :view/router :router/modal}
   [params]
   (forms/with-form [!org (u/prune
                            {:entity/title  ?title
@@ -202,7 +202,7 @@
                    (.preventDefault e)
                    (ui/with-submission [result (db:new! {:org @!org})
                                         :form !org]
-                     (routes/set-path! [`show {:org-id (:entity/id result)}])))}
+                     (routes/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (tr :tr/new-org)]
      [ui/text-field ?title {:label (tr :tr/title)}]
      (domain/domain-field ?domain)

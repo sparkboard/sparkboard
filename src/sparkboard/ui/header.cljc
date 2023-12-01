@@ -51,7 +51,7 @@
             (take 6)
             (map (partial chat/chat-snippet params)))
        [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
-        {:href (routes/href [`chat/chats])}
+        {:href (routes/path-for [`chat/chats])}
         (tr :tr/view-all)]]
       (tr :tr/no-messages))))
 
@@ -90,13 +90,13 @@
      (radix/dropdown-menu
        {:trigger  [:button.flex.items-center.focus-ring.rounded.px-1 {:tab-index 0}
                    [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]
-        :children [[{:on-click #(routes/set-path! 'sparkboard.app.account/show)} (tr :tr/home)]
-                   [{:on-click #(routes/set-path! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
+        :children [[{:on-click #(routes/nav! 'sparkboard.app.account/show)} (tr :tr/home)]
+                   [{:on-click #(routes/nav! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
                    [{:sub?     true
                      :trigger  [icons/languages "w-5 h-5"]
                      :children (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/href ['sparkboard.app.account/sign-in])} (tr :tr/continue-with-email)]))
+     {:href (routes/path-for ['sparkboard.app.account/sign-in])} (tr :tr/continue-with-email)]))
 
 (ui/defview entity* [{:as   entity
                       :keys [entity/title
@@ -108,11 +108,11 @@
               [:img.h-10
                {:src (ui/asset-src avatar :avatar)}]])
 
-           [:h3 [:a.contents {:href entity-href} title]]
+           [:a.contents {:href entity-href} [:h3.hover:underline title]]
 
            [:div.flex-grow]]
           (concat children
-                  [(entity/ellipsis-dropdown entity)
+                  [(entity/dropdown-menu entity)
                    [chat entity]
                    [account]]))))
 

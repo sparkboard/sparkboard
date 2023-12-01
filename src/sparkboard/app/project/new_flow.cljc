@@ -51,7 +51,7 @@
                           {?title "Mentoring" ?detail "Fundraising"}])
 
 (ui/defview start
-  {:route ["/b/" ['entity/id :board-id] "/new"]}
+  {:route "/b/:board-id/new"}
   [{:keys [board-id]}]
   (let [field      :div.flex-v.gap-3
         form-label :div.text-primary.text-sm.font-medium.flex.items-center
@@ -71,7 +71,7 @@
                        (ui/with-submission [result (db:new! {:project @!project})
                                             :form !project]
                          (prn result)
-                         (routes/set-path! 'sparkboard.app.board/show {:board-id board-id})))}
+                         (routes/nav! 'sparkboard.app.board/show {:board-id board-id})))}
          [form
 
 

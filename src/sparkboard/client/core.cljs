@@ -34,7 +34,8 @@
 
 (ui/defview root
   []
-  (let [{:as match :keys [modal]} (react/useDeferredValue (db/get :env/location))]
+  (let [{:as match :keys [router/root
+                          router/modal]} (react/useDeferredValue @routing/!location)]
     [:div.w-full.font-sans
      (dev-info match)
      [:Suspense {:fallback default-loading-bar}
@@ -42,11 +43,10 @@
                                 (v/x [:div.p-6
                                       [ui/hero {:class "bg-red-100 border-red-400/50 border border-4"}
                                        (ex-message e)]]))}
-        (ui/show-match match))]
+        (ui/show-match root))]
 
      (radix/dialog {:props/root {:open           (boolean modal)
-                                 :on-open-change #(when-not %
-                                                    (routing/set-modal! nil))}}
+                                 :on-open-change #(when-not % (routing/dissoc-router! :router/modal))}}
                    [:Suspense {:fallback default-loading-bar}
                     (ui/show-match modal)])]))
 
@@ -105,8 +105,7 @@
   (render))
 
 (comment
-  (routing/href ['sparkboard.app.board/new])
-  @routing/!routes
+  (routing/path-for ['sparkboard.app.board/new])
   (db/transact! [[:db/retractEntity :test]])
   (db/transact! [#_{:db/id :a :b 1}
                  {:db/id :test3 :a :b}

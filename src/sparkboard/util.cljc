@@ -39,11 +39,9 @@
 
 
 (defn ensure-prefix [s prefix]
-  (if (str/starts-with? s prefix)
+  (if (some-> s (str/starts-with? prefix))
     s
     (str prefix s)))
-
-(defn some-str [s] (guard s (complement str/blank?)))
 
 (defn find-first [coll pred]
   (reduce (fn [_ x] (if (pred x) (reduced x) _)) nil coll))
@@ -139,3 +137,17 @@
 (defmacro tapm [& vals]
   `(tap> (hash-map ~@(->> vals
                           (mapcat (fn [sym] `['~sym ~sym]))))))
+
+
+(defn trim-prefix [s prefix]
+  (if (some-> s (str/starts-with? prefix))
+    (subs s (count prefix))
+    s))
+
+(defn some-str [s]
+  (when-not (str/blank? s)
+    s))
+
+(defn wrap
+  [[left right] s]
+  (str left s right))

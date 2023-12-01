@@ -132,8 +132,8 @@
               :search-term "matt"}))
 
 (ui/defview show
-  {:view/target :modal
-   :route       ["/m/" ['entity/id :member-id]]}
+  {:route       "/m/:member-id"
+   :view/router :router/modal}
   [params]
   (let [{:as          member
          :member/keys [tags

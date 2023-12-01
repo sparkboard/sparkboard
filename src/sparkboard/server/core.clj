@@ -33,7 +33,7 @@
             [sparkboard.server.datalevin :as dl]
             [sparkboard.i18n :as i18n]
             [sparkboard.log]
-            [sparkboard.routing :as routes]
+            [sparkboard.routing :as routing]
             [sparkboard.app]                                ;; includes all endpoints
             [sparkboard.server.account :as accounts]
             [sparkboard.server.env :as env]
@@ -117,11 +117,11 @@
 #_(memo/clear-memo! $resolve-ref)
 
 (defn document
-  {:endpoint         {:get ["/documents/" :file/name]}
+  {:endpoint         {:get "/documents/:file-name"}
    :endpoint/tag     'document
    :endpoint/public? true}
-  [_ {:keys [file/name]}]
-  (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "sparkboard/documents/" name ".md"))))))
+  [_ {:keys [file-name]}]
+  (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "sparkboard/documents/" file-name ".md"))))))
 
 (defn prepare! [fs req params]
   (cond (nil? fs) params
@@ -142,11 +142,11 @@
   (prepare! (:prepare (meta f)) req params))
 
 (defn effect!
-  {:endpoint {:post ["/effect"]}
+  {:endpoint {:post "/effect"}
    :prepare  [az/with-account-id!]}
   [req {:as params :keys [body account-id]}]
   (let [[id & args] body]
-    (if-let [endpoint (routes/by-tag id :effect)]
+    (if-let [endpoint (routing/tag->endpoint id :effect)]
       (let [[params & args] args
             result (apply (resolve (:endpoint/sym endpoint))
                           (assoc params :account-id account-id)
@@ -162,7 +162,7 @@
     (fn [e] {:error (ex-message e)})))
 
 (defn resolve-query [[id params :as qvec]]
-  (try (let [endpoint  (routes/by-tag id :query)
+  (try (let [endpoint  (routing/tag->endpoint id :query)
              _         (assert endpoint (str "resolve: " id " is not a query endpoint"))
              query-var (-> endpoint :endpoint/sym requiring-resolve)
              context   (meta qvec)
@@ -177,21 +177,22 @@
          (r/reaction {:error (ex-message e)}))))
 
 (comment
-  (random-uuid)
+  (routing/tag->endpoint 'sparkboard.app.domain/check-availability :effect)
+  (routing/tag->endpoint 'sparkboard.app.account/db:all :query)
+
   (resolve-query ['sparkboard.app.org/db:read {}])
-  (routes/by-tag 'sparkboard.app.org/db:read :query)
-  @routes/!routes)
+  (routing/tag->endpoint 'sparkboard.app.org/db:read :query))
 
 (def ws-options {:handlers (merge (sync/query-handlers resolve-query)
                                   {::sync/once
                                    ;; TODO what is this and how do I handle params...
                                    (fn [{:keys [channel]} qvec]
-                                     (let [query-fn (-> (routes/by-tag (first qvec) :query) :endpoint/sym requiring-resolve)]
+                                     (let [query-fn (-> (routing/tag->endpoint (first qvec) :query) :endpoint/sym requiring-resolve)]
                                        (sync/send channel
                                                   (sync/wrap-result qvec {:value (apply query-fn (rest qvec))}))))})})
 
 (defn websocket
-  {:endpoint         {:get ["/ws"]}
+  {:endpoint         {:get "/ws"}
    :endpoint/public? true}
   [req _]
   (#'q/ws:handle-request ws-options req))
@@ -202,7 +203,7 @@
 (def route-handler
   (fn [{:as req :keys [uri request-method]}]
     (let [{:as         match
-           :match/keys [endpoints params]} (routes/match-path uri)
+           :match/keys [endpoints params]} (:router/root (routing/aux:match-by-path uri))
           {:as endpoint :keys [endpoint/sym]} (get endpoints request-method)]
       (or (and endpoint
                (#{:get :post} request-method)
@@ -218,6 +219,9 @@
                       :account-id (sch/wrap-id (:entity/id (:account req)))
                       :account (:account req))]}))
           (ring.http/not-found "Not found")))))
+
+(comment
+  (routing/aux:match-by-path "/b/a12b8caf-5630-3904-a55f-79c21d32cbfe"))
 
 (def app-handler
   (delay
@@ -250,7 +254,7 @@
   [port]
   (sch/install-malli-schemas!)
   (db/merge-schema! @sch/!schema)
-  (routes/init-endpoints! (routes/endpoints))
+  (routing/init-endpoints! (routing/endpoints))
   (stop-server!)
   (reset! the-server (httpkit/run-server (fn [req] (@app-handler req))
                                          {:port                 port
@@ -268,16 +272,13 @@
 (comment                                                    ;;; Webserver control panel
   (-main)
 
-  @routes/!routes
-  (routes/match-path (str "/o/" (random-uuid)))
+  (routing/aux:match-by-path (str "/o/" (random-uuid)))
 
-  (routes/path-for 'sparkboard.app.account/db:read)
-  (routes/match-path (str "/o/" (random-uuid)))
-  (routes/match-path (str "/ws"))
+  (routing/path-for 'sparkboard.app.account/db:read)
+  (routing/aux:match-by-path (str "/o/" (random-uuid)))
+  (routing/aux:match-by-path (str "/ws"))
 
 
-  @routes/!tags
-  (routes/by-tag 'sparkboard.app.org/db:read
-                 :query)
+  @routing/!tags
   (restart-server! 3000)
   )

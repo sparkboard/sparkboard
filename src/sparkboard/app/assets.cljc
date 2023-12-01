@@ -3,7 +3,6 @@
             #?(:clj [sparkboard.authorize :as az])
             #?(:clj [sparkboard.server.datalevin :as dl])
             #?(:clj [sparkboard.server.assets :as assets])
-            [bidi.bidi :as bidi]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.util :as u]
             [malli.core :as m]))
@@ -70,7 +69,7 @@
 
 #?(:clj
    (defn serve-asset
-     {:endpoint         {:get ["/assets/" ['entity/id :asset-id]]}
+     {:endpoint         {:get "/assets/:asset-id"}
       :endpoint/public? true}
      [req {:keys [asset-id query-params]}]
      (if-let [asset (some-> (dl/entity asset-id)
@@ -84,7 +83,7 @@
 
 #?(:clj
    (defn upload!
-     {:endpoint {:post ["/upload"]}
+     {:endpoint {:post "/upload"}
       :prepare  [az/with-account-id!]}
      [req {:keys [account-id]}]
      (assets/upload! req {:account-id account-id})))

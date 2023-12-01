@@ -3,145 +3,169 @@
   (:require #?(:cljs [vendor.pushy.core :as pushy])
             #?(:cljs ["react" :as react])
             #?(:clj [cljs.analyzer.api :as ana])
-            [bidi.bidi :as bidi]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
+            [sparkboard.schema :as sch]
             [sparkboard.transit :as t]
-            [re-db.api :as db]
             [sparkboard.query-params :as query-params]
             [sparkboard.http :as http]
             [shadow.resource]
-            [clojure.walk :as walk]
-            [sparkboard.util :as u])
+            [sparkboard.util :as u]
+            [reitit.core :as reit]
+            [re-db.reactive :as r]
+            [clojure.pprint])
+  #?(:clj (:import [java.util UUID]))
   #?(:cljs (:require-macros [sparkboard.routing])))
 
-(defn support-entity-ids!
-  "UUIDs in routes are wrapped as [:entity/id ...] lookup refs."
-  []
-  (let [wrapped-uuid (fn [s]
-                       [:entity/id (bidi/uuid s)])]
-    (extend-protocol bidi/PatternSegment
-      #?(:clj  clojure.lang.Symbol
-         :cljs Symbol)
-      (segment-regex-group [this]
-        (if (= this 'entity/id)
-          "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-          (throw (ex-info (str "Unidentified function qualifier to pattern segment: " this) {}))))
-      (transform-param [this]
-        (if (= this 'entity/id)
-          wrapped-uuid
-          (throw (ex-info (str "Unrecognized function " this) {}))))
-      (matches? [this s]
-        (and (= this 'entity/id)
-             (let [s (if (vector? s) (second s) s)]
-               (instance? #?(:clj java.util.UUID :cljs cljs.core.UUID) s))))))
+;; TODO
+;; - when creating paths, first look up the router for the tag
+;; - create a tag index - routes are all {"route" {:method {endpoint} :name :some/tag}}
 
-  (extend-protocol bidi/ParameterEncoding
-    #?(:clj  clojure.lang.PersistentVector
-       :cljs PersistentVector)
-    (encode-parameter [s]
-      (if (= :entity/id (first s))
-        (str (second s))
-        (throw (ex-info (str "Invalid URL parameter" s) {}))))))
+(defonce !endpoints (r/atom {}))
 
-(support-entity-ids!)
+(defn assoc-endpoint
+  [m {:as endpoint :keys [endpoint/path]}]
+  (-> m
+      (assoc-in [path :endpoints (:endpoint/method endpoint)] endpoint)
+      (update-in [path :name] #(or % (:endpoint/tag endpoint)))))
 
+(r/redef !routes (r/reaction (reduce
+                               (fn [routes endpoint]
+                                 (cond-> routes
+                                         (:endpoint/path endpoint)
+                                         (assoc-endpoint endpoint)))
+                               {}
+                               (apply concat (vals @!endpoints)))))
+(r/redef !router (r/reaction
+                   (reit/router @!routes)))
+(r/redef !tag->endpoints (r/reaction
+                           (reduce (fn [index {:as endpoint :endpoint/keys [tag method]}]
+                                     (assoc-in index [tag method] endpoint))
+                                   {}
+                                   (apply concat (vals @!endpoints)))))
+(r/redef !tag->router (r/reaction
+                        (into {}
+                              (keep (fn [[tag data]]
+                                      (when-let [router (-> data :view :view/router)]
+                                        [tag router])))
+                              @!tag->endpoints)))
+(r/redef !aliases (r/reaction
+                    (into {}
+                          (mapcat (fn [[_ {:as data :keys [name endpoints]}]]
+                                    (for [{:keys [endpoint/tag]} (vals endpoints)
+                                          :when (not= tag name)]
+                                      [tag name])))
+                          (reit/routes @!router))))
 (comment
+  @!routes
+  @!router
+  (reit/routes @!router)
+  @!tag->data
+  @!tag->endpoints
+  @!tag->router
+  @!aliases
 
-  [
-   (bidi/match-route ["" {["/o/" ['entity/id :org/id]] :foo}]
-                     (str "/o/" (random-uuid)))
-
-   (bidi/path-for ["" {["/o/" ['entity/id :org/id]] :foo}]
-                  :foo :org/id
-                  [:entity/id (random-uuid)])]
   )
-
-(defn normalize-slashes [path]
-  ;; remove trailing /'s, but ensure path starts with /
-  (-> path
-      (cond-> (and (> (count path) 1) (str/ends-with? path "/"))
-              (subs 0 (dec (count path))))
-      (u/ensure-prefix "/")))
-
-(defn match-path* [routes path]
-  (when-let [path (some-> path normalize-slashes)]
-    (let [{:as m :keys [route-params endpoints]} (bidi/match-route routes path)
-          params (-> (or route-params {})
-                     (u/assoc-some :query-params (not-empty (query-params/path->map path))))]
-      (if m
-        {:match/endpoints endpoints
-         :match/path      path
-         :match/params    params}
-        (prn :no-match! path)))))
-
-(comment
-  (shadow.cljs.devtools.api/get-worker :web)
-  )
-
-(defrecord EndpointsMatch [tags endpoints]
-  bidi/Matched
-  (resolve-handler [this m]
-    ;; called when matching a path to a route
-    (bidi/succeed nil (assoc m :endpoints endpoints)))
-  (unresolve-handler [this m]
-    (when (contains? tags (:handler m)) ""))
-
-  bidi/RouteSeq
-  (gather [this context]
-    [(bidi/map->Route (assoc context :endpoints endpoints))]))
-
-(defonce !routes (atom ["" {}]))
 (defonce !views (atom {}))
-(defonce !tags (atom {}))
-(defn by-tag
-  ([id] (get @!tags id))
-  ([id method] (get-in @!tags [id method])))
+(defonce !location (r/atom nil))
+(defn tag->endpoint [tag method]
+  (get-in @!tag->endpoints [tag method]))
 
-(defn breadcrumb
-  ([path] (breadcrumb @!routes path))
-  ([routes path]
-   (->> (iteration #(second (re-find #"(.*)/.*$" (or % "")))
-                   :initk path)
-        (keep (comp :route (partial match-path* routes))))))
+(defn aux:parse-path
+  "Given a `path` string, returns map of {<route-name>, <path>}
 
-(defn merge-or-return-endpoint [acc x]
-  (cond (nil? acc) (->EndpointsMatch #{(:endpoint/tag x)}
-                                     {(:endpoint/method x) x})
-        (instance? EndpointsMatch acc) (let [endpoints (assoc (:endpoints acc)
-                                                         (:endpoint/method x)
-                                                         x)]
-                                         (->EndpointsMatch (into #{} (map :endpoint/tag) (vals endpoints))
-                                                           endpoints))
-        (map? acc) (update acc "" merge-or-return-endpoint x)))
+  :root will contain the base route.
 
-(defn assoc-in-route
-  [m [k & ks] v]
-  (let [m (if (instance? EndpointsMatch m)
-            {"" m}
-            m)
-        k (if (or (keyword? k)
-                  (and (vector? k)
-                       (= 'entity/id (first k))))
-            [k]
-            k)]
-    (if ks
-      (assoc m k (assoc-in-route (get m k) ks v))
-      (update m k merge-or-return-endpoint v))))
+  Uses the Angular auxiliary route format of http://root-path(name:path//name:path).
+
+  Ignores query parameters."
+  [path]
+  (let [[_ root-string auxiliary-string query-string] (re-find #"([^(?]*)(?:\(([^(]+)\))?(\?.*)?" path)]
+    (merge {:router/root (u/ensure-prefix root-string "/")
+            :query-string query-string}
+           (->> (when auxiliary-string
+                  (str/split auxiliary-string #"//"))
+                (reduce (fn [m path]
+                          (let [[_ router path] (re-find #"([^:]+)(?::?(.*))" path)]
+                            (assoc m (keyword "router" router)
+                                     (u/ensure-prefix path "/")))) {})))))
+
+(defn aux:emit-matches
+  "Given a map of the form {<route-name>, <path>},
+   emits a list of auxiliary routes, wrapped in parentheses.
+
+   :root should contain the base route, if any.
+
+   e.g. /hello(nav:details/edit//drawer:profile/photo)"
+  [matches]
+  (str
+
+    ;; root route
+    (u/ensure-prefix (-> matches :router/root :match/path) "/")
+
+    ;; aux routes
+    (some->> (dissoc matches :router/root)
+             (keep (fn [[router {:keys [match/path]}]]
+                     (assert (string? path))
+                     (when path
+                       (str (name router)
+                            (some-> path
+                                    (u/trim-prefix "/")
+                                    u/some-str
+                                    (->> (str ":")))))))
+             (seq)
+             (str/join "//")
+             (u/wrap "()"))
+    (query-params/query-string (get-in matches [:router/root :match/params :query-params]))))
+
+(defn parse-match [{:as match :keys [data path-params query-params path]}]
+  {:match/endpoints (:endpoints data)
+   :match/data      data
+   :match/path      path
+   :match/params    (reduce-kv (fn [out k v]
+                                 (if (str/ends-with? (name k) "-id")
+                                   (assoc out k [:entity/id #?(:cljs (uuid v)
+                                                               :clj  (UUID/fromString v))])
+                                   out))
+                               (assoc path-params :query-params query-params)
+                               path-params)})
+
+(defn aux:match-by-path [path]
+  (let [{:as router-paths :keys [query-string]} (aux:parse-path path)]
+    (cond-> (into {}
+                  (map (fn [[router path]]
+                         [router (parse-match (reit/match-by-path @!router (u/ensure-prefix path "/")))]))
+                  (dissoc router-paths :query-string))
+            query-string
+            (assoc-in [:router/root :match/params :query-params] (query-params/path->map query-string)))))
+
+(defn match-by-tag [tag params]
+  (when tag
+    (let [tag    (@!aliases tag tag)
+          {:keys [query-params]} params
+          params (as-> params params
+                       (dissoc params :query-params)
+                       (reduce-kv (fn [params k v]
+                                    (if (str/ends-with? (name k) "-id")
+                                      (assoc params k (sch/unwrap-id v))
+                                      params))
+                                  params
+                                  params))]
+      (cond-> (parse-match (reit/match-by-name @!router tag params))
+              query-params
+              (-> (assoc-in [:match/params :query-params] query-params)
+                  (update :match/path str (query-params/query-string query-params)))))))
+
+(def path-by-name (comp :match/path match-by-tag))
+
+(defn register-endpoints! [key endpoints]
+  (swap! !endpoints assoc key endpoints))
 
 (comment
-  (let [r (-> {}
-              (assoc-in-route ["/o/" ['entity/id :org-id] "/settings"] {:endpoint/method :view
-                                                                        :endpoint/tag    'foo.settings})
-              (assoc-in-route ["/o/" ['entity/id :org-id]] {:endpoint/method :view
-                                                            :endpoint/tag    'foo.view})
-              (assoc-in-route ["/o/" ['entity/id :org-id]] {:endpoint/method :read
-                                                            :endpoint/tag    'foo.read})
-              )]
-    [(bidi/path-for ["" r] 'foo.settings {:org-id (random-uuid)})
-     (bidi/path-for ["" r] 'foo.view {:org-id (random-uuid)})])
-
-  )
+  (match-by-tag 'sparkboard.app.assets/upload! {:query-params {:a 1}})
+  (path-by-name  'sparkboard.app.assets/upload! {:query-params {:a 1}})
+  (aux:match-by-path "/upload?a=1")
+  (aux:parse-path "/upload?a=1"))
 
 (defn select-keys-by [m selector]
   (reduce-kv (fn [out k v]
@@ -152,17 +176,6 @@
              m))
 
 (defn endpoint-maps [sym meta]
-  ;; endpoint-map may include
-  ;; - :query true
-  ;; - :effect true
-  ;; - :get [..route]
-  ;; - :post [..route]
-  ;; - :view [..route]
-
-  #_[{:endpoint/method :get
-      :endpoint/route  []
-      :endpoint/sym    ...
-      :endpoint/tag    ...}]
   (let [endpoint {:endpoint/sym sym
                   :endpoint/tag (or (:endpoint/tag meta) sym)}
         methods  (:endpoint meta)]
@@ -170,11 +183,10 @@
                           :post
                           :view]
                   :let [route (get methods method)]
-                  :when route
-                  :let [route (cond-> route (string? route) vector)]]
+                  :when route]
               (cond-> (assoc endpoint
                         :endpoint/method method
-                        :endpoint/route route)
+                        :endpoint/path route)
                       (= method :view)
                       (merge (select-keys-by meta #(= "view" (namespace %))))))
             (for [method [:query :effect]
@@ -195,9 +207,6 @@
 (comment
   (->> (endpoints)
        (filter (comp #{:view} :endpoint/method))))
-
-#?(:clj (defn meta->sym [m]
-          (symbol (str (:ns m)) (str (:name m)))))
 
 #?(:clj
    (defmacro register-route [name {:as opts :keys [alias-of route]}]
@@ -221,103 +230,64 @@
                  nil))
           (swap! sparkboard.routing/!views assoc '~(symbol (str *ns*) (str name)) (with-meta ~(or alias-of name) ~(u/select-by sym-meta (comp #{"view"} namespace))))))))
 
-#?(:cljs (do
-           (defonce !history (atom nil))
+(defonce !history (atom nil))
 
-           (def set-location!
-             (fn [location]
-               (let [location (if-let [modal (-> location :match/params :query-params :modal)]
-                                (assoc location :modal (match-path* @!routes modal))
-                                location)]
-                 (db/transact! [[:db/retractEntity :env/location]
-                                (assoc location :db/id :env/location)]))))))
-
-(defn endpoints->routes [endpoints]
-  (->> endpoints
-       (filter :endpoint/route)
-       (reduce (fn [routes endpoint]
-                 (assoc-in-route routes (:endpoint/route endpoint) endpoint))
-               {})))
-
-(defn endpoints->tags [endpoints]
-  (->> endpoints
-       (reduce (fn [out endpoint]
-                 (assoc-in out
-                           [(:endpoint/tag endpoint) (:endpoint/method endpoint)]
-                           endpoint))
-               {})))
-
+(comment
+  (reit/match-by-name @!router 'sparkboard.app.assets/upload! {})
+  (reit/match-by-name @!router 'sparkboard.app.board/show {:board-id (random-uuid)})
+  (match-by-tag 'sparkboard.app.assets/upload! {}))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
-  [route & {:as options}]
-  (if (vector? route)
-    (apply path-for route)
-    (cond-> (bidi/path-for @!routes route options)
-            (:query-params options)
-            (-> (query-params/merge-query (:query-params options)) :path))))
-
+  [tag & {:as params}]
+  (if (vector? tag)
+    (apply path-for tag)
+    (let [match   (if (map? tag)
+                    tag
+                    (match-by-tag tag (dissoc params :query-params)))
+          router (or (get @!tag->router tag) :router/root)
+          routers (assoc @!location router match)]
+      (aux:emit-matches routers))))
 
 (defn merge-query [params]
-  (:path (query-params/merge-query
-           (db/get :env/location :match/path)
-           params)))
+  (aux:emit-matches (update-in @!location [:router/root :match/params :query-params] merge params)))
 
-(defn match-path
-  "Resolves a path (string or route vector) to its handler map (containing :view, :query, etc.)"
-  [path]
-  {:pre [(string? path)]}
-  (match-path* @!routes path))
-
-(defn resolve [route & args]
-  (cond (string? route) (match-path route)
-        (vector? route) (apply resolve route)
-        (symbol? route) (when-let [path (apply path-for route args)]
-                          (match-path path))))
-
-(defn href [match]
-  (when match
-    (if (map? match)
-      (let [{:match/keys [path endpoints]} match]
-        (if (= :modal (-> endpoints :view :view/target))
-          (merge-query {:modal path})
-          path))
-      (href (resolve match)))))
+(defn resolve [tag & args]
+  (cond (string? tag) (aux:match-by-path tag)
+        (vector? tag) (apply resolve tag)
+        (symbol? tag) (when-let [path (apply path-for tag args)]
+                        (aux:match-by-path path))))
 
 (comment
   (resolve "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
-  (href "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
-  (href ['sparkboard.app.board/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
-                                     :query-params {:foo "blah"}}])
+  (path-for "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
+  (path-for ['sparkboard.app.board/show {:board-id     [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
+                                         :query-params {:foo "blah"}}])
   (def p "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")
-  (match-path p)
+  (aux:match-by-path p)
   (def r ['sparkboard.app.board/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
-                                      :foo "blah"}])
+                                      :foo      "blah"}])
 
 
   (time (resolve r))
   (time (resolve p))
 
   @!routes
-  (by-tag 'sparkboard.app.board/show)
-  (href ['sparkboard.app.board/show {:board-id (random-uuid)}])
+  (path-for ['sparkboard.app.board/show {:board-id (random-uuid)}])
   (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
-  (match-path "/"))
+  (aux:match-by-path "/"))
 
 (defn init-endpoints! [endpoints]
-  (reset! !tags (endpoints->tags endpoints))
-  (reset! !routes ["" (endpoints->routes endpoints)])
+  (swap! !endpoints assoc ::routing endpoints)
   #?(:cljs
-     (do (reset! !history (pushy/pushy set-location! match-path))
+     (do (reset! !history (pushy/pushy (partial reset! !location) aux:match-by-path))
          (pushy/start! @!history))))
-
-(def ENTITY-ID [bidi/uuid :entity/id])
 
 (defn entity [{:as e :entity/keys [kind id]} key]
   (when e
     (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
           params {(keyword (str (name kind) "-id")) id}]
-      (href [tag params]))))
+      (path-for tag params))))
 
 (defn entity-route [{:as e :entity/keys [kind id]} key]
   (when e
@@ -330,21 +300,20 @@
      (defn merge-query! [params]
        (pushy/set-token! @!history (merge-query params)))
 
-     (defn set-modal! [route]
-       (merge-query! {:modal (some-> route path-for)}))
+     (defn clear-router! [router]
+       (pushy/set-token! @!history (path-for (-> @!location
+                                                 (dissoc router)
+                                                 (update-vals :match/path)))))
 
-     (defn close-modal! [] (merge-query! {:modal nil}))
+     (defn dissoc-router! [router]
+       (pushy/set-token! @!history (aux:emit-matches (dissoc @!location router))))
 
-     (defn set-path! [route & args]
+     (path-for (resolve "/b/a1eef7b4-5807-3c6d-bd6a-bcb6cc4d5383/settings"))
+     (defn nav! [route & args]
        (let [{:as match :match/keys [path endpoints]} (apply resolve route args)]
          (if (:view endpoints)
-           (js/setTimeout #(pushy/set-token! @!history (href match)) 0)
+           (js/setTimeout #(pushy/set-token! @!history (path-for match)) 0)
            (j/assoc-in! js/window [:location :href] path))))))
-
-(defn path->route [path]
-  (cond-> path
-          (string? path)
-          (->> (match-path* @!routes) :route)))
 
 #?(:cljs
    (defn POST [route body]
@@ -368,74 +337,21 @@
                            :method  "GET"}))
          (.then http/format-response))))
 
-(defn tag [tag endpoint]
-  (bidi/tag (delay endpoint) tag))
+(defn normalize-slashes [path]
+  ;; remove trailing /'s, but ensure path starts with /
+  (-> path
+      (cond-> (and (> (count path) 1) (str/ends-with? path "/"))
+              (subs 0 (dec (count path))))
+      (u/ensure-prefix "/")))
 
 (comment
   @!tags)
 
-(defn ensure-prefix [s prefix]
-  (if (str/starts-with? s prefix)
-    s
-    (str prefix s)))
+(comment
+  ((name-index routers) :org)
+  (aux:match-by-path (str "/o/" (random-uuid)))
+  (aux:match-by-path p)
+  (path-by-name router :foo {:org-id (random-uuid)})
+  (path-for `assets/upload!)
+  )
 
-(defn trim-prefix [s prefix]
-  (if (str/starts-with? s prefix)
-    (subs s (count prefix))
-    s))
-
-(defn some-str [s]
-  (when (not= "" s)
-    s))
-
-(defn parse-path
-  "Given a `path` string, returns map of {<route-name>, <path>}
-
-  :root will contain the base route.
-
-  Uses the Angular auxiliary route format of http://root-path(name:path//name:path).
-
-  Ignores query parameters."
-  [path]
-  (let [[_ root-string auxiliary-string] (re-find #"([^(?]*)(?:\(([^(]+)\))?(\?.*)?" path)]
-    (merge {:router/root (ensure-prefix root-string "/")}
-           (->> (when auxiliary-string
-                  (str/split auxiliary-string "//"))
-                (reduce (fn [m path]
-                          (let [[_ router path] (re-find #"([^:]+)(?::?(.*))" path)]
-                            (assoc m (keyword "router" router)
-                                     ((case router "root" ensure-prefix
-                                                   trim-prefix)
-                                      path "/")))) {})))))
-
-(defn wrap
-  [[left right] s]
-  (str left s right))
-
-(defn emit-routes
-  "Given a map of the form {<route-name>, <path>},
-   emits a list of auxiliary routes, wrapped in parentheses.
-
-   :root should contain the base route, if any.
-
-   e.g. /hello(nav:details/edit//drawer:profile/photo)"
-  [routes]
-  (str
-
-    ;; root route
-    (ensure-prefix (:router/root routes "") "/")
-
-    ;; aux routes
-    (some->> (dissoc routes :router/root :query-params)
-             (keep (fn [[router path]]
-                     (assert (string? path))
-                     (when path
-                       (str (name router)
-                            (some-> path
-                                    (trim-prefix "/")
-                                    some-str
-                                    (->> (str ":")))))))
-             (seq)
-             (str/join "//")
-             (wrap "()"))
-    (query-params/query-string (get routes :query-params))))
