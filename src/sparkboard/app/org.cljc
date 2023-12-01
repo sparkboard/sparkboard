@@ -155,7 +155,7 @@
        [:div.p-body
         [:div.flex.gap-4.items-stretch
          [ui/filter-field ?filter {:loading? (:loading? result)}]
-         [:a.btn.btn-light.flex.items-center.px-3
+         [:a.btn.btn-white.flex.items-center.px-3
           {:href (routes/path-for ['sparkboard.app.board/new
                                    {:query-params {:org-id (:entity/id org)}}])}
           (tr :tr/new-board)]]

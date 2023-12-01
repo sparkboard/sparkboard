@@ -45,7 +45,7 @@
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:id       :new-menu
                         :trigger
-                        [:div.btn-light (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
+                        [:div.btn-white (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
                         :children [[{:on-select #(routes/nav! 'sparkboard.app.board/new params)} (tr :tr/board)]
                                    [{:on-select #(routes/nav! 'sparkboard.app.org/new params)} (tr :tr/org)]]}))
 
@@ -90,7 +90,7 @@
 
 (defn account:sign-in-with-google []
   (v/x
-    [:a.btn.btn-light
+    [:a.btn.btn-white
      {:class "w-full h-10 text-zinc-500 text-sm"
       :href  "/oauth2/google/launch"}
      [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/continue-with-google)]))
@@ -127,15 +127,15 @@
      child
      (radix/dropdown-menu
        {:id       :show-recents
-        :trigger  [:div.btn-light (tr :tr/recent) down-arrow]
+        :trigger  [:div.btn-white (tr :tr/recent) down-arrow]
         :children (map (fn [entity]
                          [{:on-select #(routes/nav! (routes/entity-route entity 'show) entity)}
                           (:entity/title entity)])
                        recents)})
-     (radix/dropdown-menu {:trigger [:div.btn-light (tr :tr/new) down-arrow]
+     (radix/dropdown-menu {:trigger [:div.btn-white (tr :tr/new) down-arrow]
                            :children [[{:on-select #(routes/nav! 'sparkboard.app.board/new params)} (tr :tr/board)]
                                       [{:on-select #(routes/nav! 'sparkboard.app.org/new params)} (tr :tr/org)]]})
-     [header/chat account]
+     [header/chat]
      [header/account]]))
 
 (ui/defview account:continue-with [{:keys [route]}]

@@ -337,7 +337,7 @@
                                   :wrap        (partial hash-map :video/url)
                                   :unwrap      :video/url})))
      (when-let [url (:video/url @?field)]
-       [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.group.cursor-pointer.relative
+       [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.group.relative
         {:href   url
          :target "_blank"
          :style  {:background-image    (css-url (:video/thumbnail (parse-video-url url)))
@@ -580,7 +580,7 @@
                            (tr :tr/invalid-email)))))
 
 (def form-classes "flex flex-col gap-4 p-6 max-w-lg mx-auto bg-back relative text-sm")
-(def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.cursor-pointer.text-base)
+(def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.text-base)
 
 (v/defview submit-form [!form label]
   [:<>
@@ -647,7 +647,7 @@
                                                #_[icons/chevron-down "w-6 h-6"]
                                                #_[icons/ellipsis-horizontal "w-8"]
                                                (str "+ " n)])
-                                 unexpander [:div.flex-v.items-center.text-center.py-1.cursor-pointer.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
+                                 unexpander [:div.flex-v.items-center.text-center.py-1.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
   (let [item-count  (count items)
         !expanded?  (h/use-state false)
         expandable? (> item-count limit)]
@@ -672,3 +672,23 @@
     (f e)))
 
 (defn pprint [x] (clojure.pprint/pprint x))
+
+(defn contrasting-text-color [bg-color]
+  (if bg-color
+    (try (let [[r g b] (if (= \# (first bg-color))
+                         (let [bg-color (if (= 4 (count bg-color))
+                                          (str bg-color (subs bg-color 1))
+                                          bg-color)]
+                           [(js/parseInt (subs bg-color 1 3) 16)
+                            (js/parseInt (subs bg-color 3 5) 16)
+                            (js/parseInt (subs bg-color 5 7) 16)])
+                         (re-seq #"\d+" bg-color))
+               luminance (/ (+ (* r 0.299)
+                               (* g 0.587)
+                               (* b 0.114))
+                            255)]
+           (if (> luminance 0.5)
+             "#000000"
+             "#ffffff"))
+         (catch js/Error e "#000000"))
+    "#000000"))

@@ -197,52 +197,26 @@
 
 (ui/defview show-entry
   {:key (comp :entity/id :entry)}
-  [{:keys [parent entry can-edit?]}]
-  (let [{:field-entry/keys [field]} entry
-        {:field/keys [label]} field
-        value  (entry-value entry)
-        ?field (h/use-memo #(forms/field :init (entry-value entry))
-                           [(str (:entity/id entry))])
-        props  {:label     label
+  [{:keys [entry can-edit?]
+    {:keys [field-entry/field]} :entry}]
+  (let [value  (entry-value entry)
+        ?field (h/use-memo #(forms/field :init (entry-value entry)))
+        props  {:label     (:label field)
                 :can-edit? can-edit?
-                :on-save   (fn [x]
-                             (entity/save-attributes! nil
-                                                      (:entity/id entry)
-                                                      x))}]
+                :on-save  (partial entity/save-attributes! nil (:entity/id entry))}]
     (case (:field/type field)
-      :field.type/video "" #_[ui/video-field ?field props]
-      :field.type/select "" #_[ui/select-field ?field (merge props
+      :field.type/video [ui/video-field ?field props]
+      :field.type/select [ui/select-field ?field (merge props
                                                         {:wrap            (fn [x] {:select/value x})
                                                          :unwrap          :select/value
                                                          :persisted-value value
                                                          :options         (:field/options field)})]
-      :field.type/link-list "" #_[ui/pprinted value props]
+      :field.type/link-list [ui/pprinted value props]
       :field.type/images [ui/images-field ?field props]
       :field.type/prose [ui/prose-field ?field props]
       (str "no match" field))))
 
 (defonce !alert (r/atom nil))
-
-(defn contrasting-text-color [bg-color]
-  #?(:cljs
-     (if bg-color
-       (try (let [[r g b] (if (= \# (first bg-color))
-                            (let [bg-color (if (= 4 (count bg-color))
-                                             (str bg-color (subs bg-color 1))
-                                             bg-color)]
-                              [(js/parseInt (subs bg-color 1 3) 16)
-                               (js/parseInt (subs bg-color 3 5) 16)
-                               (js/parseInt (subs bg-color 5 7) 16)])
-                            (re-seq #"\d+" bg-color))
-                  luminance (/ (+ (* r 0.299)
-                                  (* g 0.587)
-                                  (* b 0.114))
-                               255)]
-              (if (> luminance 0.5)
-                "#000000"
-                "#ffffff"))
-            (catch js/Error e "#000000"))
-       "#000000")))
 
 (defn blank? [color]
   (or (empty? color) (= "#ffffff" color) (= "rgb(255, 255, 255)" color)))
@@ -347,7 +321,7 @@
                             :wrapper-class "flex-auto"
                             :class         "rounded-sm relative focus:z-2"
                             :style         {:background-color @?color
-                                            :color            (contrasting-text-color @?color)}}]
+                                            :color            (ui/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
       [ui/color-field ?color {:on-save save!
                               :style   {:top -10 :left -10 :width 100 :height 100 :position "absolute"}}]]
@@ -479,7 +453,7 @@
     {:entity/id (:entity/id field)}))
 
 (ui/defview fields-editor [entity attribute]
-  (let [?field           (forms/field :attribute attribute)
+  (let [label (:label (forms/global-meta attribute))
         !new-field       (h/use-state nil)
         !autofocus-ref   (ui/use-autofocus-ref)
         fields           (->> (get entity attribute)
@@ -491,7 +465,7 @@
                            (reset! !field-count (count fields))
                            id)]
     [ui/input-wrapper {:class "labels-semibold"}
-     (when-let [label (or (:label ?field) (tr attribute))]
+     (when-let [label (or label (tr attribute))]
        [ui/input-label {:class "flex items-center"}
         label])
      [:div.flex-v.border.rounded.labels-sm
@@ -517,7 +491,7 @@
                                 :ref           !autofocus-ref
                                 :placeholder   (:label ?label)
                                 :wrapper-class "flex-auto"}]
-         [:button.btn.btn-light {:type "submit"}
+         [:button.btn.btn-white {:type "submit"}
           (tr :tr/add)]]
         [:div.pl-12.py-2 (ui/show-field-messages !form)]]
        (radix/dropdown-menu {:id       :add-field

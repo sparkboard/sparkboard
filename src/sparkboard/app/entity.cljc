@@ -33,6 +33,8 @@
                                  :db/fulltext true}
      :entity/parent             (sch/ref :one)
      :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message :field]}
+     :entity/draft?             {:doc "Entity is not yet published - visible only to creator/team"
+                                 s- :boolean}
      :entity/description        {:doc "Description of an entity (for card/header display)"
                                  s-   :prose/as-map
                                  #_#_:db/fulltext true}
@@ -66,15 +68,15 @@
      :entity/updated-at         {s-   'inst?
                                  :doc "Date the entity was last modified"}}))
 
-(def fields [:entity/id
-             :entity/kind
-             :entity/title
-             :entity/description
-             :entity/created-at
-             :entity/deleted-at
-             {:image/avatar [:entity/id]}
-             {:image/background [:entity/id]}
-             {:entity/domain [:domain/name]}])
+(def id-fields [:entity/id :entity/kind])
+(def fields `[~@id-fields
+              :entity/title
+              :entity/description
+              :entity/created-at
+              :entity/deleted-at
+              {:image/avatar [:entity/id]}
+              {:image/background [:entity/id]}
+              {:entity/domain [:domain/name]}])
 
 (q/defx save-attributes!
   {:prepare [az/with-account-id!]}
@@ -177,7 +179,7 @@
 
 (ui/defview dropdown-menu [entity]
   (when-let [path (and (validate/editing-role? (:member/roles entity))
-                        (some-> (routing/entity-route entity :settings) routing/path-for))]
+                       (some-> (routing/entity-route entity :settings) routing/path-for))]
     [:a.icon-light-gray.flex.items-center.justify-center.focus-visible:bg-gray-200.mx-1.self-stretch.rounded
      {:href path}
      [icons/gear "icon-xl"]]))

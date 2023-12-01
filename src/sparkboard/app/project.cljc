@@ -1,11 +1,11 @@
 (ns sparkboard.app.project
   (:require [sparkboard.app.member :as member]
             [clojure.set :as set]
-            [promesa.core :as p]
             [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.routing :as routes]
+            [sparkboard.routing :as routing]
             [sparkboard.schema :as sch :refer [s- ?]]
+            [sparkboard.server.datalevin :as dl]
             [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
             [sparkboard.query :as q]
@@ -55,15 +55,16 @@
                                      :entity/id
                                      :entity/kind
                                      :entity/parent
+                                     :entity/title
+                                     :entity/created-at
+                                     (? :entity/updated-at)
+                                     (? :entity/draft?)
                                      (? :entity/archived?)
                                      (? :entity/field-entries)
                                      (? :entity/video)
                                      (? :entity/created-by)
                                      (? :entity/deleted-at)
                                      (? :entity/modified-by)
-                                     :entity/title
-                                     :entity/created-at
-                                     :entity/updated-at
                                      (? :member/_entity)
                                      (? [:project/card-classes {:doc          "css classes for card"
                                                                 :to-deprecate true}
@@ -185,6 +186,30 @@
              [~@entity/fields
               {:board/project-fields ~field/field-keys}]}] project-id))
 
+#?(:cljs
+   (defn use-dev-panel [entity]
+     (let [!dev-edit? (h/use-state nil)
+           can-edit?  (if-some [edit? @!dev-edit?]
+                        edit?
+                        (validate/editing-role? (:member/roles entity)))]
+       [can-edit? (when (ui/dev?)
+                    [:div.p-body.bg-gray-100.border-b.flex.gap-3
+                     [:div.flex-auto.text-sm [ui/pprinted (:member/roles entity)]]
+                     [radix/select-menu {:value           @!dev-edit?
+                                         :on-value-change (partial reset! !dev-edit?)
+                                         :can-edit?       true
+                                         :options         [{:value nil :text "Current User"}
+                                                           {:value true :text "Editor"}
+                                                           {:value false :text "Viewer"}]}]])])))
+
+(q/defquery db:fields [{:keys [board-id]}]
+  (-> (q/pull `[~@entity/id-fields
+                {:board/project-fields ~field/field-keys}] board-id)
+      :board/project-fields))
+
+(def modal-close [radix/dialog-close
+                  [:div.flex.items-center.ml-auto.self-stretch.px-body.cursor-default.text-gray-500.hover:text-black [icons/close "icon-lg"]]])
+
 (ui/defview show
   {:route       "/p/:project-id"
    :view/router :router/modal}
@@ -195,26 +220,20 @@
                        video]
          :keys        [:entity/parent
                        :project/badges]} (db:read params)
-        !dev-edit? (h/use-state nil)
-        can-edit?  (if-some [edit? @!dev-edit?]
-                     edit?
-                     (validate/editing-role? (:member/roles project)))
+        [can-edit? dev-panel] (use-dev-panel project)
         entries    (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
     [:<>
-     (when (ui/dev?)
-       [:div.p-body.bg-gray-100.border-b.flex.gap-3
-        [:div.flex-auto.text-sm [ui/pprinted (:member/roles project)]]
-        [radix/select-menu {:value           @!dev-edit?
-                            :on-value-change (partial reset! !dev-edit?)
-                            :can-edit?       true
-                            :options         [{:value nil :text "Current User"}
-                                              {:value true :text "Editor"}
-                                              {:value false :text "Viewer"}]}]])
+     dev-panel
      #_[ui/entity-header parent]
+     [:div.flex.gap-2.h-14.items-stretch
+      [:h1.font-semibold.text-3xl.flex-auto.px-body.flex.items-center
+       ;; TODO
+       ;; make title editable for `can-edit?` and have it autofocus if title = (tr :tr/untitled)
+       ;; - think about how to make the title field editable
+       ;; - dotted underline if editable?
+       title]
+      modal-close]
      [:div.p-body.flex-v.gap-6
-      [:div.flex.items-start.gap-2
-       [:h1.font-semibold.text-3xl.flex-auto title]
-       #_[radix/dialog-close [icons/close "w-8 h-8 -mr-2 -mt-1 text-gray-500 hover:text-black"]]]
       (ui/show-prose description)
       (when badges
         [:section
@@ -222,10 +241,34 @@
                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
                badges)])
       (map #(field/show-entry {:can-edit? can-edit?
-                               :parent    project
                                :entry     %}) entries)
       [:section.flex-v.gap-2.items-start.mt-32
        [community-actions project]]
       (when-let [vid video]
         [:section [:h3 (tr :tr/video)]
          [video-field vid]])]]))
+
+(q/defx db:new!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} project]
+  ;; TODO
+  ;; verify that user is allowed to create a new project in parent
+  (let [project (dl/new-entity project :project :by account-id)]
+    (validate/assert project :project/as-map)
+    (db/transact! [project])
+    {:entity/id (:entity/id project)}))
+
+(ui/defview new
+  {:route "/new/p/:board-id"
+   :view/router :router/modal}
+  [{:keys [board-id]}]
+  (let [fields (db:fields {:board-id board-id})]
+    (forms/with-form [!project {:project/parent board-id
+                                :entity/title   ?title}]
+      [:<>
+       [:h3.flex.items-center.border-b.h-14
+        [:div.px-body.flex-auto (tr :tr/new-project)] modal-close]
+       [:div.p-body
+
+        [ui/pprinted (map db/touch fields)]
+        ]])))

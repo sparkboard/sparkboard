@@ -119,16 +119,17 @@
     (query-params/query-string (get-in matches [:router/root :match/params :query-params]))))
 
 (defn parse-match [{:as match :keys [data path-params query-params path]}]
-  {:match/endpoints (:endpoints data)
-   :match/data      data
-   :match/path      path
-   :match/params    (reduce-kv (fn [out k v]
-                                 (if (str/ends-with? (name k) "-id")
-                                   (assoc out k [:entity/id #?(:cljs (uuid v)
-                                                               :clj  (UUID/fromString v))])
-                                   out))
-                               (assoc path-params :query-params query-params)
-                               path-params)})
+  (when (and match (not (reit/partial-match? match)))
+    {:match/endpoints (:endpoints data)
+     :match/data      data
+     :match/path      path
+     :match/params    (reduce-kv (fn [out k v]
+                                   (if (str/ends-with? (name k) "-id")
+                                     (assoc out k [:entity/id #?(:cljs (uuid v)
+                                                                 :clj  (UUID/fromString v))])
+                                     out))
+                                 (assoc path-params :query-params query-params)
+                                 path-params)}))
 
 (defn aux:match-by-path [path]
   (let [{:as router-paths :keys [query-string]} (aux:parse-path path)]
@@ -308,12 +309,15 @@
      (defn dissoc-router! [router]
        (pushy/set-token! @!history (aux:emit-matches (dissoc @!location router))))
 
-     (path-for (resolve "/b/a1eef7b4-5807-3c6d-bd6a-bcb6cc4d5383/settings"))
-     (defn nav! [route & args]
-       (let [{:as match :match/keys [path endpoints]} (apply resolve route args)]
-         (if (:view endpoints)
-           (js/setTimeout #(pushy/set-token! @!history (path-for match)) 0)
-           (j/assoc-in! js/window [:location :href] path))))))
+
+     (defn nav! [tag & [params]]
+       (if (vector? tag)
+         (apply nav! tag)
+         (let [{:match/keys [endpoints]} (match-by-tag tag params)
+               path (path-for tag params)]
+           (if (:view endpoints)
+             (js/setTimeout #(pushy/set-token! @!history path) 0)
+             (j/assoc-in! js/window [:location :href] path)))))))
 
 #?(:cljs
    (defn POST [route body]

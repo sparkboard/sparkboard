@@ -225,6 +225,7 @@
 }
 
 @layer components {
+
     /* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
     .auto-size {
         @apply grid
@@ -282,12 +283,12 @@
     .default-ring {
         @apply
         ring ring-1 ring-gray-300 border-none outline-none
-        focus:ring-2 focus:ring-focus-accent
+        focus-visible:ring-2 focus-visible:ring-focus-accent
     }
     .default-outline {
         @apply
         outline outline-1 outline-gray-300 border-none ring-0
-        focus:outline-2 focus:outline-focus-accent
+        focus-visible:outline-2 focus-visible:outline-focus-accent
     }
     .default-border {
         @apply border border-gray-300 outline-none ring-0 focus:border-2 focus:border-focus-accent
@@ -319,10 +320,11 @@
         @apply border border-gray-200 hover:border-gray-300 cursor-default
     }
 
-    .btn-light {
+    .btn-white {
         @apply
         cursor-default
         hover:bg-black/5
+        focus:bg-black/10
         text-primary/80
         rounded-lg
         inline-flex items-center justify-center py-1 px-3
@@ -333,7 +335,7 @@
         @apply
         ring-offset-back bg-primary text-primary-txt
         hover:bg-primary/90 focus-visible:bg-primary/90
-        disabled:bg-primary
+        disabled:bg-primary active:ring-0
     }
     .btn-darken {
         @apply

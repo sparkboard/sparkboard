@@ -198,7 +198,7 @@
                 chat/last-message]} chat
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
-    [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.cursor-pointer.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
+    [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
      {:href  (routes/path-for [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} other]

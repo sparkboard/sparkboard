@@ -111,7 +111,7 @@
         [:div.flex.gap-3
          [:input.form-text.w-80
           {:placeholder "What kind of help are you looking for?"}]
-         [:div.btn.btn-light "Add"]]
+         [:div.btn.btn-white "Add"]]
         [form-hint "Suggestions"]
         [:div.flex.flex-wrap.gap-2
          [tag "Designer" [tag-icon "🎨"]]
@@ -126,7 +126,7 @@
         [:div.flex.gap-3
          [:input.form-text.w-80
           {:placeholder "What are you looking for?"}]
-         [:div.btn.btn-light "Add"]]
+         [:div.btn.btn-white "Add"]]
         [:div.flex.flex-wrap.gap-3.text-gray-500.items-center
          [icons/plus "w-5 h-5 "]
          (map (partial vector :div.text-sm)
@@ -173,7 +173,7 @@
                  :placeholder "What are you looking for?"
                  :value       ('?title @!new)
                  :on-change   #(swap! !new assoc '?title (.. % -target -value))}]
-               [:button.btn.btn-light {:type "submit"} "Add"]])
+               [:button.btn.btn-white {:type "submit"} "Add"]])
 
             ;; TODO show this only when input is focused
             #_[:div.flex.flex-wrap.gap-3.text-gray-500.items-center
@@ -225,7 +225,7 @@
                    :placeholder "What are you looking for?"
                    :value       ('?title @!new)
                    :on-change   #(swap! !new assoc '?title (.. % -target -value))}]
-                 [:button.btn.btn-light {:type "submit"} "Add"]]))
+                 [:button.btn.btn-white {:type "submit"} "Add"]]))
             ]]))
       ]]))
 

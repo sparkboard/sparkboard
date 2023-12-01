@@ -10,11 +10,12 @@
             [sparkboard.app.entity :as entity]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.query :as q]
-            [sparkboard.routing :as routes]
+            [sparkboard.routing :as routing]
             [sparkboard.schema :as sch :refer [? s-]]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]
             [sparkboard.ui.header :as header]
+            [sparkboard.app.project :as project]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
@@ -200,7 +201,7 @@
                      (.preventDefault e)
                      (ui/with-submission [result (db:new! {:board @!board})
                                           :form !board]
-                       (routes/nav! `show {:board-id (:entity/id result)})))
+                       (routing/nav! `show {:board-id (:entity/id result)})))
         :ref       (ui/use-autofocus-ref)}
        [:h2.text-2xl (tr :tr/new-board)]
 
@@ -228,10 +229,10 @@
      [:h3 (tr :tr/register)]
      [ui/text-field ?name]
      [ui/text-field ?pass]
-     [:button {:on-click #(p/let [res (routes/POST route @!member)]
+     [:button {:on-click #(p/let [res (routing/POST route @!member)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)
-                                (routes/nav! [:board/read params])
+                                (routing/nav! [:board/read params])
                                 res))}
       (tr :tr/register)]]))
 
@@ -246,8 +247,27 @@
    #_[ui/pprinted
       (db/touch board)]])
 (comment
-  (routes/path-for ['sparkboard.app.board/settings {:board-id (sch/wrap-id #uuid"a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")}]))
+  (routing/path-for ['sparkboard.app.board/settings {:board-id (sch/wrap-id #uuid"a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")}]))
 
+(ui/defview action-button [{:as props :keys [on-click]} child]
+  (let [!async-state (h/use-state nil)
+        on-click     (fn [e]
+                       (reset! !async-state {:loading? true})
+                       (p/let [result (on-click e)]
+                         (prn :res result)
+                         (reset! !async-state (when (:error result) result))))
+        {:keys [loading? error]} @!async-state]
+    [radix/tooltip {:delay-duration 0} error
+     [:div.btn.btn-white.overflow-hidden.relative
+      (-> props
+          (v/merge-props {:class (when error "ring-destructive ring-2")})
+          (assoc :on-click
+                 (when-not loading? on-click)))
+      (tr :tr/new-project)
+      (when (:loading? @!async-state)
+        [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))
+
+(routing/path-for `project/show {:project-id #uuid "a4e7c453-acb1-4afe-9890-1341733c1aa5"})
 (ui/defview show
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
@@ -260,8 +280,18 @@
 
       [:div.flex.gap-4.items-stretch
        [ui/filter-field ?filter]
-       [:a.btn.btn-light.flex.items-center.px-3
-        {:href (routes/path-for ['sparkboard.app.project.new-flow/start {:board-id board-id}])}
+       [:a.btn.btn-light {:href (routing/path-for `project/show {:project-id #uuid "a4e7c453-acb1-4afe-9890-1341733c1aa5"})}
+        "Go"]
+       [action-button
+        {:on-click (fn [_]
+                     (p/let [{:as   result
+                              :keys [entity/id]} (project/db:new! nil
+                                                                  {:entity/parent board-id
+                                                                   :entity/title   (tr :tr/untitled)
+                                                                   :entity/draft?  true})]
+                       (when id
+                         (routing/nav! `project/show {:project-id id}))
+                       result))}
         (tr :tr/new-project)]]
 
       (when (az/editor-role? roles)
@@ -300,7 +330,7 @@
   [{:keys [board-id member/roles]}]
   (some->
     (q/pull `[~@entity/fields
-              {:board/member-fields  ~field/field-keys}
+              {:board/member-fields ~field/field-keys}
               {:board/project-fields ~field/field-keys}] board-id)
     (merge {:member/roles roles})))
 
@@ -312,7 +342,7 @@
      (header/entity board)
      [:div {:class ui/form-classes}
       (entity/use-persisted board :entity/title ui/text-field {:inline? true
-                                                               :class "text-lg"})
+                                                               :class   "text-lg"})
       (entity/use-persisted board :entity/description ui/prose-field {:inline? true :class "bg-gray-100 px-3 py-3"})
       (entity/use-persisted board :entity/domain domain/domain-field)
       (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
@@ -321,8 +351,6 @@
       (field/fields-editor board :board/project-fields)
 
       ;; TODO
-      ;; - :board/member-fields
-      ;; - :board/project-fields
       ;; - :board/project-sharing-buttons
       ;; - :board/member-tags
 

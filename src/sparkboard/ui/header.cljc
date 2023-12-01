@@ -16,7 +16,7 @@
 
 (defn btn [{:keys [icon href]}]
   [(if href :a :div)
-   {:class "btn-light"
+   {:class "btn-white"
     :href  href}
    icon])
 
@@ -55,7 +55,7 @@
         (tr :tr/view-all)]]
       (tr :tr/no-messages))))
 
-(ui/defview chat [entity]
+(ui/defview chat []
   (let [!open? (h/use-state false)
         unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))]
     [:el Popover/Root
@@ -65,7 +65,7 @@
       [:button.relative.flex.items-center.icon-light-gray.px-1.rounded {:tab-index 0}
        ;; unread-count bubble
        (when unread
-         [:div.z-30
+         [:div.z-10
           {:style {:width  10
                    :height 10
                    :top    "50%"
@@ -113,7 +113,7 @@
            [:div.flex-grow]]
           (concat children
                   [(entity/dropdown-menu entity)
-                   [chat entity]
+                   [chat]
                    [account]]))))
 
 (defn entity [entity & children] (entity* entity children))

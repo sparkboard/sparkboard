@@ -26,9 +26,9 @@
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 "
+  (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 cursor-default "
        (if selected?
-         "text-txt/50 cursor-default "
+         "text-txt/50 "
          (str "hover:bg-primary/5 "
               "data-[highlighted]:bg-primary/5 data-[highlighted]:outline-none"))))
 
@@ -109,7 +109,7 @@
     [:el dialog/Root (v/props root)
      [:el dialog/Portal
       [:el dialog/Overlay
-       {:class "inset-0 fixed flex items-stretch md:items-start md:pt-[20px] justify-center backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid "}
+       {:class "z-20 inset-0 fixed flex items-stretch md:items-start md:pt-[20px] justify-center backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid "}
        [:el.bg-back.rounded-lg.shadow-lg.relative.outline-none.overflow-y-auto dialog/Content
         (v/props {:class "min-w-[350px] max-w-[900px]"} content)
         body
@@ -170,7 +170,7 @@
      (v/x
        [:el tooltip/Provider props
         [:el tooltip/Root
-         [:el.cursor-default tooltip/Trigger child]
+         [:el.cursor-default tooltip/Trigger {:as-child true} child]
          [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
           [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
            tip
