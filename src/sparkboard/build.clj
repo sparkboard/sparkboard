@@ -14,14 +14,14 @@
 
 (comment
   (require '[shadow.cljs.devtools.api :as shadow])
-  (shadow/get-build-config :web)
-  (shadow/compile :web)
+  (shadow/get-build-config :browser)
+  (shadow/compile :browser)
   )
 
 (defn start
   {:shadow/requires-server true}
   [port]
-  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :web)
+  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :browser)
   ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
 
 (defn slurp-some [path]

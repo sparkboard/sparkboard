@@ -67,6 +67,6 @@
                                            (->> (select-keys options [:tx :schema])
                                                 transit/write
                                                 hiccup.util/raw-string)]
-                                          [:div#web content]]}))}
+                                          [:div#app-root content]]}))}
       (ring.response/content-type "text/html")
       (ring.response/status 200)))

@@ -63,7 +63,7 @@
              (member/member:log-visit! :org-id)]}
   [{:keys [org-id]}]
   (q/pull `[~@entity/fields
-            {:board/_owner ~entity/fields}]
+            {:entity/_parent ~entity/fields}]
           (dl/resolve-id org-id)))
 
 (q/defx db:search-once
@@ -133,24 +133,7 @@
                                 :q     q}))))))
         [q])
       [:div
-
-       (header/entity org
-         [header/btn {:icon [icons/gear]
-                      :href (routes/path-for 'sparkboard.app.org/settings params)}]
-         #_[:div
-            {:on-click #(when (js/window.confirm (str "Really delete organization "
-                                                      title "?"))
-                          (routes/POST :org/delete params))}]
-         )
-
-       [:div.p-body.whitespace-pre
-        "This is the landing page for an organization. Its purpose is to provide a quick overview of the organization and list its boards.
-         - show hackathons by default. sort-by date, group-by year.
-         - tabs: hackathons, projects, [about / external tab(s)]
-         - search
-
-         "
-        ]
+       (header/entity org)
        [:div.p-body (ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch
@@ -170,7 +153,7 @@
           [:div.flex-v.gap-2
            [title (tr :tr/boards)]
            [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
-            (map entity/row (:board/_owner org))]])]])))
+            (map entity/row (:entity/_parent org))]])]])))
 
 (ui/defview settings
   {:route "/o/:org-id/settings"}

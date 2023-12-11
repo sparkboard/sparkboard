@@ -39,7 +39,7 @@
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
                                                    classes]}
    (radix/dropdown-menu
-     {:trigger [icons/languages "w-5 h-5"]
+     {:trigger  [icons/languages "w-5 h-5"]
       :children (lang-menu-content)})])
 
 (ui/defview chats-list []
@@ -66,15 +66,15 @@
        ;; unread-count bubble
        (when unread
          [:div.z-10
-          {:style {:width  10
-                   :height 10
-                   :top    "50%"
+          {:style {:width      10
+                   :height     10
+                   :top        "50%"
                    :margin-top -14
-                   :right 2
-                   :position "absolute"}
+                   :right      2
+                   :position   "absolute"}
            :class ["rounded-full"
                    "bg-focus-accent focus-visible:bg-black"]}])
-       [icons/chat-bubble-left "icon-xl -mb-[2px]"]]]
+       [icons/chat-bubble-left "icon-lg -mb-[2px]"]]]
      [:el Popover/Portal
       {:container (yu/find-or-create-element :radix-modal)}
       [:Suspense {}
@@ -89,7 +89,7 @@
     [:<>
      (radix/dropdown-menu
        {:trigger  [:button.flex.items-center.focus-ring.rounded.px-1 {:tab-index 0}
-                   [:img.rounded-full.h-7.w-7 {:src (ui/asset-src (:image/avatar account) :avatar)}]]
+                   [:img.rounded-full.h-6.w-6 {:src (ui/asset-src (:image/avatar account) :avatar)}]]
         :children [[{:on-click #(routes/nav! 'sparkboard.app.account/show)} (tr :tr/home)]
                    [{:on-click #(routes/nav! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
                    [{:sub?     true
@@ -102,18 +102,19 @@
                       :keys [entity/title
                              image/avatar]} children]
   (let [entity-href (routes/entity entity :show)]
-    (into [:div.entity-header
-           (when avatar
-             [:a.contents {:href entity-href}
-              [:img.h-10
-               {:src (ui/asset-src avatar :avatar)}]])
+    [:div.entity-header
+     (when avatar
+       [:a.contents {:href entity-href}
+        [:img.h-10
+         {:src (ui/asset-src avatar :avatar)}]])
 
-           [:a.contents {:href entity-href} [:h3.hover:underline title]]
+     [:a.contents {:href entity-href} [:h3.hover:underline title]]
 
-           [:div.flex-grow]]
-          (concat children
-                  [(entity/dropdown-menu entity)
-                   [chat]
-                   [account]]))))
+     [:div.flex-grow]
+     (into [:div.flex.gap-1]
+           (concat children
+                   [(entity/settings-button entity)
+                    [chat]
+                    [account]]))]))
 
 (defn entity [entity & children] (entity* entity children))

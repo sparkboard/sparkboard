@@ -13,6 +13,7 @@
             [sparkboard.util :as u]
             [reitit.core :as reit]
             [re-db.reactive :as r]
+            [re-db.xform :as xf]
             [clojure.pprint])
   #?(:clj (:import [java.util UUID]))
   #?(:cljs (:require-macros [sparkboard.routing])))
@@ -21,34 +22,33 @@
 ;; - when creating paths, first look up the router for the tag
 ;; - create a tag index - routes are all {"route" {:method {endpoint} :name :some/tag}}
 
-(defonce !endpoints (r/atom {}))
+(defonce !endpoints (r/atom []))
 
-(defn assoc-endpoint
-  [m {:as endpoint :keys [endpoint/path]}]
-  (-> m
-      (assoc-in [path :endpoints (:endpoint/method endpoint)] endpoint)
-      (update-in [path :name] #(or % (:endpoint/tag endpoint)))))
+(r/redef !routes (r/reaction (->> @!endpoints
+                                  (filter :endpoint/path)
+                                  (reduce (fn assoc-endpoint
+                                            [m {:as endpoint :keys [endpoint/path]}]
+                                            (-> m
+                                                (assoc-in [path :endpoints (:endpoint/method endpoint)] endpoint)
+                                                (update-in [path :name] #(or % (:endpoint/tag endpoint)))))
+                                          {}))))
 
-(r/redef !routes (r/reaction (reduce
-                               (fn [routes endpoint]
-                                 (cond-> routes
-                                         (:endpoint/path endpoint)
-                                         (assoc-endpoint endpoint)))
-                               {}
-                               (apply concat (vals @!endpoints)))))
-(r/redef !router (r/reaction
-                   (reit/router @!routes)))
+(r/redef !router (xf/transform !routes
+                               (map reit/router)))
+
 (r/redef !tag->endpoints (r/reaction
                            (reduce (fn [index {:as endpoint :endpoint/keys [tag method]}]
                                      (assoc-in index [tag method] endpoint))
                                    {}
-                                   (apply concat (vals @!endpoints)))))
+                                   @!endpoints)))
+
 (r/redef !tag->router (r/reaction
                         (into {}
                               (keep (fn [[tag data]]
                                       (when-let [router (-> data :view :view/router)]
                                         [tag router])))
                               @!tag->endpoints)))
+
 (r/redef !aliases (r/reaction
                     (into {}
                           (mapcat (fn [[_ {:as data :keys [name endpoints]}]]
@@ -63,9 +63,8 @@
   @!tag->data
   @!tag->endpoints
   @!tag->router
-  @!aliases
+  @!aliases)
 
-  )
 (defonce !views (atom {}))
 (defonce !location (r/atom nil))
 (defn tag->endpoint [tag method]
@@ -81,7 +80,7 @@
   Ignores query parameters."
   [path]
   (let [[_ root-string auxiliary-string query-string] (re-find #"([^(?]*)(?:\(([^(]+)\))?(\?.*)?" path)]
-    (merge {:router/root (u/ensure-prefix root-string "/")
+    (merge {:router/root  (u/ensure-prefix root-string "/")
             :query-string query-string}
            (->> (when auxiliary-string
                   (str/split auxiliary-string #"//"))
@@ -132,13 +131,19 @@
                                  path-params)}))
 
 (defn aux:match-by-path [path]
-  (let [{:as router-paths :keys [query-string]} (aux:parse-path path)]
-    (cond-> (into {}
-                  (map (fn [[router path]]
-                         [router (parse-match (reit/match-by-path @!router (u/ensure-prefix path "/")))]))
-                  (dissoc router-paths :query-string))
-            query-string
-            (assoc-in [:router/root :match/params :query-params] (query-params/path->map query-string)))))
+  (let [{:as router-paths :keys [query-string]} (aux:parse-path path)
+        matches (cond-> (into {}
+                              (map (fn [[router path]]
+                                     [router (parse-match (reit/match-by-path @!router (u/ensure-prefix path "/")))]))
+                              (dissoc router-paths :query-string))
+                        query-string
+                        (assoc-in [:router/root :match/params :query-params] (query-params/path->map query-string)))]
+    (when (-> matches :router/root :match/data)
+      matches)))
+
+(comment
+  (aux:match-by-path "/oauth2/google/launch")
+  (aux:match-by-path "/"))
 
 (defn match-by-tag [tag params]
   (when tag
@@ -159,12 +164,9 @@
 
 (def path-by-name (comp :match/path match-by-tag))
 
-(defn register-endpoints! [key endpoints]
-  (swap! !endpoints assoc key endpoints))
-
 (comment
   (match-by-tag 'sparkboard.app.assets/upload! {:query-params {:a 1}})
-  (path-by-name  'sparkboard.app.assets/upload! {:query-params {:a 1}})
+  (path-by-name 'sparkboard.app.assets/upload! {:query-params {:a 1}})
   (aux:match-by-path "/upload?a=1")
   (aux:parse-path "/upload?a=1"))
 
@@ -205,10 +207,6 @@
                  (mapcat #(endpoint-maps (symbol %) (meta %))))
            (all-ns))))
 
-(comment
-  (->> (endpoints)
-       (filter (comp #{:view} :endpoint/method))))
-
 #?(:clj
    (defmacro register-route [name {:as opts :keys [alias-of route]}]
      (let [sym-meta (cond-> opts
@@ -246,12 +244,9 @@
     (let [match   (if (map? tag)
                     tag
                     (match-by-tag tag (dissoc params :query-params)))
-          router (or (get @!tag->router tag) :router/root)
+          router  (or (get @!tag->router tag) :router/root)
           routers (assoc @!location router match)]
       (aux:emit-matches routers))))
-
-(defn merge-query [params]
-  (aux:emit-matches (update-in @!location [:router/root :match/params :query-params] merge params)))
 
 (defn resolve [tag & args]
   (cond (string? tag) (aux:match-by-path tag)
@@ -279,7 +274,7 @@
   (aux:match-by-path "/"))
 
 (defn init-endpoints! [endpoints]
-  (swap! !endpoints assoc ::routing endpoints)
+  (reset! !endpoints  endpoints)
   #?(:cljs
      (do (reset! !history (pushy/pushy (partial reset! !location) aux:match-by-path))
          (pushy/start! @!history))))
@@ -298,8 +293,8 @@
 #?(:cljs
    (do
 
-     (defn merge-query! [params]
-       (pushy/set-token! @!history (merge-query params)))
+     (defn merge-query! [query-params]
+       (pushy/set-token! @!history (aux:emit-matches (update-in @!location [:router/root :match/params :query-params] merge query-params))))
 
      (defn clear-router! [router]
        (pushy/set-token! @!history (path-for (-> @!location
@@ -308,7 +303,6 @@
 
      (defn dissoc-router! [router]
        (pushy/set-token! @!history (aux:emit-matches (dissoc @!location router))))
-
 
      (defn nav! [tag & [params]]
        (if (vector? tag)

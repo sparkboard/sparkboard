@@ -177,12 +177,12 @@
     [:div.line-clamp-2 title]]])
 
 
-(ui/defview dropdown-menu [entity]
+(ui/defview settings-button [entity]
   (when-let [path (and (validate/editing-role? (:member/roles entity))
                        (some-> (routing/entity-route entity :settings) routing/path-for))]
-    [:a.icon-light-gray.flex.items-center.justify-center.focus-visible:bg-gray-200.mx-1.self-stretch.rounded
+    [:a.icon-light-gray.flex.items-center.justify-center.focus-visible:bg-gray-200.self-stretch.rounded
      {:href path}
-     [icons/gear "icon-xl"]]))
+     [icons/gear "icon-lg"]]))
 
 (ui/defview row
   {:key :entity/id}
@@ -192,8 +192,7 @@
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
     {:href (routing/entity entity :show)}
     [ui/avatar {:size 10} entity]
-    [:div.line-clamp-2.leading-snug.flex-grow title]]
-   [dropdown-menu entity]])
+    [:div.line-clamp-2.leading-snug.flex-grow title]]])
 
 (ui/defview show-filtered-results
   {:key :title}

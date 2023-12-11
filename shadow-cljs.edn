@@ -1,6 +1,6 @@
 {:deps {:aliases [:nio :dev]}
  :builds
- {:web
+ {:browser
   {:target :browser
    :module-loader true
    :modules {:app {:init-fn sparkboard.client.core/init
@@ -16,6 +16,6 @@
                            (sparkboard.build/spit-endpoints!)]}}}}
 
 (comment
-  (shadow/watch :web)
-  (shadow/stop-worker :web)
-  (shadow/release :web))
+  (shadow/watch :browser)
+  (shadow/stop-worker :browser)
+  (shadow/release :browser))

@@ -10,6 +10,9 @@
 
 
 @layer base {
+    button {
+        cursor: default
+    }
 
     .prose {
         font-size: inherit !important;
@@ -112,44 +115,71 @@
         @apply bg-back text-txt;
         font-feature-settings: "rlig" 1, "calt" 1;
     }
+
     .icon {
         @apply w-[18.75px] h-[18.75px]
     }
 }
 
 @layer utilities {
-    .labels-xs label { @apply text-xs }
-    .labels-sm label { @apply text-sm }
-    .labels-md label { @apply text-md }
-    .labels-lg label { @apply text-lg }
-    .labels-xl label { @apply text-xl }
-    .labels-semibold label { @apply font-semibold }
-    .labels-normal label { @apply font-normal }
+    .labels-xs label {
+        @apply text-xs
+    }
+
+    .labels-sm label {
+        @apply text-sm
+    }
+
+    .labels-md label {
+        @apply text-md
+    }
+
+    .labels-lg label {
+        @apply text-lg
+    }
+
+    .labels-xl label {
+        @apply text-xl
+    }
+
+    .labels-semibold label {
+        @apply font-semibold
+    }
+
+    .labels-normal label {
+        @apply font-normal
+    }
 
     .cursor-drag {
         @apply cursor-grab active:cursor-grabbing
     }
+
     .icon-sm {
         @apply w-[15px] h-[15px]
     }
+
     .icon-md {
         @apply w-[18.75px] h-[18.75px]
     }
+
     .icon-lg {
         @apply w-[22.5px] h-[22.5px]
     }
+
     .icon-xl {
         @apply w-[30px] h-[30px]
     }
+
     .icon-gray {
         @apply text-gray-500 hover:text-black focus-ring
     }
+
     .focus-bg-gray-100 {
         @apply focus-visible:border-none focus-visible:outline-none focus-visible:ring-0 focus-visible:bg-gray-100
     }
 
     .icon-light-gray {
-        @apply text-gray-400 hover:text-black focus-ring
+        @apply text-gray-400 hover:text-black focus-ring cursor-default
     }
 
     .overlay {
@@ -275,21 +305,25 @@
     .focus-ring {
         @apply ring-0 focus-visible:ring focus-visible:ring-2 ring-focus-accent border-none outline-none
     }
+
     .focus-within-ring {
         @apply
         ring ring-1 ring-gray-300 border-none outline-none
         focus-within:ring-2 focus-within:ring-focus-accent
     }
+
     .default-ring {
         @apply
         ring ring-1 ring-gray-300 border-none outline-none
         focus-visible:ring-2 focus-visible:ring-focus-accent
     }
+
     .default-outline {
         @apply
         outline outline-1 outline-gray-300 border-none ring-0
         focus-visible:outline-2 focus-visible:outline-focus-accent
     }
+
     .default-border {
         @apply border border-gray-300 outline-none ring-0 focus:border-2 focus:border-focus-accent
     }
@@ -337,6 +371,7 @@
         hover:bg-primary/90 focus-visible:bg-primary/90
         disabled:bg-primary active:ring-0
     }
+
     .btn-darken {
         @apply
         hover:bg-black/10 focus-visible:bg-black/10 focus-visible:outline-none

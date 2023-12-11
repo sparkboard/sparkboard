@@ -50,7 +50,7 @@
                    [:Suspense {:fallback default-loading-bar}
                     (ui/show-match modal)])]))
 
-(defonce !react-root (delay (root/create :web (root))))
+(defonce !react-root (delay (root/create :app-root (root))))
 
 (defn render []
   (root/render @!react-root (root)))
