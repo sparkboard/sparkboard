@@ -460,10 +460,7 @@
       (when loading?
         [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
       [:div.block.relative.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
-       (v/props {:class ["text-muted-txt hover:text-txt"
-                         (if thumbnail
-                           "w-32 h-32"
-                           "w-10 h-10")]}
+       (v/props {:class "text-muted-txt hover:text-txt w-32 h-32"}
                 (when thumbnail
                   {:class "bg-contain bg-no-repeat bg-center"
                    :style {:background-image (css-url thumbnail)}}))

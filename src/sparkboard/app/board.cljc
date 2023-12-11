@@ -236,19 +236,6 @@
                                 res))}
       (tr :tr/register)]]))
 
-(ui/defview new-board-todos [{:keys [account-id]} board]
-  [:div.my-6
-   [ui/show-markdown
-    "### TODO
-    - [ ] settings panel, copy from old sparkboard
-    - [ ] no projects? create a sample project
-    - [ ] no members? invite / set up registration
-      (:entity/title, :entity/domain, ...)"]
-   #_[ui/pprinted
-      (db/touch board)]])
-(comment
-  (routing/path-for ['sparkboard.app.board/settings {:board-id (sch/wrap-id #uuid"a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")}]))
-
 (ui/defview action-button [{:as props :keys [on-click]} child]
   (let [!async-state (h/use-state nil)
         on-click     (fn [e]
@@ -280,22 +267,17 @@
 
       [:div.flex.gap-4.items-stretch
        [ui/filter-field ?filter]
-       [:a.btn.btn-light {:href (routing/path-for `project/show {:project-id #uuid "a4e7c453-acb1-4afe-9890-1341733c1aa5"})}
-        "Go"]
        [action-button
         {:on-click (fn [_]
                      (p/let [{:as   result
                               :keys [entity/id]} (project/db:new! nil
                                                                   {:entity/parent board-id
-                                                                   :entity/title   (tr :tr/untitled)
-                                                                   :entity/draft?  true})]
+                                                                   :entity/title  (tr :tr/untitled)
+                                                                   :entity/draft? true})]
                        (when id
                          (routing/nav! `project/show {:project-id id}))
                        result))}
         (tr :tr/new-project)]]
-
-      (when (az/editor-role? roles)
-        (new-board-todos params board))
 
       [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
                        :value           @!current-tab
@@ -341,9 +323,8 @@
     [:<>
      (header/entity board)
      [:div {:class ui/form-classes}
-      (entity/use-persisted board :entity/title ui/text-field {:inline? true
-                                                               :class   "text-lg"})
-      (entity/use-persisted board :entity/description ui/prose-field {:inline? true :class "bg-gray-100 px-3 py-3"})
+      (entity/use-persisted board :entity/title ui/text-field {:class "text-lg"})
+      (entity/use-persisted board :entity/description ui/prose-field {:class "bg-gray-100 px-3 py-3"})
       (entity/use-persisted board :entity/domain domain/domain-field)
       (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
 

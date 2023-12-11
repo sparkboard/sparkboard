@@ -467,7 +467,22 @@
     [ui/input-wrapper {:class "labels-semibold"}
      (when-let [label (or label (tr attribute))]
        [ui/input-label {:class "flex items-center"}
-        label])
+        label
+        [:div.flex.ml-auto.items-center
+         (when-not @!new-field
+           (radix/dropdown-menu {:id       :add-field
+                                 :trigger  [:div.text-sm.text-gray-500.font-normal.hover:underline.cursor-pointer.place-self-center
+                                            "Add Field"]
+                                 :children (for [[type {:keys [icon label]}] field-types]
+                                             [{:on-select #(reset! !new-field
+                                                                   (forms/form {:field/type       ?type
+                                                                                :field/label      ?label
+                                                                                :field/published? (case type
+                                                                                                    :field.type/select false
+                                                                                                    true)}
+                                                                               :init {'?type type}
+                                                                               :required [?label]))}
+                                              [:div.flex.gap-4.items-center.cursor-default [icon "text-gray-600"] label]])}))]])
      [:div.flex-v.border.rounded.labels-sm
       (->> fields
            (map (fn [field]
@@ -476,35 +491,25 @@
                                  :default-expanded? (= default-expanded (:entity/id field))
                                  :field             field})))
            doall)]
-     (if-let [{:as   !form
+     (when-let [{:as   !form
                :syms [?type ?label]} @!new-field]
        [:div
-        [:form.flex.gap-2.items-stretch
+        [:form.flex.gap-2.items-start.relative
          {:on-submit (ui/prevent-default
                        (fn [e]
                          (forms/try-submit+ !form
                            (p/do
                              (add-field nil (:entity/id entity) attribute @!form)
                              (reset! !new-field nil)))))}
-         [(:icon (field-types @?type)) "icon-lg text-gray-700 self-center mx-2"]
+         [:div.flex.items-center.justify-center.absolute.icon-light-gray.h-10.w-7.-right-7
+          {:on-click #(reset! !new-field nil)}
+          [icons/close "w-5 h-5 "]]
+         [:div.h-10.flex.items-center [(:icon (field-types @?type)) "icon-lg text-gray-700  mx-2"]]
          [ui/text-field ?label {:label         false
                                 :ref           !autofocus-ref
                                 :placeholder   (:label ?label)
                                 :wrapper-class "flex-auto"}]
-         [:button.btn.btn-white {:type "submit"}
+         [:button.btn.btn-white.h-10 {:type "submit"}
           (tr :tr/add)]]
-        [:div.pl-12.py-2 (ui/show-field-messages !form)]]
-       (radix/dropdown-menu {:id       :add-field
-                             :trigger  [:div.text-sm.text-gray-500.font-normal.hover:underline.cursor-pointer.place-self-center
-                                        "Add Field"]
-                             :children (for [[type {:keys [icon label]}] field-types]
-                                         [{:on-select #(reset! !new-field
-                                                               (forms/form {:field/type       ?type
-                                                                            :field/label      ?label
-                                                                            :field/published? (case type
-                                                                                                :field.type/select false
-                                                                                                true)}
-                                                                           :init {'?type type}
-                                                                           :required [?label]))}
-                                          [:div.flex.gap-4.items-center.cursor-default [icon "text-gray-600"] label]])}))
+        [:div.pl-12.py-2 (ui/show-field-messages !form)]])
      [radix/alert !alert]]))

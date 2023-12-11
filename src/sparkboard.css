@@ -337,7 +337,7 @@
         inline-flex items-center justify-center
         font-medium
         transition-colors disabled:opacity-50 disabled:pointer-events-none
-        rounded-md no-underline
+        rounded no-underline
         px-3 py-2 text-sm
 
     }
@@ -356,11 +356,9 @@
 
     .btn-white {
         @apply
-        cursor-default
         hover:bg-black/5
         focus:bg-black/10
         text-primary/80
-        rounded-lg
         inline-flex items-center justify-center py-1 px-3
         default-ring
     }
