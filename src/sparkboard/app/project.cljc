@@ -18,10 +18,6 @@
             [inside-out.forms :as forms]
             [yawn.hooks :as h]))
 
-(comment
-  (first (db/where [:project/badges]))
-  db/*conn*
-  )
 (sch/register!
   (merge
 
@@ -38,6 +34,7 @@
                                  s-   [:sequential :request/map]},
      :project/team-complete?    {:doc "Project team marked sufficient"
                                  s-   :boolean}
+     :project/community-actions {s- [:sequential :community-action/as-map]}
      :project/approved?         {:doc "Set by an admin when :board/new-projects-require-approval? is enabled. Unapproved projects are hidden."
                                  s-   :boolean}
      :project/badges            {:doc "A badge is displayed on a project with similar formatting to a tag. Badges are ad-hoc, not defined at a higher level.",
@@ -76,7 +73,19 @@
                                      (? :project/sticky?)
                                      (? :project/open-requests)
                                      (? :entity/description)
-                                     (? :project/team-complete?)]}}))
+                                     (? :project/team-complete?)]
+                                 }
+     :community-action/as-map   {s- [:map-of
+                                     :community-action/label
+                                     :community-action/action
+                                     (? :community-action/hint)
+                                     (? :community-action.chat)]}
+     :community-action/label    {s- :string}
+     :community-action/action   (merge sch/keyword
+                                       {s- [:enum
+                                            :community-action.action/copy-link
+                                            :community-action.action/chat]})
+     :community-action/hint     {s- :string}}))
 
 
 
@@ -104,14 +113,18 @@
      [{:keys [project-id]}]
      (q/pull `[{:entity/parent ~entity/fields}
                ~@entity/fields
+               {:project/community-actions [:*]}
                :project/sticky?]
              project-id)))
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
 (def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
-(ui/defview community-actions [project]
-  (forms/with-form [!actions (?actions :many {:label ?label :action ?action :hover-text ?hover-text})]
+
+(ui/defview manage-community-actions [project actions]
+  (forms/with-form [!actions (?actions :many {:community-action/label  ?label
+                                              :community-action/action ?action
+                                              :community-action/hint   ?hint})]
     (let [action-picker (fn [props]
                           [radix/select-menu
                            (v/merge-props props
@@ -132,14 +145,15 @@
                                [:div.default-ring.rounded.inline-flex.divide-x.bg-white
                                 [:div.p-3.whitespace-nowrap label]]
                                [action-picker {:value (some-> action str) :disabled true}]
-                               [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {'?label label '?action action})}]]])))]
+                               [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {:community-action/label label
+                                                                                          :community-action/action action})}]]])))]
       [:section.flex-v.gap-3
        [:div
         [:div.font-semibold.text-lg (tr :tr/community-actions)]]
        (when-let [actions (seq ?actions)]
          [:div.flex.flex-wrap.gap-3
-          (seq (for [{:syms [?label ?action ?hover-text]} actions]
-                 [radix/tooltip @?hover-text
+          (seq (for [{:syms [?label ?action ?hint]} actions]
+                 [radix/tooltip @?hint
                   [:div.default-ring.rounded.inline-flex.items-center.divide-x
                    {:key @?label}
                    [:div.p-3.whitespace-nowrap @?label]]]))])
@@ -149,14 +163,12 @@
          (sample (str "🔗 " (tr :tr/share)) "LINK")
          (sample (str "🤝 " (tr :tr/join-our-team)) "CHAT")
          (sample (str "💰 " (tr :tr/invest)) "CHAT")
-         (forms/with-form [!new-action {:label ?label :action ?action :hover-text ?hover-text}]
+         (forms/with-form [!new-action {:community-action/label ?label :community-action/action ?action :community-action/hint ?hint}]
            (let [!label-ref (h/use-ref)]
              [:form.contents {:on-submit
                               (fn [^js e]
                                 (.preventDefault e)
-                                (forms/add-many! ?actions (set/rename-keys @!new-action {:label      '?label
-                                                                                         :action     '?action
-                                                                                         :hover-text '?hover-text}))
+                                (forms/add-many! ?actions @!new-action)
                                 (forms/clear! !new-action)
                                 (.focus @!label-ref))}
               [:input.default-ring.form-text.rounded.p-3
@@ -169,8 +181,8 @@
               [:div.flex.gap-3
                (when @?label
                  [:input.text-gray-500.bg-gray-200.rounded.p-3.flex-auto.focus-ring
-                  {:value       (or @?hover-text "")
-                   :on-change   (forms/change-handler ?hover-text)
+                  {:value       (or @?hint "")
+                   :on-change   (forms/change-handler ?hint)
                    :style       {:min-width 150}
                    :placeholder (tr :tr/hover-text)}])
                [add-btn {:type "submit"}]]]))]]
@@ -221,7 +233,7 @@
          :keys        [:entity/parent
                        :project/badges]} (db:read params)
         [can-edit? dev-panel] (use-dev-panel project)
-        entries    (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
+        entries (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
     [:<>
      dev-panel
      #_[ui/entity-header parent]
@@ -243,7 +255,7 @@
       (map #(field/show-entry {:can-edit? can-edit?
                                :entry     %}) entries)
       [:section.flex-v.gap-2.items-start.mt-32
-       [community-actions project]]
+       [manage-community-actions project (:project/community-actions project)]]
       (when-let [vid video]
         [:section [:h3 (tr :tr/video)]
          [video-field vid]])]]))
@@ -259,7 +271,7 @@
     {:entity/id (:entity/id project)}))
 
 (ui/defview new
-  {:route "/new/p/:board-id"
+  {:route       "/new/p/:board-id"
    :view/router :router/modal}
   [{:keys [board-id]}]
   (let [fields (db:fields {:board-id board-id})]
