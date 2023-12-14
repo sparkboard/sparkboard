@@ -38,8 +38,7 @@
      :entity/description        {:doc "Description of an entity (for card/header display)"
                                  s-   :prose/as-map
                                  #_#_:db/fulltext true}
-     :entity/field-entries      (merge (sch/ref :many :field-entry/as-map)
-                                       sch/component)
+     :entity/field-entries      {s- [:map-of :uuid :field-entry/as-map]}
      :entity/video              {:doc "Primary video for project (distinct from fields)"
                                  s-   :video/entry}
      :entity/public?            {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"

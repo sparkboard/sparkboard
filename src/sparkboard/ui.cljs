@@ -189,7 +189,7 @@
 
 (defn color-field [?field props]
   (let [get-value (j/get-in [:target :value])]
-    [:input.default-ring.rounded
+    [:input.default-ring.default-ring-hover.rounded
      (-> (v/merge-props
            (pass-props props)
            (common-props ?field get-value props)
@@ -444,7 +444,7 @@
     [:label.gap-2.flex-v.relative
      {:for (field-id ?field)}
      (show-label ?field (:label props))
-     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.default-ring
+     [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.default-ring.default-ring-hover
       {:on-click      #(j/call @!input :click)
        :class         ["rounded-lg"
                        (if @!dragging?
@@ -577,7 +577,7 @@
                            (tr :tr/invalid-email)))))
 
 (def form-classes "flex flex-col gap-4 p-6 max-w-lg mx-auto bg-back relative text-sm")
-(def btn-primary :button.btn.btn-primary.px-6.py-3.self-start.text-base)
+(def btn-primary :button.btn.btn-primary.px-6.py-3.self-start)
 
 (v/defview submit-form [!form label]
   [:<>

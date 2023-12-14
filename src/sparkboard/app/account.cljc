@@ -127,12 +127,12 @@
      child
      (radix/dropdown-menu
        {:id       :show-recents
-        :trigger  [:div.btn-white (tr :tr/recent) down-arrow]
+        :trigger  [:div.btn-white.btn (tr :tr/recent) down-arrow]
         :children (map (fn [entity]
                          [{:on-select #(routes/nav! (routes/entity-route entity 'show) entity)}
                           (:entity/title entity)])
                        recents)})
-     (radix/dropdown-menu {:trigger [:div.btn-white (tr :tr/new) down-arrow]
+     (radix/dropdown-menu {:trigger [:div.btn-white.btn (tr :tr/new) down-arrow]
                            :children [[{:on-select #(routes/nav! 'sparkboard.app.board/new params)} (tr :tr/board)]
                                       [{:on-select #(routes/nav! 'sparkboard.app.org/new params)} (tr :tr/org)]]})
      [header/chat]

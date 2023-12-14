@@ -473,16 +473,9 @@
                                                                    })))))]
                       (-> (dissoc m k)
                           (cond-> entry-value
-                                  (update
-                                    to-k
-                                    ;; question, how to have uniqueness
-                                    ;; based on tuple of [field-spec/id, field/target]
-                                    (fnil conj [])
-                                    (merge {:entity/kind       :field-entry
-                                            :entity/id         (composite-uuid :entry target-id field-id)
-                                            :field-entry/type  field-type
-                                            :field-entry/field [:entity/id field-id]}
-                                           entry-value))))))
+                                  (assoc-in
+                                    [to-k field-id]
+                                    (assoc entry-value :field-entry/type field-type))))))
                   m
                   field-ks)
           (catch Exception e

@@ -314,8 +314,11 @@
 
     .default-ring {
         @apply
-        ring ring-1 ring-gray-300 border-none outline-none
+        ring ring-1 ring-gray-300 transition-all border-none outline-none
         focus-visible:ring-2 focus-visible:ring-focus-accent
+    }
+    .default-ring-hover {
+        @apply hover:ring-gray-400
     }
 
     .default-outline {
@@ -338,7 +341,7 @@
         font-medium
         transition-colors disabled:opacity-50 disabled:pointer-events-none
         rounded no-underline
-        px-3 py-2 text-sm
+        px-3 py-2 cursor-default
 
     }
 
@@ -360,7 +363,7 @@
         focus:bg-black/10
         text-primary/80
         inline-flex items-center justify-center py-1 px-3
-        default-ring
+        default-ring default-ring-hover
     }
 
     .btn-primary {
@@ -406,7 +409,7 @@
 
     .entity-header {
         @apply
-        bg-muted border-b border-secondary px-body gap-3 flex h-16 p-3 items-stretch
+        bg-muted border-b border-secondary px-body gap-3 flex h-16 p-3 items-stretch text-sm
     }
 
     .entity-header h3 {

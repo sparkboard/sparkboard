@@ -59,13 +59,12 @@
     (v/x
       [root-el
        [trigger-el trigger]
-       [:el dm/Portal {:container (yawn.util/find-or-create-element id)}
-        (into [content-el]
-              (map (fn [[props & children]]
-                     (if (:trigger props)
-                       (dropdown-menu (assoc props :sub? true))
-                       (into [menu-item props] children)))
-                   children))]])))
+       (into [content-el]
+             (map (fn [[props & children]]
+                    (if (:trigger props)
+                      (dropdown-menu (assoc props :sub? true))
+                      (into [menu-item props] children)))
+                  children))])))
 
 (v/defview select-item
   {:key :value}
@@ -84,7 +83,7 @@
   (v/x
     [:el sel/Root (cond-> (dissoc props :trigger :placeholder :options :read-only?)
                           (not can-edit?) (assoc :disabled true))
-     [:el.bg-white.flex.items-center.rounded.whitespace-nowrap.gap-1.group.default-ring.px-3 sel/Trigger
+     [:el.btn.bg-white.flex.items-center.rounded.whitespace-nowrap.gap-1.group.default-ring.default-ring-hover.px-3 sel/Trigger
       {:class [(if can-edit?
                  "disabled:text-gray-400"
                  "text-gray-900")]}

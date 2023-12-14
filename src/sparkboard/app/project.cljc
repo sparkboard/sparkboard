@@ -142,10 +142,10 @@
                           (when-not (some #{label} (map (comp deref '?label) ?actions))
                             (v/x
                               [:<>
-                               [:div.default-ring.rounded.inline-flex.divide-x.bg-white
+                               [:div.default-ring.rounded.inline-flex.divide-x.bg-white.items-center
                                 [:div.p-3.whitespace-nowrap label]]
                                [action-picker {:value (some-> action str) :disabled true}]
-                               [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {:community-action/label label
+                               [:div.flex [add-btn {:on-click #(forms/add-many! ?actions {:community-action/label  label
                                                                                           :community-action/action action})}]]])))]
       [:section.flex-v.gap-3
        [:div
@@ -154,7 +154,7 @@
          [:div.flex.flex-wrap.gap-3
           (seq (for [{:syms [?label ?action ?hint]} actions]
                  [radix/tooltip @?hint
-                  [:div.default-ring.rounded.inline-flex.items-center.divide-x
+                  [:div.default-ring.default-ring-hover.rounded.inline-flex.items-center.divide-x
                    {:key @?label}
                    [:div.p-3.whitespace-nowrap @?label]]]))])
        [:div.bg-gray-100.rounded.p-3.gap-3.flex-v
@@ -193,7 +193,7 @@
   {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id]}]
   (q/pull `[~@entity/fields
-            {:entity/field-entries [:*]}
+            :entity/field-entries
             {:entity/parent
              [~@entity/fields
               {:board/project-fields ~field/field-keys}]}] project-id))
@@ -219,8 +219,10 @@
                 {:board/project-fields ~field/field-keys}] board-id)
       :board/project-fields))
 
+(def title-icon-classes "px-1 py-2 icon-light-gray")
+
 (def modal-close [radix/dialog-close
-                  [:div.flex.items-center.ml-auto.self-stretch.px-body.cursor-default.text-gray-500.hover:text-black [icons/close "icon-lg"]]])
+                  [:div {:class title-icon-classes} [icons/close]]])
 
 (ui/defview show
   {:route       "/p/:project-id"
@@ -229,36 +231,48 @@
   (let [{:as          project
          :entity/keys [title
                        description
-                       video]
-         :keys        [:entity/parent
-                       :project/badges]} (db:read params)
+                       video
+                       field-entries]
+         :keys        [project/badges]} (db:read params)
         [can-edit? dev-panel] (use-dev-panel project)
-        entries (->> project :entity/field-entries (sort-by (comp :field-entry/field :field/order)))]
+        fields (->> project :entity/parent :board/project-fields (sort-by :field/order))
+        entries (->> project :entity/field-entries)]
     [:<>
-     dev-panel
-     #_[ui/entity-header parent]
-     [:div.flex.gap-2.h-14.items-stretch
-      [:h1.font-semibold.text-3xl.flex-auto.px-body.flex.items-center
-       ;; TODO
-       ;; make title editable for `can-edit?` and have it autofocus if title = (tr :tr/untitled)
-       ;; - think about how to make the title field editable
-       ;; - dotted underline if editable?
-       title]
-      modal-close]
-     [:div.p-body.flex-v.gap-6
-      (ui/show-prose description)
-      (when badges
-        [:section
-         (into [:ul]
-               (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
-               badges)])
-      (map #(field/show-entry {:can-edit? can-edit?
-                               :entry     %}) entries)
-      [:section.flex-v.gap-2.items-start.mt-32
-       [manage-community-actions project (:project/community-actions project)]]
-      (when-let [vid video]
-        [:section [:h3 (tr :tr/video)]
-         [video-field vid]])]]))
+     #_dev-panel
+     [:div.flex-v.gap-6.pb-6
+      ;; title row
+      [:div.flex
+       [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
+        ;; TODO
+        ;; make title editable for `can-edit?` and have it autofocus if title = (tr :tr/untitled)
+        ;; - think about how to make the title field editable
+        ;; - dotted underline if editable?
+        title]
+       [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l
+        [:a {:class title-icon-classes
+             :href  (routing/entity project :view)} [icons/link-2]]
+        modal-close]]
+
+      [:div.px-body.flex-v.gap-6
+       (ui/show-prose description)
+       (when badges
+         [:section
+          (into [:ul]
+                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
+                badges)])
+       (for [field fields
+             :let [entry (get entries (:entity/id field))]
+             :when (or can-edit?
+                       (field/entry-value field entry))]
+         (field/show-entry {:parent project
+                            :can-edit? can-edit?
+                            :field field
+                            :entry entry}))
+       [:section.flex-v.gap-2.items-start
+        [manage-community-actions project (:project/community-actions project)]]
+       (when-let [vid video]
+         [:section [:h3 (tr :tr/video)]
+          [video-field vid]])]]]))
 
 (q/defx db:new!
   {:prepare [az/with-account-id!]}

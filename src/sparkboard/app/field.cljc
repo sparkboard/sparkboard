@@ -83,13 +83,7 @@
    :images/order                {s- [:sequential :entity/id]}
    :link-list/links             {s- [:sequential :link-list/link]}
    :select/value                {s- :string}
-   :field-entry/field           (sch/ref :one)
-   :field-entry/type            {s- :field/type}
    :field-entry/as-map          {s- [:map {:closed true}
-                                     :entity/id
-                                     :entity/kind
-                                     :field-entry/type
-                                     :field-entry/field
                                      (? :images/assets)
                                      (? :images/order)
                                      (? :video/url)
@@ -99,8 +93,7 @@
                                      (? :prose/string)]
                                  #_(let [common-fields [:entity/id
                                                         :entity/kind
-                                                        :field-entry/type
-                                                        :field-entry/field]]
+                                                        :field-entry/type]]
                                      `[:multi {:dispatch :field-entry/type}
                                        [:field.type/images
                                         [:map {:closed true}
@@ -186,24 +179,52 @@
                                                 :value value}))
                                         doall)}]])
 
-(defn entry-value [entry]
-  (select-keys entry [:images/assets
-                      :images/order
-                      :video/url
-                      :select/value
-                      :link-list/links
-                      :prose/format
-                      :prose/string]))
+(defmulti entry-value (fn [field entry] (:field/type field)))
+
+(defmethod entry-value nil [_ _] nil)
+
+(defmethod entry-value :field.type/images [_field entry]
+  (when (seq (:images/order entry))
+    (select-keys entry [:images/assets :images/order])))
+
+(defmethod entry-value :field.type/video [_field entry]
+  (when-let [value (u/guard (:video/url entry) (complement str/blank?))]
+    {:video/url value}))
+
+(defmethod entry-value :field.type/select [_field entry]
+  (when-let [value (u/guard (:select/value entry) (complement str/blank?))]
+    {:select/value value}))
+
+(defmethod entry-value :field.type/link-list [_field entry]
+  (when-let [value (u/guard (:link-list/links entry) seq)]
+    {:link-list/links value}))
+
+(defmethod entry-value :field.type/prose [_field entry]
+  (when-let [value (u/guard (:prose/string entry) (complement str/blank?))]
+    {:prose/string value
+     :prose/format (:prose/format entry)}))
+
+(q/defx save-entry! [_ parent-id field-id entry]
+  {:pre [(uuid? parent-id)
+         (uuid? field-id)]}
+  (let [field (db/entity (sch/wrap-id field-id))
+        parent (db/entity (sch/wrap-id parent-id))
+        entries (assoc (get parent :entity/field-entries) field-id entry)]
+    (prn :entries entries)
+    (validate/assert (db/touch field) :field/as-map)
+    (validate/assert entry :field-entry/as-map)
+    (db/transact! [[:db/add (:db/id parent) :entity/field-entries entries]])
+    {:txs [{:entity/id            (:entity/id parent)
+            :entity/field-entries entries}]}))
 
 (ui/defview show-entry
-  {:key (comp :entity/id :entry)}
-  [{:keys [entry can-edit?]
-    {:keys [field-entry/field]} :entry}]
-  (let [value  (entry-value entry)
-        ?field (h/use-memo #(forms/field :init (entry-value entry)))
+  {:key (comp :entity/id :field)}
+  [{:keys [parent field entry can-edit?]}]
+  (let [value  (entry-value field entry)
+        ?field (h/use-memo #(forms/field :init (entry-value field entry) :label (:field/label field)))
         props  {:label     (:label field)
                 :can-edit? can-edit?
-                :on-save  (partial entity/save-attributes! nil (:entity/id entry))}]
+                :on-save  (partial save-entry! nil (:entity/id parent) (:entity/id field))}]
     (case (:field/type field)
       :field.type/video [ui/video-field ?field props]
       :field.type/select [ui/select-field ?field (merge props

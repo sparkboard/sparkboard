@@ -137,6 +137,9 @@
    (defn effect! [f & args]
      #_(throw (ex-info "Effect! error" {}))
      (-> (routes/POST 'sparkboard.server.core/effect! (into [f] args))
+         (p/then (fn [{:as result :keys [txs]}]
+                   (when txs
+                     (db/transact! txs))))
          (p/catch (fn [e] {:error (ex-message e)})))))
 
 #?(:clj
