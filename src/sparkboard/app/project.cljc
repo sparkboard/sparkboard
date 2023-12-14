@@ -11,6 +11,7 @@
             [sparkboard.query :as q]
             [sparkboard.app.entity :as entity]
             [sparkboard.app.field :as field]
+            [sparkboard.app.field-entry :as entry]
             [re-db.api :as db]
             [yawn.view :as v]
             [sparkboard.ui.radix :as radix]
@@ -235,7 +236,7 @@
                        field-entries]
          :keys        [project/badges]} (db:read params)
         [can-edit? dev-panel] (use-dev-panel project)
-        fields (->> project :entity/parent :board/project-fields (sort-by :field/order))
+        fields  (->> project :entity/parent :board/project-fields (sort-by :field/order))
         entries (->> project :entity/field-entries)]
     [:<>
      #_dev-panel
@@ -248,9 +249,16 @@
         ;; - think about how to make the title field editable
         ;; - dotted underline if editable?
         title]
-       [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l
-        [:a {:class title-icon-classes
-             :href  (routing/entity project :view)} [icons/link-2]]
+
+       [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l.relative
+        [radix/tooltip "Back to board"
+         [:a {:class title-icon-classes
+              :href  (routing/entity-path (:entity/parent project) :show)}
+          [icons/arrow-left]]]
+        [radix/tooltip "Link to project"
+         [:a {:class title-icon-classes
+              :href  (routing/entity-path project :show)}
+          [icons/link-2]]]
         modal-close]]
 
       [:div.px-body.flex-v.gap-6
@@ -263,11 +271,11 @@
        (for [field fields
              :let [entry (get entries (:entity/id field))]
              :when (or can-edit?
-                       (field/entry-value field entry))]
-         (field/show-entry {:parent project
+                       (entry/entry-value field entry))]
+         (entry/show-entry {:parent    project
                             :can-edit? can-edit?
-                            :field field
-                            :entry entry}))
+                            :field     field
+                            :entry     entry}))
        [:section.flex-v.gap-2.items-start
         [manage-community-actions project (:project/community-actions project)]]
        (when-let [vid video]

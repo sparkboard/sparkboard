@@ -8,7 +8,9 @@
             [sparkboard.ui.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
-            [sparkboard.i18n :refer [tr]]))
+            [sparkboard.i18n :refer [tr]]
+            [re-db.reactive :as r]
+            [yawn.hooks :as h]))
 
 
 (def menu-root (v/from-element :el dm/Root {:modal false}))
@@ -135,32 +137,46 @@
                  :class "flex items-center"} title]))
         (into [:<>]))])
 
-(v/defview alert [!state]
+(defonce !alert (r/atom nil))
+
+(v/defview alert []
   (let [{:as   props
          :keys [title
                 description
                 body
                 cancel
                 action]
-         :or   {cancel (tr :tr/cancel)}} @!state]
-    [:el alert/Root (v/props @!state)
+         :or   {cancel (tr :tr/cancel)}} (h/use-deref !alert)]
+    (prn :alert-props props)
+    [:el alert/Root (v/props (merge @!alert
+                                    {:on-open-change #(reset! !alert nil)}
+                                    {:open (some? props)}))
      [:el alert/Portal
-      [:el.overlay.z-3 alert/Overlay]
+      [:el.overlay.z-9 alert/Overlay]
       [:el.overlay-content.z-4.rounded-lg.p-7.flex-v.gap-4.relative.z-10.bg-white alert/Content
        (when title [:el.font-bold alert/Title title])
        (when description [:el alert/Description description])
        body
        [:div.flex.gap-3.justify-end
-        [:el alert/Cancel cancel]
+        [:el alert/Cancel {:on-click #(reset! !alert nil)} cancel]
         [:el alert/Action action]]]]]))
 
-(defn close-alert! [!state] (reset! !state nil))
+(defn close-alert! [] (reset! !alert nil))
+(defn open-alert! [props] (reset! !alert props))
 
-(defn open-alert! [!state props]
-  (reset! !state (merge props
-                        {:open           true
-                         :on-open-change (fn [open?]
-                                           (when-not open? (reset! !state nil)))})))
+(defn simple-alert! [{:keys [message
+                             confirm-text
+                             confirm-fn]}]
+  (reset! !alert {:body   [:div.text-center.flex-v.gap-3
+                           message]
+                  :cancel [:div.btn.hover:bg-gray-100 (tr :tr/cancel)]
+                  :action [:div.btn.destruct
+                           {:on-click (fn []
+                                        (confirm-fn)
+                                        (close-alert!))}
+                           confirm-text]}))
+
+
 
 (defn tooltip
   ([tip child] (tooltip {:delay-duration 200} tip child))
@@ -171,7 +187,8 @@
         [:el tooltip/Root
          [:el.cursor-default tooltip/Trigger {:as-child true} child]
          [:el tooltip/Portal {:container (yawn.util/find-or-create-element "radix-tooltip")}
-          [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded tooltip/Content {:style {:max-width 300}}
+          [:el.px-2.py-1.shadow.text-white.text-sm.bg-gray-900.rounded.z-30 tooltip/Content {:align "center"
+                                                                                             :style {:max-width 300}}
            tip
            [:el tooltip/Arrow]]]]])
      child))

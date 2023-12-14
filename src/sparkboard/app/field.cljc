@@ -62,7 +62,7 @@
    :field/show-on-card?         {:doc "Show this field on the entity when viewed as a card"
                                  s-   :boolean},
    :field/type                  {s- [:enum
-                                     :field.type/images
+                                     :field.type/image-list
                                      :field.type/video
                                      :field.type/select
                                      :field.type/link-list
@@ -79,49 +79,16 @@
    :video/url                   {s- :string}
    :video/entry                 {s- [:map {:closed true}
                                      :video/url]}
-   :images/assets               (sch/ref :many :asset/as-map)
-   :images/order                {s- [:sequential :entity/id]}
+   :image-list/images {s- [:sequential :entity/id]}
    :link-list/links             {s- [:sequential :link-list/link]}
    :select/value                {s- :string}
    :field-entry/as-map          {s- [:map {:closed true}
-                                     (? :images/assets)
-                                     (? :images/order)
+                                     (? :image-list/images)
                                      (? :video/url)
                                      (? :select/value)
                                      (? :link-list/links)
                                      (? :prose/format)
-                                     (? :prose/string)]
-                                 #_(let [common-fields [:entity/id
-                                                        :entity/kind
-                                                        :field-entry/type]]
-                                     `[:multi {:dispatch :field-entry/type}
-                                       [:field.type/images
-                                        [:map {:closed true}
-                                         ~@common-fields
-                                         :images/assets
-                                         :images/order]]
-
-                                       [:field.type/video
-                                        [:map {:closed true}
-                                         ~@common-fields
-                                         :video/type
-                                         :video/value]]
-
-                                       [:field.type/select
-                                        [:map {:closed true}
-                                         ~@common-fields
-                                         :select/value]]
-
-                                       [:field.type/link-list
-                                        [:map {:closed true}
-                                         ~@common-fields
-                                         :link-list/links]]
-
-                                       [:field.type/prose
-                                        [:map {:closed true}
-                                         ~@common-fields
-                                         :prose/format
-                                         :prose/string]]])}
+                                     (? :prose/string)]}
    :field/published?            {s- :boolean}
    :field/as-map                {:doc  "Description of a field."
                                  :todo ["Field specs should be definable at a global, org or board level."
@@ -155,89 +122,18 @@
                  :field/show-on-card?
                  :field/type])
 
-(def field-types {:field.type/prose     {:icon  icons/text
+(def field-types {:field.type/prose      {:icon  icons/text
                                          :label (tr :tr/text)}
-                  :field.type/select    {:icon  icons/dropdown-menu
+                  :field.type/select     {:icon  icons/dropdown-menu
                                          :label (tr :tr/menu)}
-                  :field.type/video     {:icon  icons/video
+                  :field.type/video      {:icon  icons/video
                                          :label (tr :tr/video)}
-                  :field.type/link-list {:icon  icons/link-2
+                  :field.type/link-list  {:icon  icons/link-2
                                          :label (tr :tr/links)}
-                  :field.type/images    {:icon  icons/photo
+                  :field.type/image-list {:icon icons/photo
                                          :label (tr :tr/image)}
                   })
 
-(ui/defview show-select [?field {:field/keys [label options]} entry]
-  [:div.flex-v.gap-2
-   [ui/input-label label]
-   [radix/select-menu {:value      (:select/value @?field)
-                       :id         (str (:entity/id entry))
-                       :read-only? (:can-edit? ?field)
-                       :options    (->> options
-                                        (map (fn [{:field-option/keys [label value color]}]
-                                               {:text  label
-                                                :value value}))
-                                        doall)}]])
-
-(defmulti entry-value (fn [field entry] (:field/type field)))
-
-(defmethod entry-value nil [_ _] nil)
-
-(defmethod entry-value :field.type/images [_field entry]
-  (when (seq (:images/order entry))
-    (select-keys entry [:images/assets :images/order])))
-
-(defmethod entry-value :field.type/video [_field entry]
-  (when-let [value (u/guard (:video/url entry) (complement str/blank?))]
-    {:video/url value}))
-
-(defmethod entry-value :field.type/select [_field entry]
-  (when-let [value (u/guard (:select/value entry) (complement str/blank?))]
-    {:select/value value}))
-
-(defmethod entry-value :field.type/link-list [_field entry]
-  (when-let [value (u/guard (:link-list/links entry) seq)]
-    {:link-list/links value}))
-
-(defmethod entry-value :field.type/prose [_field entry]
-  (when-let [value (u/guard (:prose/string entry) (complement str/blank?))]
-    {:prose/string value
-     :prose/format (:prose/format entry)}))
-
-(q/defx save-entry! [_ parent-id field-id entry]
-  {:pre [(uuid? parent-id)
-         (uuid? field-id)]}
-  (let [field (db/entity (sch/wrap-id field-id))
-        parent (db/entity (sch/wrap-id parent-id))
-        entries (assoc (get parent :entity/field-entries) field-id entry)]
-    (prn :entries entries)
-    (validate/assert (db/touch field) :field/as-map)
-    (validate/assert entry :field-entry/as-map)
-    (db/transact! [[:db/add (:db/id parent) :entity/field-entries entries]])
-    {:txs [{:entity/id            (:entity/id parent)
-            :entity/field-entries entries}]}))
-
-(ui/defview show-entry
-  {:key (comp :entity/id :field)}
-  [{:keys [parent field entry can-edit?]}]
-  (let [value  (entry-value field entry)
-        ?field (h/use-memo #(forms/field :init (entry-value field entry) :label (:field/label field)))
-        props  {:label     (:label field)
-                :can-edit? can-edit?
-                :on-save  (partial save-entry! nil (:entity/id parent) (:entity/id field))}]
-    (case (:field/type field)
-      :field.type/video [ui/video-field ?field props]
-      :field.type/select [ui/select-field ?field (merge props
-                                                        {:wrap            (fn [x] {:select/value x})
-                                                         :unwrap          :select/value
-                                                         :persisted-value value
-                                                         :options         (:field/options field)})]
-      :field.type/link-list [ui/pprinted value props]
-      :field.type/images [ui/images-field ?field props]
-      :field.type/prose [ui/prose-field ?field props]
-      (str "no match" field))))
-
-(defonce !alert (r/atom nil))
 
 (defn blank? [color]
   (or (empty? color) (= "#ffffff" color) (= "rgb(255, 255, 255)" color)))
@@ -350,20 +246,13 @@
                            :trigger  [:button.p-1.relative.icon-gray.cursor-default
                                       [icons/ellipsis-horizontal "w-4 h-4"]]
                            :children [[{:on-select (fn [_]
-                                                     (radix/open-alert! !alert
-                                                                        {:body   [:div.text-center.flex-v.gap-3
-                                                                                  [icons/trash "mx-auto w-8 h-8 text-red-600"]
-                                                                                  [:div.text-2xl (tr :tr/confirm)]
-                                                                                  [:div (tr :tr/cannot-be-undone)]]
-                                                                         :cancel [:div.btn.thin {:on-click #(radix/close-alert! !alert)}
-                                                                                  (tr :tr/cancel)]
-                                                                         :action [:div.btn.destruct
-                                                                                  {:on-click (fn [_]
-                                                                                               (forms/remove-many! ?option)
-                                                                                               (p/do (save!)
-                                                                                                     (radix/close-alert! !alert)))}
-                                                                                  (tr :tr/delete)]}))}
-                                       "Remove"]]}]]))
+                                                     (radix/simple-alert! {:message      "Are you sure you want to remove this?"
+                                                                           :confirm-text (tr :tr/remove)
+                                                                           :confirm-fn   (fn []
+                                                                                           (forms/remove-many! ?option)
+                                                                                           (p/do (save!)
+                                                                                                 (radix/close-alert!)))}))}
+                                       (tr :tr/remove)]]}]]))
 
 (ui/defview options-field [?field {:keys [on-save
                                           persisted-value]}]
@@ -396,8 +285,38 @@
           [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
        #_[ui/pprinted @?options]])))
 
-(ui/defview field-editor-detail [attribute field]
-  [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-1.pb-6
+(q/defx add-field
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} e a field]
+  (validate/assert-can-edit! e account-id)
+  (let [e               (sch/wrap-id e)
+        existing-fields (->> (a (db/entity e))
+                             (sort-by :field/order))
+        field           (-> field
+                            (assoc :field/order (if-let [last-order (:field/order (last existing-fields))]
+                                                  (inc last-order)
+                                                  0)
+                                   :entity/kind :field
+                                   :entity/id (dl/new-uuid :field)))]
+    (validate/assert field :field/as-map)
+    (db/transact! [(assoc field :db/id -1)
+                   [:db/add e a -1]])
+    {:entity/id (:entity/id field)}))
+
+(q/defx remove-field
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]} parent-id a field-id]
+  (validate/assert-can-edit! parent-id account-id)
+  (let [parent (db/entity (sch/wrap-id parent-id))
+        field (db/entity (sch/wrap-id field-id))]
+    (db/transact! [[:db/retract
+                    (:db/id parent)
+                    a
+                    (:db/id field)]])
+    {}))
+
+(ui/defview field-editor-detail [parent attribute field]
+  [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
    [:div.col-span-2.flex-v.gap-3
     (entity/use-persisted field :field/label ui/text-field {:class      "bg-white text-sm"
@@ -415,13 +334,21 @@
     (entity/use-persisted field :field/show-as-filter? ui/checkbox-field)
     (when (= attribute :board/member-fields)
       (entity/use-persisted field :field/show-at-registration? ui/checkbox-field))
-    (entity/use-persisted field :field/show-on-card? ui/checkbox-field)]])
+    (entity/use-persisted field :field/show-on-card? ui/checkbox-field)
+    [:a.text-gray-500.hover:underline.cursor-pointer.flex.gap-2
+     {:on-click #(radix/simple-alert! {:message "Are you sure you want to remove this?"
+                                       :confirm-text (tr :tr/remove)
+                                       :confirm-fn (fn []
+                                                     (remove-field nil
+                                                                   (:entity/id parent)
+                                                                   attribute
+                                                                   (:entity/id field)))})}
+     (tr :tr/remove)]]])
 
 (ui/defview field-editor
   {:key (comp :entity/id :field)}
-  [{:keys [attribute order-by default-expanded? field]}]
+  [{:keys [parent attribute order-by expanded? toggle-expand! field]}]
   (let [field-type (field-types (:field/type field))
-        [expanded? expand!] (h/use-state default-expanded?)
         [handle-props drag-props indicator] (orderable-props {:group-id attribute
                                                               :id       (sch/wrap-id (:entity/id field))
                                                               :on-move
@@ -434,11 +361,13 @@
                                                                       db/transact!))})]
     [:div.flex-v.relative.border-b
      ;; label row
-     [:div.flex.gap-3.p-3.items-stretch.hover:bg-gray-100.relative.group.cursor-default.relative
+     [:div.flex.gap-3.p-3.items-stretch.relative.group.cursor-default.relative
       (v/merge-props
         drag-props
-        {:class    (when expanded? "bg-gray-100")
-         :on-click #(expand! not)})
+        {:class    (if expanded?
+                     "bg-gray-200"
+                     "hover:bg-gray-100")
+         :on-click toggle-expand!})
       indicator
       ;; expandable label group
       [:div.w-5.-ml-8.flex.items-center.justify-center.hover:cursor-grab.active:cursor-grabbing.opacity-0.group-hover:opacity-50
@@ -454,24 +383,7 @@
       [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
        [icons/chevron-down:mini (str "w-4" (when expanded? " rotate-180"))]]]
      (when expanded?
-       (field-editor-detail attribute field))]))
-
-(q/defx add-field
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e a field]
-  (validate/assert-can-edit! e account-id)
-  (let [e               (sch/wrap-id e)
-        existing-fields (->> (a (db/entity e))
-                             (sort-by :field/order))
-        field           (-> field
-                            (assoc :field/order (or (:field/order (last existing-fields))
-                                                    0)
-                                   :entity/kind :field
-                                   :entity/id (dl/new-uuid :field)))]
-    (validate/assert field :field/as-map)
-    (db/transact! [(assoc field :db/id -1)
-                   [:db/add e a -1]])
-    {:entity/id (:entity/id field)}))
+       (field-editor-detail parent attribute field))]))
 
 (ui/defview fields-editor [entity attribute]
   (let [label (:label (forms/global-meta attribute))
@@ -479,12 +391,7 @@
         !autofocus-ref   (ui/use-autofocus-ref)
         fields           (->> (get entity attribute)
                               (sort-by :field/order))
-        !field-count     (h/use-ref (count fields))
-        default-expanded (let [last-id (:entity/id (last fields))
-                               id (when (= (count fields) (inc @!field-count))
-                                    last-id)]
-                           (reset! !field-count (count fields))
-                           id)]
+        [expanded expand!] (h/use-state nil)]
     [ui/input-wrapper {:class "labels-semibold"}
      (when-let [label (or label (tr attribute))]
        [ui/input-label {:class "flex items-center"}
@@ -507,9 +414,13 @@
      [:div.flex-v.border.rounded.labels-sm
       (->> fields
            (map (fn [field]
-                  (field-editor {:attribute         attribute
+                  (field-editor {:parent entity
+                                 :attribute         attribute
                                  :order-by          :field/order
-                                 :default-expanded? (= default-expanded (:entity/id field))
+                                 :expanded? (= expanded (:entity/id field))
+                                 :toggle-expand! #(expand! (fn [old]
+                                                             (when-not (= old (:entity/id field))
+                                                               (:entity/id field))))
                                  :field             field})))
            doall)]
      (when-let [{:as   !form
@@ -519,9 +430,10 @@
          {:on-submit (ui/prevent-default
                        (fn [e]
                          (forms/try-submit+ !form
-                           (p/do
-                             (add-field nil (:entity/id entity) attribute @!form)
-                             (reset! !new-field nil)))))}
+                           (p/let [{:as result :keys [entity/id]} (add-field nil (:entity/id entity) attribute @!form)]
+                             (expand! id)
+                             (reset! !new-field nil)
+                             result))))}
          [:div.flex.items-center.justify-center.absolute.icon-light-gray.h-10.w-7.-right-7
           {:on-click #(reset! !new-field nil)}
           [icons/close "w-5 h-5 "]]
@@ -532,5 +444,4 @@
                                 :wrapper-class "flex-auto"}]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (tr :tr/add)]]
-        [:div.pl-12.py-2 (ui/show-field-messages !form)]])
-     [radix/alert !alert]]))
+        [:div.pl-12.py-2 (ui/show-field-messages !form)]])]))

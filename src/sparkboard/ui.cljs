@@ -237,6 +237,7 @@
   (let [{:as   props
          :keys [inline?
                 multi-line
+                multi-paragraph
                 wrap
                 unwrap
                 wrapper-class
@@ -263,7 +264,7 @@
                                 :placeholder (or (:placeholder props)
                                                  (when inline? (or (:label props) (:label ?field))))
                                 :on-key-down
-                                (keydown-handler {(if multi-line
+                                (keydown-handler {(if multi-paragraph
                                                     :Meta-Enter
                                                     :Enter) #(when on-save
                                                                (j/call % :preventDefault)

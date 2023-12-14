@@ -101,7 +101,7 @@
 (ui/defview entity* [{:as   entity
                       :keys [entity/title
                              image/avatar]} children]
-  (let [entity-href (routes/entity entity :show)]
+  (let [entity-href (routes/entity-path entity :show)]
     [:div.entity-header
      (when avatar
        [:a.contents {:href entity-href}

@@ -48,7 +48,8 @@
      (radix/dialog {:props/root {:open           (boolean modal)
                                  :on-open-change #(when-not % (routing/dissoc-router! :router/modal))}}
                    [:Suspense {:fallback default-loading-bar}
-                    (ui/show-match modal)])]))
+                    (ui/show-match modal)])
+     (radix/alert)]))
 
 (defonce !react-root (delay (root/create :app-root (root))))
 

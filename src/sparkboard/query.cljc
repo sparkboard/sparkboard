@@ -139,7 +139,8 @@
      (-> (routes/POST 'sparkboard.server.core/effect! (into [f] args))
          (p/then (fn [{:as result :keys [txs]}]
                    (when txs
-                     (db/transact! txs))))
+                     (db/transact! txs))
+                   result))
          (p/catch (fn [e] {:error (ex-message e)})))))
 
 #?(:clj

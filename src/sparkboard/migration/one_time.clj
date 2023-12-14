@@ -411,7 +411,7 @@
                urls)))
 
 (defn parse-field-type [t]
-  (case t "image" :field.type/images
+  (case t "image" :field.type/image-list
           "video" :field.type/video
           "select" :field.type/select
           "linkList" :field.type/link-list
@@ -456,11 +456,10 @@
                           ;; NOTE - we ignore fields that do not have a spec
                           entry-value (when field-type
                                         (case field-type
-                                          :field.type/images (let [v (cond-> v (string? v) vector)]
-                                                               (when (seq v)
-                                                                 (let [assets (mapv assets/link-asset v)]
-                                                                   {:images/assets (set assets)
-                                                                    :images/order  (mapv :entity/id assets)})))
+                                          :field.type/image-list (let [v (cond-> v (string? v) vector)]
+                                                                   (when (seq v)
+                                                                     (let [assets (mapv assets/link-asset v)]
+                                                                       {:image-list/images (mapv :entity/id assets)})))
                                           :field.type/link-list {:link-list/links
                                                                  (mapv #(rename-keys % {:label :text
                                                                                         :url   :url}) v)}

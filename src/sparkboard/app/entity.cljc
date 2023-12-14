@@ -189,7 +189,7 @@
     :keys [entity/title image/avatar member/roles]}]
   [:div.flex.hover:bg-gray-100.rounded-lg
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
-    {:href (routing/entity entity :show)}
+    {:href (routing/entity-path entity :show)}
     [ui/avatar {:size 10} entity]
     [:div.line-clamp-2.leading-snug.flex-grow title]]])
 

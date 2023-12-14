@@ -359,7 +359,10 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                           :es "Opciones"}
      :tr/find-a-member                   {:en "Find a member"
                                           :fr "Trouver un membre"
-                                          :es "Encontrar un miembro"}}))
+                                          :es "Encontrar un miembro"}
+     :tr/remove                          {:en "Remove"
+                                          :fr "Supprimer"
+                                          :es "Eliminar"}}))
 
 (defn tr
   ([resource-ids] (or (tempura/tr {:dict dict} (locales) (cond-> resource-ids

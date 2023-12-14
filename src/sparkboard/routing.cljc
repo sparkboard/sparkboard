@@ -244,9 +244,10 @@
     (let [match   (if (map? tag)
                     tag
                     (match-by-tag tag (dissoc params :query-params)))
-          router  (or (get @!tag->router tag) :router/root)
-          routers (assoc @!location router match)]
-      (aux:emit-matches routers))))
+          router  (or (get @!tag->router tag) :router/root)]
+      (aux:emit-matches (if (= router :router/root)
+                          {router match}
+                          (assoc @!location router match))))))
 
 (defn resolve [tag & args]
   (cond (string? tag) (aux:match-by-path tag)
@@ -279,16 +280,16 @@
      (do (reset! !history (pushy/pushy (partial reset! !location) aux:match-by-path))
          (pushy/start! @!history))))
 
-(defn entity [{:as e :entity/keys [kind id]} key]
-  (when e
-    (let [tag    (symbol (str "sparkboard.app." (name kind)) (name key))
-          params {(keyword (str (name kind) "-id")) id}]
-      (path-for tag params))))
-
 (defn entity-route [{:as e :entity/keys [kind id]} key]
   (when e
     [(symbol (str "sparkboard.app." (name kind)) (name key))
      {(keyword (str (name kind) "-id")) id}]))
+
+(defn entity-path [{:as e :entity/keys [kind id]} key]
+  (some->> (entity-route e key)
+           (apply path-for)))
+
+
 
 #?(:cljs
    (do
