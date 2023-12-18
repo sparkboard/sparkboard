@@ -147,7 +147,6 @@
                 cancel
                 action]
          :or   {cancel (tr :tr/cancel)}} (h/use-deref !alert)]
-    (prn :alert-props props)
     [:el alert/Root (v/props (merge @!alert
                                     {:on-open-change #(reset! !alert nil)}
                                     {:open (some? props)}))

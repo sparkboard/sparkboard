@@ -5,19 +5,18 @@
             [inside-out.forms :as forms]
             [re-db.api :as db]
             [re-db.integrations.reagent]
+            [sparkboard.app :as app]
+            [sparkboard.app.domain.ui :as domain.ui]
             [sparkboard.client.scratch]
-            [sparkboard.app.domain :as domain]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.schema :as sch]
-            [sparkboard.ui.radix :as radix]
             [sparkboard.routing :as routing]
+            [sparkboard.schema :as sch]
             [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]
             [sparkboard.ui :as ui]
+            [sparkboard.ui.radix :as radix]
             [yawn.root :as root]
-            [sparkboard.app :as app]                        ;; includes all endpoints
-            [yawn.view :as v]
-            [re-db.in-memory :as mem]))
+            [yawn.view :as v]))
 
 (ui/defview dev-info [{:as match :keys [modal]}]
   (into [:div.flex.justify-center.gap-2.fixed.left-0.bottom-0.border {:style {:z-index 9000}}]
@@ -90,8 +89,7 @@
      :field/show-on-card?         {:label (tr :tr/show-on-card)}
      :entity/description          {:label (tr :tr/description)}
      :entity/domain               {:label      (tr :tr/domain-name)
-                                   :validators [domain/domain-valid-string
-                                                (domain/domain-availability-validator)]}})
+                                   :validators (domain.ui/validators)}})
   )
 
 (defn ^:dev/after-load init-endpoints! []
@@ -104,24 +102,4 @@
   (init-endpoints!)
   (init-forms)
   (render))
-
-(comment
-  (routing/path-for ['sparkboard.app.board/new])
-  (db/transact! [[:db/retractEntity :test]])
-  (db/transact! [#_{:db/id :a :b 1}
-                 {:db/id :test3 :a :b}
-                 {:db/id :test2}])
-  (:test2 (:eav @(db/conn)))
-  (db/transact!
-    [{:member/roles        #{:role/admin}
-      :member/last-visited #inst "2023-11-13T19:04:42.238-00:00"
-
-      :entity/kind         :board
-      :entity/title        "Huebert's Projects"
-      :image/avatar        {:entity/id      #uuid "225f7a0a-9db1-4d0d-924a-17a110fe84dd"
-                            :entity/kind    :asset
-                            :asset/provider {:s3/bucket-host "https://dev.r2.sparkboard.com"}}
-      :db/id               [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]}])
-
-  )
 

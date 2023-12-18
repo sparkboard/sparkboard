@@ -24,7 +24,7 @@
             [sparkboard.query-params :as query-params]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.ui.icons :as icons]
-            [sparkboard.app.assets :as assets]
+            [sparkboard.app.assets.data :as assets.data]
             [shadow.cljs.modern :refer [defclass]])
   (:require-macros [sparkboard.ui :refer [defview with-submission]]))
 
@@ -424,7 +424,7 @@
     (if (contains? @!loaded url)
       url
       fallback)))
-(routing/path-for `assets/upload!)
+(routing/path-for `assets.data/upload!)
 
 (defview image-field [?field props]
   (let [src            (asset-src @?field :card)
@@ -435,8 +435,8 @@
         on-file        (fn [file]
                          (forms/touch! ?field)
                          (reset! !selected-blob (js/URL.createObjectURL file))
-                         (with-submission [asset (routing/POST `assets/upload! (doto (js/FormData.)
-                                                                                 (.append "files" file)))
+                         (with-submission [asset (routing/POST `assets.data/upload! (doto (js/FormData.)
+                                                                                      (.append "files" file)))
                                            :form ?field]
                            (reset! ?field asset)
                            (maybe-save-field ?field props asset)))

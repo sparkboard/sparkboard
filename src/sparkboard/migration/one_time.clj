@@ -1,7 +1,6 @@
 (ns sparkboard.migration.one-time
   (:require [clojure.instant :as inst]
             [clojure.java.shell :refer [sh]]
-            [clojure.set :as set]
             [clojure.set :refer [rename-keys]]
             [clojure.string :as str]
             [clojure.walk :as walk]
@@ -10,12 +9,11 @@
             [jsonista.core :as json]
             [malli.core :as m]
             [malli.generator :as mg]
-            [sparkboard.app.chat :as chat]
+            [sparkboard.app.chat.data :as chat]
             [sparkboard.schema :as sch]
             [sparkboard.server.datalevin :as sb.dl :refer [conn]]
             [sparkboard.server.env :as env]
             [re-db.api :as db]
-            [re-db.triplestore :as ts]
             [sparkboard.util :as u]
             [sparkboard.server.assets :as assets])
   (:import (java.lang Integer)

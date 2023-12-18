@@ -2,14 +2,14 @@
   (:require #?(:cljs ["@radix-ui/react-popover" :as Popover])
             [promesa.core :as p]
             [re-db.api :as db]
-            [sparkboard.app.chat :as chat]
-            [sparkboard.app.entity :as entity]
+            [sparkboard.app.chat.data :as chat.data]
+            [sparkboard.app.chat.ui :as chat.ui]
+            [sparkboard.app.entity.ui :as entity.ui]
             [sparkboard.i18n :as i :refer [tr]]
             [sparkboard.routing :as routes]
             [sparkboard.ui :as ui]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
-            [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.util :as yu]
             [sparkboard.util :as u]))
@@ -44,20 +44,20 @@
 
 (ui/defview chats-list []
   (let [params {:account-id (db/get :env/config :account-id)}
-        chats  (chat/db:chats-list params)]
+        chats  (chat.data/chats-list params)]
     (if (seq chats)
       [:div.flex-v
        (->> chats
             (take 6)
-            (map (partial chat/chat-snippet params)))
+            (map (partial chat.ui/chat-snippet params)))
        [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
-        {:href (routes/path-for [`chat/chats])}
+        {:href (routes/path-for [`chat.ui/chats])}
         (tr :tr/view-all)]]
       (tr :tr/no-messages))))
 
 (ui/defview chat []
   (let [!open? (h/use-state false)
-        unread (some-> (:unread (chat/db:counts {})) (u/guard pos-int?))]
+        unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]
     [:el Popover/Root
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
@@ -90,13 +90,13 @@
      (radix/dropdown-menu
        {:trigger  [:button.flex.items-center.focus-ring.rounded.px-1 {:tab-index 0}
                    [:img.rounded-full.h-6.w-6 {:src (ui/asset-src (:image/avatar account) :avatar)}]]
-        :children [[{:on-click #(routes/nav! 'sparkboard.app.account/show)} (tr :tr/home)]
-                   [{:on-click #(routes/nav! 'sparkboard.app.account/logout!)} (tr :tr/logout)]
+        :children [[{:on-click #(routes/nav! 'sparkboard.app.account-ui/show)} (tr :tr/home)]
+                   [{:on-click #(routes/nav! 'sparkboard.app.account-ui/logout!)} (tr :tr/logout)]
                    [{:sub?     true
                      :trigger  [icons/languages "w-5 h-5"]
                      :children (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/path-for ['sparkboard.app.account/sign-in])} (tr :tr/continue-with-email)]))
+     {:href (routes/path-for ['sparkboard.app.account-ui/sign-in])} (tr :tr/continue-with-email)]))
 
 (ui/defview entity* [{:as   entity
                       :keys [entity/title
@@ -113,7 +113,7 @@
      [:div.flex-grow]
      (into [:div.flex.gap-1]
            (concat children
-                   [(entity/settings-button entity)
+                   [(entity.ui/settings-button entity)
                     [chat]
                     [account]]))]))
 

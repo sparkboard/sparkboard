@@ -165,8 +165,8 @@
 (def path-by-name (comp :match/path match-by-tag))
 
 (comment
-  (match-by-tag 'sparkboard.app.assets/upload! {:query-params {:a 1}})
-  (path-by-name 'sparkboard.app.assets/upload! {:query-params {:a 1}})
+  (match-by-tag 'sparkboard.app.assets.data/upload! {:query-params {:a 1}})
+  (path-by-name 'sparkboard.app.assets.data/upload! {:query-params {:a 1}})
   (aux:match-by-path "/upload?a=1")
   (aux:parse-path "/upload?a=1"))
 
@@ -232,9 +232,9 @@
 (defonce !history (atom nil))
 
 (comment
-  (reit/match-by-name @!router 'sparkboard.app.assets/upload! {})
-  (reit/match-by-name @!router 'sparkboard.app.board/show {:board-id (random-uuid)})
-  (match-by-tag 'sparkboard.app.assets/upload! {}))
+  (reit/match-by-name @!router 'sparkboard.app.assets.data/upload! {})
+  (reit/match-by-name @!router 'sparkboard.app.board.data/show {:board-id (random-uuid)})
+  (match-by-tag 'sparkboard.app.assets-data/upload! {}))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
@@ -258,20 +258,20 @@
 (comment
   (resolve "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
   (path-for "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e?a=1")
-  (path-for ['sparkboard.app.board/show {:board-id     [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
-                                         :query-params {:foo "blah"}}])
+  (path-for ['sparkboard.app.board-data/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
+                                         :query-params  {:foo "blah"}}])
   (def p "/b/a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e")
   (aux:match-by-path p)
-  (def r ['sparkboard.app.board/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
-                                      :foo      "blah"}])
+  (def r ['sparkboard.app.board-data/show {:board-id [:entity/id #uuid "a1eebd1e-8b71-4925-bbfd-1b7f6a6b680e"]
+                                      :foo           "blah"}])
 
 
   (time (resolve r))
   (time (resolve p))
 
   @!routes
-  (path-for ['sparkboard.app.board/show {:board-id (random-uuid)}])
-  (path-for 'sparkboard.app.org/show {:org-id (random-uuid)})
+  (path-for ['sparkboard.app.board-data/show {:board-id (random-uuid)}])
+  (path-for 'sparkboard.app.org-data/show {:org-id (random-uuid)})
   (aux:match-by-path "/"))
 
 (defn init-endpoints! [endpoints]

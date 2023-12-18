@@ -1,27 +1,13 @@
-(ns sparkboard.app.board
-  (:require [inside-out.forms :as forms]
-            [promesa.core :as p]
-            [re-db.api :as db]
-            [sparkboard.app.account :as account]
-            [sparkboard.app.domain :as domain]
-            [sparkboard.app.field :as field]
-            [sparkboard.app.member :as member]
+(ns sparkboard.app.board.data
+  (:require [re-db.api :as db]
+            [sparkboard.app.field.data :as field.data]
+            [sparkboard.app.entity.data :as entity.data]
+            [sparkboard.app.member.data :as member.data]
             [sparkboard.authorize :as az]
-            [sparkboard.app.entity :as entity]
-            [sparkboard.i18n :refer [tr]]
             [sparkboard.query :as q]
-            [sparkboard.routing :as routing]
             [sparkboard.schema :as sch :refer [? s-]]
             [sparkboard.server.datalevin :as dl]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.header :as header]
-            [sparkboard.app.project :as project]
-            [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]
-            [sparkboard.util :as u]
-            [sparkboard.validate :as validate]
-            [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [sparkboard.validate :as validate]))
 
 (sch/register!
   {:board/show-project-numbers?              {s-   :boolean
@@ -127,50 +113,50 @@
      (dl/entity [:member/entity+account [(dl/resolve-id entity-id)
                                          (dl/resolve-id account-id)]])))
 
-(q/defquery db:board
-  {:prepare [(member/member:log-visit! :board-id)
+(q/defquery show
+  {:prepare [(member.data/member:log-visit! :board-id)
              (az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
-  (if-let [board (db/pull `[~@entity/fields
+  (if-let [board (db/pull `[~@entity.data/fields
                             :board/registration-open?
-                            {:entity/parent [~@entity/fields :org/show-org-tab?]}]
+                            {:entity/parent [~@entity.data/fields :org/show-org-tab?]}]
                           board-id)]
     (merge board {:member/roles roles})
     (throw (ex-info "Board not found!" {:status 400}))))
 
-(q/defquery db:members
+(q/defquery members
   {:prepare [(az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
   (->> (db/where [[:member/entity board-id]])
        (remove :entity/archived?)
-       (mapv (db/pull `[~@entity/fields
+       (mapv (db/pull `[~@entity.data/fields
                         {:member/account [:entity/id
                                           :entity/kind
                                           {:image/avatar [:entity/id]}
                                           :account/display-name]}]))))
 
-(q/defquery db:projects
+(q/defquery projects
   {:prepare [(az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
   (->> (db/where [[:entity/parent board-id]])
        (remove :entity/archived?)
-       (mapv (db/pull `[~@entity/fields]))))
+       (mapv (db/pull `[~@entity.data/fields]))))
 
-(defn db:authorize-edit! [board account-id]
+(defn authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? board account-id)
                 (validate/can-edit? (:entity/parent board) account-id))
     (validate/permission-denied!)))
 
-(defn db:authorize-create! [board account-id]
+(defn authorize-create! [board account-id]
   (when-not (validate/can-edit? (:entity/parent board) account-id)
     (validate/permission-denied!)))
 
-(q/defx db:new!
+(q/defx new!
   {:prepare [az/with-account-id!]}
   [{:keys [board account-id]}]
   (let [board  (-> (dl/new-entity board :board :by account-id)
                    (validate/conform :board/as-map))
-        _      (db:authorize-create! board account-id)
+        _      (authorize-create! board account-id)
         member (-> {:member/entity  board
                     :member/account account-id
                     :member/roles   #{:role/admin}}
@@ -178,132 +164,7 @@
     (db/transact! [member])
     board))
 
-(ui/defview new
-  {:route       "/new/b"
-   :view/router :router/modal}
-  [{:as params :keys [route]}]
-  (let [account (db/get :env/config :account)
-        owners  (some->> (account/db:account-orgs {})
-                         seq
-                         (cons (account/account-as-entity account)))]
-    (forms/with-form [!board (u/prune
-                               {:entity/title  ?title
-                                :entity/domain ?domain
-                                :entity/parent [:entity/id (uuid (?owner
-                                                                   :init
-                                                                   (or (-> params :query-params :org)
-                                                                       (str (-> (db/get :env/config :account)
-                                                                                :entity/id)))))]})
-                      :required [?title ?domain]]
-      [:form
-       {:class     ui/form-classes
-        :on-submit (fn [^js e]
-                     (.preventDefault e)
-                     (ui/with-submission [result (db:new! {:board @!board})
-                                          :form !board]
-                       (routing/nav! `show {:board-id (:entity/id result)})))
-        :ref       (ui/use-autofocus-ref)}
-       [:h2.text-2xl (tr :tr/new-board)]
-
-       (when owners
-         [:div.flex-v.gap-2
-          [ui/input-label {} (tr :tr/owner)]
-          (radix/select-menu {:value           @?owner
-                              :on-value-change (partial reset! ?owner)
-                              :options
-                              (->> owners
-                                   (map (fn [{:keys [entity/id entity/title image/avatar]}]
-                                          {:value (str id)
-                                           :text  title
-                                           :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]})))})])
-
-       [ui/text-field ?title {:label (tr :tr/title)}]
-       (domain/domain-field ?domain)
-       [ui/submit-form !board (tr :tr/create)]])))
-
-(ui/defview register
-  {:route "/b/:board-id/register"}
-  [{:as params :keys [route]}]
-  (ui/with-form [!member {:member/name ?name :member/password ?pass}]
-    [:div
-     [:h3 (tr :tr/register)]
-     [ui/text-field ?name]
-     [ui/text-field ?pass]
-     [:button {:on-click #(p/let [res (routing/POST route @!member)]
-                            ;; TODO - how to determine POST success?
-                            #_(when (http-ok? res)
-                                (routing/nav! [:board/read params])
-                                res))}
-      (tr :tr/register)]]))
-
-(ui/defview action-button [{:as props :keys [on-click]} child]
-  (let [!async-state (h/use-state nil)
-        on-click     (fn [e]
-                       (reset! !async-state {:loading? true})
-                       (p/let [result (on-click e)]
-                         (prn :res result)
-                         (reset! !async-state (when (:error result) result))))
-        {:keys [loading? error]} @!async-state]
-    [radix/tooltip {:delay-duration 0} error
-     [:div.btn.btn-white.overflow-hidden.relative
-      (-> props
-          (v/merge-props {:class (when error "ring-destructive ring-2")})
-          (assoc :on-click
-                 (when-not loading? on-click)))
-      (tr :tr/new-project)
-      (when (:loading? @!async-state)
-        [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))
-
-(routing/path-for `project/show {:project-id #uuid "a4e7c453-acb1-4afe-9890-1341733c1aa5"})
-(ui/defview show
-  {:route "/b/:board-id"}
-  [{:as params :keys [board-id]}]
-  (let [{:as board :keys [member/roles]} (db:board {:board-id board-id})
-        !current-tab (h/use-state (tr :tr/projects))
-        ?filter      (h/use-state nil)]
-    [:<>
-     [header/entity board]
-     [:div.p-body
-
-      [:div.flex.gap-4.items-stretch
-       [ui/filter-field ?filter]
-       [action-button
-        {:on-click (fn [_]
-                     (p/let [{:as   result
-                              :keys [entity/id]} (project/db:new! nil
-                                                                  {:entity/parent board-id
-                                                                   :entity/title  (tr :tr/untitled)
-                                                                   :entity/draft? true})]
-                       (when id
-                         (routing/nav! `project/show {:project-id id}))
-                       result))}
-        (tr :tr/new-project)]]
-
-      [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
-                       :value           @!current-tab
-                       :on-value-change #(do (reset! !current-tab %)
-                                             (reset! ?filter nil))}
-       ;; tabs
-       [:div.flex.items-stretch.h-10.gap-3
-        [radix/show-tab-list
-         (for [x [:tr/projects :tr/members] :let [x (tr x)]]
-           {:title x :value x})]]
-
-       [radix/tab-content {:value (tr :tr/projects)}
-        (into [:div.grid]
-              (comp (ui/filtered @?filter)
-                    (map entity/row))
-              (db:projects {:board-id board-id}))]
-
-       [radix/tab-content {:value (tr :tr/members)}
-        (into [:div.grid]
-              (comp (map #(merge (account/account-as-entity (:member/account %))
-                                 (db/touch %)))
-                    (map entity/row))
-              (db:members {:board-id board-id}))
-        ]]]]))
-
-(q/defquery db:settings
+(q/defquery settings
   {:prepare [az/with-account-id!
              (az/with-roles :board-id)
              (fn [_ {:as params :keys [member/roles board-id account-id]}]
@@ -311,54 +172,10 @@
                params)]}
   [{:keys [board-id member/roles]}]
   (some->
-    (q/pull `[~@entity/fields
-              {:board/member-fields ~field/field-keys}
-              {:board/project-fields ~field/field-keys}] board-id)
+    (q/pull `[~@entity.data/fields
+              {:board/member-fields ~field.data/field-keys}
+              {:board/project-fields ~field.data/field-keys}] board-id)
     (merge {:member/roles roles})))
-
-(ui/defview settings
-  {:route "/b/:board-id/settings"}
-  [{:as params :keys [board-id]}]
-  (let [board (db:settings params)]
-    [:<>
-     (header/entity board)
-     [:div {:class ui/form-classes}
-      (entity/use-persisted board :entity/title ui/text-field {:class "text-lg"})
-      (entity/use-persisted board :entity/description ui/prose-field {:class "bg-gray-100 px-3 py-3"})
-      (entity/use-persisted board :entity/domain domain/domain-field)
-      (entity/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
-
-      (field/fields-editor board :board/member-fields)
-      (field/fields-editor board :board/project-fields)
-
-      ;; TODO
-      ;; - :board/project-sharing-buttons
-      ;; - :board/member-tags
-
-      ;; Registration
-      ;; - :board/registration-invitation-email-text
-      ;; - :board/registration-newsletter-field?
-      ;; - :board/registration-open?
-      ;; - :board/registration-message
-      ;; - :board/registration-url-override
-      ;; - :board/registration-codes
-
-      ;; Theming
-      ;; - border radius
-      ;; - headline font
-      ;; - accent color
-
-      ;; Sponsors
-      ;; - logo area with tiered sizes/visibility
-
-      ;; Sticky Notes
-      ;; - schema: a new entity type (not a special kind of project)
-      ;; - modify migration based on ^new schema
-      ;; - color is picked per sticky note
-      ;; - sticky notes can include images/videos
-
-      ]]))
-
 (comment
   [:ul                                                      ;; i18n stuff
    [:li "suggested locales:" (str (:entity/locale-suggestions board))]

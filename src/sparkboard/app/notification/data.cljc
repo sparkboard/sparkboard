@@ -1,4 +1,4 @@
-(ns sparkboard.app.notification
+(ns sparkboard.app.notification.data
   (:require [sparkboard.schema :as sch :refer [s- ?]]))
 
 (sch/register!

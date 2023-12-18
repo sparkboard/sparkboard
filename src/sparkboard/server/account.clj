@@ -118,7 +118,7 @@
 
 (defn logout!
   [_ _]
-  (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account/show))
+  (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account-ui/show))
       (res:logout)))
 
 (defn res:login [res account-id]
@@ -232,7 +232,7 @@
                           :body
                           (json/parse-string keyword))]
     (db/transact! (google-account-tx account-id provider-info))
-    (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account/show))
+    (-> (ring.response/redirect (routes/path-for 'sparkboard.app.account-ui/show))
         (res:login account-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

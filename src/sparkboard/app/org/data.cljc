@@ -1,10 +1,10 @@
-(ns sparkboard.app.org
+(ns sparkboard.app.org.data
   (:require [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
-            [sparkboard.app.domain :as domain]
-            [sparkboard.app.entity :as entity]
-            [sparkboard.app.member :as member]
+            [sparkboard.app.domain.data :as domain.data]
+            [sparkboard.app.entity.data :as entity.data]
+            [sparkboard.app.member.data :as member.data]
             [sparkboard.authorize :as az]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.query :as q]
@@ -43,7 +43,7 @@
                                     (? :org/default-board-template)
                                     (? :entity/created-at)]}})
 
-(q/defx db:delete!
+(q/defx delete!
   "Mutation fn. Retracts organization by given org-id."
   {:endpoint {:post "/o/:org-id/delete"}}
   [_req {:keys [org-id]}]
@@ -52,27 +52,27 @@
   (db/transact! [[:db.fn/retractEntity org-id]])
   {:body ""})
 
-(q/defquery db:edit
+(q/defquery settings
   [{:keys [org-id]}]
   ;; all the settings that can be changed
-  (q/pull `[~@entity/fields]
+  (q/pull `[~@entity.data/fields]
           org-id))
 
-(q/defquery db:read
+(q/defquery show
   {:prepare [az/with-account-id!
-             (member/member:log-visit! :org-id)]}
+             (member.data/member:log-visit! :org-id)]}
   [{:keys [org-id]}]
-  (q/pull `[~@entity/fields
-            {:entity/_parent ~entity/fields}]
+  (q/pull `[~@entity.data/fields
+            {:entity/_parent ~entity.data/fields}]
           (dl/resolve-id org-id)))
 
-(q/defx db:search-once
+(q/defx search-once
   [{:as   params
     :keys [org-id q]}]
   (when q
     {:q        q
      :boards   (dl/q (u/template
-                       `[:find [(pull ?board ~entity/fields) ...]
+                       `[:find [(pull ?board ~entity.data/fields) ...]
                          :in $ ?terms ?org
                          :where
                          [?board :entity/parent ?org]
@@ -80,7 +80,7 @@
                      q
                      org-id)
      :projects (->> (dl/q (u/template
-                            `[:find [(pull ?project [~@entity/fields
+                            `[:find [(pull ?project [~@entity.data/fields
                                                      :project/sticky?
                                                      {:entity/parent [:entity/id]}]) ...]
                               :in $ ?terms ?org
@@ -92,15 +92,15 @@
                           org-id)
                     (remove :project/sticky?))}))
 
-(q/defx db:edit!
+(q/defx settings!
   {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} {:as org :keys [entity/id]}]
+  [{:keys [account-id]} {:as org :keys [entity.data/id]}]
   (validate/assert-can-edit! id account-id)
   (let [org (validate/conform org :org/as-map)]
     (db/transact! [org])
     {:body org}))
 
-(q/defx db:new!
+(q/defx new!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id org]}]
   (let [org    (-> (dl/new-entity org :org :by account-id)
@@ -111,82 +111,3 @@
                    (dl/new-entity :member))]
     (db/transact! [member])
     org))
-
-(ui/defview show
-  {:route "/o/:org-id"}
-  [params]
-  (forms/with-form [_ ?filter]
-    (let [{:as   org
-           :keys [entity/description]} (db:read params)
-          q     (ui/use-debounced-value (u/guard @?filter #(> (count %) 2)) 500)
-          [result set-result!] (h/use-state nil)
-          title (v/from-element :h3.font-medium.text-lg.pt-6)]
-      (h/use-effect
-        (fn []
-          (when q
-            (let [q q]
-              (set-result! {:loading? true})
-              (p/let [result (db:search-once {:org-id (:org-id params)
-                                              :q      q})]
-                (when (= q @?filter)
-                  (set-result! {:value result
-                                :q     q}))))))
-        [q])
-      [:div
-       (header/entity org)
-       [:div.p-body (ui/show-prose description)]
-       [:div.p-body
-        [:div.flex.gap-4.items-stretch
-         [ui/filter-field ?filter {:loading? (:loading? result)}]
-         [:a.btn.btn-white.flex.items-center.px-3
-          {:href (routes/path-for ['sparkboard.app.board/new
-                                   {:query-params {:org-id (:entity/id org)}}])}
-          (tr :tr/new-board)]]
-        [ui/error-view result]
-        (if (seq q)
-          (for [[kind results] (dissoc (:value result) :q)
-                :when (seq results)]
-            [:<>
-             [title (tr (keyword "tr" (name kind)))]
-             [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
-              (map entity/row results)]])
-          [:div.flex-v.gap-2
-           [title (tr :tr/boards)]
-           [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
-            (map entity/row (:entity/_parent org))]])]])))
-
-(ui/defview settings
-  {:route "/o/:org-id/settings"}
-  [{:as params :keys [org-id]}]
-  (let [org (sparkboard.app.org/db:edit params)]
-    [:<>
-     (header/entity org)
-     [:div {:class ui/form-classes}
-      (entity/use-persisted org :entity/title ui/text-field)
-      (entity/use-persisted org :entity/description ui/prose-field)
-      (entity/use-persisted org :entity/domain domain/domain-field)
-      ;; TODO - uploading an image does not work
-      (entity/use-persisted org :image/avatar ui/image-field {:label (tr :tr/image.logo)})
-
-      ]]))
-
-
-(ui/defview new
-  {:route       "/new/o"
-   :view/router :router/modal}
-  [params]
-  (forms/with-form [!org (u/prune
-                           {:entity/title  ?title
-                            :entity/domain ?domain})
-                    :required [?title ?domain]]
-    [:form
-     {:class     ui/form-classes
-      :on-submit (fn [e]
-                   (.preventDefault e)
-                   (ui/with-submission [result (db:new! {:org @!org})
-                                        :form !org]
-                     (routes/nav! [`show {:org-id (:entity/id result)}])))}
-     [:h2.text-2xl (tr :tr/new-org)]
-     [ui/text-field ?title {:label (tr :tr/title)}]
-     (domain/domain-field ?domain)
-     [ui/submit-form !org (tr :tr/create)]]))

@@ -1,4 +1,4 @@
-(ns sparkboard.app.discussion
+(ns sparkboard.app.discussion.data
   (:require [sparkboard.schema :as sch :refer [s- ?]]
             [re-db.schema :as rs]))
 

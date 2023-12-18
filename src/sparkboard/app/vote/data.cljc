@@ -1,4 +1,4 @@
-(ns sparkboard.app.vote
+(ns sparkboard.app.vote.data
   (:require [sparkboard.schema :as sch :refer [s-]]))
 
 (sch/register!

@@ -1,13 +1,11 @@
-(ns sparkboard.app.member
+(ns sparkboard.app.member.data
   (:require #?(:clj [java-time.api :as time])
-            #?(:clj [sparkboard.authorize :as az])
-            #?(:clj [sparkboard.server.datalevin :as dl])
-            [sparkboard.i18n :refer [tr]]
-            [sparkboard.app.entity :as entity]
-            [sparkboard.schema :as sch :refer [s- ?]]
-            [sparkboard.ui :as ui]
+            [re-db.api :as db]
+            [sparkboard.app.entity.data :as entity.data]
+            [sparkboard.authorize :as az]
             [sparkboard.query :as q]
-            [re-db.api :as db])
+            [sparkboard.schema :as sch :refer [? s-]]
+            [sparkboard.server.datalevin :as dl])
   #?(:clj (:import [java.util Date])))
 
 (sch/register!
@@ -76,12 +74,11 @@
                                          (? :entity/deleted-at)
                                          (? :entity/modified-by)]}})
 
-
-(q/defquery db:read
+(q/defquery show
   {:prepare az/require-account!}
   [params]
   (dissoc (q/pull `[{:member/tags [:*]}
-                    {:member/account [~@entity/fields
+                    {:member/account [~@entity.data/fields
                                       :account/display-name]}]
                   (:member-id params))
           :member/password))
@@ -95,7 +92,7 @@
      (when-not (membership-id account-id entity-id)
        (throw (ex-info "Not a member" {:status 403})))))
 
-(q/defquery db:search
+(q/defquery search
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id entity-id search-term]}]
   (if entity-id
@@ -127,32 +124,9 @@
           search-term)))
 
 (comment
-  (db:search {:account-id  [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
+  (search {:account-id     [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
               ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
               :search-term "matt"}))
-
-(ui/defview show
-  {:route       "/m/:member-id"
-   :view/router :router/modal}
-  [params]
-  (let [{:as          member
-         :member/keys [tags
-                       ad-hoc-tags
-                       account]} (db:read {:member-id (:member-id params)})
-        {:keys [:account/display-name
-                :image/avatar]} account]
-    [:div
-     [:h1 display-name]
-     ;; avatar
-     ;; fields
-     (when-let [tags (seq (concat tags ad-hoc-tags))]
-       [:section [:h3 (tr :tr/tags)]
-        (into [:ul]
-              (map (fn [{:tag/keys [label background-color]}]
-                     [:li {:style (when background-color {:background-color background-color})} label]))
-              tags)])
-     (when avatar [:img {:src (ui/asset-src avatar :card)}])]))
-
 
 #?(:clj
    (defn member:log-visit! [entity-key]
@@ -164,3 +138,10 @@
                              time/instant
                              Date/from)]]))
        params)))
+
+(defn new-entity-with-membership [entity account-id roles]
+  {:entity/id      (random-uuid)
+   :entity/kind    :member
+   :member/account (sch/wrap-id account-id)
+   :member/entity  entity
+   :member/roles   roles})

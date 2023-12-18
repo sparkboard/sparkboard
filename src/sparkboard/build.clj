@@ -20,9 +20,9 @@
 
 (defn start
   {:shadow/requires-server true}
-  [port]
+  [& [port]]
   ((requiring-resolve 'shadow.cljs.devtools.api/watch) :browser)
-  ((requiring-resolve 'sparkboard.server.core/-main) (Integer/parseInt port)))
+  ((requiring-resolve 'sparkboard.server.core/-main) (if port (Integer/parseInt port) 3000)))
 
 (defn slurp-some [path]
   (try (slurp path)

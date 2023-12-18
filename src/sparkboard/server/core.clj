@@ -177,11 +177,11 @@
          (r/reaction {:error (ex-message e)}))))
 
 (comment
-  (routing/tag->endpoint 'sparkboard.app.domain/check-availability :effect)
-  (routing/tag->endpoint 'sparkboard.app.account/db:all :query)
+  (routing/tag->endpoint 'sparkboard.app.domain.ui/check-availability :effect)
+  (routing/tag->endpoint 'sparkboard.app.account.data/all :query)
 
-  (resolve-query ['sparkboard.app.org/db:read {}])
-  (routing/tag->endpoint 'sparkboard.app.org/db:read :query))
+  (resolve-query ['sparkboard.app.org.data/show {}])
+  (routing/tag->endpoint 'sparkboard.app.org.data/show :query))
 
 (def ws-options {:handlers (merge (sync/query-handlers resolve-query)
                                   {::sync/once
@@ -274,7 +274,6 @@
 
   (routing/aux:match-by-path (str "/o/" (random-uuid)))
 
-  (routing/path-for 'sparkboard.app.account/db:read)
   (routing/aux:match-by-path (str "/o/" (random-uuid)))
   (routing/aux:match-by-path (str "/ws"))
 

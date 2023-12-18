@@ -1,27 +1,23 @@
 (ns sparkboard.app.project.new-flow
-  (:require [applied-science.js-interop :as j]
+  (:require [inside-out.forms :as forms]
             [re-db.api :as db]
+            [sparkboard.app.board.data :as board.data]
             [sparkboard.authorize :as az]
+            [sparkboard.i18n :refer [tr]]
+            [sparkboard.query :as q]
+            [sparkboard.routing :as routes]
             [sparkboard.server.datalevin :as dl]
             [sparkboard.ui :as ui]
-            [sparkboard.routing :as routes]
-            [promesa.core :as p]
-            [sparkboard.i18n :refer [tr]]
+
+            [sparkboard.ui.header :as header]
             [sparkboard.ui.icons :as icons]
             [sparkboard.ui.radix :as radix]
             [sparkboard.validate :as validate]
-            [sparkboard.query :as q]
-            [sparkboard.app.entity :as entity]
-            [sparkboard.ui.header :as header]
-            [sparkboard.app.board :as board]
-            [sparkboard.app.project :as project]
-            [yawn.view :as v]
             [yawn.hooks :as h]
-            [inside-out.forms :as forms]
-            [sparkboard.util :as u]))
+            [yawn.view :as v]))
 
 
-(q/defx db:new!
+(q/defx new!
   {:prepare [az/with-account-id!]}
   [{:as what :keys [account-id board-id project]}]
   (validate/assert project [:map {:closed true} :entity/title :entity/parent])
@@ -57,7 +53,7 @@
         form-label :div.text-primary.text-sm.font-medium.flex.items-center
         form-hint  :div.text-gray-500.text-sm]
     [:<>
-     [header/entity (board/db:board {:board-id board-id})]
+     [header/entity (board.data/show {:board-id board-id})]
      [:div.p-body.flex-v.gap-8
 
       [ui/show-markdown "Creating a new project is a multi-step process."]
@@ -68,10 +64,10 @@
          {:ref       nil #_(ui/use-autofocus-ref)
           :on-submit (fn [e]
                        (.preventDefault e)
-                       (ui/with-submission [result (db:new! {:project @!project})
+                       (ui/with-submission [result (new! {:project @!project})
                                             :form !project]
                          (prn result)
-                         (routes/nav! 'sparkboard.app.board/show {:board-id board-id})))}
+                         (routes/nav! 'sparkboard.app.board-data/show {:board-id board-id})))}
          [form
 
 

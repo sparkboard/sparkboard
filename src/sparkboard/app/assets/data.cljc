@@ -1,8 +1,8 @@
-(ns sparkboard.app.assets
+(ns sparkboard.app.assets.data
   (:require #?(:clj [ring.util.response :as resp])
-            #?(:clj [sparkboard.authorize :as az])
-            #?(:clj [sparkboard.server.datalevin :as dl])
             #?(:clj [sparkboard.server.assets :as assets])
+            [sparkboard.authorize :as az]
+            [sparkboard.server.datalevin :as dl]
             [sparkboard.schema :as sch :refer [s- ?]]
             [sparkboard.util :as u]
             [malli.core :as m]))

@@ -1,4 +1,4 @@
-(ns sparkboard.app.social-feed
+(ns sparkboard.app.social-feed.data
   (:require [sparkboard.schema :as sch :refer [s- ?]]))
 
 (sch/register!

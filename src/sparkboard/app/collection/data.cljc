@@ -1,4 +1,4 @@
-(ns sparkboard.app.collection
+(ns sparkboard.app.collection.data
   (:require [sparkboard.schema :as sch :refer [s- ?]]))
 
 (sch/register!

@@ -1,94 +1,17 @@
-(ns sparkboard.app.project
-  (:require [sparkboard.app.member :as member]
-            [clojure.set :as set]
-            [sparkboard.authorize :as az]
+(ns sparkboard.app.project.ui
+  (:require [inside-out.forms :as forms]
+            [re-db.api :as db]
+            [sparkboard.app.field-entry.data :as entry.data]
+            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.project.data :as data]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routing :as routing]
-            [sparkboard.schema :as sch :refer [s- ?]]
-            [sparkboard.server.datalevin :as dl]
-            [sparkboard.validate :as validate]
             [sparkboard.ui :as ui]
-            [sparkboard.query :as q]
-            [sparkboard.app.entity :as entity]
-            [sparkboard.app.field :as field]
-            [sparkboard.app.field-entry :as entry]
-            [re-db.api :as db]
-            [yawn.view :as v]
-            [sparkboard.ui.radix :as radix]
             [sparkboard.ui.icons :as icons]
-            [inside-out.forms :as forms]
-            [yawn.hooks :as h]))
-
-(sch/register!
-  (merge
-
-    {:social/sharing-button {s- [:enum
-                                 :social.sharing-button/facebook
-                                 :social.sharing-button/twitter
-                                 :social.sharing-button/qr-code]}}
-
-    {:request/text {:doc "Free text description of the request"
-                    s-   :string}
-     :request/map  {s- [:map {:closed true} :request/text]}}
-
-    {:project/open-requests     {:doc "Currently active requests for help"
-                                 s-   [:sequential :request/map]},
-     :project/team-complete?    {:doc "Project team marked sufficient"
-                                 s-   :boolean}
-     :project/community-actions {s- [:sequential :community-action/as-map]}
-     :project/approved?         {:doc "Set by an admin when :board/new-projects-require-approval? is enabled. Unapproved projects are hidden."
-                                 s-   :boolean}
-     :project/badges            {:doc "A badge is displayed on a project with similar formatting to a tag. Badges are ad-hoc, not defined at a higher level.",
-                                 s-   [:vector :content/badge]}
-     :project/number            {:doc  "Number assigned to a project by its board (stored as text because may contain annotations)",
-                                 :todo "This could be stored in the board entity, a map of {project, number}, so that projects may participate in multiple boards"
-                                 s-    :string}
-     :project/admin-description {:doc "A description field only writable by an admin"
-                                 s-   :prose/as-map}
-     :entity/archived?          {:doc "Marks a project inactive, hidden."
-                                 s-   :boolean}
-     :project/sticky?           {:doc "Show project with border at top of project list"
-                                 s-   :boolean}
-     :project/as-map            {s- [:map {:closed true}
-                                     :entity/id
-                                     :entity/kind
-                                     :entity/parent
-                                     :entity/title
-                                     :entity/created-at
-                                     (? :entity/updated-at)
-                                     (? :entity/draft?)
-                                     (? :entity/archived?)
-                                     (? :entity/field-entries)
-                                     (? :entity/video)
-                                     (? :entity/created-by)
-                                     (? :entity/deleted-at)
-                                     (? :entity/modified-by)
-                                     (? :member/_entity)
-                                     (? [:project/card-classes {:doc          "css classes for card"
-                                                                :to-deprecate true}
-                                         [:sequential :string]])
-                                     (? :project/approved?)
-                                     (? :project/badges)
-                                     (? :project/number)
-                                     (? :project/admin-description)
-                                     (? :project/sticky?)
-                                     (? :project/open-requests)
-                                     (? :entity/description)
-                                     (? :project/team-complete?)]
-                                 }
-     :community-action/as-map   {s- [:map-of
-                                     :community-action/label
-                                     :community-action/action
-                                     (? :community-action/hint)
-                                     (? :community-action.chat)]}
-     :community-action/label    {s- :string}
-     :community-action/action   (merge sch/keyword
-                                       {s- [:enum
-                                            :community-action.action/copy-link
-                                            :community-action.action/chat]})
-     :community-action/hint     {s- :string}}))
-
-
+            [sparkboard.ui.radix :as radix]
+            [sparkboard.validate :as validate]
+            [yawn.hooks :as h]
+            [yawn.view :as v]))
 
 (defn youtube-embed [video-id]
   [:iframe#ytplayer {:type        "text/html" :width 640 :height 360
@@ -105,18 +28,6 @@
 (comment
   (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
   )
-
-#?(:clj
-   (defn db:read
-     {:endpoint {:query true}
-      :prepare  [az/with-account-id
-                 (member/member:log-visit! :project-id)]}
-     [{:keys [project-id]}]
-     (q/pull `[{:entity/parent ~entity/fields}
-               ~@entity/fields
-               {:project/community-actions [:*]}
-               :project/sticky?]
-             project-id)))
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
@@ -190,15 +101,6 @@
 
        ])))
 
-(q/defquery db:read
-  {:prepare [(az/with-roles :project-id)]}
-  [{:keys [project-id]}]
-  (q/pull `[~@entity/fields
-            :entity/field-entries
-            {:entity/parent
-             [~@entity/fields
-              {:board/project-fields ~field/field-keys}]}] project-id))
-
 #?(:cljs
    (defn use-dev-panel [entity]
      (let [!dev-edit? (h/use-state nil)
@@ -215,11 +117,6 @@
                                                            {:value true :text "Editor"}
                                                            {:value false :text "Viewer"}]}]])])))
 
-(q/defquery db:fields [{:keys [board-id]}]
-  (-> (q/pull `[~@entity/id-fields
-                {:board/project-fields ~field/field-keys}] board-id)
-      :board/project-fields))
-
 (def title-icon-classes "px-1 py-2 icon-light-gray")
 
 (def modal-close [radix/dialog-close
@@ -234,12 +131,14 @@
                        description
                        video
                        field-entries]
-         :keys        [project/badges]} (db:read params)
+         :keys        [project/badges
+                       member/roles]} (data/show params)
         [can-edit? dev-panel] (use-dev-panel project)
         fields  (->> project :entity/parent :board/project-fields (sort-by :field/order))
         entries (->> project :entity/field-entries)]
     [:<>
-     #_dev-panel
+     dev-panel
+     (str roles)
      [:div.flex-v.gap-6.pb-6
       ;; title row
       [:div.flex
@@ -271,8 +170,8 @@
        (for [field fields
              :let [entry (get entries (:entity/id field))]
              :when (or can-edit?
-                       (entry/entry-value field entry))]
-         (entry/show-entry {:parent    project
+                       (entry.data/entry-value field entry))]
+         (entry.ui/show-entry {:parent    project
                             :can-edit? can-edit?
                             :field     field
                             :entry     entry}))
@@ -282,21 +181,11 @@
          [:section [:h3 (tr :tr/video)]
           [video-field vid]])]]]))
 
-(q/defx db:new!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} project]
-  ;; TODO
-  ;; verify that user is allowed to create a new project in parent
-  (let [project (dl/new-entity project :project :by account-id)]
-    (validate/assert project :project/as-map)
-    (db/transact! [project])
-    {:entity/id (:entity/id project)}))
-
 (ui/defview new
   {:route       "/new/p/:board-id"
    :view/router :router/modal}
   [{:keys [board-id]}]
-  (let [fields (db:fields {:board-id board-id})]
+  (let [fields (data/fields {:board-id board-id})]
     (forms/with-form [!project {:project/parent board-id
                                 :entity/title   ?title}]
       [:<>
