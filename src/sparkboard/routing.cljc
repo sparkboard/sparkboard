@@ -165,8 +165,8 @@
 (def path-by-name (comp :match/path match-by-tag))
 
 (comment
-  (match-by-tag 'sparkboard.app.assets.data/upload! {:query-params {:a 1}})
-  (path-by-name 'sparkboard.app.assets.data/upload! {:query-params {:a 1}})
+  (match-by-tag 'sparkboard.app.asset.data/upload! {:query-params {:a 1}})
+  (path-by-name 'sparkboard.app.asset.data/upload! {:query-params {:a 1}})
   (aux:match-by-path "/upload?a=1")
   (aux:parse-path "/upload?a=1"))
 
@@ -232,9 +232,9 @@
 (defonce !history (atom nil))
 
 (comment
-  (reit/match-by-name @!router 'sparkboard.app.assets.data/upload! {})
+  (reit/match-by-name @!router 'sparkboard.app.asset.data/upload! {})
   (reit/match-by-name @!router 'sparkboard.app.board.data/show {:board-id (random-uuid)})
-  (match-by-tag 'sparkboard.app.assets-data/upload! {}))
+  (match-by-tag 'sparkboard.app.asset-data/upload! {}))
 
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"

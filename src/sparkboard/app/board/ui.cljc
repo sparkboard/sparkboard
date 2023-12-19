@@ -3,17 +3,21 @@
             [promesa.core :as p]
             [re-db.api :as db]
             [sparkboard.app.account.data :as account.data]
+            [sparkboard.app.asset.ui :as asset.ui]
             [sparkboard.app.board.data :as data]
             [sparkboard.app.domain.ui :as domain.ui]
             [sparkboard.app.entity.ui :as entity.ui]
+            [sparkboard.app.field-entry.ui :as entry.ui]
             [sparkboard.app.field.ui :as field.ui]
+            [sparkboard.app.form.ui :as form.ui]
             [sparkboard.app.project.data :as project.data]
             [sparkboard.app.project.ui :as project.ui]
+            [sparkboard.app.form.ui :as form.ui]
+            [sparkboard.app.views.header :as header]
+            [sparkboard.app.views.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routing :as routing]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.header :as header]
-            [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -36,18 +40,18 @@
                                                                                 :entity/id)))))]})
                       :required [?title ?domain]]
       [:form
-       {:class     ui/form-classes
+       {:class     form.ui/form-classes
         :on-submit (fn [^js e]
                      (.preventDefault e)
                      (ui/with-submission [result (data/new! {:board @!board})
                                           :form !board]
-                       (routing/nav! `show {:board-id (:entity/id result)})))
+                                         (routing/nav! `show {:board-id (:entity/id result)})))
         :ref       (ui/use-autofocus-ref)}
        [:h2.text-2xl (tr :tr/new-board)]
 
        (when owners
          [:div.flex-v.gap-2
-          [ui/input-label {} (tr :tr/owner)]
+          [:label.field-label {} (tr :tr/owner)]
           (radix/select-menu {:value           @?owner
                               :on-value-change (partial reset! ?owner)
                               :options
@@ -55,11 +59,11 @@
                                    (map (fn [{:keys [entity/id entity/title image/avatar]}]
                                           {:value (str id)
                                            :text  title
-                                           :icon  [:img.w-5.h-5.rounded-sm {:src (ui/asset-src avatar :avatar)}]})))})])
+                                           :icon  [:img.w-5.h-5.rounded-sm {:src (asset.ui/asset-src avatar :avatar)}]})))})])
 
-       [ui/text-field ?title {:label (tr :tr/title)}]
+       [entry.ui/text-field ?title {:label (tr :tr/title)}]
        (domain.ui/domain-field ?domain)
-       [ui/submit-form !board (tr :tr/create)]])))
+       [form.ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
   {:route "/b/:board-id/register"}
@@ -67,8 +71,8 @@
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 (tr :tr/register)]
-     [ui/text-field ?name]
-     [ui/text-field ?pass]
+     [entry.ui/text-field ?name]
+     [entry.ui/text-field ?pass]
      [:button {:on-click #(p/let [res (routing/POST route @!member)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)
@@ -105,7 +109,7 @@
      [:div.p-body
 
       [:div.flex.gap-4.items-stretch
-       [ui/filter-field ?filter]
+       [form.ui/filter-field ?filter]
        [action-button
         {:on-click (fn [_]
                      (p/let [{:as   result
@@ -148,11 +152,11 @@
   (let [board (data/settings params)]
     [:<>
      (header/entity board)
-     [:div {:class ui/form-classes}
-      (entity.ui/use-persisted board :entity/title ui/text-field {:class "text-lg"})
-      (entity.ui/use-persisted board :entity/description ui/prose-field {:class "bg-gray-100 px-3 py-3"})
+     [:div {:class form.ui/form-classes}
+      (entity.ui/use-persisted board :entity/title entry.ui/text-field {:class "text-lg"})
+      (entity.ui/use-persisted board :entity/description entry.ui/prose-field {:class "bg-gray-100 px-3 py-3"})
       (entity.ui/use-persisted board :entity/domain domain.ui/domain-field)
-      (entity.ui/use-persisted board :image/avatar ui/image-field {:label (tr :tr/image.logo)})
+      (entity.ui/use-persisted board :image/avatar entry.ui/image-field {:label (tr :tr/image.logo)})
 
       (field.ui/fields-editor board :board/member-fields)
       (field.ui/fields-editor board :board/project-fields)

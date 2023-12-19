@@ -1,7 +1,8 @@
 (ns sparkboard.app.member.ui
-  (:require [sparkboard.app.member.data :as data]
+  (:require [sparkboard.app.asset.ui :as asset.ui]
+            [sparkboard.app.member.data :as data]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.ui :as ui]))
+            [sparkboard.app.views.ui :as ui]))
 
 (ui/defview show
   {:route       "/m/:member-id"
@@ -23,4 +24,4 @@
               (map (fn [{:tag/keys [label background-color]}]
                      [:li {:style (when background-color {:background-color background-color})} label]))
               tags)])
-     (when avatar [:img {:src (ui/asset-src avatar :card)}])]))
+     (when avatar [:img {:src (asset.ui/asset-src avatar :card)}])]))

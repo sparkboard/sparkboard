@@ -256,6 +256,13 @@
 
 @layer components {
 
+    .field-label {
+        @apply block font-bold text-base
+    }
+    .field-wrapper {
+        @apply gap-2 flex-v relative
+    }
+
     /* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
     .auto-size {
         @apply grid
@@ -371,6 +378,7 @@
         ring-offset-back bg-primary text-primary-txt
         hover:bg-primary/90 focus-visible:bg-primary/90
         disabled:bg-primary active:ring-0
+        px-6 py-3
     }
 
     .btn-darken {

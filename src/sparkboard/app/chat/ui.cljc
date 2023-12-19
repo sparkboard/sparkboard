@@ -3,13 +3,14 @@
             [clojure.string :as str]
             [promesa.core :as p]
             [sparkboard.app.chat.data :as data]
+            [sparkboard.app.field-entry.ui :as entry.ui]
             [sparkboard.app.member.data :as member.data]
+            [sparkboard.app.views.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
             [sparkboard.i18n :refer [tr]]
+            [sparkboard.icons :as icons]
             [sparkboard.routing :as routes]
             [sparkboard.schema :as sch]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -60,7 +61,7 @@
         {:class (when (data/unread? account-id chat)
                   "bg-blue-500")}]]
       [:div.text-gray-700.hidden.md:line-clamp-2.text-sm
-       (ui/show-prose
+       (entry.ui/show-prose
          (cond-> (:chat.message/content last-message)
                  (sch/id= account-id (:entity/created-by last-message))
                  (update :prose/string (partial str (tr :tr/you) " "))))]]]))
@@ -85,7 +86,7 @@
               "bg-blue-500 text-white place-self-end"
               "bg-gray-100 text-gray-900 place-self-start")]
     :key   id}
-   (ui/show-prose content)])
+   (entry.ui/show-prose content)])
 
 (ui/defview chat-header [{:keys [account-id chat]}]
   (let [close-icon [icons/close "w-6 h-6 hover:opacity-50"]]
@@ -134,7 +135,7 @@
              (sort-by :entity/created-at)
              (map (partial chat-message params))
              doall)]
-       [ui/auto-size
+       [entry.ui/auto-size
         {:class       [search-classes
                        "m-1 whitespace-pre-wrap min-h-[38px] flex-none"]
          :type        "text"

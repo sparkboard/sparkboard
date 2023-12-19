@@ -3,7 +3,7 @@
             [applied-science.js-interop :as j]
             [sparkboard.slack.firebase :as firebase]
             [promesa.core :as p]
-            [sparkboard.ui :as ui]
+            [sparkboard.app.views.ui :as ui]
             [yawn.hooks :refer [use-deref]]))
 
 ;; TODO

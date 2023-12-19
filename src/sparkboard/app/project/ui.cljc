@@ -6,28 +6,12 @@
             [sparkboard.app.project.data :as data]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routing :as routing]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.icons :as icons]
+            [sparkboard.app.views.radix :as radix]
             [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
-
-(defn youtube-embed [video-id]
-  [:iframe#ytplayer {:type        "text/html" :width 640 :height 360
-                     :frameborder 0
-                     :src         (str "https://www.youtube.com/embed/" video-id)}])
-
-(defn video-field [[kind v]]
-  (case kind
-    :video/youtube-id (youtube-embed v)
-    :video/youtube-url [:a {:href v} "youtube video"]
-    :video/vimeo-url [:a {:href v} "vimeo video"]
-    {kind v}))
-
-(comment
-  (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
-  )
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
@@ -161,7 +145,7 @@
         modal-close]]
 
       [:div.px-body.flex-v.gap-6
-       (ui/show-prose description)
+       (entry.ui/show-prose description)
        (when badges
          [:section
           (into [:ul]
@@ -177,9 +161,9 @@
                             :entry     entry}))
        [:section.flex-v.gap-2.items-start
         [manage-community-actions project (:project/community-actions project)]]
-       (when-let [vid video]
+       (when video
          [:section [:h3 (tr :tr/video)]
-          [video-field vid]])]]]))
+          [entry.ui/show-video video]])]]]))
 
 (ui/defview new
   {:route       "/new/p/:board-id"

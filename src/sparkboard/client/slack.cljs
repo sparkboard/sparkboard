@@ -7,7 +7,7 @@
             [sparkboard.slack.firebase :as firebase]
             [yawn.hooks :as hooks :refer [use-deref]]
             [yawn.view :as v]
-            [sparkboard.ui :as ui]))
+            [sparkboard.app.views.ui :as ui]))
 
 (def db (delay (.database firebase/app)))
 

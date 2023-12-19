@@ -1,20 +1,21 @@
 (ns sparkboard.app.account.ui
-  (:require
-    #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
-    [inside-out.forms :as forms]
-    [promesa.core :as p]
-    [re-db.api :as db]
-    [sparkboard.i18n :refer [tr]]
-    [sparkboard.routing :as routes]
-    [sparkboard.ui :as ui]
-    [sparkboard.ui.header :as header]
-    [sparkboard.ui.icons :as icons]
-    [sparkboard.app.entity.ui :as entity.ui]
-    [sparkboard.ui.radix :as radix]
-    [sparkboard.util :as u]
-    [yawn.hooks :as h]
-    [yawn.view :as v]
-    [sparkboard.app.account.data :as data]))
+  (:require #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
+            [inside-out.forms :as forms]
+            [promesa.core :as p]
+            [re-db.api :as db]
+            [sparkboard.app.account.data :as data]
+            [sparkboard.app.entity.ui :as entity.ui]
+            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.form.ui :as form.ui]
+            [sparkboard.app.views.header :as header]
+            [sparkboard.app.views.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.i18n :refer [tr]]
+            [sparkboard.icons :as icons]
+            [sparkboard.routing :as routes]
+            [sparkboard.util :as u]
+            [yawn.hooks :as h]
+            [yawn.view :as v]))
 
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:id       :new-menu
@@ -44,7 +45,7 @@
                          [{:on-select #(routes/nav! (routes/entity-route entity 'show) entity)}
                           (:entity/title entity)])
                        recents)})
-     (radix/dropdown-menu {:trigger [:div.btn-white.btn (tr :tr/new) down-arrow]
+     (radix/dropdown-menu {:trigger  [:div.btn-white.btn (tr :tr/new) down-arrow]
                            :children [[{:on-select #(routes/nav! 'sparkboard.app.board-data/new params)} (tr :tr/board)]
                                       [{:on-select #(routes/nav! 'sparkboard.app.org-data/new params)} (tr :tr/org)]]})
      [header/chat]
@@ -84,9 +85,9 @@
 
 
        [:div.flex-v.gap-2
-        [ui/text-field ?email]
+        [entry.ui/text-field ?email]
         (when (= :password @!step)
-          [ui/text-field ?password {:id "account-password"}])
+          [entry.ui/text-field ?password {:id "account-password"}])
         (str (forms/visible-messages !account))
         [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
          (tr :tr/continue-with-email)]]
@@ -131,7 +132,7 @@
        (when-let [{:keys [org board project]} entities]
          [:div.p-body.flex-v.gap-8
           (when (> (count all) 6)
-            [ui/filter-field ?filter])
+            [form.ui/filter-field ?filter])
           (let [limit (partial ui/truncate-items {:limit 10})]
             [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-2.md:gap-8.-mx-2
              (when (seq project)

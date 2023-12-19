@@ -6,8 +6,8 @@
             [sparkboard.query :as q]
             [sparkboard.schema :as sch :refer [? s-]]
             [sparkboard.server.datalevin :as dl]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.icons :as icons]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.icons :as icons]
             [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -69,8 +69,6 @@
    :field-option/label          {s- :string},
    :field-option/value          {s- :string},
    :video/url                   {s- :string}
-   :video/entry                 {s- [:map {:closed true}
-                                     :video/url]}
    :image-list/images {s- [:sequential :entity/id]}
    :link-list/links             {s- [:sequential :link-list/link]}
    :select/value                {s- :string}

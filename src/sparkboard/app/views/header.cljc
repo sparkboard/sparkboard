@@ -1,18 +1,19 @@
-(ns sparkboard.ui.header
+(ns sparkboard.app.views.header
   (:require #?(:cljs ["@radix-ui/react-popover" :as Popover])
             [promesa.core :as p]
             [re-db.api :as db]
+            [sparkboard.app.asset.ui :as asset.ui]
             [sparkboard.app.chat.data :as chat.data]
             [sparkboard.app.chat.ui :as chat.ui]
             [sparkboard.app.entity.ui :as entity.ui]
             [sparkboard.i18n :as i :refer [tr]]
             [sparkboard.routing :as routes]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.icons :as icons]
+            [sparkboard.app.views.radix :as radix]
+            [sparkboard.util :as u]
             [yawn.hooks :as h]
-            [yawn.util :as yu]
-            [sparkboard.util :as u]))
+            [yawn.util :as yu]))
 
 (defn btn [{:keys [icon href]}]
   [(if href :a :div)
@@ -89,7 +90,7 @@
     [:<>
      (radix/dropdown-menu
        {:trigger  [:button.flex.items-center.focus-ring.rounded.px-1 {:tab-index 0}
-                   [:img.rounded-full.h-6.w-6 {:src (ui/asset-src (:image/avatar account) :avatar)}]]
+                   [:img.rounded-full.h-6.w-6 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
         :children [[{:on-click #(routes/nav! 'sparkboard.app.account-ui/show)} (tr :tr/home)]
                    [{:on-click #(routes/nav! 'sparkboard.app.account-ui/logout!)} (tr :tr/logout)]
                    [{:sub?     true
@@ -106,7 +107,7 @@
      (when avatar
        [:a.contents {:href entity-href}
         [:img.h-10
-         {:src (ui/asset-src avatar :avatar)}]])
+         {:src (asset.ui/asset-src avatar :avatar)}]])
 
      [:a.contents {:href entity-href} [:h3.hover:underline title]]
 

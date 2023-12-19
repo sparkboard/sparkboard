@@ -7,11 +7,11 @@
             [sparkboard.query :as q]
             [sparkboard.routing :as routes]
             [sparkboard.server.datalevin :as dl]
-            [sparkboard.ui :as ui]
+            [sparkboard.app.views.ui :as ui]
 
-            [sparkboard.ui.header :as header]
-            [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]
+            [sparkboard.app.views.header :as header]
+            [sparkboard.icons :as icons]
+            [sparkboard.app.views.radix :as radix]
             [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))

@@ -1,9 +1,10 @@
 (ns sparkboard.app.entity.ui
   (:require [inside-out.forms :as forms]
+            [sparkboard.app.asset.ui :as asset.ui]
             [sparkboard.app.entity.data :as data]
             [sparkboard.routing :as routing]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.icons :as icons]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.icons :as icons]
             [sparkboard.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -43,7 +44,7 @@
         (merge {:class ["w-12 sm:w-16"
                         "bg-no-repeat sm:bg-secondary bg-center bg-contain"]}
                (when avatar
-                 {:style {:background-image (ui/css-url (ui/asset-src avatar :avatar))}})))])
+                 {:style {:background-image (asset.ui/css-url (asset.ui/asset-src avatar :avatar))}})))])
    [:div.flex.items-center.px-3.leading-snug
     [:div.line-clamp-2 title]]])
 

@@ -33,7 +33,7 @@
                                  #_#_:db/fulltext true}
      :entity/field-entries      {s- [:map-of :uuid :field-entry/as-map]}
      :entity/video              {:doc "Primary video for project (distinct from fields)"
-                                 s-   :video/entry}
+                                 s-   :video/url}
      :entity/public?            {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
                                  s-   :boolean}
      :entity/website            {:doc "External website for entity"

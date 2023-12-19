@@ -1,7 +1,7 @@
 (ns sparkboard.app
   (:require [sparkboard.slack.schema]
             [sparkboard.app.account.ui]
-            [sparkboard.app.assets.ui]
+            [sparkboard.app.asset.ui]
             [sparkboard.app.board.ui]
             [sparkboard.app.chat.ui]
             [sparkboard.app.collection.ui]

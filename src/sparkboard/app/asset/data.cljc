@@ -1,4 +1,4 @@
-(ns sparkboard.app.assets.data
+(ns sparkboard.app.asset.data
   (:require #?(:clj [ring.util.response :as resp])
             #?(:clj [sparkboard.server.assets :as assets])
             [sparkboard.authorize :as az]

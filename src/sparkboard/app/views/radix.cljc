@@ -1,11 +1,11 @@
-(ns sparkboard.ui.radix
+(ns sparkboard.app.views.radix
   (:require #?(:cljs ["@radix-ui/react-alert-dialog" :as alert])
             #?(:cljs ["@radix-ui/react-dialog" :as dialog])
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
             #?(:cljs ["@radix-ui/react-tooltip" :as tooltip])
-            [sparkboard.ui.icons :as icons]
+            [sparkboard.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
             [sparkboard.i18n :refer [tr]]

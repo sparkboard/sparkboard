@@ -3,8 +3,10 @@
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [sparkboard.app.domain.data :as data]
+            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.form.ui :as form.ui]
             [sparkboard.i18n :refer [tr]]
-            [sparkboard.ui :as ui]))
+            [sparkboard.app.views.ui :as ui]))
 
 #?(:cljs
    (defn availability-validator []
@@ -24,19 +26,19 @@
 
 #?(:cljs
    (defn domain-field [?domain & [props]]
-     [ui/input-wrapper
-      [ui/show-label ?domain]
+     [:div.field-wrapper
+      [form.ui/show-label ?domain]
       [:div.flex.gap-2.items-stretch
-       (ui/text-field ?domain (merge {:wrap          (fn [v]
-                                                       (when-not (str/blank? v)
-                                                         {:domain/name (data/qualify-domain (data/normalize-domain v))}))
-                                      :unwrap        (fn [v]
-                                                       (or (some-> v :domain/name data/unqualify-domain) ""))
-                                      :auto-complete "off"
-                                      :spell-check   false
-                                      :wrapper-class "flex-auto"}
-                                     props
-                                     {:label false}))
+       (entry.ui/text-field ?domain (merge {:wrap          (fn [v]
+                                                             (when-not (str/blank? v)
+                                                               {:domain/name (data/qualify-domain (data/normalize-domain v))}))
+                                            :unwrap        (fn [v]
+                                                             (or (some-> v :domain/name data/unqualify-domain) ""))
+                                            :auto-complete "off"
+                                            :spell-check   false
+                                            :wrapper-class "flex-auto"}
+                                           props
+                                           {:label false}))
        [:div.flex.items-center.text-sm.text-gray-500.h-10 ".sparkboard.com"]]]))
 
 #?(:cljs

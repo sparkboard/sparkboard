@@ -4,11 +4,13 @@
             [sparkboard.app.domain.ui :as domain.ui]
             [sparkboard.app.entity.data :as entity.data]
             [sparkboard.app.entity.ui :as entity.ui]
+            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.form.ui :as form.ui]
             [sparkboard.app.org.data :as data]
+            [sparkboard.app.views.header :as header]
+            [sparkboard.app.views.ui :as ui]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routing :as routes]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.header :as header]
             [sparkboard.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -28,17 +30,17 @@
             (let [q q]
               (set-result! {:loading? true})
               (p/let [result (data/search-once {:org-id (:org-id params)
-                                                   :q   q})]
+                                                :q      q})]
                 (when (= q @?filter)
                   (set-result! {:value result
                                 :q     q}))))))
         [q])
       [:div
        (header/entity org)
-       [:div.p-body (ui/show-prose description)]
+       [:div.p-body (entry.ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch
-         [ui/filter-field ?filter {:loading? (:loading? result)}]
+         [form.ui/filter-field ?filter {:loading? (:loading? result)}]
          [:a.btn.btn-white.flex.items-center.px-3
           {:href (routes/path-for ['sparkboard.app.board-data/new
                                    {:query-params {:org-id (:entity/id org)}}])}
@@ -62,12 +64,12 @@
   (let [org (data/settings params)]
     [:<>
      (header/entity org)
-     [:div {:class ui/form-classes}
-      (entity.ui/use-persisted org :entity/title ui/text-field)
-      (entity.ui/use-persisted org :entity/description ui/prose-field)
+     [:div {:class form.ui/form-classes}
+      (entity.ui/use-persisted org :entity/title entry.ui/text-field)
+      (entity.ui/use-persisted org :entity/description entry.ui/prose-field)
       (entity.ui/use-persisted org :entity/domain domain.ui/domain-field)
       ;; TODO - uploading an image does not work
-      (entity.ui/use-persisted org :image/avatar ui/image-field {:label (tr :tr/image.logo)})
+      (entity.ui/use-persisted org :image/avatar entry.ui/image-field {:label (tr :tr/image.logo)})
 
       ]]))
 
@@ -80,13 +82,13 @@
                             :entity/domain ?domain})
                     :required [?title ?domain]]
     [:form
-     {:class     ui/form-classes
+     {:class     form.ui/form-classes
       :on-submit (fn [e]
                    (.preventDefault e)
                    (ui/with-submission [result (data/new! {:org @!org})
                                         :form !org]
-                     (routes/nav! [`show {:org-id (:entity/id result)}])))}
+                                       (routes/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (tr :tr/new-org)]
-     [ui/text-field ?title {:label (tr :tr/title)}]
+     [entry.ui/text-field ?title {:label (tr :tr/title)}]
      (domain.ui/domain-field ?domain)
-     [ui/submit-form !org (tr :tr/create)]]))
+     [form.ui/submit-form !org (tr :tr/create)]]))

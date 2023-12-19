@@ -1,4 +1,4 @@
-(ns sparkboard.ui
+(ns sparkboard.app.views.ui
   (:require [sparkboard.util :as u]
             [yawn.view :as v]
             [clojure.walk :as walk]
@@ -50,14 +50,14 @@
 (defmacro boundary [{:keys [on-error]} & body]
   `(let [on-error# ~on-error]
      (~'try
-       (~'sparkboard.ui/error-boundary
+       (~'sparkboard.app.views.ui/error-boundary
          on-error#
          ~@body)
        (~'catch ~'js/Error e#
          (on-error# e#)))))
 
 (defmacro transition [expr]
-  `(~'sparkboard.ui/startTransition (fn [] ~expr)))
+  `(~'sparkboard.app.views.ui/startTransition (fn [] ~expr)))
 
 (defmacro with-let
   "Within a reaction, evaluates bindings once, memoizing the results."

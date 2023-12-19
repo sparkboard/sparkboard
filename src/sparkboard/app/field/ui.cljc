@@ -7,12 +7,15 @@
             [re-db.api :as db]
             [sparkboard.app.entity.data :as entity.data]
             [sparkboard.app.entity.ui :as entity.ui]
+            [sparkboard.app.field-entry.ui :as entry.ui]
             [sparkboard.app.field.data :as data]
+            [sparkboard.app.form.ui :as form.ui]
+            [sparkboard.app.views.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.color :as color]
             [sparkboard.i18n :refer [tr]]
+            [sparkboard.icons :as icons]
             [sparkboard.schema :as sch]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.icons :as icons]
-            [sparkboard.ui.radix :as radix]
             [sparkboard.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -112,14 +115,14 @@
                        "opacity-0 group-hover:opacity-100"
                        "cursor-drag"]})
        [icons/drag-dots]]]
-     [ui/text-field ?label {:on-save       save!
-                            :wrapper-class "flex-auto"
-                            :class         "rounded-sm relative focus:z-2"
-                            :style         {:background-color @?color
-                                            :color            (ui/contrasting-text-color @?color)}}]
+     [entry.ui/text-field ?label {:on-save       save!
+                                  :wrapper-class "flex-auto"
+                                  :class         "rounded-sm relative focus:z-2"
+                                  :style         {:background-color @?color
+                                                  :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-      [ui/color-field ?color {:on-save save!
-                              :style   {:top -10 :left -10 :width 100 :height 100 :position "absolute"}}]]
+      [entry.ui/color-field ?color {:on-save save!
+                                    :style   {:top -10 :left -10 :width 100 :height 100 :position "absolute"}}]]
      [radix/dropdown-menu {:id       :field-option
                            :trigger  [:button.p-1.relative.icon-gray.cursor-default
                                       [icons/ellipsis-horizontal "w-4 h-4"]]
@@ -146,7 +149,7 @@
 
     (let [save! (fn [& _] (on-save (mapv u/prune @?options)))]
       [:div.col-span-2.flex-v.gap-3
-       [ui/input-label (tr :tr/options)]
+       [:label.field-label (tr :tr/options)]
        (when (:loading? ?options)
          [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
        (into [:div.flex-v]
@@ -159,7 +162,7 @@
                                                                     '?label @?new
                                                                     '?color "#ffffff"})
                                          (forms/try-submit+ ?new (save!)))}
-          [ui/text-field ?new {:placeholder "Option label" :wrapper-class "flex-auto"}]
+          [entry.ui/text-field ?new {:placeholder "Option label" :wrapper-class "flex-auto"}]
           [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
        #_[ui/pprinted @?options]])))
 
@@ -167,22 +170,22 @@
   [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
    [:div.col-span-2.flex-v.gap-3
-    (entity.ui/use-persisted field :field/label ui/text-field {:class      "bg-white text-sm"
-                                                     :multi-line true})
-    (entity.ui/use-persisted field :field/hint ui/text-field {:class       "bg-white text-sm"
-                                                    :multi-line  true
-                                                    :placeholder "Further instructions"})]
+    (entity.ui/use-persisted field :field/label entry.ui/text-field {:class      "bg-white text-sm"
+                                                                     :multi-line true})
+    (entity.ui/use-persisted field :field/hint entry.ui/text-field {:class       "bg-white text-sm"
+                                                                    :multi-line  true
+                                                                    :placeholder "Further instructions"})]
 
    (when (= :field.type/select (:field/type field))
      (entity.ui/use-persisted field :field/options options-field))
    #_[:div.flex.items-center.gap-2.col-span-2
       [:span.font-semibold.text-xs.uppercase (:label (field-types (:field/type field)))]]
    [:div.contents.labels-normal
-    (entity.ui/use-persisted field :field/required? ui/checkbox-field)
-    (entity.ui/use-persisted field :field/show-as-filter? ui/checkbox-field)
+    (entity.ui/use-persisted field :field/required? entry.ui/checkbox-field)
+    (entity.ui/use-persisted field :field/show-as-filter? entry.ui/checkbox-field)
     (when (= attribute :board/member-fields)
-      (entity.ui/use-persisted field :field/show-at-registration? ui/checkbox-field))
-    (entity.ui/use-persisted field :field/show-on-card? ui/checkbox-field)
+      (entity.ui/use-persisted field :field/show-at-registration? entry.ui/checkbox-field))
+    (entity.ui/use-persisted field :field/show-on-card? entry.ui/checkbox-field)
     [:a.text-gray-500.hover:underline.cursor-pointer.flex.gap-2
      {:on-click #(radix/simple-alert! {:message      "Are you sure you want to remove this?"
                                        :confirm-text (tr :tr/remove)
@@ -240,9 +243,9 @@
         fields         (->> (get entity attribute)
                             (sort-by :field/order))
         [expanded expand!] (h/use-state nil)]
-    [ui/input-wrapper {:class "labels-semibold"}
+    [:div.field-wrapper {:class "labels-semibold"}
      (when-let [label (or label (tr attribute))]
-       [ui/input-label {:class "flex items-center"}
+       [:label.field-label {:class "flex items-center"}
         label
         [:div.flex.ml-auto.items-center
          (when-not @!new-field
@@ -286,10 +289,10 @@
           {:on-click #(reset! !new-field nil)}
           [icons/close "w-5 h-5 "]]
          [:div.h-10.flex.items-center [(:icon (data/field-types @?type)) "icon-lg text-gray-700  mx-2"]]
-         [ui/text-field ?label {:label         false
-                                :ref           !autofocus-ref
-                                :placeholder   (:label ?label)
-                                :wrapper-class "flex-auto"}]
+         [entry.ui/text-field ?label {:label         false
+                                      :ref           !autofocus-ref
+                                      :placeholder   (:label ?label)
+                                      :wrapper-class "flex-auto"}]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (tr :tr/add)]]
-        [:div.pl-12.py-2 (ui/show-field-messages !form)]])]))
+        [:div.pl-12.py-2 (form.ui/show-field-messages !form)]])]))

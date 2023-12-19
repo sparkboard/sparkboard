@@ -7,14 +7,16 @@
             [re-db.integrations.reagent]
             [sparkboard.app :as app]
             [sparkboard.app.domain.ui :as domain.ui]
+            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.form.ui :as form.ui]
             [sparkboard.client.scratch]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routing :as routing]
             [sparkboard.schema :as sch]
             [sparkboard.slack.firebase :as firebase]
             [sparkboard.transit :as transit]
-            [sparkboard.ui :as ui]
-            [sparkboard.ui.radix :as radix]
+            [sparkboard.app.views.ui :as ui]
+            [sparkboard.app.views.radix :as radix]
             [yawn.root :as root]
             [yawn.view :as v]))
 
@@ -68,11 +70,11 @@
                 validator
                 (update :validators conj validator))))
   (forms/set-global-meta!
-    {:account/email               {:el         ui/text-field
+    {:account/email               {:el         entry.ui/text-field
                                    :props      {:type        "email"
                                                 :placeholder (tr :tr/email)}
-                                   :validators [ui/email-validator]}
-     :account/password            {:el         ui/text-field
+                                   :validators [form.ui/email-validator]}
+     :account/password            {:el         entry.ui/text-field
                                    :props      {:type        "password"
                                                 :placeholder (tr :tr/password)}
                                    :validators [(forms/min-length 8)]}
