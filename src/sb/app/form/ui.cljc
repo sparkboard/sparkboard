@@ -31,7 +31,7 @@
 
 (defn show-label [?field & [label]]
   (when-let [label (u/some-or label (:label ?field))]
-    [:label.field-label {:for   (field-id ?field)} label]))
+    [:label.field-label {:for (field-id ?field)} label]))
 
 (defn ?field-props [?field
                     get-value

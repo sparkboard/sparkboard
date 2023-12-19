@@ -122,7 +122,6 @@
         entries (->> project :entity/field-entries)]
     [:<>
      dev-panel
-     (str roles)
      [:div.flex-v.gap-6.pb-6
       ;; title row
       [:div.flex
@@ -156,14 +155,13 @@
              :when (or can-edit?
                        (field.data/entry-value field entry))]
          (field.ui/show-entry {:parent    project
-                            :can-edit? can-edit?
-                            :field     field
-                            :entry     entry}))
+                               :can-edit? can-edit?
+                               :field     field
+                               :entry     entry}))
        [:section.flex-v.gap-2.items-start
         [manage-community-actions project (:project/community-actions project)]]
        (when video
-         [:section [:h3 (tr :tr/video)]
-          [field.ui/show-video video]])]]]))
+         [field.ui/show-video video])]]]))
 
 (ui/defview new
   {:route       "/new/p/:board-id"

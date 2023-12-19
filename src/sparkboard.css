@@ -154,22 +154,6 @@
         @apply cursor-grab active:cursor-grabbing
     }
 
-    .icon-sm {
-        @apply w-[15px] h-[15px]
-    }
-
-    .icon-md {
-        @apply w-[18.75px] h-[18.75px]
-    }
-
-    .icon-lg {
-        @apply w-[22.5px] h-[22.5px]
-    }
-
-    .icon-xl {
-        @apply w-[30px] h-[30px]
-    }
-
     .icon-gray {
         @apply text-gray-500 hover:text-black focus-ring
     }
@@ -255,6 +239,23 @@
 }
 
 @layer components {
+
+    .icon-sm {
+        @apply w-[15px] h-[15px]
+    }
+
+    .icon-md {
+        @apply w-[18.75px] h-[18.75px]
+    }
+
+    .icon-lg {
+        @apply w-[22.5px] h-[22.5px]
+    }
+
+    .icon-xl {
+        @apply w-[30px] h-[30px]
+    }
+
 
     .menu-darken {
         @apply hover:bg-black/5 data-[state=open]:bg-black/5

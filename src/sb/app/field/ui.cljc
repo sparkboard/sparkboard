@@ -185,14 +185,14 @@
   )
 
 (ui/defview show-video [url]
-  [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.group.relative
+  [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.relative
    {:href   url
     :target "_blank"
     :style  {:background-image    (asset.ui/css-url (:video/thumbnail (parse-video-url url)))
              :background-size     "cover"
              :background-position "center"}}
-   [icons/external-link "absolute text-white top-2 right-2 icon-sm drop-shadow"]
-   [icons/play-circle "icon-xl text-white drop-shadow-2xl transition-all group-hover:scale-110 "]])
+   [:div.rounded.p-1.absolute.top-1.right-1.text-white {:class "hover:bg-black/20"} [icons/external-link " icon-lg drop-shadow"]]
+   [icons/play-circle "icon-xl w-20 h-20 text-white drop-shadow-2xl transition-all hover:scale-110 "]])
 
 (ui/defview video-field
   {:key (fn [?field] #?(:cljs (goog/getUid ?field)))}
@@ -202,18 +202,17 @@
      ;; preview shows persisted value?
      [:div.flex.items-center
       [:div.flex-auto (form.ui/show-label ?field (:label props))]
-      (when can-edit?
-        [:div.place-self-end [:a {:on-click #(swap! !editing? not)}
-                              [(if @!editing? icons/dash icons/chevron-down) "icon-gray"]]])]
-
-     (when (and can-edit? @!editing?)
+      #_(when can-edit?
+          [:div.place-self-end [:a {:on-click #(swap! !editing? not)}
+                                [(if @!editing? icons/chevron-up icons/chevron-down) "icon-gray"]]])]
+     (when-let [url (:video/url @?field)]
+       [show-video url])
+     (when can-edit?
        (text-field ?field (merge props
-                                 {:label       nil
+                                 {:label       false
                                   :placeholder "YouTube or Vimeo url"
                                   :wrap        (partial hash-map :video/url)
-                                  :unwrap      :video/url})))
-     (when-let [url (:video/url @?field)]
-       [show-video url])]))
+                                  :unwrap      :video/url})))]))
 
 (ui/defview select-field [?field {:as props :keys [label options]}]
   [:div.field-wrapper
