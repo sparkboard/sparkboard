@@ -3,17 +3,17 @@
  {:browser
   {:target :browser
    :module-loader true
-   :modules {:app {:init-fn sparkboard.client.core/init
-                   :entries [sparkboard.client.core]}
-             :slack {:entries [sparkboard.client.slack] :depends-on #{:app}}}
+   :modules {:app {:init-fn sb.client.core/init
+                   :entries [sb.client.core]}
+             :slack {:entries [sb.client.slack] :depends-on #{:app}}}
    :output-dir "resources/public/js/"
    :asset-path "/js"
    :devtools {:preloads [yawn.view.refresh-preload]
               :watch-dir "resources/public"}
-   :dev {:build-hooks [(sparkboard.build/tailwind-dev!)
-                       (sparkboard.build/spit-endpoints!)]}
-   :release {:build-hooks [(sparkboard.build/tailwind-release!)
-                           (sparkboard.build/spit-endpoints!)]}}}}
+   :dev {:build-hooks [(sb.build/tailwind-dev!)
+                       (sb.build/spit-endpoints!)]}
+   :release {:build-hooks [(sb.build/tailwind-release!)
+                           (sb.build/spit-endpoints!)]}}}}
 
 (comment
   (shadow/watch :browser)

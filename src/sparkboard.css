@@ -256,6 +256,10 @@
 
 @layer components {
 
+    .menu-darken {
+        @apply hover:bg-black/5 data-[state=open]:bg-black/5
+    }
+
     .field-label {
         @apply block font-bold text-base
     }
@@ -415,13 +419,20 @@
         outline-2
     }
 
-    .entity-header {
+    .header {
         @apply
-        bg-muted border-b border-secondary px-body gap-3 flex h-16 p-3 items-stretch text-sm
+        bg-muted border-b border-secondary
+        px-body gap-2 flex h-16 p-3 items-stretch text-sm
     }
 
-    .entity-header h3 {
+    .header h3 {
         @apply items-center hidden sm:inline-flex
+    }
+    .header button {
+        @apply h-10 px-2 rounded flex items-center menu-darken
+    }
+    .header .icon {
+        @apply text-gray-400
     }
 
     .card-grid {

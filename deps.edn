@@ -67,8 +67,8 @@
         thheller/shadow-cljs {:mvn/version "2.25.7"}
         net.clojars.wkok/openai-clojure {:mvn/version "0.5.0"}}
  :aliases
- {:uberjar {:exec-fn sparkboard.build/uberjar}
-  :aot {:exec-fn sparkboard.build/aot}
+ {:uberjar {:exec-fn sb.build/uberjar}
+  :aot {:exec-fn sb.build/aot}
   :compile-java {:deps {io.github.clojure/tools.build {:mvn/version "0.9.4"}}
                  :ns-default dev.tools-build}
   :dev {:extra-deps {cider/cider-nrepl {:mvn/version "0.30.0"}}}
