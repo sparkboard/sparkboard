@@ -2,7 +2,7 @@
   (:require [inside-out.forms :as forms]
             [re-db.api :as db]
             [sparkboard.app.field-entry.data :as entry.data]
-            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.field.ui :as field.ui]
             [sparkboard.app.project.data :as data]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.routing :as routing]
@@ -145,7 +145,7 @@
         modal-close]]
 
       [:div.px-body.flex-v.gap-6
-       (entry.ui/show-prose description)
+       (field.ui/show-prose description)
        (when badges
          [:section
           (into [:ul]
@@ -155,7 +155,7 @@
              :let [entry (get entries (:entity/id field))]
              :when (or can-edit?
                        (entry.data/entry-value field entry))]
-         (entry.ui/show-entry {:parent    project
+         (field.ui/show-entry {:parent    project
                             :can-edit? can-edit?
                             :field     field
                             :entry     entry}))
@@ -163,7 +163,7 @@
         [manage-community-actions project (:project/community-actions project)]]
        (when video
          [:section [:h3 (tr :tr/video)]
-          [entry.ui/show-video video]])]]]))
+          [field.ui/show-video video]])]]]))
 
 (ui/defview new
   {:route       "/new/p/:board-id"

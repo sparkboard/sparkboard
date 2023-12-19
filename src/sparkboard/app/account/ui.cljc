@@ -5,7 +5,7 @@
             [re-db.api :as db]
             [sparkboard.app.account.data :as data]
             [sparkboard.app.entity.ui :as entity.ui]
-            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.field.ui :as field.ui]
             [sparkboard.app.form.ui :as form.ui]
             [sparkboard.app.views.header :as header]
             [sparkboard.app.views.radix :as radix]
@@ -85,9 +85,9 @@
 
 
        [:div.flex-v.gap-2
-        [entry.ui/text-field ?email]
+        [field.ui/text-field ?email]
         (when (= :password @!step)
-          [entry.ui/text-field ?password {:id "account-password"}])
+          [field.ui/text-field ?password {:id "account-password"}])
         (str (forms/visible-messages !account))
         [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
          (tr :tr/continue-with-email)]]

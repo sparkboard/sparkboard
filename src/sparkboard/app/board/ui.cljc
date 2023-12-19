@@ -7,8 +7,8 @@
             [sparkboard.app.board.data :as data]
             [sparkboard.app.domain.ui :as domain.ui]
             [sparkboard.app.entity.ui :as entity.ui]
-            [sparkboard.app.field-entry.ui :as entry.ui]
             [sparkboard.app.field.ui :as field.ui]
+            [sparkboard.app.field.admin-ui :as field-admin.ui]
             [sparkboard.app.form.ui :as form.ui]
             [sparkboard.app.project.data :as project.data]
             [sparkboard.app.project.ui :as project.ui]
@@ -61,7 +61,7 @@
                                            :text  title
                                            :icon  [:img.w-5.h-5.rounded-sm {:src (asset.ui/asset-src avatar :avatar)}]})))})])
 
-       [entry.ui/text-field ?title {:label (tr :tr/title)}]
+       [field.ui/text-field ?title {:label (tr :tr/title)}]
        (domain.ui/domain-field ?domain)
        [form.ui/submit-form !board (tr :tr/create)]])))
 
@@ -71,8 +71,8 @@
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
      [:h3 (tr :tr/register)]
-     [entry.ui/text-field ?name]
-     [entry.ui/text-field ?pass]
+     [field.ui/text-field ?name]
+     [field.ui/text-field ?pass]
      [:button {:on-click #(p/let [res (routing/POST route @!member)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)
@@ -153,13 +153,13 @@
     [:<>
      (header/entity board)
      [:div {:class form.ui/form-classes}
-      (entity.ui/use-persisted board :entity/title entry.ui/text-field {:class "text-lg"})
-      (entity.ui/use-persisted board :entity/description entry.ui/prose-field {:class "bg-gray-100 px-3 py-3"})
+      (entity.ui/use-persisted board :entity/title field.ui/text-field {:class "text-lg"})
+      (entity.ui/use-persisted board :entity/description field.ui/prose-field {:class "bg-gray-100 px-3 py-3"})
       (entity.ui/use-persisted board :entity/domain domain.ui/domain-field)
-      (entity.ui/use-persisted board :image/avatar entry.ui/image-field {:label (tr :tr/image.logo)})
+      (entity.ui/use-persisted board :image/avatar field.ui/image-field {:label (tr :tr/image.logo)})
 
-      (field.ui/fields-editor board :board/member-fields)
-      (field.ui/fields-editor board :board/project-fields)
+      (field-admin.ui/fields-editor board :board/member-fields)
+      (field-admin.ui/fields-editor board :board/project-fields)
 
       ;; TODO
       ;; - :board/project-sharing-buttons

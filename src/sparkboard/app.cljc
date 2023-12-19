@@ -9,7 +9,7 @@
             [sparkboard.app.discussion.ui]
             [sparkboard.app.domain.ui]
             [sparkboard.app.entity.ui]
-            [sparkboard.app.field.ui]
+            [sparkboard.app.field.admin-ui]
             [sparkboard.app.member.ui]
             [sparkboard.app.notification.ui]
             [sparkboard.app.org.ui]

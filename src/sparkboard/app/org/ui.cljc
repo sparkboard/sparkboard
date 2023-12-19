@@ -4,7 +4,7 @@
             [sparkboard.app.domain.ui :as domain.ui]
             [sparkboard.app.entity.data :as entity.data]
             [sparkboard.app.entity.ui :as entity.ui]
-            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.field.ui :as field.ui]
             [sparkboard.app.form.ui :as form.ui]
             [sparkboard.app.org.data :as data]
             [sparkboard.app.views.header :as header]
@@ -37,7 +37,7 @@
         [q])
       [:div
        (header/entity org)
-       [:div.p-body (entry.ui/show-prose description)]
+       [:div.p-body (field.ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch
          [form.ui/filter-field ?filter {:loading? (:loading? result)}]
@@ -65,11 +65,11 @@
     [:<>
      (header/entity org)
      [:div {:class form.ui/form-classes}
-      (entity.ui/use-persisted org :entity/title entry.ui/text-field)
-      (entity.ui/use-persisted org :entity/description entry.ui/prose-field)
+      (entity.ui/use-persisted org :entity/title field.ui/text-field)
+      (entity.ui/use-persisted org :entity/description field.ui/prose-field)
       (entity.ui/use-persisted org :entity/domain domain.ui/domain-field)
       ;; TODO - uploading an image does not work
-      (entity.ui/use-persisted org :image/avatar entry.ui/image-field {:label (tr :tr/image.logo)})
+      (entity.ui/use-persisted org :image/avatar field.ui/image-field {:label (tr :tr/image.logo)})
 
       ]]))
 
@@ -89,6 +89,6 @@
                                         :form !org]
                                        (routes/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (tr :tr/new-org)]
-     [entry.ui/text-field ?title {:label (tr :tr/title)}]
+     [field.ui/text-field ?title {:label (tr :tr/title)}]
      (domain.ui/domain-field ?domain)
      [form.ui/submit-form !org (tr :tr/create)]]))

@@ -3,7 +3,7 @@
             [inside-out.forms :as forms]
             [promesa.core :as p]
             [sparkboard.app.domain.data :as data]
-            [sparkboard.app.field-entry.ui :as entry.ui]
+            [sparkboard.app.field.ui :as field.ui]
             [sparkboard.app.form.ui :as form.ui]
             [sparkboard.i18n :refer [tr]]
             [sparkboard.app.views.ui :as ui]))
@@ -29,7 +29,7 @@
      [:div.field-wrapper
       [form.ui/show-label ?domain]
       [:div.flex.gap-2.items-stretch
-       (entry.ui/text-field ?domain (merge {:wrap          (fn [v]
+       (field.ui/text-field ?domain (merge {:wrap          (fn [v]
                                                              (when-not (str/blank? v)
                                                                {:domain/name (data/qualify-domain (data/normalize-domain v))}))
                                             :unwrap        (fn [v]
