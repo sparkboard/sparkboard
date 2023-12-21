@@ -32,7 +32,7 @@
   (when domain
     (if (str/includes? domain ".")
       domain
-      (str domain ".sb.com"))))
+      (str domain ".sparkboard.com"))))
 
 (defn unqualify-domain [domain]
   (when domain

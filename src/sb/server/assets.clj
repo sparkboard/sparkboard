@@ -103,7 +103,7 @@
                           :entity/created-by  account-id}
                          (validate/assert :asset/as-map))])
       {:status 200
-       :body   {:entity/id asset-id}})))
+       :body   [:entity/id asset-id]})))
 
 (defn resizable? [content-type]
   (not (contains? #{"image/svg+xml" "image/gif"} content-type)))

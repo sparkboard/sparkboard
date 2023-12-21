@@ -50,12 +50,8 @@
                                     {:member/entity [:entity/id
                                                      :entity/kind
                                                      :entity/title
-                                                     {:image/avatar [:asset/link
-                                                                     :entity/id
-                                                                     {:asset/provider [:s3/bucket-host]}]}
-                                                     {:image/background [:asset/link
-                                                                         :entity/id
-                                                                         {:asset/provider [:s3/bucket-host]}]}]}]}]
+                                                     {:image/avatar [:entity/id]}
+                                                     {:image/background [:entity/id]}]}]}]
                account-id)
        :member/_account
        (map #(u/lift-key % :member/entity))))

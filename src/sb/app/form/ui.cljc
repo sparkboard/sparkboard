@@ -30,17 +30,11 @@
                                  :can-edit?
                                  :label))
 
-(defn attribute-label [attribute]
-  (or (get-in forms/global-meta [attribute :label])
-      (tr* (keyword "tr" (name attribute)))))
-
-(defn get-label [?field label]
-  (u/some-or label
-             (:label ?field)
-             (some->> (:attribute ?field) attribute-label)))
+(defn get-label [label ?field]
+  (u/some-or label (:label ?field)))
 
 (defn show-label [?field & [label]]
-  (when-let [label (get-label ?field label)]
+  (when-let [label (get-label label ?field)]
     [:label.field-label {:for (field-id ?field)} label]))
 
 (defn ?field-props [?field

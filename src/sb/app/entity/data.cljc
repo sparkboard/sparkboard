@@ -25,7 +25,26 @@
                                  s-           :string
                                  :db/fulltext true}
      :entity/parent             (sch/ref :one)
-     :entity/kind               {s- [:enum :board :org :collection :member :project :chat :chat.message :field]}
+     :entity/kind               {s- [:enum
+                                     :org
+                                     :board
+                                     :collection
+                                     :member
+                                     :project
+                                     :field
+                                     :discussion
+                                     :post
+                                     :comment
+                                     :notification
+                                     :tag
+                                     :chat
+                                     :message
+                                     :roles
+                                     :account
+                                     :ballot
+                                     :site
+                                     :asset
+                                     :chat.message]}
      :entity/draft?             {:doc "Entity is not yet published - visible only to creator/team"
                                  s- :boolean}
      :entity/description        {:doc "Description of an entity (for card/header display)"

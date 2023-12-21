@@ -82,7 +82,7 @@
       [:input.h-5.w-5.rounded.border-gray-300.text-primary
        (form.ui/pass-props props)]
       [:div.flex-v.gap-1.ml-2
-       (when-let [label (form.ui/get-label ?field (:label props))]
+       (when-let [label (form.ui/get-label (:label props) ?field)]
          [:div.flex.items-center.h-5 label])
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))

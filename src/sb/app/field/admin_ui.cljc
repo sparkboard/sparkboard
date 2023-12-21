@@ -2,7 +2,7 @@
   (:require [applied-science.js-interop :as j]
             [clojure.set :as set]
             [clojure.string :as str]
-            [inside-out.forms :as forms]
+            [inside-out.forms :as io]
             [promesa.core :as p]
             [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
@@ -99,10 +99,10 @@
         (orderable-props {:group-id (goog/getUid ?options)
                           :id       (:sym ?option)
                           :on-move  (fn [{:keys [source side destination]}]
-                                      (forms/swap-many! ?options re-order
-                                                        (get ?options source)
-                                                        side
-                                                        (get ?options destination))
+                                      (io/swap-many! ?options re-order
+                                                     (get ?options source)
+                                                     side
+                                                     (get ?options destination))
                                       (save!))})]
     [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
      (merge {:key @?value}
@@ -130,7 +130,7 @@
                                                      (radix/simple-alert! {:message      "Are you sure you want to remove this?"
                                                                            :confirm-text (tr :tr/remove)
                                                                            :confirm-fn   (fn []
-                                                                                           (forms/remove-many! ?option)
+                                                                                           (io/remove-many! ?option)
                                                                                            (p/do (save!)
                                                                                                  (radix/close-alert!)))}))}
                                        (tr :tr/remove)]]}]]))
@@ -139,10 +139,10 @@
                                           persisted-value]}]
   (let [memo-by [(str (map :field-option/value persisted-value))]
         {:syms [?options]} (h/use-memo (fn []
-                                         (forms/form (?options :many {:field-option/label ?label
+                                         (io/form (?options :many {:field-option/label    ?label
                                                                       :field-option/value ?value
                                                                       :field-option/color ?color}
-                                                               :init (mapv #(set/rename-keys % '{:field-option/label ?label
+                                                            :init (mapv #(set/rename-keys % '{:field-option/label ?label
                                                                                                  :field-option/value ?value
                                                                                                  :field-option/color ?color}) @?field))))
                                        memo-by)]
@@ -155,13 +155,13 @@
        (into [:div.flex-v]
              (map (partial show-option {:?options ?options
                                         :save!    save!}) ?options))
-       (let [?new (h/use-memo #(forms/field :init "") memo-by)]
+       (let [?new (h/use-memo #(io/field :init "") memo-by)]
          [:form.flex.gap-2 {:on-submit (fn [^js e]
                                          (.preventDefault e)
-                                         (forms/add-many! ?options {'?value (str (random-uuid))
+                                         (io/add-many! ?options {'?value    (str (random-uuid))
                                                                     '?label @?new
                                                                     '?color "#ffffff"})
-                                         (forms/try-submit+ ?new (save!)))}
+                                         (io/try-submit+ ?new (save!)))}
           [field.ui/text-field ?new {:placeholder "Option label" :wrapper-class "flex-auto"}]
           [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
        #_[ui/pprinted @?options]])))
@@ -236,13 +236,13 @@
        (field-editor-detail parent attribute field))]))
 
 (ui/defview fields-editor [entity attribute]
-  (let [label          (:label (forms/global-meta attribute))
+  (let [label          (:label (io/global-meta attribute))
         !new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
         fields         (get entity attribute)
         [expanded expand!] (h/use-state nil)]
     [:div.field-wrapper {:class "labels-semibold"}
-     (when-let [label (or label (form.ui/attribute-label attribute))]
+     (when-let [label (or label (:label (io/global-meta attribute)))]
        [:label.field-label {:class "flex items-center"}
         label
         [:div.flex.ml-auto.items-center
@@ -252,13 +252,13 @@
                                             "Add Field"]
                                  :children (for [[type {:keys [icon label]}] data/field-types]
                                              [{:on-select #(reset! !new-field
-                                                                   (forms/form {:field/type       ?type
+                                                                   (io/form {:field/type          ?type
                                                                                 :field/label      ?label
                                                                                 :field/published? (case type
                                                                                                     :field.type/select false
                                                                                                     true)}
-                                                                               :init {'?type type}
-                                                                               :required [?label]))}
+                                                                            :init {'?type type}
+                                                                            :required [?label]))}
                                               [:div.flex.gap-4.items-center.cursor-default [icon "text-gray-600"] label]])}))]])
      [:div.flex-v.border.rounded.labels-sm
       (->> fields
@@ -277,7 +277,7 @@
         [:form.flex.gap-2.items-start.relative
          {:on-submit (ui/prevent-default
                        (fn [e]
-                         (forms/try-submit+ ?new-field
+                         (io/try-submit+ ?new-field
                            (p/let [{:as result :keys [field/id]} (data/add-field nil (:entity/id entity) attribute @?new-field)]
                              (expand! id)
                              (reset! !new-field nil)
