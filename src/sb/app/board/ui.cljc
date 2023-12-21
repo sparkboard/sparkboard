@@ -5,18 +5,16 @@
             [sb.app.account.data :as account.data]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.board.data :as data]
-            [sb.app.domain.ui :as domain.ui]
+            [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
-            [sb.app.field.admin-ui :as field-admin.ui]
+            [sb.app.form.ui :as form.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
-            [sb.app.form.ui :as form.ui]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
-            [sb.app.views.ui :as ui]
-            [sb.i18n :refer [tr]]
+            [sb.app.views.ui :as ui :refer [tr]]
             [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
@@ -31,13 +29,13 @@
                          seq
                          (cons (account.data/account-as-entity account)))]
     (forms/with-form [!board (u/prune
-                               {:entity/title  ?title
-                                :entity/domain ?domain
-                                :entity/parent [:entity/id (uuid (?owner
-                                                                   :init
-                                                                   (or (-> params :query-params :org)
-                                                                       (str (-> (db/get :env/config :account)
-                                                                                :entity/id)))))]})
+                               {:entity/title       ?title
+                                :entity/domain-name ?domain
+                                :entity/parent      [:entity/id (uuid (?owner
+                                                                        :init
+                                                                        (or (-> params :query-params :org)
+                                                                            (str (-> (db/get :env/config :account)
+                                                                                     :entity/id)))))]})
                       :required [?title ?domain]]
       [:form
        {:class     form.ui/form-classes
@@ -62,7 +60,7 @@
                                            :icon  [:img.w-5.h-5.rounded-sm {:src (asset.ui/asset-src avatar :avatar)}]})))})])
 
        [field.ui/text-field ?title {:label (tr :tr/title)}]
-       (domain.ui/domain-field ?domain)
+       (domain.ui/domain-field ?domain nil)
        [form.ui/submit-form !board (tr :tr/create)]])))
 
 (ui/defview register
@@ -145,49 +143,6 @@
                     (map entity.ui/row))
               (data/members {:board-id board-id}))
         ]]]]))
-
-(ui/defview settings
-  {:route "/b/:board-id/settings"}
-  [{:as params :keys [board-id]}]
-  (let [board (data/settings params)]
-    [:<>
-     (header/entity board)
-     [:div {:class form.ui/form-classes}
-      (entity.ui/use-persisted board :entity/title field.ui/text-field {:class "text-lg"})
-      (entity.ui/use-persisted board :entity/description field.ui/prose-field {:class "bg-gray-100 px-3 py-3"})
-      (entity.ui/use-persisted board :entity/domain domain.ui/domain-field)
-      (entity.ui/use-persisted board :image/avatar field.ui/image-field {:label (tr :tr/image.logo)})
-
-      (field-admin.ui/fields-editor board :board/member-fields)
-      (field-admin.ui/fields-editor board :board/project-fields)
-
-      ;; TODO
-      ;; - :board/project-sharing-buttons
-      ;; - :board/member-tags
-
-      ;; Registration
-      ;; - :board/registration-invitation-email-text
-      ;; - :board/registration-newsletter-field?
-      ;; - :board/registration-open?
-      ;; - :board/registration-message
-      ;; - :board/registration-url-override
-      ;; - :board/registration-codes
-
-      ;; Theming
-      ;; - border radius
-      ;; - headline font
-      ;; - accent color
-
-      ;; Sponsors
-      ;; - logo area with tiered sizes/visibility
-
-      ;; Sticky Notes
-      ;; - schema: a new entity type (not a special kind of project)
-      ;; - modify migration based on ^new schema
-      ;; - color is picked per sticky note
-      ;; - sticky notes can include images/videos
-
-      ]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

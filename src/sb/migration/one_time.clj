@@ -242,7 +242,7 @@
         (update-vals #(->> %
                            (sort-by (comp bson-id-timestamp get-oid :_id)))))))
 
-(defn unmunge-domain [s] (str/replace s "_" "."))
+(defn unmunge-domain-name [s] (str/replace s "_" "."))
 
 (declare coll-entities)
 
@@ -351,43 +351,43 @@
      :id-string id-string
      :ref       (uuid-ref kind id-string)}))
 
-(defn parse-domain-target [target]
+(defn parse-domain-name-target [target]
   ;; TODO - domains that point to URLs should be "owned" by someone
   (if (str/starts-with? target "redirect:")
-    {:domain/url (-> (subs target 9)
-                     (str/replace "%3A" ":")
-                     (str/replace "%2F" "/"))}
+    {:domain-name/redirect-url (-> (subs target 9)
+                                   (str/replace "%3A" ":")
+                                   (str/replace "%2F" "/"))}
 
     (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id target)]
       (if (= [kind id-string] [:site "account"])
-        {:domain/url "https://account.sb.com"}
+        {:domain-name/redirect-url "https://account.sb.com"}
         (when-not (missing-uuid? uuid)
-          {:entity/_domain [{:entity/id uuid}]})))))
+          {:entity/_domain-name [{:entity/id uuid}]})))))
 
 (def !entity->domain
   (delay
     (->> ((read-firebase) "domain")
          (keep (fn [[name target]]
                  (let [[kind v] (if (str/starts-with? target "redirect:")
-                                  [:domain/url (-> (subs target 9)
-                                                   (str/replace "%3A" ":")
-                                                   (str/replace "%2F" "/"))]
+                                  [:domain-name/redirect-url (-> (subs target 9)
+                                                                 (str/replace "%3A" ":")
+                                                                 (str/replace "%2F" "/"))]
                                   (let [{:keys [kind id-string ref uuid]} (parse-sparkboard-id target)]
                                     (if (= [kind id-string] [:site "account"])
-                                      [:domain/url "https://account.sb.com"]
+                                      [:domain-name/redirect-url "https://account.sb.com"]
                                       [:entity/id uuid])))]
                    (when (= kind :entity/id)
-                     [v {:domain/name (unmunge-domain name)}]))))
+                     [v {:domain-name/name (unmunge-domain-name name)}]))))
          (into {}))))
 
 (comment
   (db/transact! (for [[entity-id entry] @!entity->domain
                       :when (db/get [:entity/id entity-id])]
-                  {:entity/id     entity-id
-                   :entity/domain entry})))
+                  {:entity/id          entity-id
+                   :entity/domain-name entry})))
 
 (defn lookup-domain [m]
-  (assoc-some-value m :entity/domain (@!entity->domain (:entity/id m))))
+  (assoc-some-value m :entity/domain-name (@!entity->domain (:entity/id m))))
 
 (defn smap [m] (apply sorted-map (apply concat m)))
 
@@ -417,12 +417,12 @@
           :field.type/prose))
 
 (def !all-fields
-  (delay
-    (->> (coll-entities :board/as-map)
-         (mapcat (juxt :board/member-fields :board/project-fields))
-         (mapcat identity)
-         (map (juxt :entity/id identity))
-         (into {}))))
+    (delay
+      (->> (coll-entities :board/as-map)
+           (mapcat (juxt :board/member-fields :board/project-fields))
+           (mapcat identity)
+           (map (juxt :entity/id identity))
+           (into {}))))
 
 (defn prose [s]
   (when-not (str/blank? s)
@@ -448,7 +448,6 @@
                     (let [field-id    (composite-uuid :field
                                                       (to-uuid :board managed-by)
                                                       (to-uuid :field (subs (name k) 6)))
-                          target-id   (:entity/id m)
                           v           (m k)
                           field-type  (:field/type (@!all-fields field-id))
                           ;; NOTE - we ignore fields that do not have a spec
@@ -584,7 +583,7 @@
                                 (let [managed-by (:entity/id m)]
                                   (assoc m a
                                            (try (->> v
-                                                     (flat-map :entity/id
+                                                     (flat-map :field/id
                                                                #(composite-uuid :field
                                                                                 managed-by
                                                                                 (to-uuid :field %)))
@@ -595,7 +594,7 @@
                                                                  ;; because fields have been duplicated everywhere
                                                                  ;; and have the same IDs but represent different instances.
                                                                  ;; unsure: how to re-use fields when searching across boards, etc.
-                                                                 (dissoc "id" "name")
+                                                                 (dissoc "id" "name" "order")
                                                                  (rename-keys {"type"         :field/type
                                                                                "showOnCard"   :field/show-on-card?
                                                                                "showAtCreate" :field/show-at-registration?
@@ -603,8 +602,7 @@
                                                                                "required"     :field/required?
                                                                                "hint"         :field/hint
                                                                                "label"        :field/label
-                                                                               "options"      :field/options
-                                                                               "order"        :field/order})
+                                                                               "options"      :field/options})
                                                                  (u/update-some {:field/options
                                                                                  (partial mapv
                                                                                           #(-> %
@@ -617,15 +615,13 @@
                                                                                                          (filter #(get % "default"))
                                                                                                          first
                                                                                                          (get "value")))
-                                                                 (update :field/order #(or % (swap! !orders inc)))
-                                                                 (update :field/type parse-field-type)
-                                                                 (assoc :entity/kind :field)))))
+                                                                 (update :field/type parse-field-type)))))
                                                 (catch Exception e (prn a v) (throw e))))))]
                  ["groupFields" (& field-xf (rename :board/project-fields))
                   "userFields" (& field-xf (rename :board/member-fields))])
 
-               "groupNumbers" (rename :board/show-project-numbers?)
-               "projectNumbers" (rename :board/show-project-numbers?)
+               "groupNumbers" (rename :board/project-numbers?)
+               "projectNumbers" (rename :board/project-numbers?)
                "userMaxGroups" (& (xf #(Integer. %)) (rename :board/max-projects-per-member))
                "stickyColor" (rename :board/sticky-color)
                "tags" (& (fn [m a v]
@@ -682,7 +678,7 @@
                "description" (& (xf prose)
                                 (rename :entity/description)) ;; if = "Description..." then it's never used
                "publicWelcome" (& (xf prose)
-                                  (rename :board/instructions))
+                                  (rename :board/home-page-message))
 
                "css" (rename :board/custom-css)
                "parent" (& (xf (comp :ref parse-sparkboard-id))
@@ -694,11 +690,11 @@
                "groupMaxMembers" (& (xf #(Integer. %)) (rename :board/max-members-per-project))
                "headerJs" (rename :board/custom-js)
                "projectTags" rm
-               "registrationEmailBody" (rename :board/registration-invitation-email-text)
+               "registrationEmailBody" (rename :board/invite-email-text)
                "learnMoreLink" (rename :entity/website)
                "metaDesc" (rename :entity/meta-description)
                "registrationMessage" (& (xf prose)
-                                        (rename :board/registration-message))
+                                        (rename :board/registration-page-message))
                "defaultFilter" rm
                "defaultTag" rm
                "locales" (rename :entity/locale-dicts)
@@ -1305,7 +1301,7 @@
   ;; misc
   (explain-errors!)
   (:out (sh "ls" "-lh" (env/db-path)))
-  (map parse-domain-target (vals (read-coll :domain/as-map)))
+  (map parse-domain-name-target (vals (read-coll :domain-name/as-map)))
 
   ;; try validating generated docs
   (check-docs

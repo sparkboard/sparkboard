@@ -8,6 +8,6 @@
                            :entity/kind
                            :collection/boards
                            :entity/title
-                           (? :entity/domain)
+                           (? :entity/domain-name)
                            (? :image/avatar)
                            (? :image/background)]}})

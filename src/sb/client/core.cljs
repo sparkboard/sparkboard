@@ -3,20 +3,16 @@
             ["react-dom" :as react-dom]
             [applied-science.js-interop :as j]
             [inside-out.forms :as forms]
+            [org.sparkboard.slack.firebase :as firebase]
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sb.app :as app]
-            [sb.app.domain.ui :as domain.ui]
-            [sb.app.field.ui :as field.ui]
-            [sb.app.form.ui :as form.ui]
+            [sb.app.views.radix :as radix]
+            [sb.app.views.ui :as ui]
             [sb.client.scratch]
-            [sb.i18n :refer [tr]]
             [sb.routing :as routing]
             [sb.schema :as sch]
-            [org.sparkboard.slack.firebase :as firebase]
             [sb.transit :as transit]
-            [sb.app.views.ui :as ui]
-            [sb.app.views.radix :as radix]
             [yawn.root :as root]
             [yawn.view :as v]))
 
@@ -44,7 +40,7 @@
                                 (v/x [:div.p-6
                                       [ui/hero {:class "bg-red-100 border-red-400/50 border border-4"}
                                        (ex-message e)]]))}
-        (ui/show-match root))]
+                   (ui/show-match root))]
 
      (radix/dialog {:props/root {:open           (boolean modal)
                                  :on-open-change #(when-not % (routing/dissoc-router! :router/modal))}}
@@ -69,29 +65,7 @@
         (cond-> (k field-meta)
                 validator
                 (update :validators conj validator))))
-  (forms/set-global-meta!
-    {:account/email               {:el         field.ui/text-field
-                                   :props      {:type        "email"
-                                                :placeholder (tr :tr/email)}
-                                   :validators [form.ui/email-validator]}
-     :account/password            {:el         field.ui/text-field
-                                   :props      {:type        "password"
-                                                :placeholder (tr :tr/password)}
-                                   :validators [(forms/min-length 8)]}
-     :entity/title                {:validators [(forms/min-length 3)]
-                                   :label      (tr :tr/title)}
-     :board/project-fields        {:label (tr :tr/project-fields)}
-     :board/member-fields         {:label (tr :tr/member-fields)}
-
-     :field/label                 {:label (tr :tr/label)}
-     :field/hint                  {:label (tr :tr/hint)}
-     :field/required?             {:label (tr :tr/required)}
-     :field/show-as-filter?       {:label (tr :tr/filter)}
-     :field/show-at-registration? {:label (tr :tr/show-at-registration)}
-     :field/show-on-card?         {:label (tr :tr/show-on-card)}
-     :entity/description          {:label (tr :tr/description)}
-     :entity/domain               {:label      (tr :tr/domain-name)
-                                   :validators (domain.ui/validators)}})
+  (forms/set-global-meta! app/global-field-meta)
   )
 
 (defn ^:dev/after-load init-endpoints! []

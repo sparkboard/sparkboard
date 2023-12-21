@@ -10,97 +10,91 @@
             [sb.validate :as validate]))
 
 (sch/register!
-  {:board/show-project-numbers?              {s-   :boolean
-                                              :doc "Show 'project numbers' for this board"}
-   :board/max-members-per-project            {:doc "Set a maximum number of members a project may have"
-                                              s-   :int}
-   :board/project-sharing-buttons            {:doc "Which social sharing buttons to display on project detail pages",
-                                              s-   [:map-of :social/sharing-button :boolean]}
-   :board/is-template?                       {:doc "Board is only used as a template for creating other boards",
-                                              s-   :boolean},
-   :board/labels                             {:unsure "How can this be handled w.r.t. locale?"
-                                              s-      [:map-of [:enum
-                                                                :label/member.one
-                                                                :label/member.many
-                                                                :label/project.one
-                                                                :label/project.many] :string]},
-   :board/instructions                       {:doc "Secondary instructions for a board, displayed above projects"
-                                              s-   :prose/as-map},
-   :board/max-projects-per-member            {:doc "Set a maximum number of projects a member may join"
-                                              s-   :int}
-   :board/sticky-color                       {:doc "Border color for sticky projects"
-                                              s-   :html/color}
-   :board/member-tags                        (sch/ref :many :tag/as-map)
-   :board/project-fields                     (merge (sch/ref :many :field/as-map)
-                                                    sch/component)
-   :board/member-fields                      (merge (sch/ref :many :field/as-map)
-                                                    sch/component)
-   :board/registration-invitation-email-text {:doc "Body of email sent when inviting a user to a board."
-                                              s-   :string},
-   :board/registration-newsletter-field?     {:doc "During registration, request permission to send the user an email newsletter"
-                                              s-   :boolean},
-   :board/registration-open?                 {:doc "Allows new registrations via the registration page. Does not affect invitations.",
-                                              s-   :boolean},
-   :board/registration-message               {:doc "Content displayed on registration screen (before user chooses provider / enters email)"
-                                              s-   :prose/as-map},
-   :board/registration-url-override          {:doc "URL to redirect user for registration (replaces the Sparkboard registration page, admins are expected to invite users)",
-                                              s-   :http/url},
-   :board/registration-codes                 {s- [:map-of :string [:map {:closed true} [:registration-code/active? :boolean]]]}
-   :board/new-projects-require-approval?     {s- :boolean}
-   :board/custom-css                         {:doc "Custom CSS for this board"
-                                              s-   :string}
-   :board/custom-js                          {:doc "Custom JS for this board"
-                                              s-   :string}
-   :board/as-map                             {s- [:map {:closed true}
-                                                  :entity/id
-                                                  :entity/title
-                                                  :entity/created-at
-                                                  :entity/public?
-                                                  :entity/kind
-                                                  :entity/parent
+  {:board/project-numbers?               {s-    :boolean
+                                          :hint "Assign numbers to this board's projects."}
+   :board/max-members-per-project        {s- :int}
+   :board/project-sharing-buttons        {:hint "Social sharing buttons to be displayed on project detail pages"
+                                          s-    [:map-of :social/sharing-button :boolean]}
+   :board/is-template?                   {:doc "Board is only used as a template for creating other boards"
+                                          s-   :boolean},
+   :board/labels                         {:unsure "How can this be handled w.r.t. locale?"
+                                          s-      [:map-of [:enum
+                                                            :label/member.one
+                                                            :label/member.many
+                                                            :label/project.one
+                                                            :label/project.many] :string]},
+   :board/home-page-message              {:hint "Additional instructions for a board, displayed when a member has signed in."
+                                          s-    :prose/as-map},
+   :board/max-projects-per-member        {s- :int}
+   :board/sticky-color                   {:doc "Deprecate - sticky notes can pick their own colors"
+                                          s-   :html/color}
+   :board/member-tags                    {s- [:sequential :tag/as-map]}
+   :board/project-fields                 {s- [:sequential :field/as-map]}
+   :board/member-fields                  {s- [:sequential :field/as-map]}
+   :board/invite-email-text              {:hint "Text of email sent when inviting a user to a board."
+                                          s-    :string},
+   :board/registration-newsletter-field? {:hint "During registration, request permission to send the user an email newsletter"
+                                          s-    :boolean},
+   :board/registration-open?             {:hint "Allows new registrations via the registration page. Does not affect invitations."
+                                          s-    :boolean},
+   :board/registration-page-message      {:hint "Content displayed on registration screen (before user chooses provider / enters email)"
+                                          s-    :prose/as-map},
+   :board/registration-url-override      {:hint "URL to redirect user for registration (replaces the Sparkboard registration page, admins are expected to invite users)",
+                                          s-    :http/url},
+   :board/registration-codes             {s- [:map-of :string [:map {:closed true} [:registration-code/active? :boolean]]]}
+   :board/new-projects-require-approval? {s- :boolean}
+   :board/custom-css                     {s- :string}
+   :board/custom-js                      {s- :string}
+   :board/as-map                         {s- [:map {:closed true}
+                                              :entity/id
+                                              :entity/title
+                                              :entity/created-at
+                                              :entity/public?
+                                              :entity/kind
+                                              :entity/parent
 
-                                                  :board/registration-open?
+                                              :board/registration-open?
 
-                                                  (? :image/avatar)
-                                                  (? :image/logo-large)
-                                                  (? :image/footer)
-                                                  (? :image/background)
-                                                  (? :image/sub-header)
+                                              (? :image/avatar)
+                                              (? :image/logo-large)
+                                              (? :image/footer)
+                                              (? :image/background)
+                                              (? :image/sub-header)
 
-                                                  (? :entity/website)
-                                                  (? :entity/meta-description)
-                                                  (? :entity/description)
-                                                  (? :entity/domain)
-                                                  (? :entity/locale-default)
-                                                  (? :entity/locale-dicts)
-                                                  (? :entity/locale-suggestions)
-                                                  (? :entity/social-feed)
-                                                  (? :entity/deleted-at)
-                                                  (? :entity/created-by)
+                                              (? :entity/website)
+                                              (? :entity/meta-description)
+                                              (? :entity/description)
+                                              (? :entity/domain-name)
+                                              (? :entity/locale-default)
+                                              (? :entity/locale-dicts)
+                                              (? :entity/locale-suggestions)
+                                              (? :entity/social-feed)
+                                              (? :entity/deleted-at)
+                                              (? :entity/created-by)
 
-                                                  (? :board/custom-css)
-                                                  (? :board/custom-js)
-                                                  (? :board/instructions)
-                                                  (? :board/is-template?)
-                                                  (? :board/labels)
-                                                  (? :board/max-members-per-project)
-                                                  (? :board/max-projects-per-member)
-                                                  (? :board/member-fields)
-                                                  (? :board/member-tags)
-                                                  (? :board/new-projects-require-approval?)
-                                                  (? :board/project-fields)
-                                                  (? :board/project-sharing-buttons)
-                                                  (? :board/registration-codes)
-                                                  (? :board/registration-invitation-email-text)
-                                                  (? :board/registration-message)
-                                                  (? :board/registration-newsletter-field?)
-                                                  (? :board/registration-url-override)
-                                                  (? :board/show-project-numbers?)
-                                                  (? :board/slack.team)
-                                                  (? :board/sticky-color)
+                                              (? :board/custom-css)
+                                              (? :board/custom-js)
+                                              (? :board/home-page-message)
+                                              (? :board/is-template?)
+                                              (? :board/labels)
+                                              (? :board/max-members-per-project)
+                                              (? :board/max-projects-per-member)
+                                              (? :board/member-fields)
+                                              (? :board/member-tags)
+                                              (? :board/new-projects-require-approval?)
+                                              (? :board/project-fields)
+                                              (? :board/project-sharing-buttons)
+                                              (? :board/registration-codes)
+                                              (? :board/invite-email-text)
+                                              (? :board/registration-page-message)
+                                              (? :board/registration-newsletter-field?)
+                                              (? :board/registration-url-override)
+                                              (? :board/project-numbers?)
+                                              (? :board/slack.team)
+                                              (? :board/sticky-color)
 
-                                                  (? :member-vote/open?)
-                                                  (? :webhook/subscriptions)]}})
+                                              (? :member-vote/open?)
+                                              (? :webhook/subscriptions)]}})
 
 (q/defx board:register!
 

@@ -1,26 +1,41 @@
 (ns sb.app.entity.ui
-  (:require [inside-out.forms :as forms]
+  (:require [clojure.string :as str]
+            [inside-out.forms :as forms]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as data]
+            [sb.app.field.ui :as field.ui]
             [sb.routing :as routing]
             [sb.app.views.ui :as ui]
             [sb.icons :as icons]
             [sb.validate :as validate]
             [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [sb.schema :as sch]))
 
-#?(:cljs
-   (defn use-persisted [entity attribute field-view & [props]]
+(defn infer-view [attribute]
+  (let [{:keys [malli/schema]} (get @sch/!schema attribute)]
+    (case schema
+      :string field.ui/text-field
+      :http/url field.ui/text-field
+      :boolean field.ui/checkbox-field
+      :prose/as-map field.ui/prose-field
+      nil)))
+
+(defn use-persisted [entity attribute & {:as props :keys [view]}]
+  #?(:cljs
      (let [persisted-value (get entity attribute)
            ?field          (h/use-memo #(forms/field :init persisted-value
                                                      :attribute attribute
                                                      props)
                                        ;; create a new field when the persisted value changes
-                                       (h/use-deps persisted-value))]
-       [field-view ?field (merge {:persisted-value persisted-value
-                                  :on-save         #(forms/try-submit+ ?field
-                                                      (data/save-attribute! nil (:entity/id entity) attribute %))}
-                                 props)])))
+                                       (h/use-deps persisted-value))
+           view            (or view
+                               (:view ?field)
+                               (infer-view attribute) (throw (ex-info (str "No view declared for attribute: " attribute) {:attribute attribute})))]
+       [view ?field (merge {:persisted-value persisted-value
+                            :on-save         #(forms/try-submit+ ?field
+                                                (data/save-attribute! nil (:entity/id entity) attribute %))}
+                           (dissoc props :view))])))
 
 #?(:cljs
    (defn href [{:as e :entity/keys [kind id]} key]
@@ -51,7 +66,7 @@
 (ui/defview settings-button [entity]
   (when-let [path (and (validate/editing-role? (:member/roles entity))
                        (some-> (routing/entity-route entity :settings) routing/path-for))]
-    [:a.icon-light-gray.flex.items-center.justify-center.focus-visible:bg-gray-200.self-stretch.rounded
+    [:a.button
      {:href path}
      [icons/gear "icon-lg"]]))
 

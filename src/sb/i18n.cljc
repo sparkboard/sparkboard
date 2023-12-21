@@ -159,6 +159,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/project-fields                  {:en "Project fields"
                                           :fr "Champs de projet"
                                           :es "Campos de proyecto"},
+     :tr/member-tags                     {:en "Member tags"
+                                          :fr "Mots-clés des membres"
+                                          :es "Etiquetas de miembros"},
      :tr/member-fields                   {:en "Member fields"
                                           :fr "Champs de membre"
                                           :es "Campos de miembro"},
@@ -339,16 +342,16 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/hint                            {:en "Hint"
                                           :fr "Indice"
                                           :es "Pista"}
-     :tr/required                        {:en "Required"
+     :tr/required?                       {:en "Required"
                                           :fr "Obligatoire"
                                           :es "Requerido"}
-     :tr/filter                          {:en "Show as filter"
+     :tr/show-as-filter?                 {:en "Show as filter"
                                           :fr "Afficher comme filtre"
                                           :es "Mostrar como filtro"}
-     :tr/show-at-registration            {:en "Show at registration"
+     :tr/show-at-registration?           {:en "Show at registration"
                                           :fr "Afficher à l'inscription"
                                           :es "Mostrar en el registro"}
-     :tr/show-on-card                    {:en "Show on card"
+     :tr/show-on-card?                   {:en "Show on card"
                                           :fr "Afficher sur la carte"
                                           :es "Mostrar en la tarjeta"}
      :tr/untitled                        {:en "Untitled"
@@ -360,20 +363,70 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/find-a-member                   {:en "Find a member"
                                           :fr "Trouver un membre"
                                           :es "Encontrar un miembro"}
+     :tr/project-numbers                 {:en "Project numbers"
+                                          :fr "Numéros de projet"
+                                          :es "Números de proyecto"}
+     :tr/max-members-per-project         {:en "Max members per project"
+                                          :fr "Nombre maximum de membres par projet"
+                                          :es "Máximo de miembros por proyecto"}
+     :tr/sharing-buttons                 {:en "Sharing buttons"
+                                          :fr "Boutons de partage"
+                                          :es "Botones de compartir"}
+     :tr/home-page-message               {:en "Home page message"
+                                          :fr "Message de la page d'accueil"
+                                          :es "Mensaje de la página de inicio"}
+     :tr/max-projects-per-member         {:en "Max projects per member"
+                                          :fr "Nombre maximum de projets par membre"
+                                          :es "Máximo de proyectos por miembro"}
+     :tr/registration-codes              {:en "Registration codes"
+                                          :fr "Codes d'inscription"
+                                          :es "Códigos de registro"}
+     :tr/invite-email-text               {:en "Invite email text"
+                                          :fr "Texte de l'e-mail d'invitation"
+                                          :es "Texto del correo electrónico de invitación"}
+     :tr/registration-newsletter-field?  {:en "Registration newsletter field"
+                                          :fr "Champ d'inscription à la newsletter"
+                                          :es "Campo de registro de boletín"}
+     :tr/registration-open?              {:en "Registration is open"
+                                          :fr "L'inscription est ouverte"
+                                          :es "El registro está abierto"}
+     :tr/registration-page-message       {:en "Registration page message"
+                                          :fr "Message de la page d'inscription"
+                                          :es "Mensaje de la página de registro"}
+     :tr/registration-url-override       {:en "Registration URL override"
+                                          :fr "Remplacement de l'URL d'inscription"
+                                          :es "Anulación de la URL de registro"}
      :tr/remove                          {:en "Remove"
                                           :fr "Supprimer"
-                                          :es "Eliminar"}}))
+                                          :es "Eliminar"}
+     :tr/basic-settings                  {:en "Basic settings"
+                                          :fr "Paramètres de base"
+                                          :es "Configuración básica"}
+     :tr/projects-and-members            {:en "Projects and members"
+                                          :fr "Projets et membres"
+                                          :es "Proyectos y miembros"}
+     :tr/registration                    {:en "Registration"
+                                          :fr "Inscription"
+                                          :es "Registro"}
+
+     }))
+
+(defn tr*
+  ([resource-ids]
+   (tempura/tr {:dict dict} (locales) (cond-> resource-ids
+                                              (keyword? resource-ids)
+                                              vector)))
+  ([resource-ids resource-args]
+   (tempura/tr {:dict dict} (locales)
+               (cond-> resource-ids
+                       (keyword? resource-ids)
+                       vector)
+               resource-args)))
 
 (defn tr
-  ([resource-ids] (or (tempura/tr {:dict dict} (locales) (cond-> resource-ids
-                                                                 (keyword? resource-ids)
-                                                                 vector))
+  ([resource-ids] (or (tr* resource-ids)
                       #?(:cljs (doto (str "Missing" resource-ids) js/console.warn))))
-  ([resource-ids resource-args] (or (tempura/tr {:dict dict} (locales)
-                                                (cond-> resource-ids
-                                                        (keyword? resource-ids)
-                                                        vector)
-                                                resource-args)
+  ([resource-ids resource-args] (or (tr* resource-ids resource-args)
                                     #?(:cljs (doto (str "Missing" resource-ids) js/console.warn)))))
 
 (def supported-locales (into #{} (map name) (keys dict)))

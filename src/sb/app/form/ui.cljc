@@ -1,9 +1,10 @@
 (ns sb.app.form.ui
   (:require [applied-science.js-interop :as j]
+            [inside-out.forms :as forms]
             [sb.app.views.ui :as ui]
             [inside-out.forms :as io]
             [yawn.view :as v]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [tr tr*]]
             [sb.util :as u]
             [sb.icons :as icons]
             [sb.color :as color]))
@@ -29,8 +30,17 @@
                                  :can-edit?
                                  :label))
 
+(defn attribute-label [attribute]
+  (or (get-in forms/global-meta [attribute :label])
+      (tr* (keyword "tr" (name attribute)))))
+
+(defn get-label [?field label]
+  (u/some-or label
+             (:label ?field)
+             (some->> (:attribute ?field) attribute-label)))
+
 (defn show-label [?field & [label]]
-  (when-let [label (u/some-or label (:label ?field))]
+  (when-let [label (get-label ?field label)]
     [:label.field-label {:for (field-id ?field)} label]))
 
 (defn ?field-props [?field
@@ -64,7 +74,7 @@
                          (when-not (re-find #"^[^@]+@[^@]+$" v)
                            (tr :tr/invalid-email)))))
 
-(def form-classes "flex flex-col gap-4 p-6 max-w-lg mx-auto bg-back relative text-sm")
+(def form-classes "flex-v gap-4 p-6 max-w-lg mx-auto bg-back relative text-sm")
 
 (ui/defview view-message [{:keys [type content]}]
   (case type

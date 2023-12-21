@@ -19,8 +19,10 @@
             [sb.icons :as icons]
             [sb.routing :as routing]
             [shadow.cljs.modern :refer [defclass]]
+            [taoensso.tempura :as tempura]
             [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [sb.i18n :as i18n]))
 
 (defn dev? [] (= "dev" (db/get :env/config :env)))
 
@@ -134,11 +136,11 @@
      :value    (mapv :value results)}))
 
 (ui/defview show-async-status
-            "Given a map of {:loading?, :error}, shows a loading bar and/or error message"
-            [result]
-            [:<>
-             (when (:loading? result) [loading-bar "bg-blue-100 h-1"])
-             (when (:error result) [error-view result])])
+  "Given a map of {:loading?, :error}, shows a loading bar and/or error message"
+  [result]
+  [:<>
+   (when (:loading? result) [loading-bar "bg-blue-100 h-1"])
+   (when (:error result) [error-view result])])
 
 (defn use-promise
   "Returns a {:loading?, :error, :value} map for a promise (which should be memoized)"
@@ -160,13 +162,13 @@
     @!result))
 
 (ui/defview show-match
-            "Given a match, shows the view, loading bar, and/or error message.
-             - adds :data to params when a :query is provided"
-            [{:as match :match/keys [endpoints params]}]
-            (if-let [view (-> endpoints :view :endpoint/sym (@routing/!views))]
-              (when view
-                [view (assoc params :account-id (db/get :env/config :account-id))])
-              [pprinted match]))
+  "Given a match, shows the view, loading bar, and/or error message.
+   - adds :data to params when a :query is provided"
+  [{:as match :match/keys [endpoints params]}]
+  (if-let [view (-> endpoints :view :endpoint/sym (@routing/!views))]
+    (when view
+      [view (assoc params :account-id (db/get :env/config :account-id))])
+    [pprinted match]))
 
 (defn use-debounced-value
   "Caches value for `wait` milliseconds after last change."
@@ -197,7 +199,7 @@
     @!state))
 
 (ui/defview redirect [to]
-            (h/use-effect #(routing/nav! to)))
+  (h/use-effect #(routing/nav! to)))
 
 (defn initials [display-name]
   (let [words (str/split display-name #"\s+")]
@@ -255,12 +257,12 @@
                                                   #_[icons/ellipsis-horizontal "w-8"]
                                                   (str "+ " n)])
                                     unexpander [:div.flex-v.items-center.text-center.py-1.bg-gray-50.hover:bg-gray-100.rounded-lg.text-gray-600 [icons/chevron-up "w-6 h-6"]]}} items]
-            (let [item-count  (count items)
-                  !expanded?  (h/use-state false)
-                  expandable? (> item-count limit)]
-              (cond (not expandable?) items
-                    @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
-                    :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))
+  (let [item-count  (count items)
+        !expanded?  (h/use-state false)
+        expandable? (> item-count limit)]
+    (cond (not expandable?) items
+          @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
+          :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))
 
 (def hero (v/from-element :div.rounded-lg.bg-gray-100.p-6.width-full))
 
@@ -279,4 +281,3 @@
     (f e)))
 
 (defn pprint [x] (clojure.pprint/pprint x))
-

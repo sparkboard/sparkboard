@@ -38,7 +38,7 @@
 
 (sch/register!
   {:image/url                   {s- :http/url}
-
+   :field/id                    {s- :uuid},
    :field/hint                  {s- :string},
    :field/label                 {s- :string},
    :field/default-value         {s- :string}
@@ -47,7 +47,6 @@
                                      (? :field-option/color)
                                      (? :field-option/value)
                                      :field-option/label]}
-   :field/order                 {s- :int},
    :field/required?             {s- :boolean},
    :field/show-as-filter?       {:doc "Use this field as a filtering option"
                                  s-   :boolean},
@@ -71,7 +70,7 @@
    :field-option/label          {s- :string},
    :field-option/value          {s- :string},
    :video/url                   {s- :string}
-   :image-list/images {s- [:sequential :entity/id]}
+   :image-list/images           {s- [:sequential :entity/id]}
    :link-list/links             {s- [:sequential :link-list/link]}
    :select/value                {s- :string}
    :field-entry/as-map          {s- [:map {:closed true}
@@ -87,9 +86,7 @@
                                         "Orgs/boards should be able to override/add field.spec options."
                                         "Field specs should be globally merged so that fields representing the 'same' thing can be globally searched/filtered?"]
                                  s-    [:map {:closed true}
-                                        :entity/id
-                                        :entity/kind
-                                        :field/order
+                                        :field/id
                                         :field/type
                                         (? :field/published?)
                                         (? :field/hint)
@@ -101,13 +98,12 @@
                                         (? :field/show-on-card?)]}})
 
 (def field-keys [:field/hint
-                 :entity/id
+                 :field/id
                  :field/label
                  :field/default-value
                  {:field/options [:field-option/color
                                   :field-option/value
                                   :field-option/label]}
-                 :field/order
                  :field/required?
                  :field/show-as-filter?
                  :field/show-at-registration?
@@ -115,15 +111,15 @@
                  :field/type])
 
 (def field-types {:field.type/prose      {:icon  icons/text
-                                         :label (tr :tr/text)}
+                                          :label (tr :tr/text)}
                   :field.type/select     {:icon  icons/dropdown-menu
-                                         :label (tr :tr/menu)}
+                                          :label (tr :tr/menu)}
                   :field.type/video      {:icon  icons/video
-                                         :label (tr :tr/video)}
+                                          :label (tr :tr/video)}
                   :field.type/link-list  {:icon  icons/link-2
-                                         :label (tr :tr/links)}
-                  :field.type/image-list {:icon icons/photo
-                                         :label (tr :tr/image)}
+                                          :label (tr :tr/links)}
+                  :field.type/image-list {:icon  icons/photo
+                                          :label (tr :tr/image)}
                   })
 
 (defn blank? [color]
@@ -205,32 +201,23 @@
 
 (q/defx add-field
   {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e a field]
+  [{:keys [account-id]} e a new-field]
   (validate/assert-can-edit! e account-id)
   (let [e               (sch/wrap-id e)
-        existing-fields (->> (a (db/entity e))
-                             (sort-by :field/order))
-        field           (-> field
-                            (assoc :field/order (if-let [last-order (:field/order (last existing-fields))]
-                                                  (inc last-order)
-                                                  0)
-                                   :entity/kind :field
-                                   :entity/id (dl/new-uuid :field)))]
+        existing-fields (a (db/entity e))
+        field           (assoc new-field :field/id (dl/new-uuid :field))]
     (validate/assert field :field/as-map)
-    (db/transact! [(assoc field :db/id -1)
-                   [:db/add e a -1]])
-    {:entity/id (:entity/id field)}))
+    (db/transact! [[:db/add e a (conj existing-fields field)]])
+    {:field/id (:field/id field)}))
 
 (q/defx remove-field
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} parent-id a field-id]
   (validate/assert-can-edit! parent-id account-id)
-  (let [parent (db/entity (sch/wrap-id parent-id))
-        field (db/entity (sch/wrap-id field-id))]
-    (db/transact! [[:db/retract
-                    (:db/id parent)
-                    a
-                    (:db/id field)]])
+  (let [parent (db/entity (sch/wrap-id parent-id))]
+    (db/transact! [[:db/add (:db/id parent) a (->> (get parent a)
+                                                   (remove (comp #{field-id} :field/id))
+                                                   vec)]])
     {}))
 
 (defmulti entry-value (fn [field entry] (:field/type field)))

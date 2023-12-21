@@ -1,7 +1,7 @@
 (ns sb.app.org.ui
   (:require [inside-out.forms :as forms]
             [promesa.core :as p]
-            [sb.app.domain.ui :as domain.ui]
+            [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
@@ -67,7 +67,7 @@
      [:div {:class form.ui/form-classes}
       (entity.ui/use-persisted org :entity/title field.ui/text-field)
       (entity.ui/use-persisted org :entity/description field.ui/prose-field)
-      (entity.ui/use-persisted org :entity/domain domain.ui/domain-field)
+      (entity.ui/use-persisted org :entity/domain-name domain.ui/domain-field)
       ;; TODO - uploading an image does not work
       (entity.ui/use-persisted org :image/avatar field.ui/image-field {:label (tr :tr/image.logo)})
 
@@ -78,8 +78,8 @@
    :view/router :router/modal}
   [params]
   (forms/with-form [!org (u/prune
-                           {:entity/title  ?title
-                            :entity/domain ?domain})
+                           {:entity/title       ?title
+                            :entity/domain-name ?domain})
                     :required [?title ?domain]]
     [:form
      {:class     form.ui/form-classes
@@ -90,5 +90,5 @@
                                        (routes/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (tr :tr/new-org)]
      [field.ui/text-field ?title {:label (tr :tr/title)}]
-     (domain.ui/domain-field ?domain)
+     (domain.ui/domain-field ?domain nil)
      [form.ui/submit-form !org (tr :tr/create)]]))

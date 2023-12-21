@@ -177,7 +177,7 @@
          (r/reaction {:error (ex-message e)}))))
 
 (comment
-  (routing/tag->endpoint 'sb.app.domain.ui/check-availability :effect)
+  (routing/tag->endpoint 'sb.app.domain-name.ui/check-availability :effect)
   (routing/tag->endpoint 'sb.app.account.data/all :query)
 
   (resolve-query ['sb.app.org.data/show {}])

@@ -70,15 +70,15 @@
   "Conforms and validates an entity which may contain :entity/domain."
   [entity]
   {:pre [(:entity/id entity)]}
-  (if (:entity/domain entity)
-    (let [existing-domain (when-let [name (-> entity :entity/domain :domain/name)]
-                            (db/entity [:domain/name name]))]
+  (if (:entity/domain-name entity)
+    (let [existing-domain (when-let [name (-> entity :entity/domain-name :domain-name/name)]
+                            (db/entity [:domain-name/name name]))]
       (if (empty? existing-domain)
         entity                                              ;; upsert new domain entry
-        (let [existing-id (-> existing-domain :entity/_domain first :entity/id)]
+        (let [existing-id (-> existing-domain :entity/_domain-name first :entity/id)]
           (if (= existing-id (:entity/id entity))
             ;; no-op, domain is already pointing at this entity
-            (dissoc entity :entity/domain)
+            (dissoc entity :entity/domain-name)
             (throw (ex-info (tr :tr/domain-already-registered)
                             (into {} existing-domain)))))))
     entity))
@@ -88,7 +88,7 @@
      (-> m
          (conform-and-validate)
          (assert (-> (mu/optional-keys schema)
-                     (mu/assoc :entity/domain (mu/optional-keys :domain/as-map)))))))
+                     (mu/assoc :entity/domain-name (mu/optional-keys :domain-name/as-map)))))))
 
 (defn editing-role? [roles]
   (boolean (some #{:role/owner :role/admin :role/collaborate} roles)))

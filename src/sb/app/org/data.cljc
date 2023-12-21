@@ -2,7 +2,7 @@
   (:require [inside-out.forms :as forms]
             [promesa.core :as p]
             [re-db.api :as db]
-            [sb.app.domain.data :as domain.data]
+            [sb.app.domain-name.data :as domain.data]
             [sb.app.entity.data :as entity.data]
             [sb.app.member.data :as member.data]
             [sb.authorize :as az]
@@ -38,7 +38,7 @@
                                     (? :entity/social-feed)
                                     (? :entity/locale-default)
                                     (? :entity/locale-suggestions)
-                                    (? :entity/domain)
+                                    (? :entity/domain-name)
                                     (? :entity/public?)
                                     (? :org/default-board-template)
                                     (? :entity/created-at)]}})

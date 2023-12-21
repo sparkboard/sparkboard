@@ -45,7 +45,7 @@
 
 (v/defview auto-size [props]
   (let [v!    (h/use-state "")
-        props (merge props {:value     (:value props @v!)
+        props (merge props {:value     (or (:value props @v!) "")
                             :on-change (:on-change props
                                          #(reset! v! (j/get-in % [:target :value])))})]
     [:div.auto-size
@@ -82,7 +82,7 @@
       [:input.h-5.w-5.rounded.border-gray-300.text-primary
        (form.ui/pass-props props)]
       [:div.flex-v.gap-1.ml-2
-       (when-let [label (:label ?field)]
+       (when-let [label (form.ui/get-label ?field (:label props))]
          [:div.flex.items-center.h-5 label])
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))

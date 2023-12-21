@@ -69,7 +69,7 @@
               :entity/deleted-at
               {:image/avatar [:entity/id]}
               {:image/background [:entity/id]}
-              {:entity/domain [:domain/name]}])
+              {:entity/domain-name [:domain-name/name]}])
 
 (q/defx save-attributes!
   {:prepare [az/with-account-id!]}

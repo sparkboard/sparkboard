@@ -118,7 +118,7 @@
          :keys        [project/badges
                        member/roles]} (data/show params)
         [can-edit? dev-panel] (use-dev-panel project)
-        fields  (->> project :entity/parent :board/project-fields (sort-by :field/order))
+        fields  (->> project :entity/parent :board/project-fields)
         entries (->> project :entity/field-entries)]
     [:<>
      dev-panel
@@ -151,7 +151,7 @@
                 (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
                 badges)])
        (for [field fields
-             :let [entry (get entries (:entity/id field))]
+             :let [entry (get entries (:field/id field))]
              :when (or can-edit?
                        (field.data/entry-value field entry))]
          (field.ui/show-entry {:parent    project

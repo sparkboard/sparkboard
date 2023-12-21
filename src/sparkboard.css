@@ -240,6 +240,35 @@
 
 @layer components {
 
+
+    .accordion-item {
+        @apply overflow-hidden
+    }
+    .accordion-content[data-state='open'] {
+        animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
+    }
+    .accordion-content[data-state='closed'] {
+        animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
+    }
+    .accordion-content {
+        @apply overflow-hidden p-3
+    }
+    .accordion-trigger {
+        @apply
+        px-3 flex h-16 items-center justify-between w-full
+         rounded bg-gray-50 hover:bg-gray-100  data-[state=open]:bg-gray-100
+    }
+    .accordion-trigger .icon {
+        transition: transform 300ms cubic-bezier(0.87, 0, 0.13, 1);
+    }
+
+    .accordion-trigger[data-state='open'] {
+
+    }
+    .accordion-trigger[data-state='open'] .icon {
+        transform: rotate(180deg);
+    }
+
     .icon-sm {
         @apply w-[15px] h-[15px]
     }
@@ -262,7 +291,7 @@
     }
 
     .field-label {
-        @apply block font-bold text-base
+        @apply block font-semibold text-base
     }
     .field-wrapper {
         @apply gap-2 flex-v relative
@@ -429,11 +458,11 @@
     .header h3 {
         @apply items-center hidden sm:inline-flex
     }
-    .header button {
-        @apply h-10 px-2 rounded flex items-center menu-darken
+    .header button, .header .button {
+        @apply h-10 px-2 rounded flex items-center menu-darken relative
     }
     .header .icon {
-        @apply text-gray-400
+        @apply icon-lg text-gray-400
     }
 
     .card-grid {
@@ -513,4 +542,22 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 
 ::-webkit-color-swatch, ::-moz-color-swatch, ::-webkit-color-swatch-wrapper {
     border-color: transparent !important;
+}
+
+@keyframes slideDown {
+    from {
+        height: 0;
+    }
+    to {
+        height: var(--radix-accordion-content-height);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        height: var(--radix-accordion-content-height);
+    }
+    to {
+        height: 0;
+    }
 }

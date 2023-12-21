@@ -15,13 +15,6 @@
             [yawn.hooks :as h]
             [yawn.util :as yu]))
 
-(defn btn [{:keys [icon href]}]
-  [(if href :a :div)
-   {:class "btn-white"
-    :href  href}
-   icon])
-
-
 #?(:cljs
    (defn lang-menu-content []
      (let [current-locale (i/current-locale)
@@ -40,7 +33,7 @@
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
                                                    classes]}
    (radix/dropdown-menu
-     {:trigger  [icons/languages "w-5 h-5"]
+     {:trigger  [icons/languages]
       :children (lang-menu-content)})])
 
 (ui/defview chats-list []
@@ -63,19 +56,12 @@
      {:open           @!open?
       :on-open-change #(reset! !open? %)}
      [:el Popover/Trigger {:as-child true}
-      [:button.relative.menu-darken.px-1.rounded {:tab-index 0}
-       ;; unread-count bubble
+      [:button {:tab-index 0}
        (when unread
-         [:div.z-10
-          {:style {:width      10
-                   :height     10
-                   :top        "50%"
-                   :margin-top -14
-                   :right      2
-                   :position   "absolute"}
-           :class ["rounded-full"
-                   "bg-focus-accent focus-visible:bg-black"]}])
-       [icons/chat-bubble-left "icon-lg -mb-[2px]"]]]
+         [:div.z-10.absolute.font-bold.text-xs.text-center.text-focus-accent
+          {:style {:top 2 :right 0 :width 20}}
+          unread])
+       [icons/paper-plane (when unread "text-focus-accent")]]]
      [:el Popover/Portal
       {:container (yu/find-or-create-element :radix-modal)}
       [:Suspense {}
@@ -89,8 +75,8 @@
   (if-let [account (db/get :env/config :account)]
     [:<>
      (radix/dropdown-menu
-       {:trigger  [:button.flex.items-center.focus-ring.rounded.px-1 {:tab-index 0}
-                   [:img.rounded-full.h-6.w-6 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
+       {:trigger  [:button {:tab-index 0}
+                   [:img.rounded-full.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
         :children [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (tr :tr/home)]
                    [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (tr :tr/logout)]
                    [{:sub?     true

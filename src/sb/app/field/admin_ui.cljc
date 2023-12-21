@@ -170,22 +170,21 @@
   [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
    [:div.col-span-2.flex-v.gap-3
-    (entity.ui/use-persisted field :field/label field.ui/text-field {:class      "bg-white text-sm"
-                                                                     :multi-line true})
-    (entity.ui/use-persisted field :field/hint field.ui/text-field {:class       "bg-white text-sm"
-                                                                    :multi-line  true
-                                                                    :placeholder "Further instructions"})]
+    (entity.ui/use-persisted field :field/label {:class      "bg-white text-sm"
+                                                 :multi-line true})
+    (entity.ui/use-persisted field :field/hint {:class       "bg-white text-sm"
+                                                :multi-line  true
+                                                :placeholder "Further instructions"})]
 
    (when (= :field.type/select (:field/type field))
-     (entity.ui/use-persisted field :field/options options-field))
-   #_[:div.flex.items-center.gap-2.col-span-2
-      [:span.font-semibold.text-xs.uppercase (:label (field-types (:field/type field)))]]
+     (entity.ui/use-persisted field :field/options {:view options-field}))
+
    [:div.contents.labels-normal
-    (entity.ui/use-persisted field :field/required? field.ui/checkbox-field)
-    (entity.ui/use-persisted field :field/show-as-filter? field.ui/checkbox-field)
+    (entity.ui/use-persisted field :field/required?)
+    (entity.ui/use-persisted field :field/show-as-filter?)
     (when (= attribute :board/member-fields)
-      (entity.ui/use-persisted field :field/show-at-registration? field.ui/checkbox-field))
-    (entity.ui/use-persisted field :field/show-on-card? field.ui/checkbox-field)
+      (entity.ui/use-persisted field :field/show-at-registration?))
+    (entity.ui/use-persisted field :field/show-on-card?)
     [:a.text-gray-500.hover:underline.cursor-pointer.flex.gap-2
      {:on-click #(radix/simple-alert! {:message      "Are you sure you want to remove this?"
                                        :confirm-text (tr :tr/remove)
@@ -193,15 +192,15 @@
                                                        (data/remove-field nil
                                                                           (:entity/id parent)
                                                                           attribute
-                                                                          (:entity/id field)))})}
+                                                                          (:field/id field)))})}
      (tr :tr/remove)]]])
 
 (ui/defview field-editor
-  {:key (comp :entity/id :field)}
+  {:key (comp :field/id :field)}
   [{:keys [parent attribute order-by expanded? toggle-expand! field]}]
   (let [field-type (data/field-types (:field/type field))
         [handle-props drag-props indicator] (orderable-props {:group-id attribute
-                                                              :id       (sch/wrap-id (:entity/id field))
+                                                              :id       (:field/id field)
                                                               :on-move
                                                               (fn [{:as args :keys [source destination side]}]
                                                                 (p/-> (entity.data/order-ref! {:attribute   attribute
@@ -240,11 +239,10 @@
   (let [label          (:label (forms/global-meta attribute))
         !new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
-        fields         (->> (get entity attribute)
-                            (sort-by :field/order))
+        fields         (get entity attribute)
         [expanded expand!] (h/use-state nil)]
     [:div.field-wrapper {:class "labels-semibold"}
-     (when-let [label (or label (tr attribute))]
+     (when-let [label (or label (form.ui/attribute-label attribute))]
        [:label.field-label {:class "flex items-center"}
         label
         [:div.flex.ml-auto.items-center
@@ -267,21 +265,20 @@
            (map (fn [field]
                   (field-editor {:parent         entity
                                  :attribute      attribute
-                                 :order-by       :field/order
-                                 :expanded?      (= expanded (:entity/id field))
+                                 :expanded?      (= expanded (:field/id field))
                                  :toggle-expand! #(expand! (fn [old]
-                                                             (when-not (= old (:entity/id field))
-                                                               (:entity/id field))))
+                                                             (when-not (= old (:field/id field))
+                                                               (:field/id field))))
                                  :field          field})))
            doall)]
-     (when-let [{:as   !form
+     (when-let [{:as   ?new-field
                  :syms [?type ?label]} @!new-field]
        [:div
         [:form.flex.gap-2.items-start.relative
          {:on-submit (ui/prevent-default
                        (fn [e]
-                         (forms/try-submit+ !form
-                           (p/let [{:as result :keys [entity/id]} (data/add-field nil (:entity/id entity) attribute @!form)]
+                         (forms/try-submit+ ?new-field
+                           (p/let [{:as result :keys [field/id]} (data/add-field nil (:entity/id entity) attribute @?new-field)]
                              (expand! id)
                              (reset! !new-field nil)
                              result))))}
@@ -295,4 +292,4 @@
                                       :wrapper-class "flex-auto"}]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (tr :tr/add)]]
-        [:div.pl-12.py-2 (form.ui/show-field-messages !form)]])]))
+        [:div.pl-12.py-2 (form.ui/show-field-messages ?new-field)]])]))
