@@ -1,18 +1,7 @@
 (ns sb.app.views.ui
   (:require [sb.util :as u]
             [yawn.view :as v]
-            [clojure.walk :as walk]
             [inside-out.macros]))
-
-(defn wrap-tr [expr]
-  (walk/postwalk (fn [x] (if (and (keyword? x)
-                                  (= "tr" (namespace x)))
-                           `(~'sb.i18n/tr ~x)
-                           x))
-                 expr))
-
-(defmacro tr [expr]
-  (wrap-tr expr))
 
 (defmacro defview [name & args]
   (let [[name doc options argv body] (u/parse-defn-args name args)

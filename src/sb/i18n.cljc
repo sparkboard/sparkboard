@@ -423,7 +423,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                        vector)
                resource-args)))
 
-(defn tr
+(defn t
   ([resource-ids] (or (tr* resource-ids)
                       #?(:cljs (doto (str "Missing" resource-ids) js/console.warn))))
   ([resource-ids resource-args] (or (tr* resource-ids resource-args)

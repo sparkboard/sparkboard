@@ -14,7 +14,8 @@
             [sb.app.project.ui :as project.ui]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
-            [sb.app.views.ui :as ui :refer [tr]]
+            [sb.app.views.ui :as ui]
+            [sb.i18n :refer [t]]
             [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
@@ -45,11 +46,11 @@
                                           :form !board]
                                          (routing/nav! `show {:board-id (:entity/id result)})))
         :ref       (ui/use-autofocus-ref)}
-       [:h2.text-2xl (tr :tr/new-board)]
+       [:h2.text-2xl (t :tr/new-board)]
 
        (when owners
          [:div.flex-v.gap-2
-          [:label.field-label {} (tr :tr/owner)]
+          [:label.field-label {} (t :tr/owner)]
           (radix/select-menu {:value           @?owner
                               :on-value-change (partial reset! ?owner)
                               :options
@@ -59,16 +60,16 @@
                                            :text  title
                                            :icon  [:img.w-5.h-5.rounded-sm {:src (asset.ui/asset-src avatar :avatar)}]})))})])
 
-       [field.ui/text-field ?title {:label (tr :tr/title)}]
+       [field.ui/text-field ?title {:label (t :tr/title)}]
        (domain.ui/domain-field ?domain nil)
-       [form.ui/submit-form !board (tr :tr/create)]])))
+       [form.ui/submit-form !board (t :tr/create)]])))
 
 (ui/defview register
   {:route "/b/:board-id/register"}
   [{:as params :keys [route]}]
   (ui/with-form [!member {:member/name ?name :member/password ?pass}]
     [:div
-     [:h3 (tr :tr/register)]
+     [:h3 (t :tr/register)]
      [field.ui/text-field ?name nil]
      [field.ui/text-field ?pass nil]
      [:button {:on-click #(p/let [res (routing/POST route @!member)]
@@ -76,7 +77,7 @@
                             #_(when (http-ok? res)
                                 (routing/nav! [:board/read params])
                                 res))}
-      (tr :tr/register)]]))
+      (t :tr/register)]]))
 
 (ui/defview action-button [{:as props :keys [on-click]} child]
   (let [!async-state (h/use-state nil)
@@ -92,7 +93,7 @@
           (v/merge-props {:class (when error "ring-destructive ring-2")})
           (assoc :on-click
                  (when-not loading? on-click)))
-      (tr :tr/new-project)
+      (t :tr/new-project)
       (when (:loading? @!async-state)
         [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))
 
@@ -100,10 +101,10 @@
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
   (let [{:as board :keys [member/roles]} (data/show {:board-id board-id})
-        !current-tab (h/use-state (tr :tr/projects))
+        !current-tab (h/use-state (t :tr/projects))
         ?filter      (h/use-state nil)]
     [:<>
-     [header/entity board]
+     [header/entity board (list (entity.ui/settings-button board))]
      [:div.p-body
 
       [:div.flex.gap-4.items-stretch
@@ -113,12 +114,12 @@
                      (p/let [{:as   result
                               :keys [entity/id]} (project.data/new! nil
                                                                     {:entity/parent board-id
-                                                                     :entity/title  (tr :tr/untitled)
+                                                                     :entity/title  (t :tr/untitled)
                                                                      :entity/draft? true})]
                        (when id
                          (routing/nav! `project.ui/show {:project-id id}))
                        result))}
-        (tr :tr/new-project)]]
+        (t :tr/new-project)]]
 
       [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
                        :value           @!current-tab
@@ -127,16 +128,17 @@
        ;; tabs
        [:div.flex.items-stretch.h-10.gap-3
         [radix/show-tab-list
-         (for [x [:tr/projects :tr/members] :let [x (tr x)]]
+         (for [x [:tr/projects :tr/members]
+               :let [x (t x)]]
            {:title x :value x})]]
 
-       [radix/tab-content {:value (tr :tr/projects)}
+       [radix/tab-content {:value (t :tr/projects)}
         (into [:div.grid]
               (comp (ui/filtered @?filter)
                     (map entity.ui/row))
               (data/projects {:board-id board-id}))]
 
-       [radix/tab-content {:value (tr :tr/members)}
+       [radix/tab-content {:value (t :tr/members)}
         (into [:div.grid]
               (comp (map #(merge (account.data/account-as-entity (:member/account %))
                                  (db/touch %)))

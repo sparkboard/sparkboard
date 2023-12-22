@@ -50,11 +50,13 @@
   "Removes nil values from a map recursively"
   [m]
   (reduce-kv (fn [m k v]
-               (if (map? v)
-                 (assoc-seq m k (prune v))
-                 (if (or (nil? v) (and (coll? v) (empty? v)))
-                   m
-                   (assoc m k v)))) {} m))
+               (if (nil? v)
+                 m
+                 (if (map? v)
+                   (assoc-seq m k (prune v))
+                   (if (sequential? v)
+                     (assoc-seq m k (map prune v))
+                     (assoc m k v))))) {} m))
 
 (defn keep-changes
   "Removes nil values from a map, not recursive"

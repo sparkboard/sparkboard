@@ -14,7 +14,7 @@
             [ring.middleware.session :as ring.session]
             [ring.middleware.session.cookie :as ring.session.cookie]
             [ring.util.response :as ring.response]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.server.assets :as assets])
   (:import [com.smartmovesystems.hashcheck FirebaseScrypt]
            [org.apache.commons.codec.binary Base64]
@@ -102,7 +102,7 @@
     (ex-info (str "Account not found: " account-id)
              {:status        401
               :wrap-response res:logout
-              :title         (tr :tr/account-not-found)
+              :title         (t :tr/account-not-found)
               :detail        (str {:account-id account-id})})))
 
 (defn wrap-account-lookup [handler]
@@ -138,7 +138,7 @@
 
   (let [account-entity (not-empty (db/get [:account/email email]))
         _              (vd/assert account-entity
-                                  [:map {:error/message (tr :tr/account-not-found)}
+                                  [:map {:error/message (t :tr/account-not-found)}
                                    [:account/password-hash [:string]]
                                    [:account/password-salt [:string]]]
                                   {:code 401})
@@ -146,7 +146,7 @@
         _              (when (or (not (:account/password-hash account-entity))
                                  (not (:account/password-salt account-entity)))
                          ;; TODO start password-reset flow
-                         (throw (ex-info (tr :tr/account-requires-password-reset)
+                         (throw (ex-info (t :tr/account-requires-password-reset)
                                          {:account/email email
                                           :status        401})))]
     (if (password-valid? account-entity password)

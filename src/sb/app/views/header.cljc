@@ -6,7 +6,7 @@
             [sb.app.chat.data :as chat.data]
             [sb.app.chat.ui :as chat.ui]
             [sb.app.entity.ui :as entity.ui]
-            [sb.i18n :as i :refer [tr]]
+            [sb.i18n :as i :refer [t]]
             [sb.routing :as routes]
             [sb.app.views.ui :as ui]
             [sb.icons :as icons]
@@ -46,8 +46,8 @@
             (map (partial chat.ui/chat-snippet params)))
        [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
         {:href (routes/path-for [`chat.ui/chats])}
-        (tr :tr/view-all)]]
-      (tr :tr/no-messages))))
+        (t :tr/view-all)]]
+      (t :tr/no-messages))))
 
 (ui/defview chat []
   (let [!open? (h/use-state false)
@@ -77,15 +77,15 @@
      (radix/dropdown-menu
        {:trigger  [:button {:tab-index 0}
                    [:img.rounded-full.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
-        :children [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (tr :tr/home)]
-                   [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (tr :tr/logout)]
+        :children [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (t :tr/home)]
+                   [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
                    [{:sub?     true
                      :trigger  [icons/languages "w-5 h-5"]
                      :children (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/path-for ['sb.app.account-ui/sign-in])} (tr :tr/continue-with-email)]))
+     {:href (routes/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
 
-(ui/defview entity* [{:as   entity
+(ui/defview entity [{:as   entity
                       :keys [entity/title
                              image/avatar]} children]
   (let [entity-href (routes/entity-path entity :show)]
@@ -100,8 +100,5 @@
      [:div.flex-grow]
      (into [:div.flex.gap-1]
            (concat children
-                   [(entity.ui/settings-button entity)
-                    [chat]
+                   [[chat]
                     [account]]))]))
-
-(defn entity [entity & children] (entity* entity children))

@@ -6,7 +6,7 @@
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.views.ui :as ui]
-            [sb.i18n :refer [tr]]))
+            [sb.i18n :refer [t]]))
 
 #?(:cljs
    (defn availability-validator []
@@ -18,9 +18,9 @@
                  (p/let [res (data/check-availability {:domain v})]
                    (if (:available? res)
                      (forms/message :info
-                                    [:span.text-green-500.font-bold (tr :tr/available)])
+                                    [:span.text-green-500.font-bold (t :tr/available)])
                      (forms/message :invalid
-                                    (tr :tr/not-available)
+                                    (t :tr/not-available)
                                     {:visibility :always})))))))
          (forms/debounce 300))))
 

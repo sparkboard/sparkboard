@@ -10,7 +10,7 @@
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routes]
             [sb.util :as u]
@@ -20,9 +20,9 @@
 (ui/defview new-menu [params]
   (radix/dropdown-menu {:id       :new-menu
                         :trigger
-                        [:div.btn-white (tr :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
-                        :children [[{:on-select #(routes/nav! 'sb.app.board-data/new params)} (tr :tr/board)]
-                                   [{:on-select #(routes/nav! 'sb.app.org-data/new params)} (tr :tr/org)]]}))
+                        [:div.btn-white (t :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
+                        :children [[{:on-select #(routes/nav! 'sb.app.board-data/new params)} (t :tr/board)]
+                                   [{:on-select #(routes/nav! 'sb.app.org-data/new params)} (t :tr/org)]]}))
 
 (def down-arrow (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4"))
 
@@ -41,16 +41,16 @@
 
      (radix/dropdown-menu
        {:id       :show-recents
-        :trigger  [:button (tr :tr/recent) down-arrow]
+        :trigger  [:button (t :tr/recent) down-arrow]
         :children (map (fn [entity]
-                         [{:on-select #(routes/nav! (routes/entity-route entity 'show) entity)}
+                         [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
                           (:entity/title entity)])
                        recents)})
      (radix/dropdown-menu
        {:id :new
-        :trigger  [:button (tr :tr/new) down-arrow]
-        :children [[{:on-select #(routes/nav! 'sb.app.board-data/new params)} (tr :tr/board)]
-                   [{:on-select #(routes/nav! 'sb.app.org-data/new params)} (tr :tr/org)]]})
+        :trigger  [:button (t :tr/new) down-arrow]
+        :children [[{:on-select #(routes/nav! 'sb.app.board-data/new params)} (t :tr/board)]
+                   [{:on-select #(routes/nav! 'sb.app.org-data/new params)} (t :tr/org)]]})
      [header/chat]
      [header/account]]))
 
@@ -59,17 +59,17 @@
     [:a.btn.btn-white
      {:class "w-full h-10 text-zinc-500 text-sm"
       :href  "/oauth2/google/launch"}
-     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (tr :tr/continue-with-google)]))
+     [:img.w-5.h-5.m-2 {:src "/images/google.svg"}] (t :tr/continue-with-google)]))
 
 (defn account:sign-in-terms []
   (v/x
-    [:p.px-8.text-center.text-sm {:class "text-txt/70"} (tr :tr/sign-in-agree-to)
-     [:a.gray-link {:href "/documents/terms-of-service"} (tr :tr/tos)] ","
+    [:p.px-8.text-center.text-sm {:class "text-txt/70"} (t :tr/sign-in-agree-to)
+     [:a.gray-link {:href "/documents/terms-of-service"} (t :tr/tos)] ","
      [:a.gray-link {:target "_blank"
-                    :href   "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} (tr :tr/cookie-policy)]
-     (tr :tr/and)
+                    :href   "https://www.iubenda.com/privacy-policy/7930385/cookie-policy"} (t :tr/cookie-policy)]
+     (t :tr/and)
      [:a.gray-link {:target "_blank"
-                    :href   "https://www.iubenda.com/privacy-policy/7930385"} (tr :tr/privacy-policy)] "."]))
+                    :href   "https://www.iubenda.com/privacy-policy/7930385"} (t :tr/privacy-policy)] "."]))
 
 (ui/defview account:continue-with [{:keys [route]}]
   (ui/with-form [!account {:account/email    (?email :init "")
@@ -93,12 +93,12 @@
                       [field.ui/text-field ?password {:id "account-password"}])
                     (str (forms/visible-messages !account))
                     [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
-                     (tr :tr/continue-with-email)]]
+                     (t :tr/continue-with-email)]]
 
                    [:div.relative
                     [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
                     [:div.relative.flex.justify-center.text-xs.uppercase
-                     [:span.bg-secondary.px-2.text-muted-txt (tr :tr/or)]]]
+                     [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
                    [account:sign-in-with-google]
                    [account:sign-in-terms]])))
 
@@ -111,7 +111,7 @@
      [header/lang "absolute top-0 right-0 p-4"]
      [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
       {:class ["bg-secondary rounded-lg border border-txt/05"]}
-      [:h1.text-3xl.font-medium.text-center (tr :tr/welcome)]
+      [:h1.text-3xl.font-medium.text-center (t :tr/welcome)]
       [radix/tab-root]
       [account:continue-with params]]]))
 
@@ -140,22 +140,22 @@
             [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-2.md:gap-8.-mx-2
              (when (seq project)
                [section
-                [title (tr :tr/projects)]
+                [title (t :tr/projects)]
                 (limit (map entity.ui/row project))])
              (when (seq board)
                [section
-                [title (tr :tr/boards)]
+                [title (t :tr/boards)]
                 (limit (map entity.ui/row board))])
              (when (seq org)
                [section
-                [title (tr :tr/orgs)]
+                [title (t :tr/orgs)]
                 (limit (map entity.ui/row org))])])])
        [:div.p-body
         (when (empty? (:board entities))
           [ui/hero
            (ui/show-markdown
-             (tr :tr/start-board-new))
+             (t :tr/start-board-new))
            [:a.btn.btn-primary.btn-base {:class "mt-6"
                                          :href  (routes/path-for ['sb.app.board-data/new])}
-            (tr :tr/create-first-board)]])]])
+            (t :tr/create-first-board)]])]])
     (ui/redirect `sign-in)))

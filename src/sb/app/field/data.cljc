@@ -4,7 +4,7 @@
             [re-db.api :as db]
             [sb.app.views.ui :as ui]
             [sb.authorize :as az]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -111,15 +111,15 @@
                  :field/type])
 
 (def field-types {:field.type/prose      {:icon  icons/text
-                                          :label (tr :tr/text)}
+                                          :label (t :tr/text)}
                   :field.type/select     {:icon  icons/dropdown-menu
-                                          :label (tr :tr/menu)}
+                                          :label (t :tr/menu)}
                   :field.type/video      {:icon  icons/video
-                                          :label (tr :tr/video)}
+                                          :label (t :tr/video)}
                   :field.type/link-list  {:icon  icons/link-2
-                                          :label (tr :tr/links)}
+                                          :label (t :tr/links)}
                   :field.type/image-list {:icon  icons/photo
-                                          :label (tr :tr/image)}
+                                          :label (t :tr/image)}
                   })
 
 (defn blank? [color]

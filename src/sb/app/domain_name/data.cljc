@@ -3,7 +3,7 @@
             [inside-out.forms :as forms]
             [re-db.api :as db]
             [sb.authorize :as az]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]))
 
@@ -51,8 +51,8 @@
 (defn domain-valid-string [v _]
   (when-let [v (unqualify-domain (:domain-name/name v))]
     (when (< (count v) 3)
-      (tr :tr/too-short))
+      (t :tr/too-short))
     (when-not (re-matches #"^[a-z0-9-]+$" v)
       (forms/message :invalid
-                     (tr :tr/invalid-domain)
+                     (t :tr/invalid-domain)
                      {:visibility :always}))))

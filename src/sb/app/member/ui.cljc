@@ -1,7 +1,7 @@
 (ns sb.app.member.ui
   (:require [sb.app.asset.ui :as asset.ui]
             [sb.app.member.data :as data]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.app.views.ui :as ui]))
 
 (ui/defview show
@@ -19,7 +19,7 @@
      ;; avatar
      ;; fields
      (when-let [tags (seq (concat tags ad-hoc-tags))]
-       [:section [:h3 (tr :tr/tags)]
+       [:section [:h3 (t :tr/tags)]
         (into [:ul]
               (map (fn [{:tag/keys [label background-color]}]
                      [:li {:style (when background-color {:background-color background-color})} label]))

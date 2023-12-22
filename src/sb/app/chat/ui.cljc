@@ -7,7 +7,7 @@
             [sb.app.member.data :as member.data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routes]
             [sb.schema :as sch]
@@ -28,7 +28,7 @@
       [:input.w-full
        {:class       search-classes
         :value       @!search-term
-        :placeholder (tr :tr/find-a-member)
+        :placeholder (t :tr/find-a-member)
         :on-change   #(reset! !search-term (j/get-in % [:target :value]))}]
       [:div.absolute.right-2.top-0.bottom-0.flex.items-center
        [icons/search "w-5 h-5 absolute right-2"]]]
@@ -64,7 +64,7 @@
        (field.ui/show-prose
          (cond-> (:chat.message/content last-message)
                  (sch/id= account-id (:entity/created-by last-message))
-                 (update :prose/string (partial str (tr :tr/you) " "))))]]]))
+                 (update :prose/string (partial str (t :tr/you) " "))))]]]))
 
 (ui/defview chats-sidebar [{:as             chat
                             :keys           [account-id]

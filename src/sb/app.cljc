@@ -15,13 +15,14 @@
             [sb.app.member.ui]
             [sb.app.notification.ui]
             [sb.app.org.ui]
+            sb.app.org.admin-ui
             [sb.app.project.ui]
             [sb.app.social-feed.ui]
             [sb.app.vote.ui]
             [org.sparkboard.slack.schema]
             [sb.transit :as t]
             [inside-out.forms :as io]
-            [sb.i18n :refer [tr]]))
+            [sb.i18n :refer [t]]))
 
 #?(:cljs
    (def client-endpoints (t/read (shadow.resource/inline "public/js/sparkboard.views.transit.json"))))
@@ -29,17 +30,18 @@
 (def global-field-meta
   {:account/email               {:view       field.ui/text-field
                                  :props      {:type        "email"
-                                              :placeholder (tr :tr/email)}
+                                              :placeholder (t :tr/email)}
                                  :validators [form.ui/email-validator]}
    :account/password            {:view       field.ui/text-field
                                  :props      {:type        "password"
-                                              :placeholder (tr :tr/password)}
+                                              :placeholder (t :tr/password)}
                                  :validators [(io/min-length 8)]}
    :entity/title                {:validators [(io/min-length 3)]}
-   :board/project-fields        {:view  field.admin-ui/fields-editor}
-   :board/member-fields         {:view  field.admin-ui/fields-editor}
-   :field/label                 {:view  field.ui/text-field}
-   :field/hint                  {:view  field.ui/text-field}
+   :board/project-fields        {:view field.admin-ui/fields-editor}
+   :board/member-fields         {:view field.admin-ui/fields-editor}
+   :field/label                 {:view field.ui/text-field}
+   :field/hint                  {:view field.ui/text-field}
+   :field/options               {:view field.admin-ui/options-editor}
    :entity/domain-name          {:view       domain.ui/domain-field
                                  :validators (domain.ui/validators)}
    :image/avatar                {:view field.ui/image-field}})

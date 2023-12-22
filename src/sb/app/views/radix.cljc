@@ -9,7 +9,7 @@
             [sb.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [re-db.reactive :as r]
             [yawn.hooks :as h]))
 
@@ -147,7 +147,7 @@
                 body
                 cancel
                 action]
-         :or   {cancel (tr :tr/cancel)}} (h/use-deref !alert)]
+         :or   {cancel (t :tr/cancel)}} (h/use-deref !alert)]
     [:el alert/Root (v/props (merge @!alert
                                     {:on-open-change #(reset! !alert nil)}
                                     {:open (some? props)}))
@@ -169,7 +169,7 @@
                              confirm-fn]}]
   (reset! !alert {:body   [:div.text-center.flex-v.gap-3
                            message]
-                  :cancel [:div.btn.hover:bg-gray-100 (tr :tr/cancel)]
+                  :cancel [:div.btn.hover:bg-gray-100 (t :tr/cancel)]
                   :action [:div.btn.destruct
                            {:on-click (fn []
                                         (confirm-fn)

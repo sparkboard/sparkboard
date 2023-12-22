@@ -2,16 +2,16 @@
   (:require [inside-out.forms :as forms]
             [re-db.api :as db]
             [sb.app.board.data :as board.data]
+            [sb.app.entity.ui :as entity.ui]
+            [sb.app.views.header :as header]
+            [sb.app.views.radix :as radix]
+            [sb.app.views.ui :as ui]
             [sb.authorize :as az]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
+            [sb.icons :as icons]
             [sb.query :as q]
             [sb.routing :as routes]
             [sb.server.datalevin :as dl]
-            [sb.app.views.ui :as ui]
-
-            [sb.app.views.header :as header]
-            [sb.icons :as icons]
-            [sb.app.views.radix :as radix]
             [sb.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -51,16 +51,17 @@
   [{:keys [board-id]}]
   (let [field      :div.flex-v.gap-3
         form-label :div.text-primary.text-sm.font-medium.flex.items-center
-        form-hint  :div.text-gray-500.text-sm]
+        form-hint  :div.text-gray-500.text-sm
+        board {:board-id board-id}]
     [:<>
-     [header/entity (board.data/show {:board-id board-id})]
+     [header/entity (board.data/show board) (list (entity.ui/settings-button board))]
      [:div.p-body.flex-v.gap-8
 
       [ui/show-markdown "Creating a new project is a multi-step process."]
 
       (ui/with-form [!project {:entity/title  ?title
                                :entity/parent board-id}]
-        [:form
+                    [:form
          {:ref       nil #_(ui/use-autofocus-ref)
           :on-submit (fn [e]
                        (.preventDefault e)
@@ -71,7 +72,7 @@
          [form
 
 
-          [:h3 (tr :tr/new-project)]
+          [:h3 (t :tr/new-project)]
 
 
           [field
@@ -89,7 +90,7 @@
            [ui/auto-size {:class       "form-text"
                           :placeholder "Type here..."}]]
 
-          [submit {:type "submit" :value (tr :tr/next)}]]])
+          [submit {:type "submit" :value (t :tr/next)}]]])
 
       [form
        [field

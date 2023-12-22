@@ -6,7 +6,7 @@
             [sb.app.entity.data :as entity.data]
             [sb.app.member.data :as member.data]
             [sb.authorize :as az]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.query :as q]
             [sb.routing :as routes]
             [sb.schema :as sch :refer [? s-]]

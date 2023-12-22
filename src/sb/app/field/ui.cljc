@@ -60,12 +60,12 @@
   (let [messages (forms/visible-messages ?field)
         loading? (:loading? ?field)
         props    (-> (v/merge-props (form.ui/?field-props ?field
-                                                          (j/get-in [:target :checked])
+                                                          (comp boolean (j/get-in [:target :checked]))
                                                           props)
                                     {:type      "checkbox"
                                      :on-blur   (forms/blur-handler ?field)
                                      :on-focus  (forms/focus-handler ?field)
-                                     :on-change #(let [value (.. ^js % -target -checked)]
+                                     :on-change #(let [value (boolean (.. ^js % -target -checked))]
                                                    (form.ui/maybe-save-field ?field props value))
                                      :class     [(when loading? "invisible")
                                                  (if (:invalid (forms/types messages))
@@ -234,11 +234,8 @@
     [:input.default-ring.default-ring-hover.rounded
      (-> (v/merge-props
            (form.ui/pass-props props)
-           (form.ui/?field-props ?field get-value props)
-           {:on-blur (fn [e]
-                       (reset! ?field (get-value e))
-                       (form.ui/maybe-save-field ?field props (get-value e)))
-            :type    "color"})
+           (form.ui/?field-props ?field get-value (merge props {:save-on-change? true}))
+           {:type "color"})
          (update :value #(or % "#ffffff")))]))
 
 (ui/defview image-field [?field props]

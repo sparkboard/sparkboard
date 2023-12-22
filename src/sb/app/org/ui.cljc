@@ -9,7 +9,7 @@
             [sb.app.org.data :as data]
             [sb.app.views.header :as header]
             [sb.app.views.ui :as ui]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.routing :as routes]
             [sb.util :as u]
             [yawn.hooks :as h]
@@ -36,7 +36,7 @@
                                 :q     q}))))))
         [q])
       [:div
-       (header/entity org)
+       (header/entity org (list (entity.ui/settings-button org)))
        [:div.p-body (field.ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch
@@ -44,34 +44,19 @@
          [:a.btn.btn-white.flex.items-center.px-3
           {:href (routes/path-for ['sb.app.board-data/new
                                    {:query-params {:org-id (:entity/id org)}}])}
-          (tr :tr/new-board)]]
+          (t :tr/new-board)]]
         [ui/error-view result]
         (if (seq q)
           (for [[kind results] (dissoc (:value result) :q)
                 :when (seq results)]
             [:<>
-             [title (tr (keyword "tr" (name kind)))]
+             [title (t (keyword "tr" (name kind)))]
              [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
               (map entity.ui/row results)]])
           [:div.flex-v.gap-2
-           [title (tr :tr/boards)]
+           [title (t :tr/boards)]
            [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
             (map entity.ui/row (:entity/_parent org))]])]])))
-
-(ui/defview settings
-  {:route "/o/:org-id/settings"}
-  [{:as params :keys [org-id]}]
-  (let [org (data/settings params)]
-    [:<>
-     (header/entity org)
-     [:div {:class form.ui/form-classes}
-      (entity.ui/use-persisted org :entity/title field.ui/text-field)
-      (entity.ui/use-persisted org :entity/description field.ui/prose-field)
-      (entity.ui/use-persisted org :entity/domain-name domain.ui/domain-field)
-      ;; TODO - uploading an image does not work
-      (entity.ui/use-persisted org :image/avatar field.ui/image-field {:label (tr :tr/image.logo)})
-
-      ]]))
 
 (ui/defview new
   {:route       "/new/o"
@@ -88,7 +73,7 @@
                    (ui/with-submission [result (data/new! {:org @!org})
                                         :form !org]
                                        (routes/nav! [`show {:org-id (:entity/id result)}])))}
-     [:h2.text-2xl (tr :tr/new-org)]
-     [field.ui/text-field ?title {:label (tr :tr/title)}]
+     [:h2.text-2xl (t :tr/new-org)]
+     [field.ui/text-field ?title {:label (t :tr/title)}]
      (domain.ui/domain-field ?domain nil)
-     [form.ui/submit-form !org (tr :tr/create)]]))
+     [form.ui/submit-form !org (t :tr/create)]]))

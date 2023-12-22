@@ -4,7 +4,7 @@
             [sb.app.field.data :as field.data]
             [sb.app.field.ui :as field.ui]
             [sb.app.project.data :as data]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [sb.routing :as routing]
             [sb.app.views.ui :as ui]
             [sb.icons :as icons]
@@ -26,10 +26,10 @@
                            (v/merge-props props
                                           {:id          :project-action
                                            :can-edit?   true
-                                           :placeholder [:span.text-gray-500 (tr :tr/choose-action)]
-                                           :options     [{:text  (tr :tr/copy-link)
+                                           :placeholder [:span.text-gray-500 (t :tr/choose-action)]
+                                           :options     [{:text  (t :tr/copy-link)
                                                           :value "LINK"}
-                                                         {:text  (tr :tr/start-chat)
+                                                         {:text  (t :tr/start-chat)
                                                           :value "CHAT"}]})])
           add-btn       (fn [props]
                           (v/x [:button.p-3.text-gray-500.items-center.inline-flex.btn-darken.flex-none.rounded props
@@ -45,7 +45,7 @@
                                                                                           :community-action/action action})}]]])))]
       [:section.flex-v.gap-3
        [:div
-        [:div.font-semibold.text-lg (tr :tr/community-actions)]]
+        [:div.font-semibold.text-lg (t :tr/community-actions)]]
        (when-let [actions (seq ?actions)]
          [:div.flex.flex-wrap.gap-3
           (seq (for [{:syms [?label ?action ?hint]} actions]
@@ -54,11 +54,11 @@
                    {:key @?label}
                    [:div.p-3.whitespace-nowrap @?label]]]))])
        [:div.bg-gray-100.rounded.p-3.gap-3.flex-v
-        [:div.text-base.text-gray-500 (tr :tr/community-actions-add)]
+        [:div.text-base.text-gray-500 (t :tr/community-actions-add)]
         [:div.grid.gap-3 {:style {:grid-template-columns "0fr 0fr 1fr"}}
-         (sample (str "🔗 " (tr :tr/share)) "LINK")
-         (sample (str "🤝 " (tr :tr/join-our-team)) "CHAT")
-         (sample (str "💰 " (tr :tr/invest)) "CHAT")
+         (sample (str "🔗 " (t :tr/share)) "LINK")
+         (sample (str "🤝 " (t :tr/join-our-team)) "CHAT")
+         (sample (str "💰 " (t :tr/invest)) "CHAT")
          (forms/with-form [!new-action {:community-action/label ?label :community-action/action ?action :community-action/hint ?hint}]
            (let [!label-ref (h/use-ref)]
              [:form.contents {:on-submit
@@ -72,7 +72,7 @@
                 :value       (or @?label "")
                 :on-change   (forms/change-handler ?label)
                 :style       {:min-width 150}
-                :placeholder (str (tr :tr/other) "...")}]
+                :placeholder (str (t :tr/other) "...")}]
               [action-picker {}]
               [:div.flex.gap-3
                (when @?label
@@ -80,7 +80,7 @@
                   {:value       (or @?hint "")
                    :on-change   (forms/change-handler ?hint)
                    :style       {:min-width 150}
-                   :placeholder (tr :tr/hover-text)}])
+                   :placeholder (t :tr/hover-text)}])
                [add-btn {:type "submit"}]]]))]]
 
        ])))
@@ -172,7 +172,7 @@
                                 :entity/title   ?title}]
       [:<>
        [:h3.flex.items-center.border-b.h-14
-        [:div.px-body.flex-auto (tr :tr/new-project)] modal-close]
+        [:div.px-body.flex-auto (t :tr/new-project)] modal-close]
        [:div.p-body
 
         [ui/pprinted (map db/touch fields)]

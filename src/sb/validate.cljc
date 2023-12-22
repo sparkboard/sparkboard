@@ -5,7 +5,7 @@
             [malli.error :refer [humanize]]
             [malli.util :as mu]
             [sb.server.datalevin :as dl]
-            [sb.i18n :refer [tr]]
+            [sb.i18n :refer [t]]
             [re-db.api :as db]
             [sb.util :as u]))
 
@@ -44,6 +44,7 @@
   (some-> (explain schema value)
           :errors
           (->> (reduce (fn [errors {:as error :keys [path]}]
+                         (prn :error error)
                          (update errors
                                  (remove number? path)
                                  (fnil conj [])
@@ -79,7 +80,7 @@
           (if (= existing-id (:entity/id entity))
             ;; no-op, domain is already pointing at this entity
             (dissoc entity :entity/domain-name)
-            (throw (ex-info (tr :tr/domain-already-registered)
+            (throw (ex-info (t :tr/domain-already-registered)
                             (into {} existing-domain)))))))
     entity))
 

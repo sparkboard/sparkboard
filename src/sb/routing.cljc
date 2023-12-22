@@ -268,10 +268,10 @@
 
 (defn entity-route [{:as e :entity/keys [kind id]} key]
   (when e
-    [(symbol (str "sb.app." (name kind) ".ui") (name key))
+    [(symbol (str "sb.app." (name kind) "." key))
      {(keyword (str (name kind) "-id")) id}]))
 
-(defn entity-path [{:as e :entity/keys [kind id]} key]
+(defn entity-path [e key]
   (some->> (entity-route e key)
            (apply path-for)))
 

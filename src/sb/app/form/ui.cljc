@@ -4,7 +4,7 @@
             [sb.app.views.ui :as ui]
             [inside-out.forms :as io]
             [yawn.view :as v]
-            [sb.i18n :refer [tr tr*]]
+            [sb.i18n :refer [t tr*]]
             [sb.util :as u]
             [sb.icons :as icons]
             [sb.color :as color]))
@@ -19,8 +19,9 @@
 (defn maybe-save-field [?field props value]
   (when-let [on-save (and (not= value (:persisted-value props))
                           (:on-save props))]
+    (reset! ?field value)
     (io/try-submit+ ?field
-      (on-save value))))
+      (on-save))))
 
 (defn pass-props [props] (dissoc props
                                  :multi-line :postfix :wrapper-class
@@ -42,10 +43,10 @@
                     {:as   props
                      :keys [wrap
                             unwrap
-                            on-save
                             on-change-value
                             on-change
-                            persisted-value]
+                            persisted-value
+                            save-on-change?]
                      :or   {wrap identity unwrap identity}}]
   (cond-> {:id        (field-id ?field)
            :value     (unwrap @?field)
@@ -55,9 +56,11 @@
                           (when on-change-value
                             (pass-props (on-change-value new-value)))
                           (when on-change
-                            (on-change e))))
+                            (on-change e))
+                          (when save-on-change?
+                            (maybe-save-field ?field props new-value))))
            :on-blur   (fn [e]
-                        (maybe-save-field ?field props @?field)
+                        (maybe-save-field ?field props (get-value e))
                         ((io/blur-handler ?field) e))
            :on-focus  (io/focus-handler ?field)}
           persisted-value
@@ -66,7 +69,7 @@
 (def email-validator (fn [v _]
                        (when v
                          (when-not (re-find #"^[^@]+@[^@]+$" v)
-                           (tr :tr/invalid-email)))))
+                           (t :tr/invalid-email)))))
 
 (def form-classes "flex-v gap-4 p-6 max-w-lg mx-auto bg-back relative text-sm")
 
