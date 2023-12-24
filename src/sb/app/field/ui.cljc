@@ -5,6 +5,7 @@
             [inside-out.forms :as forms]
             [sb.app.asset.data :as asset.data]
             [sb.app.asset.ui :as asset.ui]
+            [sb.app.entity.data :as entity.data]
             [sb.app.field.data :as data]
             [sb.app.form.ui :as form.ui]
             [sb.app.views.radix :as radix]
@@ -90,7 +91,7 @@
 (defn show-postfix [?field props]
   (when-let [postfix (or (:postfix props)
                          (:postfix (meta ?field))
-                         (and (some-> (:persisted-value props)
+                         (and (some-> (entity.data/persisted-value ?field)
                                       (not= (:value props)))
                               [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
     [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix]))
@@ -105,13 +106,12 @@
                 wrap
                 unwrap
                 wrapper-class
-                on-save
-                persisted-value]
+                on-save]
          :or   {wrap   identity
                 unwrap identity}} (merge props (:props (meta ?field)))
         blur!   (fn [e] (j/call-in e [:target :blur]))
         cancel! (fn [e]
-                  (reset! ?field persisted-value)
+                  (reset! ?field (entity.data/persisted-value ?field))
                   (blur! e))
         props   (v/merge-props props
                                (form.ui/?field-props ?field
@@ -233,9 +233,9 @@
   (let [get-value (j/get-in [:target :value])]
     [:input.default-ring.default-ring-hover.rounded
      (-> (v/merge-props
-           (form.ui/pass-props props)
            (form.ui/?field-props ?field get-value (merge props {:save-on-change? true}))
            {:type "color"})
+         (form.ui/pass-props )
          (update :value #(or % "#ffffff")))]))
 
 (ui/defview image-field [?field props]
@@ -306,7 +306,8 @@
   {:key (comp :entity/id :field)}
   [{:keys [parent field entry can-edit?]}]
   (let [value  (data/entry-value field entry)
-        ?field (h/use-memo #(forms/field :init (data/entry-value field entry) :label (:field/label field)))
+        ?field (h/use-memo #(forms/field :init (data/entry-value field entry) :label (:field/label field))
+                           [(str value)])
         props  {:label     (:label field)
                 :can-edit? can-edit?
                 :on-save   (partial data/save-entry! nil (:entity/id parent) (:entity/id field))}]
@@ -315,7 +316,6 @@
       :field.type/select [select-field ?field (merge props
                                                      {:wrap            (fn [x] {:select/value x})
                                                       :unwrap          :select/value
-                                                      :persisted-value value
                                                       :options         (:field/options field)})]
       :field.type/link-list [ui/pprinted value props]
       :field.type/image-list [images-field ?field props]

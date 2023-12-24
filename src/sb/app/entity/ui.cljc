@@ -33,11 +33,7 @@
                                                                          (take-while identity)
                                                                          (map :sym))})))
 
-(defn persisted-value [?field]
-  (if-let [{:keys [entity attribute wrap]} (:field/persistence ?field)]
-    (wrap (get entity attribute))
-    (:init ?field)
-    #_(throw-no-persistence! ?field)))
+(def persisted-value data/persisted-value)
 
 (defn save-field [?field & {:as props}]
   (if-let [{:keys [entity attribute wrap]} (io/closest ?field :field/persistence)]
@@ -56,7 +52,7 @@
                                                                                                          :attribute (:attribute ?field)})))
         {:keys [entity attribute]} ?field]
     [view ?field (merge (:props ?field)
-                        {:persisted-value (get entity attribute)
+                        {:persisted-value (persisted-value ?field)
                          :on-save         (partial save-field ?field props)}
                         (dissoc props :view))]))
 
@@ -68,7 +64,7 @@
   (when-some [init (:init m)] (reset! ?field init))
   ?field)
 
-(defn use-persisted-field [e a & {:as props}]
+(defn use-persisted-attr [e a & {:as props}]
   #?(:cljs
      (let [persisted-value (get e a)
            make-field (or (:make-field props)

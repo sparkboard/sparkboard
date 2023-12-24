@@ -1,13 +1,14 @@
 (ns sb.app.form.ui
   (:require [applied-science.js-interop :as j]
-            [inside-out.forms :as forms]
-            [sb.app.views.ui :as ui]
+            [inside-out.forms]
             [inside-out.forms :as io]
-            [yawn.view :as v]
-            [sb.i18n :refer [t tr*]]
-            [sb.util :as u]
+            [sb.app.entity.data :as entity.data]
+            [sb.app.views.ui :as ui]
+            [sb.color :as color]
+            [sb.i18n :refer [t]]
             [sb.icons :as icons]
-            [sb.color :as color]))
+            [sb.util :as u]
+            [yawn.view :as v]))
 
 
 (defn field-id [?field]
@@ -17,8 +18,8 @@
      (str "field-" (:sym ?field))))
 
 (defn maybe-save-field [?field props value]
-  (if-let [on-save (and (not= value (:persisted-value props))
-                          (:on-save props))]
+  (if-let [on-save (and (not= value (entity.data/persisted-value ?field))
+                        (:on-save props))]
     (do
       (prn :saving value)
       (reset! ?field value)
@@ -28,7 +29,7 @@
 
 (defn pass-props [props] (dissoc props
                                  :multi-line :postfix :wrapper-class
-                                 :persisted-value :on-save :on-change-value
+                                 :on-save :on-change-value
                                  :wrap :unwrap
                                  :inline?
                                  :can-edit?
@@ -48,26 +49,23 @@
                             unwrap
                             on-change-value
                             on-change
-                            persisted-value
                             save-on-change?]
                      :or   {wrap identity unwrap identity}}]
-  (cond-> {:id        (field-id ?field)
-           :value     (unwrap @?field)
-           :on-change (fn [e]
-                        (let [new-value (wrap (get-value e))]
-                          (reset! ?field new-value)
-                          (when on-change-value
-                            (pass-props (on-change-value new-value)))
-                          (when on-change
-                            (on-change e))
-                          (when save-on-change?
-                            (maybe-save-field ?field props new-value))))
-           :on-blur   (fn [e]
-                        (maybe-save-field ?field props (wrap (get-value e)))
-                        ((io/blur-handler ?field) e))
-           :on-focus  (io/focus-handler ?field)}
-          persisted-value
-          (assoc :persisted-value (unwrap persisted-value))))
+  {:id              (field-id ?field)
+   :value           (unwrap @?field)
+   :on-change       (fn [e]
+                      (let [new-value (wrap (get-value e))]
+                        (reset! ?field new-value)
+                        (when on-change-value
+                          (pass-props (on-change-value new-value)))
+                        (when on-change
+                          (on-change e))
+                        (when save-on-change?
+                          (maybe-save-field ?field props new-value))))
+   :on-blur         (fn [e]
+                      (maybe-save-field ?field props (wrap (get-value e)))
+                      ((io/blur-handler ?field) e))
+   :on-focus        (io/focus-handler ?field)})
 
 (def email-validator (fn [v _]
                        (when v

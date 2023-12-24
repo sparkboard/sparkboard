@@ -116,7 +116,11 @@
                                                   :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
       [field.ui/color-field ?color {:on-save on-save
-                                    :style   {:top -10 :left -10 :width 100 :height 100 :position "absolute"}}]]
+                                    :style {:top -10
+                                            :left -10
+                                            :width 100
+                                            :height 100
+                                            :position "absolute"}}]]
      [radix/dropdown-menu {:id       :field-option
                            :trigger  [:button.p-1.relative.icon-gray.cursor-default
                                       [icons/ellipsis-horizontal "w-4 h-4"]]
@@ -129,15 +133,13 @@
                                                                                                  (radix/close-alert!)))}))}
                                        (t :tr/remove)]]}]]))
 
-(ui/defview options-editor [?options {:keys [on-save
-                                             persisted-value]}]
+(ui/defview options-editor [?options {:keys [on-save]}]
   [:div.col-span-2.flex-v.gap-3
    [:label.field-label (t :tr/options)]
    (when (:loading? ?options)
      [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
    (into [:div.flex-v]
-         (map #(show-option % {:on-save         on-save
-                               :persisted-value (entity.ui/persisted-value %)}) ?options))
+         (map #(show-option % {:on-save on-save}) ?options))
 
    (let [?new (h/use-memo #(io/field :init ""))]
      [:form.flex.gap-2 {:on-submit (fn [^js e]
@@ -193,8 +195,7 @@
   {:key (fn [{:syms [?id]} _] @?id)}
   [?field {:keys [expanded?
                   toggle-expand!
-                  on-save
-                  persisted-value]}]
+                  on-save]}]
   (let [{:syms [?type ?label]} ?field
         {:keys [icon]} (data/field-types @?type)
         {:keys [drag-handle-props
@@ -223,8 +224,7 @@
       [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
        [icons/chevron-down:mini (str "w-4" (when expanded? " rotate-180"))]]]
      (when expanded?
-       (field-row-detail ?field {:on-save         on-save
-                                 :persisted-value persisted-value}))]))
+       (field-row-detail ?field {:on-save on-save}))]))
 
 (ui/defview fields-editor [{:as ?fields :keys [label]} props]
   (let [!new-field     (h/use-state nil)
@@ -251,11 +251,10 @@
       (->> ?fields
            (map (fn [{:as ?field :syms [?id]}]
                   (field-row ?field
-                             (merge {:expanded?       (= expanded @?id)
-                                     :toggle-expand!  #(expand! (fn [old]
-                                                                  (u/guard @?id (partial not= old))))
-                                     :on-save         on-save
-                                     :persisted-value (:init ?field)}))))
+                             (merge {:expanded?      (= expanded @?id)
+                                     :toggle-expand! #(expand! (fn [old]
+                                                                 (u/guard @?id (partial not= old))))
+                                     :on-save        on-save}))))
            doall)]
      (when-let [{:as   ?new-field
                  :syms [?type ?label]} @!new-field]

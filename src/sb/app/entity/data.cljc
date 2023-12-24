@@ -106,6 +106,12 @@
 
     {:txs txs}))
 
+(defn persisted-value [?field]
+  (if-let [{:keys [entity attribute wrap]} (:field/persistence ?field)]
+    (wrap (get entity attribute))
+    (:init ?field)
+    #_(throw-no-persistence! ?field)))
+
 (q/defx save-attribute!
   {:prepare [az/with-account-id!]}
   [ctx e a v]

@@ -12,10 +12,10 @@
     [:<>
      (header/entity org (list (entity.ui/settings-button org)))
      [:div {:class form.ui/form-classes}
-      (entity.ui/use-persisted-field org :entity/title )
-      (entity.ui/use-persisted-field org :entity/description)
-      (entity.ui/use-persisted-field org :entity/domain-name)
+      (entity.ui/use-persisted-attr org :entity/title)
+      (entity.ui/use-persisted-attr org :entity/description)
+      (entity.ui/use-persisted-attr org :entity/domain-name)
       ;; TODO - uploading an image does not work
-      (entity.ui/use-persisted-field org :image/avatar)
+      (entity.ui/use-persisted-attr org :image/avatar)
 
       ]]))

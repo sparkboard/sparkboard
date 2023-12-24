@@ -1,7 +1,7 @@
 (ns sb.app.board.admin-ui
   (:require [inside-out.forms :as io]
             [sb.app.board.data :as data]
-            [sb.app.entity.ui :as entity.ui :refer [use-persisted-field view-field]]
+            [sb.app.entity.ui :as entity.ui :refer [use-persisted-attr view-field]]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -27,24 +27,24 @@
       [:div.field-label (t :tr/basic-settings)]
       [:div.flex-v.gap-4
 
-       (use-persisted-field board :entity/title)
-       (use-persisted-field board :entity/description)
-       (use-persisted-field board :entity/domain-name)
-       (use-persisted-field board :image/avatar {:label (t :tr/image.logo)})]
+       (use-persisted-attr board :entity/title)
+       (use-persisted-attr board :entity/description)
+       (use-persisted-attr board :entity/domain-name)
+       (use-persisted-attr board :image/avatar {:label (t :tr/image.logo)})]
 
 
       [:div.field-label (t :tr/projects-and-members)]
       [:div.flex-v.gap-4
-       (use-persisted-field board :board/member-fields #_{:wrap u/prune})
-       (use-persisted-field board :board/project-fields #_{:wrap u/prune})]
+       (use-persisted-attr board :board/member-fields #_{:wrap u/prune})
+       (use-persisted-attr board :board/project-fields #_{:wrap u/prune})]
 
 
       [:div.field-label (t :tr/registration)]
       [:div.flex-v.gap-4
-       (use-persisted-field board :board/registration-open?)
-       (use-persisted-field board :board/registration-url-override)
-       (use-persisted-field board :board/registration-page-message)
-       (use-persisted-field board :board/invite-email-text)]]
+       (use-persisted-attr board :board/registration-open?)
+       (use-persisted-attr board :board/registration-url-override)
+       (use-persisted-attr board :board/registration-page-message)
+       (use-persisted-attr board :board/invite-email-text)]]
 
 
 
