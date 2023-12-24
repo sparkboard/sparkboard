@@ -1,7 +1,5 @@
 (ns sb.app.field.admin-ui
-  (:require [clojure.pprint :refer [pprint]]
-            [applied-science.js-interop :as j]
-            [clojure.set :as set]
+  (:require [applied-science.js-interop :as j]
             [clojure.string :as str]
             [inside-out.forms :as io]
             [promesa.core :as p]
@@ -140,6 +138,7 @@
    (into [:div.flex-v]
          (map #(show-option % {:on-save         on-save
                                :persisted-value (entity.ui/persisted-value %)}) ?options))
+
    (let [?new (h/use-memo #(io/field :init ""))]
      [:form.flex.gap-2 {:on-submit (fn [^js e]
                                      (.preventDefault e)
@@ -166,14 +165,13 @@
     [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
      [:div.col-span-2.flex-v.gap-3
-      (view-field ?label {:class      "bg-white text-sm"
-                          :multi-line true})
-      (view-field ?hint {:class       "bg-white text-sm"
-                         :multi-line  true
+      (view-field ?label {:multi-line true})
+      (view-field ?hint {:multi-line  true
                          :placeholder "Further instructions"})]
 
      (when (= :field.type/select @?type)
-       (view-field ?options))
+       [:div.col-span-2.text-sm
+        (view-field ?options)])
 
      [:div.contents.labels-normal
       (view-field ?required?)
@@ -181,13 +179,15 @@
       (when (= :board/member-fields (:attribute (io/parent ?field)))
         (view-field ?show-at-registration?))
       (view-field ?show-on-card?)
-      [:a.text-gray-500.hover:underline.cursor-pointer.flex.gap-2
-       {:on-click #(radix/simple-alert! {:message      "Are you sure you want to remove this?"
-                                         :confirm-text (t :tr/remove)
-                                         :confirm-fn   (fn []
-                                                         (io/remove-many! ?field)
-                                                         ((:on-save props)))})}
-       (t :tr/remove)]]]))
+      [:div
+       [:a.p-1.text-sm.cursor-pointer.inline-flex.gap-2.rounded.hover:bg-gray-200
+        {:on-click #(radix/simple-alert! {:message      "Are you sure you want to remove this?"
+                                          :confirm-text (t :tr/remove)
+                                          :confirm-fn   (fn []
+                                                          (io/remove-many! ?field)
+                                                          ((:on-save props)))})}
+        [icons/trash "text-destructive -ml-1"]
+        (t :tr/remove)]]]]))
 
 (ui/defview field-row
   {:key (fn [{:syms [?id]} _] @?id)}
@@ -226,10 +226,11 @@
        (field-row-detail ?field {:on-save         on-save
                                  :persisted-value persisted-value}))]))
 
-(ui/defview fields-editor [{:as ?fields :keys [label]} {:keys [on-save persisted-value]}]
+(ui/defview fields-editor [{:as ?fields :keys [label]} props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
-        [expanded expand!] (h/use-state nil)]
+        [expanded expand!] (h/use-state nil)
+        on-save        #(do (prn :will-save @?fields) (entity.ui/save-field ?fields props))]
     [:div.field-wrapper {:class "labels-semibold"}
      [:label.field-label {:class "flex items-center"}
       label

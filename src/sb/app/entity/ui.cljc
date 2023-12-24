@@ -1,70 +1,90 @@
 (ns sb.app.entity.ui
   (:require [clojure.string :as str]
             [inside-out.forms :as io]
+            [re-db.api :as db]
             [sb.app.asset.ui :as asset.ui]
+            [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as data]
             [sb.app.field.ui :as field.ui]
-            [sb.routing :as routing]
             [sb.app.views.ui :as ui]
             [sb.icons :as icons]
+            [sb.routing :as routing]
+            [sb.schema :as sch]
             [sb.validate :as validate]
             [yawn.hooks :as h]
-            [yawn.view :as v]
-            [sb.schema :as sch]
-            [re-db.api :as db]
-            [sb.util :as u]))
+            [yawn.view :as v]))
 
 (defn infer-view [attribute]
   (when attribute
-    (let [{:keys [malli/schema]} (get @sch/!schema attribute)]
-      (case schema
-        :string field.ui/text-field
-        :http/url field.ui/text-field
-        :boolean field.ui/checkbox-field
-        :prose/as-map field.ui/prose-field
-        (cond (str/ends-with? (name attribute) "?") field.ui/checkbox-field)))))
+    (case attribute
+      :entity/domain-name domain.ui/domain-field
+      :image/avatar field.ui/image-field
+      (let [{:keys [malli/schema]} (get @sch/!schema attribute)]
+        (case schema
+          :string field.ui/text-field
+          :http/url field.ui/text-field
+          :boolean field.ui/checkbox-field
+          :prose/as-map field.ui/prose-field
+          [:sequential :field/as-map] @(resolve 'sb.app.field.admin-ui/fields-editor)
+          (cond (str/ends-with? (name attribute) "?") field.ui/checkbox-field))))))
 
-
-(defn field-path [?field]
-  (->> ?field
-       (iterate io/parent)
-       (take-while identity)
-       (keep #(or (:attribute %) (:entity/id %)))
-       reverse))
+(defn throw-no-persistence! [?field]
+  (throw (ex-info (str "No persistence for " (:sym ?field)) {:where (->> (iterate io/parent ?field)
+                                                                         (take-while identity)
+                                                                         (map :sym))})))
 
 (defn persisted-value [?field]
-  (let [[e & path] (field-path ?field)]
-    (get-in (db/get e) path)))
+  (if-let [{:keys [entity attribute wrap]} (:field/persistence ?field)]
+    (wrap (get entity attribute))
+    (:init ?field)
+    #_(throw-no-persistence! ?field)))
+
+(defn save-field [?field & {:as props}]
+  (if-let [{:keys [entity attribute wrap]} (io/closest ?field :field/persistence)]
+    (io/try-submit+ ?field
+      (data/save-attribute! nil
+                            (sch/wrap-id entity)
+                            attribute
+                            (wrap @?field)))
+    (throw-no-persistence! ?field)))
 
 (defn view-field [?field & [props]]
   (let [view (or (:view props)
                  (:view ?field)
-                 (infer-view (:attribute ?field))
+                 (some-> (:attribute ?field) infer-view)
                  (throw (ex-info (str "No view declared for field: " (:sym ?field) (:attribute ?field)) {:sym       (:sym ?field)
                                                                                                          :attribute (:attribute ?field)})))
-        [e a :as path] (field-path ?field)]
-    [:div
-     [view ?field (merge (dissoc props :view)
-                         (when (and (= 2 (count path))
-                                    (uuid? (first path)))
-                           {:persisted-value (db/get e a)
-                            :on-save #(io/try-submit+ ?field
-                                        (do (prn :saving-pruned (u/prune @?field))
-                                            (data/save-attribute! nil e a (u/prune @?field))))}))]]))
+        {:keys [entity attribute]} ?field]
+    [view ?field (merge (:props ?field)
+                        {:persisted-value (get entity attribute)
+                         :on-save         (partial save-field ?field props)}
+                        (dissoc props :view))]))
 
-(defn use-persisted-attr [entity attribute & {:as props}]
+(defn add-meta! [?field m]
+  (swap! (io/!meta ?field) merge
+         (when-let [attr (:attribute m)]
+           (io/global-meta attr))
+          m)
+  (when-some [init (:init m)] (reset! ?field init))
+  ?field)
+
+(defn use-persisted-field [e a & {:as props}]
   #?(:cljs
-     (let [persisted-value (get entity attribute)
-           ?field          (h/use-memo #(io/field :init persisted-value
-                                                  :attribute attribute
-                                                  props)
-                                       ;; create a new field when the persisted value changes
-                                       (h/use-deps persisted-value))]
-       (view-field ?field (merge {:on-save (fn save-attr []
-                                             (io/try-submit+ ?field
-                                               (data/save-attribute! nil (:entity/id entity) attribute @?field)))
-                                  :persisted-value persisted-value}
-                                 props)))))
+     (let [persisted-value (get e a)
+           make-field (or (:make-field props)
+                          (:make-field (io/global-meta a))
+                          #(io/field))
+           ?field (h/use-memo #(doto (make-field)
+                                 (add-meta! {:init persisted-value
+                                             :attribute         a
+                                             :entity            e
+                                             :wrap              (:wrap props identity)
+                                             :field/persistence {:attribute a
+                                                                 :entity    e
+                                                                 :wrap      (:wrap props identity)}}))
+                              ;; create a new field when the persisted value changes
+                              (h/use-deps persisted-value))]
+       (view-field ?field props))))
 
 #?(:cljs
    (defn href [{:as e :entity/keys [kind id]} key]
@@ -91,12 +111,11 @@
                  {:style {:background-image (asset.ui/css-url (asset.ui/asset-src avatar :avatar))}})))])
    [:div.flex.items-center.px-3.leading-snug
     [:div.line-clamp-2 title]]])
-routing/entity-route
 
 (ui/defview settings-button [entity]
   (when-let [path (and (validate/editing-role? (:member/roles entity))
-                       (some->  (routing/entity-route entity 'admin-ui/settings)
-                                routing/path-for))]
+                       (some-> (routing/entity-route entity 'admin-ui/settings)
+                               routing/path-for))]
     [:a.button
      {:href path}
      [icons/gear "icon-lg"]]))
@@ -107,7 +126,7 @@ routing/entity-route
     :keys [entity/title image/avatar member/roles]}]
   [:div.flex.hover:bg-gray-100.rounded-lg
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
-    {:href (routing/entity-path entity :show)}
+    {:href (routing/entity-path entity 'ui/show)}
     [ui/avatar {:size 10} entity]
     [:div.line-clamp-2.leading-snug.flex-grow title]]])
 

@@ -17,11 +17,14 @@
      (str "field-" (:sym ?field))))
 
 (defn maybe-save-field [?field props value]
-  (when-let [on-save (and (not= value (:persisted-value props))
+  (if-let [on-save (and (not= value (:persisted-value props))
                           (:on-save props))]
-    (reset! ?field value)
-    (io/try-submit+ ?field
-      (on-save))))
+    (do
+      (prn :saving value)
+      (reset! ?field value)
+      (io/try-submit+ ?field
+        (on-save)))
+    (prn :not-saving value)))
 
 (defn pass-props [props] (dissoc props
                                  :multi-line :postfix :wrapper-class
@@ -60,7 +63,7 @@
                           (when save-on-change?
                             (maybe-save-field ?field props new-value))))
            :on-blur   (fn [e]
-                        (maybe-save-field ?field props (get-value e))
+                        (maybe-save-field ?field props (wrap (get-value e)))
                         ((io/blur-handler ?field) e))
            :on-focus  (io/focus-handler ?field)}
           persisted-value

@@ -196,15 +196,16 @@
   )
 
 (defn accordion [props & sections]
-  [:el.accordion-root accordion/Root (v/merge-props {:default-value #js["0"]
-                                                     :type          "multiple"}
-                                                    props)
-   (->> (partition 2 sections)
-        (map-indexed
-          (fn [i [trigger content]]
-            [:el.accordion-item accordion/Item {:key i
-                                                :value (str i)}
-             [:el accordion/Header
-              [:el.accordion-trigger accordion/Trigger (v/x trigger) [icons/chevron-down]]]
-             [:el.accordion-content accordion/Content
-              (v/x content)]])))])
+  #?(:cljs
+     [:el.accordion-root accordion/Root (v/merge-props {:default-value #js["0"]
+                                                        :type          "multiple"}
+                                                       props)
+      (->> (partition 2 sections)
+           (map-indexed
+             (fn [i [trigger content]]
+               [:el.accordion-item accordion/Item {:key   i
+                                                   :value (str i)}
+                [:el accordion/Header
+                 [:el.accordion-trigger accordion/Trigger (v/x trigger) [icons/chevron-down]]]
+                [:el.accordion-content accordion/Content
+                 (v/x content)]])))]))

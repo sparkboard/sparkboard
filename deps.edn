@@ -5,9 +5,9 @@
 
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.21"}
-        io.github.mhuebert/re-db {:git/sha "a01298e075889ab0ac5b9f2afe751ae5e8d20613"}
+        io.github.mhuebert/re-db {:git/sha "479a57401635f3a11ab128226976c6388b5f7f2c"}
         io.github.mhuebert/yawn {:git/sha "68285f6c132f26a2ff3cc2f7dffc3fe68c9856d9"}
-        io.github.mhuebert/inside-out {:git/sha "003ad6fbb282d5e49ccefa5a44cecae467e54183"}
+        io.github.mhuebert/inside-out {:git/sha "6f8a4f4413f344d59da2ed55ddb1a0e9090c30b7"}
 
         ;; Google Cloud
         com.google.firebase/firebase-admin {:mvn/version "6.13.0"}

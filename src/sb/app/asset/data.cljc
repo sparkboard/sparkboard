@@ -53,6 +53,7 @@
                                                 :asset.variant/provider]}
 
 
+
    :image/avatar                           (sch/ref :one :asset/as-map)
    :image/logo-large                       (sch/ref :one :asset/as-map)
    :image/footer                           (sch/ref :one :asset/as-map)
