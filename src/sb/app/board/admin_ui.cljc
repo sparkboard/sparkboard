@@ -35,8 +35,8 @@
 
       [:div.field-label (t :tr/projects-and-members)]
       [:div.flex-v.gap-4
-       (use-persisted-attr board :board/member-fields #_{:wrap u/prune})
-       (use-persisted-attr board :board/project-fields #_{:wrap u/prune})]
+       (use-persisted-attr board :board/member-fields)
+       (use-persisted-attr board :board/project-fields)]
 
 
       [:div.field-label (t :tr/registration)]

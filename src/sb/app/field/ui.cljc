@@ -2,6 +2,7 @@
   (:require [applied-science.js-interop :as j]
             [clojure.set :as set]
             [clojure.string :as str]
+            [inside-out.forms :as io]
             [inside-out.forms :as forms]
             [sb.app.asset.data :as asset.data]
             [sb.app.asset.ui :as asset.ui]
@@ -57,17 +58,17 @@
 (ui/defview checkbox-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
-  ;; TODO handle on-save
   (let [messages (forms/visible-messages ?field)
         loading? (:loading? ?field)
         props    (-> (v/merge-props (form.ui/?field-props ?field
-                                                          (comp boolean (j/get-in [:target :checked]))
-                                                          props)
+                                                          (merge {:event->value (comp boolean (j/get-in [:target :checked]))}
+                                                                 props))
                                     {:type      "checkbox"
                                      :on-blur   (forms/blur-handler ?field)
                                      :on-focus  (forms/focus-handler ?field)
                                      :on-change #(let [value (boolean (.. ^js % -target -checked))]
-                                                   (form.ui/maybe-save-field ?field props value))
+                                                   (reset! ?field value)
+                                                   (entity.data/maybe-save-field ?field))
                                      :class     [(when loading? "invisible")
                                                  (if (:invalid (forms/types messages))
                                                    "outline-invalid"
@@ -88,14 +89,6 @@
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))
 
-(defn show-postfix [?field props]
-  (when-let [postfix (or (:postfix props)
-                         (:postfix (meta ?field))
-                         (and (some-> (entity.data/persisted-value ?field)
-                                      (not= (:value props)))
-                              [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
-    [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix]))
-
 (ui/defview text-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
@@ -105,8 +98,7 @@
                 multi-paragraph
                 wrap
                 unwrap
-                wrapper-class
-                on-save]
+                wrapper-class]
          :or   {wrap   identity
                 unwrap identity}} (merge props (:props (meta ?field)))
         blur!   (fn [e] (j/call-in e [:target :blur]))
@@ -115,9 +107,10 @@
                   (blur! e))
         props   (v/merge-props props
                                (form.ui/?field-props ?field
-                                                     (j/get-in [:target :value])
-                                                     (merge {:wrap   #(when-not (str/blank? %) %)
-                                                             :unwrap #(or % "")} props))
+                                                     (merge {:event->value (j/get-in [:target :value])
+                                                             :wrap         #(when-not (str/blank? %) %)
+                                                             :unwrap       #(or % "")}
+                                                            props))
 
                                {:class       ["pr-8 rounded"
                                               (if inline?
@@ -130,9 +123,9 @@
                                 :on-key-down
                                 (ui/keydown-handler {(if multi-paragraph
                                                        :Meta-Enter
-                                                       :Enter) #(when on-save
+                                                       :Enter) #(when (io/ancestor-by ?field :field/persisted?)
                                                                   (j/call % :preventDefault)
-                                                                  (form.ui/maybe-save-field ?field props @?field))
+                                                                  (entity.data/maybe-save-field ?field))
                                                      :Escape   blur!
                                                      :Meta-.   cancel!})})]
     (v/x
@@ -143,7 +136,19 @@
         (if multi-line
           [auto-size (v/merge-props {:class "form-text w-full"} (form.ui/pass-props props))]
           [:input.form-text (form.ui/pass-props props)])
-        (show-postfix ?field props)
+
+        (when (= "Label" (form.ui/get-label nil ?field))
+          (prn (form.ui/get-label nil ?field) {:before   (entity.data/persisted-value ?field)
+                                               :after    (:value props)
+                                               :changed? (some-> (entity.data/persisted-value ?field)
+                                                                 (not= (:value props)))}))
+        (when-let [postfix (or (:postfix props)
+                               (:postfix (meta ?field))
+                               (and (some-> (entity.data/persisted-value ?field)
+                                            (not= (:value props)))
+                                    [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
+          [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
+
         (when (:loading? ?field)
           [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
        (form.ui/show-field-messages ?field)])))
@@ -217,10 +222,11 @@
 (ui/defview select-field [?field {:as props :keys [label options]}]
   [:div.field-wrapper
    (form.ui/show-label ?field label)
-   [radix/select-menu (-> (form.ui/?field-props ?field identity (assoc props
-                                                                  :on-change #(form.ui/maybe-save-field ?field props @?field)))
+   [radix/select-menu (-> (form.ui/?field-props ?field props)
                           (set/rename-keys {:on-change :on-value-change})
                           (assoc :can-edit? (:can-edit? props)
+                                 :event->value identity
+                                 :save-on-change? true
                                  :options (->> options
                                                (map (fn [{:field-option/keys [label value color]}]
                                                       {:text  label
@@ -230,13 +236,14 @@
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
 (ui/defview color-field [?field props]
-  (let [get-value (j/get-in [:target :value])]
-    [:input.default-ring.default-ring-hover.rounded
-     (-> (v/merge-props
-           (form.ui/?field-props ?field get-value (merge props {:save-on-change? true}))
-           {:type "color"})
-         (form.ui/pass-props )
-         (update :value #(or % "#ffffff")))]))
+  [:input.default-ring.default-ring-hover.rounded
+   (-> (form.ui/?field-props ?field
+                             (merge props {:event->value    (j/get-in [:target :value])
+                                           :save-on-change? true}))
+       (v/merge-props props)
+       (assoc :type "color")
+       (update :value #(or % "#ffffff"))
+       (form.ui/pass-props))])
 
 (ui/defview image-field [?field props]
   (let [src            (asset.ui/asset-src @?field :card)
@@ -250,8 +257,8 @@
                          (ui/with-submission [asset (routing/POST `asset.data/upload! (doto (js/FormData.)
                                                                                         (.append "files" file)))
                                               :form ?field]
-                                             (reset! ?field asset)
-                                             (form.ui/maybe-save-field ?field props asset)))
+                           (reset! ?field asset)
+                           (entity.data/maybe-save-field ?field)))
         !input         (h/use-ref)]
     ;; TODO handle on-save
     [:label.gap-2.flex-v.relative
@@ -304,19 +311,18 @@
 
 (ui/defview show-entry
   {:key (comp :entity/id :field)}
-  [{:keys [parent field entry can-edit?]}]
+  [{:keys [field entry can-edit?]}]
   (let [value  (data/entry-value field entry)
         ?field (h/use-memo #(forms/field :init (data/entry-value field entry) :label (:field/label field))
                            [(str value)])
         props  {:label     (:label field)
-                :can-edit? can-edit?
-                :on-save   (partial data/save-entry! nil (:entity/id parent) (:entity/id field))}]
+                :can-edit? can-edit?}]
     (case (:field/type field)
       :field.type/video [video-field ?field props]
       :field.type/select [select-field ?field (merge props
-                                                     {:wrap            (fn [x] {:select/value x})
-                                                      :unwrap          :select/value
-                                                      :options         (:field/options field)})]
+                                                     {:wrap    (fn [x] {:select/value x})
+                                                      :unwrap  :select/value
+                                                      :options (:field/options field)})]
       :field.type/link-list [ui/pprinted value props]
       :field.type/image-list [images-field ?field props]
       :field.type/prose [prose-field ?field props]

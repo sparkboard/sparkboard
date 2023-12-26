@@ -35,51 +35,36 @@
 
 (def persisted-value data/persisted-value)
 
-(defn save-field [?field & {:as props}]
-  (if-let [{:keys [entity attribute wrap]} (io/closest ?field :field/persistence)]
-    (io/try-submit+ ?field
-      (data/save-attribute! nil
-                            (sch/wrap-id entity)
-                            attribute
-                            (wrap @?field)))
-    (throw-no-persistence! ?field)))
-
 (defn view-field [?field & [props]]
   (let [view (or (:view props)
                  (:view ?field)
                  (some-> (:attribute ?field) infer-view)
                  (throw (ex-info (str "No view declared for field: " (:sym ?field) (:attribute ?field)) {:sym       (:sym ?field)
-                                                                                                         :attribute (:attribute ?field)})))
-        {:keys [entity attribute]} ?field]
+                                                                                                         :attribute (:attribute ?field)})))]
     [view ?field (merge (:props ?field)
-                        {:persisted-value (persisted-value ?field)
-                         :on-save         (partial save-field ?field props)}
                         (dissoc props :view))]))
 
 (defn add-meta! [?field m]
   (swap! (io/!meta ?field) merge
          (when-let [attr (:attribute m)]
            (io/global-meta attr))
-          m)
+         m)
   (when-some [init (:init m)] (reset! ?field init))
   ?field)
 
 (defn use-persisted-attr [e a & {:as props}]
   #?(:cljs
      (let [persisted-value (get e a)
-           make-field (or (:make-field props)
-                          (:make-field (io/global-meta a))
-                          #(io/field))
-           ?field (h/use-memo #(doto (make-field)
-                                 (add-meta! {:init persisted-value
-                                             :attribute         a
-                                             :entity            e
-                                             :wrap              (:wrap props identity)
-                                             :field/persistence {:attribute a
-                                                                 :entity    e
-                                                                 :wrap      (:wrap props identity)}}))
-                              ;; create a new field when the persisted value changes
-                              (h/use-deps persisted-value))]
+           make-field      (or (:make-field props)
+                               (:make-field (io/global-meta a))
+                               #(io/field))
+           ?field          (h/use-memo #(doto (make-field)
+                                          (add-meta! {:init              persisted-value
+                                                      :attribute         a
+                                                      :db/id             (sch/wrap-id e)
+                                                      :field/persisted?  true}))
+                                       ;; create a new field when the persisted value changes
+                                       (h/use-deps persisted-value))]
        (view-field ?field props))))
 
 #?(:cljs

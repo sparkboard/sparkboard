@@ -52,11 +52,9 @@
                           :validators [(io/min-length 8)]}
    :entity/title         {:validators [(io/min-length 3)]}
    :board/project-fields {:view       field.admin-ui/fields-editor
-                          :make-field fields-editor-field
-                          :props      {:wrap u/prune}}
+                          :make-field fields-editor-field}
    :board/member-fields  {:view       field.admin-ui/fields-editor
-                          :make-field fields-editor-field
-                          :props      {:wrap u/prune}}
+                          :make-field fields-editor-field}
    :field/label          {:view field.ui/text-field}
    :field/hint           {:view field.ui/text-field}
    :field/options        {:view field.admin-ui/options-editor}

@@ -17,19 +17,10 @@
      :clj
      (str "field-" (:sym ?field))))
 
-(defn maybe-save-field [?field props value]
-  (if-let [on-save (and (not= value (entity.data/persisted-value ?field))
-                        (:on-save props))]
-    (do
-      (prn :saving value)
-      (reset! ?field value)
-      (io/try-submit+ ?field
-        (on-save)))
-    (prn :not-saving value)))
-
 (defn pass-props [props] (dissoc props
                                  :multi-line :postfix :wrapper-class
-                                 :on-save :on-change-value
+                                 :event->value
+                                 :on-change-value
                                  :wrap :unwrap
                                  :inline?
                                  :can-edit?
@@ -43,27 +34,28 @@
     [:label.field-label {:for (field-id ?field)} label]))
 
 (defn ?field-props [?field
-                    get-value
-                    {:as   props
-                     :keys [wrap
+                    {:keys [event->value
+                            wrap
                             unwrap
                             on-change-value
                             on-change
                             save-on-change?]
-                     :or   {wrap identity unwrap identity}}]
+                     :or   {wrap identity
+                            unwrap identity}}]
   {:id              (field-id ?field)
    :value           (unwrap @?field)
    :on-change       (fn [e]
-                      (let [new-value (wrap (get-value e))]
+                      (let [new-value (wrap (event->value e))]
                         (reset! ?field new-value)
                         (when on-change-value
                           (pass-props (on-change-value new-value)))
                         (when on-change
                           (on-change e))
                         (when save-on-change?
-                          (maybe-save-field ?field props new-value))))
+                          (entity.data/maybe-save-field ?field))))
    :on-blur         (fn [e]
-                      (maybe-save-field ?field props (wrap (get-value e)))
+                      (reset! ?field (wrap (event->value e)))
+                      (entity.data/maybe-save-field ?field)
                       ((io/blur-handler ?field) e))
    :on-focus        (io/focus-handler ?field)})
 
@@ -100,11 +92,13 @@
   (let [loading? (or (:loading? ?field) (:loading? attrs))]
     [:div.flex.relative.items-stretch.flex-auto
      [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
-      (v/props (?field-props ?field (j/get-in [:target :value]) {:unwrap #(or % "")})
-               {:class       ["outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"]
-                :placeholder "Search..."
-                :on-key-down #(when (= "Escape" (.-key ^js %))
-                                (reset! ?field nil))})]
+      (-> (?field-props ?field {:event->props (j/get-in [:target :value])})
+          (v/merge-props
+            {:class       "outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"
+             :placeholder "Search..."
+             :on-key-down #(when (= "Escape" (.-key ^js %))
+                             (reset! ?field nil))})
+          (update :value #(or % "")))]
      [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
       {:class "text-txt/40"}
       (cond loading? (icons/loading "w-4 h-4 rotate-3s")

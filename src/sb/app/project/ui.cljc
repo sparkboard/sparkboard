@@ -154,8 +154,7 @@
              :let [entry (get entries (:field/id field))]
              :when (or can-edit?
                        (field.data/entry-value field entry))]
-         (field.ui/show-entry {:parent    project
-                               :can-edit? can-edit?
+         (field.ui/show-entry {:can-edit? can-edit?
                                :field     field
                                :entry     entry}))
        [:section.flex-v.gap-2.items-start

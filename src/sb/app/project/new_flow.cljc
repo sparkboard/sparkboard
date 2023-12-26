@@ -153,9 +153,7 @@
                  [inline-text-field editor? ?title]
                  (when-not @?complete
                    [inline-text-field editor? ?detail {:placeholder "Add details"
-                                                       :class       "text-xs text-gray-500"
-                                                       :on-save     (fn [& args]
-                                                                      (prn :save args))}])]])]
+                                                       :class       "text-xs text-gray-500"}])]])]
             (let [blank    '{?title "" ?detail ""}
                   !new     (h/use-state blank)
                   !new-ref (h/use-ref)]
@@ -203,9 +201,7 @@
                  [inline-text-field editor? ?title]
                  (when-not @?complete
                    [inline-text-field editor? ?detail {:placeholder "Add details"
-                                                       :class       "text-xs text-gray-500"
-                                                       :on-save     (fn [& args]
-                                                                      (prn :save args))}])]
+                                                       :class       "text-xs text-gray-500"}])]
                 [icons/chat-bubble-oval-left "text-gray-300 group-hover:text-gray-500 w-5 h-5"]])]
             (when editor?
               (let [blank    '{?title "" ?detail ""}

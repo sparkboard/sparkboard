@@ -4,7 +4,8 @@
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s- unique-uuid]]
-            [sb.validate :as validate]))
+            [sb.validate :as validate]
+            [inside-out.forms :as io]))
 
 (sch/register!
   (merge
@@ -46,7 +47,7 @@
                                      :asset
                                      :chat.message]}
      :entity/draft?             {:doc "Entity is not yet published - visible only to creator/team"
-                                 s- :boolean}
+                                 s-   :boolean}
      :entity/description        {:doc "Description of an entity (for card/header display)"
                                  s-   :prose/as-map
                                  #_#_:db/fulltext true}
@@ -107,8 +108,8 @@
     {:txs txs}))
 
 (defn persisted-value [?field]
-  (if-let [{:keys [entity attribute wrap]} (:field/persistence ?field)]
-    (wrap (get entity attribute))
+  (if-let [{:keys [db/id attribute]} (when (:field/persisted? ?field) ?field)]
+    (get (db/entity id) attribute)
     (:init ?field)
     #_(throw-no-persistence! ?field)))
 
@@ -116,6 +117,20 @@
   {:prepare [az/with-account-id!]}
   [ctx e a v]
   (save-attributes! ctx e {a v}))
+
+(defn save-field [?field]
+  (when-let [{:as ?persisted-field :keys [db/id attribute]} (io/ancestor-by ?field :field/persisted?)]
+    (io/try-submit+ ?persisted-field
+      (save-attribute! nil id attribute @?persisted-field))))
+
+(defn maybe-save-field
+  [?field]
+  (let [value @?field]
+    (if (and (io/closest ?field :field/persisted?)
+             (not= value (persisted-value ?field)))
+      (io/try-submit+ ?field
+        (save-field ?field))
+      (prn :not-saving value))))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))

@@ -29,16 +29,16 @@
   [:div.field-wrapper
    [form.ui/show-label ?domain]
    [:div.flex.gap-2.items-stretch
-    (field.ui/text-field ?domain (merge {:wrap          (fn [v]
+    (field.ui/text-field ?domain (merge props
+                                        {:wrap          (fn [v]
                                                           (when-not (str/blank? v)
                                                             {:domain-name/name (data/qualify-domain (data/normalize-domain v))}))
                                          :unwrap        (fn [v]
                                                           (or (some-> v :domain-name/name data/unqualify-domain) ""))
                                          :auto-complete "off"
                                          :spell-check   false
-                                         :wrapper-class "flex-auto"}
-                                        props
-                                        {:label false}))
+                                         :wrapper-class "flex-auto"
+                                         :label         false}))
     [:div.flex.items-center.text-sm.text-gray-500.h-10 ".sparkboard.com"]]])
 
 (defn validators []
