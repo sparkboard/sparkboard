@@ -29,8 +29,8 @@
    :board/sticky-color                   {:doc "Deprecate - sticky notes can pick their own colors"
                                           s-   :html/color}
    :board/member-tags                    {s- [:sequential :tag/as-map]}
-   :board/project-fields                 {s- [:sequential :field/as-map]}
-   :board/member-fields                  {s- [:sequential :field/as-map]}
+   :board/project-fields                 {s- :entity/fields}
+   :board/member-fields                  {s- :entity/fields}
    :board/invite-email-text              {:hint "Text of email sent when inviting a user to a board."
                                           s-    :string},
    :board/registration-newsletter-field? {:hint "During registration, request permission to send the user an email newsletter"

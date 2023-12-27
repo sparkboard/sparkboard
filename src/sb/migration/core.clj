@@ -21,3 +21,7 @@
         :tx-data
         count
         (str " datoms"))))
+
+(comment
+  (tx!)
+  )

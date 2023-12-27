@@ -11,6 +11,7 @@
             [yawn.util]
             [sb.i18n :refer [t]]
             [re-db.reactive :as r]
+            [sb.app.form.ui :as form.ui]
             [yawn.hooks :as h]))
 
 
@@ -79,13 +80,15 @@
      [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
      [:el sel/ItemIndicator]]))
 
-(defn select-menu [{:as     props :keys [placeholder id
-                                         can-edit?]
-                    options :options
-                    :or     {id :radix-select}}]
+(defn select-menu [{:as props :keys [id
+                                     placeholder
+                                     field/options
+                                     field/can-edit?]
+                    :or {id :radix-select}}]
   (v/x
-    [:el sel/Root (cond-> (dissoc props :trigger :placeholder :options :read-only?)
-                          (not can-edit?) (assoc :disabled true))
+    [:el sel/Root (cond-> (form.ui/pass-props (dissoc props :trigger :placeholder))
+                          (not can-edit?)
+                          (assoc :disabled true))
      [:el.btn.bg-white.flex.items-center.rounded.whitespace-nowrap.gap-1.group.default-ring.default-ring-hover.px-3 sel/Trigger
       {:class [(if can-edit?
                  "disabled:text-gray-400"

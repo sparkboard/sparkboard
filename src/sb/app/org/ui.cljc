@@ -74,6 +74,6 @@
                                         :form !org]
                                        (routes/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (t :tr/new-org)]
-     [field.ui/text-field ?title {:label (t :tr/title)}]
+     [field.ui/text-field ?title {:field/label (t :tr/title)}]
      (domain.ui/domain-field ?domain nil)
      [form.ui/submit-form !org (t :tr/create)]]))

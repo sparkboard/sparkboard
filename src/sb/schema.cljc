@@ -44,11 +44,13 @@
    {:pre [(keyword? nesting-schema)]}
    (case cardinality :one (merge rs/ref
                                  rs/one
-                                 {s- (conj db-id nesting-schema)})
+                                 {s- (conj db-id nesting-schema)
+                                  :malli/ref-schema nesting-schema})
                      :many (merge rs/ref
                                   rs/many
                                   {s- [:sequential
-                                       (conj db-id nesting-schema)]}))))
+                                       (conj db-id nesting-schema)]
+                                   :malli/ref-schema nesting-schema}))))
 
 (def unique-id-str (merge rs/unique-id
                           rs/string
@@ -57,7 +59,6 @@
 (def unique-uuid (merge rs/unique-id
                         rs/uuid
                         {s- :uuid}))
-
 
 (def unique-value rs/unique-value)
 (def unique-id rs/unique-id)

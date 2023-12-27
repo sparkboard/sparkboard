@@ -44,7 +44,7 @@
                      (.preventDefault e)
                      (ui/with-submission [result (data/new! {:board @!board})
                                           :form !board]
-                                         (routing/nav! `show {:board-id (:entity/id result)})))
+                       (routing/nav! `show {:board-id (:entity/id result)})))
         :ref       (ui/use-autofocus-ref)}
        [:h2.text-2xl (t :tr/new-board)]
 
@@ -53,14 +53,14 @@
           [:label.field-label {} (t :tr/owner)]
           (radix/select-menu {:value           @?owner
                               :on-value-change (partial reset! ?owner)
-                              :options
+                              :field/options
                               (->> owners
                                    (map (fn [{:keys [entity/id entity/title image/avatar]}]
                                           {:value (str id)
                                            :text  title
                                            :icon  [:img.w-5.h-5.rounded-sm {:src (asset.ui/asset-src avatar :avatar)}]})))})])
 
-       [field.ui/text-field ?title {:label (t :tr/title)}]
+       [field.ui/text-field ?title {:field/label (t :tr/title)}]
        (domain.ui/domain-field ?domain nil)
        [form.ui/submit-form !board (t :tr/create)]])))
 

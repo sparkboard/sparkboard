@@ -21,30 +21,32 @@
 
     [:<>
      (header/entity board (list (entity.ui/settings-button board)))
+
      [radix/accordion {:class    "max-w-[600px] mx-auto my-6 flex-v gap-6"
-                       :multiple true}
+                         :multiple true}
 
-      [:div.field-label (t :tr/basic-settings)]
-      [:div.flex-v.gap-4
+        [:div.field-label (t :tr/basic-settings)]
+        [:div.flex-v.gap-4
 
-       (use-persisted-attr board :entity/title)
-       (use-persisted-attr board :entity/description)
-       (use-persisted-attr board :entity/domain-name)
-       (use-persisted-attr board :image/avatar {:label (t :tr/image.logo)})]
-
-
-      [:div.field-label (t :tr/projects-and-members)]
-      [:div.flex-v.gap-4
-       (use-persisted-attr board :board/member-fields)
-       (use-persisted-attr board :board/project-fields)]
+         (use-persisted-attr board :entity/title)
+         (use-persisted-attr board :entity/description)
+         (use-persisted-attr board :entity/domain-name)
+         (use-persisted-attr board :image/avatar {:field/label (t :tr/image.logo)})]
 
 
-      [:div.field-label (t :tr/registration)]
-      [:div.flex-v.gap-4
-       (use-persisted-attr board :board/registration-open?)
-       (use-persisted-attr board :board/registration-url-override)
-       (use-persisted-attr board :board/registration-page-message)
-       (use-persisted-attr board :board/invite-email-text)]]
+        [:div.field-label (t :tr/projects-and-members)]
+        [:div.flex-v.gap-4
+         (use-persisted-attr board :board/member-fields)
+         (use-persisted-attr board :board/project-fields)]
+
+
+        [:div.field-label (t :tr/registration)]
+        [:div.flex-v.gap-4
+         (use-persisted-attr board :board/registration-open?)
+         (use-persisted-attr board :board/registration-url-override)
+         (use-persisted-attr board :board/registration-page-message)
+         (use-persisted-attr board :board/invite-email-text)]
+        ]
 
 
 

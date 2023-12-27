@@ -110,16 +110,16 @@
                  :field/show-on-card?
                  :field/type])
 
-(def field-types {:field.type/prose      {:icon  icons/text
-                                          :label (t :tr/text)}
-                  :field.type/select     {:icon  icons/dropdown-menu
-                                          :label (t :tr/menu)}
-                  :field.type/video      {:icon  icons/video
-                                          :label (t :tr/video)}
-                  :field.type/link-list  {:icon  icons/link-2
-                                          :label (t :tr/links)}
-                  :field.type/image-list {:icon  icons/photo
-                                          :label (t :tr/image)}
+(def field-types {:field.type/prose      {:icon        icons/text
+                                          :field/label (t :tr/text)}
+                  :field.type/select     {:icon        icons/dropdown-menu
+                                          :field/label (t :tr/menu)}
+                  :field.type/video      {:icon        icons/video
+                                          :field/label (t :tr/video)}
+                  :field.type/link-list  {:icon        icons/link-2
+                                          :field/label (t :tr/links)}
+                  :field.type/image-list {:icon        icons/photo
+                                          :field/label (t :tr/image)}
                   })
 
 (defn blank? [color]
@@ -220,27 +220,27 @@
                                                    vec)]])
     {}))
 
-(defmulti entry-value (fn [field entry] (:field/type field)))
+(defmulti entry-value (comp :field/type :field-entry/field))
 
-(defmethod entry-value nil [_ _] nil)
+(defmethod entry-value nil [_] nil)
 
-(defmethod entry-value :field.type/image-list [_field entry]
+(defmethod entry-value :field.type/image-list [entry]
   (when-let [images (u/guard (:image-list/images entry) seq)]
     {:image-list/images images}))
 
-(defmethod entry-value :field.type/video [_field entry]
+(defmethod entry-value :field.type/video [entry]
   (when-let [value (u/guard (:video/url entry) (complement str/blank?))]
     {:video/url value}))
 
-(defmethod entry-value :field.type/select [_field entry]
+(defmethod entry-value :field.type/select [entry]
   (when-let [value (u/guard (:select/value entry) (complement str/blank?))]
     {:select/value value}))
 
-(defmethod entry-value :field.type/link-list [_field entry]
+(defmethod entry-value :field.type/link-list [entry]
   (when-let [value (u/guard (:link-list/links entry) seq)]
     {:link-list/links value}))
 
-(defmethod entry-value :field.type/prose [_field entry]
+(defmethod entry-value :field.type/prose [entry]
   (when-let [value (u/guard (:prose/string entry) (complement str/blank?))]
     {:prose/string value
      :prose/format (:prose/format entry)}))

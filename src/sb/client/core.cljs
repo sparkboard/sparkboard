@@ -65,10 +65,10 @@
         (cond-> (k field-meta)
                 validator
                 (update :validators conj validator))))
-  (forms/set-global-meta! (fn [k]
-                            (when k
-                              (merge {:label (sb.i18n/tr* (keyword "tr" (name k)))}
-                                     (app/global-field-meta k)))))
+  (forms/set-global-meta! (fn [a]
+                            (merge (some-> (get @sch/!schema a) (#(or (:malli/ref-schema %)
+                                                                      (:malli/schema %))) (app/global-field-meta))
+                                   (app/global-field-meta a))))
   )
 
 (defn ^:dev/after-load init-endpoints! []

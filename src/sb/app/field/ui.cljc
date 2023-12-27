@@ -14,6 +14,8 @@
             [sb.client.sanitize :as sanitize]
             [sb.icons :as icons]
             [sb.routing :as routing]
+            [sb.schema :as sch]
+            [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
@@ -61,7 +63,7 @@
   (let [messages (forms/visible-messages ?field)
         loading? (:loading? ?field)
         props    (-> (v/merge-props (form.ui/?field-props ?field
-                                                          (merge {:event->value (comp boolean (j/get-in [:target :checked]))}
+                                                          (merge {:field/event->value (comp boolean (j/get-in [:target :checked]))}
                                                                  props))
                                     {:type      "checkbox"
                                      :on-blur   (forms/blur-handler ?field)
@@ -84,7 +86,7 @@
       [:input.h-5.w-5.rounded.border-gray-300.text-primary
        (form.ui/pass-props props)]
       [:div.flex-v.gap-1.ml-2
-       (when-let [label (form.ui/get-label (:label props) ?field)]
+       (when-let [label (form.ui/get-label ?field (:field/label props))]
          [:div.flex.items-center.h-5 label])
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))
@@ -92,58 +94,46 @@
 (ui/defview text-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
-  (let [{:as   props
-         :keys [inline?
-                multi-line
-                multi-paragraph
-                wrap
-                unwrap
-                wrapper-class]
-         :or   {wrap   identity
-                unwrap identity}} (merge props (:props (meta ?field)))
+  (let [{:as         props
+         :field/keys [multi-line?
+                      wrap
+                      unwrap
+                      wrapper-class]
+         :or         {wrap   identity
+                      unwrap identity}} (merge props (:props (meta ?field)))
         blur!   (fn [e] (j/call-in e [:target :blur]))
-        cancel! (fn [e]
+        cancel! (fn [^js e]
+                  (.preventDefault e)
+                  (.stopPropagation e)
                   (reset! ?field (entity.data/persisted-value ?field))
-                  (blur! e))
+                  (js/setTimeout #(blur! e) 0))
         props   (v/merge-props props
                                (form.ui/?field-props ?field
-                                                     (merge {:event->value (j/get-in [:target :value])
-                                                             :wrap         #(when-not (str/blank? %) %)
-                                                             :unwrap       #(or % "")}
+                                                     (merge {:field/event->value (j/get-in [:target :value])
+                                                             :field/wrap         #(when-not (str/blank? %) %)
+                                                             :field/unwrap       #(or % "")}
                                                             props))
 
-                               {:class       ["pr-8 rounded"
-                                              (if inline?
-                                                "form-inline"
-                                                "default-ring")
+                               {:class       ["pr-8 rounded default-ring"
                                               (when (:invalid (forms/types (forms/visible-messages ?field)))
                                                 "outline-invalid")]
-                                :placeholder (or (:placeholder props)
-                                                 (when inline? (or (:label props) (:label ?field))))
-                                :on-key-down
-                                (ui/keydown-handler {(if multi-paragraph
-                                                       :Meta-Enter
-                                                       :Enter) #(when (io/ancestor-by ?field :field/persisted?)
-                                                                  (j/call % :preventDefault)
-                                                                  (entity.data/maybe-save-field ?field))
-                                                     :Escape   blur!
-                                                     :Meta-.   cancel!})})]
+                                :placeholder (:placeholder props)
+                                :on-key-down (let [save #(when (io/ancestor-by ?field :field/persisted?)
+                                                           (j/call % :preventDefault)
+                                                           (entity.data/maybe-save-field ?field))]
+                                               (ui/keydown-handler (merge {:Meta-Enter save
+                                                                           :Escape     cancel!
+                                                                           :Meta-.     cancel!}
+                                                                          (when-not multi-line?
+                                                                            {:Enter save}))))})]
     (v/x
       [:div.field-wrapper
        {:class wrapper-class}
-       (when-not inline? (form.ui/show-label ?field (:label props)))
+       (form.ui/show-label ?field (:field/label props))
        [:div.flex-v.relative
-        (if multi-line
-          [auto-size (v/merge-props {:class "form-text w-full"} (form.ui/pass-props props))]
-          [:input.form-text (form.ui/pass-props props)])
-
-        (when (= "Label" (form.ui/get-label nil ?field))
-          (prn (form.ui/get-label nil ?field) {:before   (entity.data/persisted-value ?field)
-                                               :after    (:value props)
-                                               :changed? (some-> (entity.data/persisted-value ?field)
-                                                                 (not= (:value props)))}))
-        (when-let [postfix (or (:postfix props)
-                               (:postfix (meta ?field))
+        [auto-size (v/merge-props {:class "form-text w-full"} (form.ui/pass-props props))]
+        (when-let [postfix (or (:field/postfix props)
+                               (:field/postfix (meta ?field))
                                (and (some-> (entity.data/persisted-value ?field)
                                             (not= (:value props)))
                                     [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
@@ -160,25 +150,23 @@
 
 (def unwrap-prose :prose/string)
 
-(ui/defview prose-field [?field props]
+(ui/defview prose-field [{:as ?prose-field :prose/syms [?format ?string]} props]
   ;; TODO
   ;; multi-line markdown editor with formatting
-  (text-field ?field (merge {:wrap       wrap-prose
-                             :unwrap     unwrap-prose
-                             :multi-line true}
-                            props)))
+  (text-field ?string (merge {:field/multi-line? true}
+                             props)))
 
-(ui/defview show-select [?field {:field/keys [label options]} entry]
+(ui/defview show-select [?field {:field/keys [label options can-edit?]} entry]
   [:div.flex-v.gap-2
    [:label.field-label label]
-   [radix/select-menu {:value      (:select/value @?field)
-                       :id         (str (:entity/id entry))
-                       :read-only? (:can-edit? ?field)
-                       :options    (->> options
-                                        (map (fn [{:field-option/keys [label value color]}]
-                                               {:text  label
-                                                :value value}))
-                                        doall)}]])
+   [radix/select-menu {:value           (or @?field "")
+                       :id              (str (:entity/id entry))
+                       :field/can-edit? can-edit?
+                       :field/options   (->> options
+                                             (map (fn [{:field-option/keys [label value color]}]
+                                                    {:text  label
+                                                     :value (or value "")}))
+                                             doall)}]])
 
 (comment
 
@@ -201,12 +189,12 @@
 
 (ui/defview video-field
   {:key (fn [?field] #?(:cljs (goog/getUid ?field)))}
-  [?field {:as props :keys [can-edit?]}]
+  [?field {:as props :keys [field/can-edit?]}]
   (let [!editing? (h/use-state (nil? @?field))]
     [:div.field-wrapper
      ;; preview shows persisted value?
      [:div.flex.items-center
-      [:div.flex-auto (form.ui/show-label ?field (:label props))]
+      [:div.flex-auto (form.ui/show-label ?field (:field/label props))]
       #_(when can-edit?
           [:div.place-self-end [:a {:on-click #(swap! !editing? not)}
                                 [(if @!editing? icons/chevron-up icons/chevron-down) "icon-gray"]]])]
@@ -214,32 +202,34 @@
        [show-video url])
      (when can-edit?
        (text-field ?field (merge props
-                                 {:label       false
-                                  :placeholder "YouTube or Vimeo url"
-                                  :wrap        (partial hash-map :video/url)
-                                  :unwrap      :video/url})))]))
+                                 {:field/label  false
+                                  :placeholder  "YouTube or Vimeo url"
+                                  :field/wrap   (partial hash-map :video/url)
+                                  :field/unwrap :video/url})))]))
 
-(ui/defview select-field [?field {:as props :keys [label options]}]
+(ui/defview select-field [?field {:as props :field/keys [label options]}]
   [:div.field-wrapper
    (form.ui/show-label ?field label)
-   [radix/select-menu (-> (form.ui/?field-props ?field props)
+   [radix/select-menu (-> (form.ui/?field-props ?field (merge {:field/event->value identity}
+                                                              props))
                           (set/rename-keys {:on-change :on-value-change})
-                          (assoc :can-edit? (:can-edit? props)
-                                 :event->value identity
-                                 :save-on-change? true
-                                 :options (->> options
-                                               (map (fn [{:field-option/keys [label value color]}]
-                                                      {:text  label
-                                                       :value value}))
-                                               doall)))]
+                          (assoc :on-value-change (fn [v]
+                                                    (reset! ?field v)
+                                                    (entity.data/maybe-save-field ?field))
+                                 :field/can-edit? (:field/can-edit? props)
+                                 :field/options (->> options
+                                                     (map (fn [{:field-option/keys [label value color]}]
+                                                            {:text  label
+                                                             :value value}))
+                                                     doall)))]
    (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
 (ui/defview color-field [?field props]
   [:input.default-ring.default-ring-hover.rounded
    (-> (form.ui/?field-props ?field
-                             (merge props {:event->value    (j/get-in [:target :value])
-                                           :save-on-change? true}))
+                             (merge props {:field/event->value (j/get-in [:target :value])
+                                           :save-on-change?    true}))
        (v/merge-props props)
        (assoc :type "color")
        (update :value #(or % "#ffffff"))
@@ -254,16 +244,17 @@
         on-file        (fn [file]
                          (forms/touch! ?field)
                          (reset! !selected-blob (js/URL.createObjectURL file))
-                         (ui/with-submission [asset (routing/POST `asset.data/upload! (doto (js/FormData.)
-                                                                                        (.append "files" file)))
+                         (ui/with-submission [id (routing/POST `asset.data/upload!
+                                                               (doto (js/FormData.)
+                                                                 (.append "files" file)))
                                               :form ?field]
-                           (reset! ?field asset)
+                           (reset! ?field (sch/wrap-id id))
                            (entity.data/maybe-save-field ?field)))
         !input         (h/use-ref)]
     ;; TODO handle on-save
     [:label.gap-2.flex-v.relative
      {:for (form.ui/field-id ?field)}
-     (form.ui/show-label ?field (:label props))
+     (form.ui/show-label ?field (:field/label props))
      [:button.flex-v.items-center.justify-center.p-3.gap-3.relative.default-ring.default-ring-hover
       {:on-click      #(j/call @!input :click)
        :class         ["rounded-lg"
@@ -296,34 +287,66 @@
          :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]
       (form.ui/show-field-messages ?field)]]))
 
-(ui/defview images-field [?field {:as props :keys [label]}]
-  (let [images (->> (:images/order @?field)
-                    (map (fn [id]
-                           {:url       (asset.ui/asset-src {:entity/id id} :card)
-                            :entity/id id})))]
-    (for [{:keys [entity/id url]} images]
-      ;; TODO
-      ;; upload image,
-      ;; re-order images
-      [:div.relative {:key url}
-       [:div.inset-0.bg-black.absolute.opacity-10]
-       [:img {:src url}]])))
+(ui/defview images-field [?images {:field/keys [label can-edit?]}]
+  (for [{:syms [?id]} ?images
+        :let [url (asset.ui/asset-src @?id :card)]]
+    ;; TODO
+    ;; upload image,
+    ;; re-order images
+    [:div.relative {:key url}
+     [form.ui/show-label ?images label]
+     [:div.inset-0.bg-black.absolute.opacity-10]
+     [:img {:src url}]]))
+
+(ui/defview link-list-field [?links {:field/keys [label]}]
+  [:div.field-wrapper
+   (form.ui/show-label ?links label)
+   (for [{:syms [link/?text link/?url]} ?links]
+     [:a {:href @?url} (or @?text @?url)])
+
+   ])
 
 (ui/defview show-entry
-  {:key (comp :entity/id :field)}
-  [{:keys [field entry can-edit?]}]
-  (let [value  (data/entry-value field entry)
-        ?field (h/use-memo #(forms/field :init (data/entry-value field entry) :label (:field/label field))
-                           [(str value)])
-        props  {:label     (:label field)
-                :can-edit? can-edit?}]
+  {:key (fn [?entry props]
+          (-> @?entry :field-entry/field :field/id))}
+  [?entry props]
+  (let [field (:field-entry/field @?entry)
+        props (merge (select-keys field [:field/label :field/options])
+                     (select-keys props [:field/can-edit?]))]
     (case (:field/type field)
-      :field.type/video [video-field ?field props]
-      :field.type/select [select-field ?field (merge props
-                                                     {:wrap    (fn [x] {:select/value x})
-                                                      :unwrap  :select/value
-                                                      :options (:field/options field)})]
-      :field.type/link-list [ui/pprinted value props]
-      :field.type/image-list [images-field ?field props]
-      :field.type/prose [prose-field ?field props]
+      :field.type/video [video-field
+                         ('video/?url ?entry)
+                         props]
+      :field.type/select [select-field ('select/?value ?entry) props]
+      :field.type/link-list [link-list-field ('link-list/?links ?entry) props]
+      :field.type/image-list [images-field ('image-list/?images ?entry) props]
+      :field.type/prose [prose-field ?entry props]
       (str "no match" field))))
+
+(defn make-field:entries [init {:keys [entity/fields]}]
+  (let [init (for [field fields]
+               (merge #:field-entry{:field field} (get init (:field/id field))))]
+    (io/form
+      (->> (?entries :many
+                     {:field-entry/field field-entry/?field
+                      :image-list/images (image-list/?images :many {:entity/id (sch/unwrap-id ?id)})
+                      :video/url         video/?url
+                      :select/value      select/?value
+                      :link-list/links   (link-list/?links :many {:text link/?text
+                                                                  :url  link/?url})
+                      :prose/format      prose/?format
+                      :prose/string      prose/?string}
+                     :init init)
+           (into {}
+                 (map (fn [{:as entry :keys [field-entry/field]}]
+                        [(:field/id field) (dissoc entry :field-entry/field)])))
+           u/prune))))
+
+(ui/defview entries-field [{:syms [?entries]}
+                           {:as   props
+                            :keys [field/can-edit?]}]
+
+  (doall (for [?entry (seq ?entries)
+               :when (or can-edit?
+                         (data/entry-value @?entry))]
+           (show-entry ?entry props))))

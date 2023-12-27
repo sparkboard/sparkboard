@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [inside-out.forms :as io]
             [promesa.core :as p]
+            [re-db.reactive :as r]
             [sb.app.entity.ui :as entity.ui :refer [view-field]]
             [sb.app.entity.data :as entity.data]
             [sb.app.field.ui :as field.ui]
@@ -109,10 +110,10 @@
                        "opacity-0 group-hover:opacity-100"
                        "cursor-drag"]})
        [icons/drag-dots]]]
-     [field.ui/text-field ?label {:label         false
-                                  :wrapper-class "flex-auto"
-                                  :class         "rounded-sm relative focus:z-2"
-                                  :style         {:background-color @?color
+     [field.ui/text-field ?label {:field/label         false
+                                  :field/wrapper-class "flex-auto"
+                                  :class               "rounded-sm relative focus:z-2"
+                                  :style               {:background-color @?color
                                                   :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
       [field.ui/color-field ?color {:style {:top -10
@@ -149,7 +150,7 @@
                                        (p/let [result (entity.data/save-field ?options)]
                                          (reset! ?new (:init ?new))
                                          result)))}
-      [field.ui/text-field ?new {:placeholder "Option label" :wrapper-class "flex-auto"}]
+      [field.ui/text-field ?new {:placeholder "Option label" :field/wrapper-class "flex-auto"}]
       [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
    #_[ui/pprinted @?options]])
 
@@ -166,9 +167,9 @@
     [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
      [:div.col-span-2.flex-v.gap-3
-      (view-field ?label {:multi-line true})
-      (view-field ?hint {:multi-line  true
-                         :placeholder "Further instructions"})]
+      (view-field ?label {:field/multi-line? true})
+      (view-field ?hint {:field/multi-line? true
+                         :placeholder       "Further instructions"})]
 
      (when (= :field.type/select @?type)
        [:div.col-span-2.text-sm
@@ -224,7 +225,21 @@
      (when expanded?
        (field-row-detail ?field))]))
 
-(ui/defview fields-editor [{:as ?fields :keys [label]} props]
+(defn make-field:fields [init props]
+  (io/field :many (u/prune {:field/id                    ?id
+                            :field/type                  ?type
+                            :field/label                 ?label
+                            :field/hint                  ?hint
+                            :field/options               (?options :many {:field-option/label ?label
+                                                                          :field-option/value ?value
+                                                                          :field-option/color ?color})
+                            :field/required?             ?required?
+                            :field/show-as-filter?       ?show-as-filter?
+                            :field/show-at-registration? ?show-at-registration?
+                            :field/show-on-card?         ?show-on-card?})
+            :init init))
+
+(ui/defview fields-editor [{:as ?fields :keys [field/label]} props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
         [expanded expand!] (h/use-state nil)]
@@ -236,13 +251,14 @@
          (radix/dropdown-menu {:id       :add-field
                                :trigger  [:div.text-sm.text-gray-500.font-normal.hover:underline.cursor-pointer.place-self-center
                                           "Add Field"]
-                               :children (for [[type {:keys [icon label]}] data/field-types]
-                                           [{:on-select #(reset! !new-field
-                                                                 (io/form {:field/id    (random-uuid)
-                                                                           :field/type  ?type
-                                                                           :field/label ?label}
-                                                                          :init {:field/type type}
-                                                                          :required [?label]))}
+                               :children (for [[type {:keys [icon field/label]}] data/field-types]
+                                           [{:on-select #(let [id (random-uuid)]
+                                                           (reset! !new-field
+                                                                   (io/form {:field/id    id
+                                                                             :field/type  ?type
+                                                                             :field/label ?label}
+                                                                            :init {:field/type type}
+                                                                            :required [?label])))}
                                             [:div.flex.gap-4.items-center.cursor-default [icon "text-gray-600"] label]])}))]]
      [:div.flex-v.border.rounded.labels-sm
       (->> ?fields
@@ -258,15 +274,17 @@
         [:form.flex.gap-2.items-start.relative
          {:on-submit (ui/prevent-default
                        (fn [e]
+                         (prn [:client1 @?new-field])
                          (io/add-many! ?fields @?new-field)
+                         (prn [:client2 (last @?fields)])
                          (expand! (:field/id @?new-field))
                          (reset! !new-field nil)
                          (entity.data/save-field ?fields)))}
          [:div.h-10.flex.items-center [(:icon (data/field-types @?type)) "icon-lg text-gray-700  mx-2"]]
-         [field.ui/text-field ?label {:label         false
-                                      :ref           !autofocus-ref
-                                      :placeholder   (:label ?label)
-                                      :wrapper-class "flex-auto"}]
+         [field.ui/text-field ?label {:field/label         false
+                                      :ref                 !autofocus-ref
+                                      :placeholder         (:field/label ?label)
+                                      :field/wrapper-class "flex-auto"}]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (t :tr/add)]
          [:div.flex.items-center.justify-center.icon-light-gray.h-10.w-7

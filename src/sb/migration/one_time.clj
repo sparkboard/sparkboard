@@ -421,7 +421,7 @@
       (->> (coll-entities :board/as-map)
            (mapcat (juxt :board/member-fields :board/project-fields))
            (mapcat identity)
-           (map (juxt :entity/id identity))
+           (map (juxt :field/id identity))
            (into {}))))
 
 (defn prose [s]
@@ -469,9 +469,7 @@
                                                                    })))))]
                       (-> (dissoc m k)
                           (cond-> entry-value
-                                  (assoc-in
-                                    [to-k field-id]
-                                    (assoc entry-value :field-entry/type field-type))))))
+                                  (assoc-in [to-k field-id] entry-value)))))
                   m
                   field-ks)
           (catch Exception e

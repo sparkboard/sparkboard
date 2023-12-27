@@ -17,47 +17,47 @@
      :clj
      (str "field-" (:sym ?field))))
 
-(defn pass-props [props] (dissoc props
-                                 :multi-line :postfix :wrapper-class
-                                 :event->value
-                                 :on-change-value
-                                 :wrap :unwrap
-                                 :inline?
-                                 :can-edit?
-                                 :label))
 
-(defn get-label [label ?field]
-  (u/some-or label (:label ?field)))
+(defn pass-props [props]
+  (reduce (fn [m k]
+            (cond-> m
+                    (qualified-keyword? k)
+                    (dissoc k)))
+          props
+          (keys props)))
+
+(defn get-label [?field & [label]]
+  (u/some-or label
+             (:field/label ?field)
+             (when-let [a (:attribute ?field)]
+               (sb.i18n/tr* (keyword "tr" (name a))))))
 
 (defn show-label [?field & [label]]
-  (when-let [label (get-label label ?field)]
+  (when-let [label (get-label ?field label)]
     [:label.field-label {:for (field-id ?field)} label]))
 
 (defn ?field-props [?field
-                    {:keys [event->value
-                            wrap
-                            unwrap
-                            on-change-value
+                    {:keys [field/event->value
+                            field/wrap
+                            field/unwrap
                             on-change
                             save-on-change?]
-                     :or   {wrap identity
+                     :or   {wrap   identity
                             unwrap identity}}]
-  {:id              (field-id ?field)
-   :value           (unwrap @?field)
-   :on-change       (fn [e]
-                      (let [new-value (wrap (event->value e))]
-                        (reset! ?field new-value)
-                        (when on-change-value
-                          (pass-props (on-change-value new-value)))
-                        (when on-change
-                          (on-change e))
-                        (when save-on-change?
-                          (entity.data/maybe-save-field ?field))))
-   :on-blur         (fn [e]
-                      (reset! ?field (wrap (event->value e)))
-                      (entity.data/maybe-save-field ?field)
-                      ((io/blur-handler ?field) e))
-   :on-focus        (io/focus-handler ?field)})
+  {:id        (field-id ?field)
+   :value     (unwrap @?field)
+   :on-change (fn [e]
+                (let [new-value (wrap (event->value e))]
+                  (reset! ?field new-value)
+                  (when on-change
+                    (on-change e))
+                  (when save-on-change?
+                    (entity.data/maybe-save-field ?field))))
+   :on-blur   (fn [e]
+                (reset! ?field (wrap (event->value e)))
+                (entity.data/maybe-save-field ?field)
+                ((io/blur-handler ?field) e))
+   :on-focus  (io/focus-handler ?field)})
 
 (def email-validator (fn [v _]
                        (when v

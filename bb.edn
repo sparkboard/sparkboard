@@ -40,7 +40,7 @@
 
          migrate:fetch   (yarn shadow-cljs clj-run sb.migration.core/tx!)
          migrate:tx      (do (shell "rm -rf .db/datalevin")
-                             (shell "yarn shadow-cljs clj-run sb.migration.core/tx!"))
+                             (shell "yarn shadow-cljs -A:dev:nio:local clj-run sb.migration.core/tx!"))
 
          ;; this step is run manually after verifying a staging build.
          staging:promote (let [{:strs [Registry Repository Tag]} (-> (shell {:out :string}

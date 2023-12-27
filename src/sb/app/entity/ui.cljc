@@ -14,19 +14,8 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(defn infer-view [attribute]
-  (when attribute
-    (case attribute
-      :entity/domain-name domain.ui/domain-field
-      :image/avatar field.ui/image-field
-      (let [{:keys [malli/schema]} (get @sch/!schema attribute)]
-        (case schema
-          :string field.ui/text-field
-          :http/url field.ui/text-field
-          :boolean field.ui/checkbox-field
-          :prose/as-map field.ui/prose-field
-          [:sequential :field/as-map] @(resolve 'sb.app.field.admin-ui/fields-editor)
-          (cond (str/ends-with? (name attribute) "?") field.ui/checkbox-field))))))
+(defn malli-schema [a]
+  (some-> (get @sch/!schema a) :malli/schema))
 
 (defn throw-no-persistence! [?field]
   (throw (ex-info (str "No persistence for " (:sym ?field)) {:where (->> (iterate io/parent ?field)
@@ -38,7 +27,7 @@
 (defn view-field [?field & [props]]
   (let [view (or (:view props)
                  (:view ?field)
-                 (some-> (:attribute ?field) infer-view)
+                 (some-> (:attribute ?field) io/global-meta :view)
                  (throw (ex-info (str "No view declared for field: " (:sym ?field) (:attribute ?field)) {:sym       (:sym ?field)
                                                                                                          :attribute (:attribute ?field)})))]
     [view ?field (merge (:props ?field)
@@ -57,10 +46,9 @@
      (let [persisted-value (get e a)
            make-field      (or (:make-field props)
                                (:make-field (io/global-meta a))
-                               #(io/field))
-           ?field          (h/use-memo #(doto (make-field)
-                                          (add-meta! {:init              persisted-value
-                                                      :attribute         a
+                               (fn [init _props] (io/field :init init)))
+           ?field          (h/use-memo #(doto (make-field persisted-value props)
+                                          (add-meta! {:attribute         a
                                                       :db/id             (sch/wrap-id e)
                                                       :field/persisted?  true}))
                                        ;; create a new field when the persisted value changes
