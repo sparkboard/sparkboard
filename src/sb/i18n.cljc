@@ -192,7 +192,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/invalid-email                   {:en "Invalid email"
                                           :fr "Courriel invalide"
                                           :es "Correo electrónico inválido"},
-     :tr/image.logo                      {:en "Logo"
+     :tr/logo                            {:en "Logo"
                                           :fr "Logo"
                                           :es "Logo"},
      :tr/image.background                {:en "Background"

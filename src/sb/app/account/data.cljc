@@ -90,5 +90,6 @@
 
 (defn account-as-entity [account]
   (u/select-as account {:entity/id            :entity/id
+                        :entity/kind          :entity/kind
                         :account/display-name :entity/title
                         :image/avatar         :image/avatar}))

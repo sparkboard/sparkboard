@@ -6,10 +6,12 @@
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as data]
             [sb.app.field.ui :as field.ui]
+            [sb.app.form.ui :as form.ui]
             [sb.app.views.ui :as ui]
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]
+            [sb.util :as u]
             [sb.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -48,9 +50,11 @@
                                (:make-field (io/global-meta a))
                                (fn [init _props] (io/field :init init)))
            ?field          (h/use-memo #(doto (make-field persisted-value props)
-                                          (add-meta! {:attribute         a
-                                                      :db/id             (sch/wrap-id e)
-                                                      :field/persisted?  true}))
+                                          (add-meta! {:attribute        a
+                                                      :db/id            (sch/wrap-id e)
+                                                      :field/label      (u/some-or (:field/label props)
+                                                                                   (form.ui/attribute-label a))
+                                                      :field/persisted? true}))
                                        ;; create a new field when the persisted value changes
                                        (h/use-deps persisted-value))]
        (view-field ?field props))))

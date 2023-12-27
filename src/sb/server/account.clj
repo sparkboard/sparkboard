@@ -79,6 +79,7 @@
 
 (def account-fields [:db/id
                      :entity/id
+                     :entity/kind
                      :account/display-name
                      :account/email
                      {:image/avatar [:entity/id]}
@@ -112,7 +113,8 @@
                                                            t/read)
                                                    (catch Exception e
                                                      (tap> [:ACCOUNT-ERROR e])))]
-                          (try (not-empty (db/pull account-fields account-id))
+                          (try (some-> (not-empty (db/pull account-fields account-id))
+                                       (assoc :entity/kind :account))
                                (catch Exception e
                                  (account-not-found! account-id) nil)))))))
 

@@ -3,7 +3,8 @@
             [sb.app.form.ui :as form.ui]
             [sb.app.org.data :as data]
             [sb.app.views.header :as header]
-            [sb.app.views.ui :as ui]))
+            [sb.app.views.ui :as ui]
+            [sb.i18n :as i]))
 
 (ui/defview settings
   {:route "/o/:org-id/settings"}
@@ -15,7 +16,6 @@
       (entity.ui/use-persisted-attr org :entity/title)
       (entity.ui/use-persisted-attr org :entity/description)
       (entity.ui/use-persisted-attr org :entity/domain-name)
-      ;; TODO - uploading an image does not work
-      (entity.ui/use-persisted-attr org :image/avatar)
+      (entity.ui/use-persisted-attr org :image/avatar {:field/label (i/t :tr/logo)})
 
       ]]))

@@ -15,7 +15,6 @@
                       (not= v (:init field))
                       (>= (count v) 3))
              (p/let [res (data/check-availability {:domain v})]
-               (prn :res res)
                (if (:available? res)
                  (io/message :info
                              [:span.text-green-500.font-bold (t :tr/available)])

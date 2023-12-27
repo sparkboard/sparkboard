@@ -17,42 +17,6 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(ui/defview new-menu [params]
-  (radix/dropdown-menu {:id       :new-menu
-                        :trigger
-                        [:div.btn-white (t :tr/new) (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4")]
-                        :children [[{:on-select #(routes/nav! 'sb.app.board-data/new params)} (t :tr/board)]
-                                   [{:on-select #(routes/nav! 'sb.app.org-data/new params)} (t :tr/org)]]}))
-
-(def down-arrow (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4"))
-
-(ui/defview header [account child]
-  (let [{:as          account
-         :keys        [entity/id]
-         display-name :account/display-name} account
-        params  {:account-id [:entity/id id]}
-        recents (when-let [recent-ids (data/recent-ids params)]
-                  (filterv (comp recent-ids :entity/id)
-                           (data/all params)))]
-    [:div.header
-     [:a.text-lg.font-semibold.leading-6.flex.flex-grow.items-center
-      {:href (routes/path-for ['sb.app.account-ui/show params])} display-name]
-     child
-
-     (radix/dropdown-menu
-       {:id       :show-recents
-        :trigger  [:button (t :tr/recent) down-arrow]
-        :children (map (fn [entity]
-                         [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
-                          (:entity/title entity)])
-                       recents)})
-     (radix/dropdown-menu
-       {:id :new
-        :trigger  [:button (t :tr/new) down-arrow]
-        :children [[{:on-select #(routes/nav! 'sb.app.board-data/new params)} (t :tr/board)]
-                   [{:on-select #(routes/nav! 'sb.app.org-data/new params)} (t :tr/org)]]})
-     [header/chat]
-     [header/account]]))
 
 (defn account:sign-in-with-google []
   (v/x
@@ -130,7 +94,7 @@
                                           (sort-by :entity/created-at u/compare:desc)))
                        (u/guard seq))]
       [:div.divide-y
-       [header account nil]
+       [header/entity (data/account-as-entity account) nil]
 
        (when-let [{:keys [org board project]} entities]
          [:div.p-body.flex-v.gap-8

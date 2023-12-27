@@ -26,11 +26,13 @@
           props
           (keys props)))
 
+(defn attribute-label [a]
+  (sb.i18n/tr* (keyword "tr" (name a))))
+
 (defn get-label [?field & [label]]
   (u/some-or label
              (:field/label ?field)
-             (when-let [a (:attribute ?field)]
-               (sb.i18n/tr* (keyword "tr" (name a))))))
+             (io/closest ?field #(some-> (:attribute %) attribute-label))))
 
 (defn show-label [?field & [label]]
   (when-let [label (get-label ?field label)]

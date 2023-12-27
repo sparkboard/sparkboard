@@ -5,6 +5,7 @@
             [sb.app.asset.ui :as asset.ui]
             [sb.app.chat.data :as chat.data]
             [sb.app.chat.ui :as chat.ui]
+            [sb.app.account.data :as account.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.i18n :as i :refer [t]]
             [sb.routing :as routes]
@@ -85,10 +86,12 @@
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
 
+(def down-arrow (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4"))
+
 (ui/defview entity [{:as   entity
-                      :keys [entity/title
-                             image/avatar]} children]
-  (let [entity-href (routes/entity-path entity :show)]
+                     :keys [entity/title
+                            image/avatar]} children]
+  (let [entity-href (routes/entity-path entity 'ui/show)]
     [:div.header
      (when avatar
        [:a.contents {:href entity-href}
@@ -100,5 +103,19 @@
      [:div.flex-grow]
      (into [:div.flex.gap-1]
            (concat children
-                   [[chat]
+                   [(radix/dropdown-menu
+                      {:id       :show-recents
+                       :trigger  [:button (t :tr/recent) down-arrow]
+                       :children (map (fn [entity]
+                                        [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
+                                         (:entity/title entity)])
+                                      (when-let [recent-ids (account.data/recent-ids nil)]
+                                        (filterv (comp recent-ids :entity/id)
+                                                 (account.data/all nil))))})
+                    (radix/dropdown-menu
+                      {:id       :new
+                       :trigger  [:button (t :tr/new) down-arrow]
+                       :children [[{:on-select #(routes/nav! 'sb.app.board.ui/new)} (t :tr/board)]
+                                  [{:on-select #(routes/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
+                    [chat]
                     [account]]))]))

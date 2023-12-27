@@ -127,11 +127,10 @@
 (defn maybe-save-field
   [?field]
   (let [value @?field]
-    (if (and (io/closest ?field :field/persisted?)
-             (not= value (persisted-value ?field)))
+    (when (and (io/closest ?field :field/persisted?)
+               (not= value (persisted-value ?field)))
       (io/try-submit+ ?field
-        (save-field ?field))
-      (prn :not-saving value))))
+        (save-field ?field)))))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))

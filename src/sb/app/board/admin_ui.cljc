@@ -31,7 +31,7 @@
          (use-persisted-attr board :entity/title)
          (use-persisted-attr board :entity/description)
          (use-persisted-attr board :entity/domain-name)
-         (use-persisted-attr board :image/avatar {:field/label (t :tr/image.logo)})]
+         (use-persisted-attr board :image/avatar {:field/label (t :tr/logo)})]
 
 
         [:div.field-label (t :tr/projects-and-members)]
