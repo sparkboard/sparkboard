@@ -18,8 +18,8 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(ui/defview show-option [{:as ?option :syms [?label ?value ?color]}]
-  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (ui/orderable-props ?option {:axis :y})]
+(ui/defview show-option [use-order {:as ?option :syms [?label ?value ?color]}]
+  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (use-order ?option)]
     [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
      (merge {:key @?value}
             drag-subject-props)
@@ -55,25 +55,26 @@
                                        (t :tr/remove)]]}]]))
 
 (ui/defview options-editor [?options]
-  [:div.col-span-2.flex-v.gap-3
-   [:label.field-label (t :tr/options)]
-   (when (:loading? ?options)
-     [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
-   (into [:div.flex-v]
-         (map show-option ?options))
-   (let [?new (h/use-memo #(io/field :init ""))]
-     [:form.flex.gap-2 {:on-submit (fn [^js e]
-                                     (.preventDefault e)
-                                     (io/add-many! ?options {'?value (str (random-uuid))
-                                                             '?label @?new
-                                                             '?color "#ffffff"})
-                                     (io/try-submit+ ?new
-                                       (p/let [result (entity.data/maybe-save-field ?options)]
-                                         (reset! ?new (:init ?new))
-                                         result)))}
-      [field.ui/text-field ?new {:placeholder "Option label" :field/wrapper-class "flex-auto"}]
-      [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
-   #_[ui/pprinted @?options]])
+  (let [use-order (ui/use-orderable-parent ?options {:axis :y})]
+    [:div.col-span-2.flex-v.gap-3
+     [:label.field-label (t :tr/options)]
+     (when (:loading? ?options)
+       [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
+     (into [:div.flex-v]
+           (map (partial show-option use-order) ?options))
+     (let [?new (h/use-memo #(io/field :init ""))]
+       [:form.flex.gap-2 {:on-submit (fn [^js e]
+                                       (.preventDefault e)
+                                       (io/add-many! ?options {'?value (str (random-uuid))
+                                                               '?label @?new
+                                                               '?color "#ffffff"})
+                                       (io/try-submit+ ?new
+                                         (p/let [result (entity.data/maybe-save-field ?options)]
+                                           (reset! ?new (:init ?new))
+                                           result)))}
+        [field.ui/text-field ?new {:placeholder "Option label" :field/wrapper-class "flex-auto"}]
+        [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
+     #_[ui/pprinted @?options]]))
 
 (ui/defview field-row-detail [{:as ?field :syms [?label
                                                  ?hint
@@ -114,12 +115,13 @@
 (ui/defview field-row
   {:key (fn [{:syms [?id]} _] @?id)}
   [?field {:keys [expanded?
-                  toggle-expand!]}]
+                  toggle-expand!
+                  use-order]}]
   (let [{:syms [?type ?label]} ?field
         {:keys [icon]} (data/field-types @?type)
         {:keys [drag-handle-props
                 drag-subject-props
-                drop-indicator]} (ui/orderable-props ?field {:axis :y})]
+                drop-indicator]} (use-order ?field)]
     [:div.flex-v.relative.border-b
      ;; label row
      [:div.flex.gap-3.p-3.items-stretch.relative.cursor-default.relative.group
@@ -162,7 +164,8 @@
 (ui/defview fields-editor [{:as ?fields :keys [field/label]} props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
-        [expanded expand!] (h/use-state nil)]
+        [expanded expand!] (h/use-state nil)
+        use-order  (ui/use-orderable-parent ?fields {:axis :y})]
     [:div.field-wrapper {:class "labels-semibold"}
      [:label.field-label {:class "flex items-center"}
       label
@@ -184,7 +187,8 @@
       (->> ?fields
            (map (fn [{:as ?field :syms [?id]}]
                   (field-row ?field
-                             {:expanded?      (= expanded @?id)
+                             {:use-order use-order
+                              :expanded?      (= expanded @?id)
                               :toggle-expand! #(expand! (fn [old]
                                                           (u/guard @?id (partial not= old))))})))
            doall)]

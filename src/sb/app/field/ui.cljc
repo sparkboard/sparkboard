@@ -337,52 +337,50 @@
      ;; put messages in a popover
      (form.ui/show-field-messages ?image-list)]))
 
+
 (ui/defview image-thumbnail
   {:key (fn [_ ?image] (:entity/id @?image))}
-  [{:keys [!?current ?images field/can-edit?]} {:as ?image :syms [?id]}]
-  (let [url (asset.ui/asset-src @?id :card)
+  [{:keys [!?current ?images use-order field/can-edit?]} {:as ?image :syms [?id]}]
+  (let [url      (asset.ui/asset-src @?id :card)
         {:keys [drag-handle-props
                 drag-subject-props
-                drop-indicator
                 dragging
-                dropping]} (ui/orderable-props ?image {:axis :x})
+                dropping]} (use-order ?image)
         current? (= @!?current ?image)]
     [radix/context-menu
      {:key     url
-      :trigger [:div.relative.w-16.h-16.rounded.overflow-hidden.bg-gray-50.transition-all
-                (v/merge-props {:class    [(when current? "outline outline-2 outline-black")
-                                           (when dragging "opacity-20")
-                                           (case dropping
-                                             :before "ml-1"
-                                             :after "-ml-1"
-                                             nil)]
-                                :on-click #(reset! !?current ?image)}
-                               drag-handle-props
-                               drag-subject-props)
-                [:div.absolute.inset-0.bg-black.opacity-10.z-1]
-                [:div.absolute.inset-0.z-2.bg-contain {:style {:background-image (asset.ui/css-url url)}}]]
+      :trigger (v/x [:div.relative.transition-all
+                     (v/merge-props {:class    (when (= dropping :before) "pl-4")
+                                     :on-click #(reset! !?current ?image)}
+                                    drag-handle-props
+                                    drag-subject-props)
+                     [:img.object-contain.h-16.w-16.rounded.overflow-hidden.bg-gray-50.transition-all
+                      {:src   url
+                       :class [(when dragging "opacity-20 w-0")
+                               (when current? "outline outline-2 outline-black")]}]])
       :items   [[radix/context-menu-item {:on-select (fn []
                                                        (io/remove-many! ?image)
                                                        (entity.data/maybe-save-field ?images))}
                  "Delete"]]}]))
 
 (ui/defview images-field [?images {:as props :field/keys [label can-edit?]}]
-  (let [!?current (h/use-state (first ?images))]
+  (let [!?current (h/use-state (first ?images))
+        use-order (ui/use-orderable-parent ?images {:axis :x})]
     [:div.field-wrapper
      (form.ui/show-label ?images label)
      (when-let [{:syms [?id]} @!?current]
-       (let [[url loading?] (ui/use-last-loaded (asset.ui/asset-src @?id :avatar))]
-         [:div.relative {:key url}
+       (let [[url loading?] (ui/use-last-loaded (asset.ui/asset-src @?id :card))]
+         [:div.relative.flex.items-center.justify-center {:key url}
           (when loading? [icons/loading "w-4 h-4 text-txt/60 absolute top-2 right-2"])
-          [:div.inset-0.bg-black.absolute.opacity-10]
           [:img {:src url}]]))
      ;; thumbnails
      [:div.flex.gap-2.flex-wrap
       (when can-edit? [:div.relative.h-16.w-16.flex-none [add-image-button ?images]])
       (->> ?images
            (map (partial image-thumbnail
-                         (merge props {:!?current !?current
-                                       :?images  ?images}))))]]))
+                         (merge props {:use-order use-order
+                                       :!?current !?current
+                                       :?images   ?images}))))]]))
 
 (ui/defview link-list-field [?links {:field/keys [label]}]
   [:div.field-wrapper

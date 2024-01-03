@@ -323,20 +323,15 @@
       (throw (ex-info "re-order failed, destination not found" {:source source :destination destination})))
     out))
 
-(defn orderable-props
-  [?child {:keys [axis] :or {axis :y}}]
-  (let [?parent       (io/parent ?child)
-        group         (goog/getUid ?parent)
-        id            (:sym ?child)
-        on-move       (fn [{:keys [source side destination]}]
-                        (io/swap-many-children! ?parent re-order
-                                                (get ?parent source)
-                                                side
-                                                (get ?parent destination))
-                        (entity.data/maybe-save-field ?child))
+(defn use-orderable-parent
+  [?parent {:keys [axis] :or {axis :y}}]
+  (let [group         (goog/getUid ?parent)
         transfer-data (fn [e data]
-                        (j/call-in e [:dataTransfer :setData] (str group)
-                                   (pr-str data)))
+                        (j/call-in e [:dataTransfer :setData]
+                                   (str group)
+                                   (pr-str data))
+                        (j/assoc-in! e [:dataTransfer :effectAllowed] "move")
+                        )
 
         receive-data  (fn [e]
                         (try
@@ -344,55 +339,68 @@
                           (catch js/Error e nil)))
         data-matches? (fn [e]
                         (some #{(str group)} (j/get-in e [:dataTransfer :types])))
-        [active-drag set-drag!] (h/use-state nil)
-        [active-drop set-drop!] (h/use-state nil)
-        !should-drag? (h/use-ref false)]
-    {:drag-handle-props  {:on-mouse-down #(reset! !should-drag? true)
-                          :on-mouse-up   #(reset! !should-drag? false)}
-     :drag-subject-props {:draggable     true
-                          :data-dragging active-drag
-                          :data-dropping active-drop
-                          :on-drag-over  (j/fn [^js {:as e :keys [clientX
-                                                                  clientY
-                                                                  currentTarget]}]
-                                           (j/call e :preventDefault)
-                                           (when (data-matches? e)
-                                             (set-drop! (if (= ?child (last ?parent))
-                                                          (if (case axis
-                                                                :y (< clientY (element-center-y currentTarget))
-                                                                :x (< clientX (element-center-x currentTarget)))
-                                                            :before
-                                                            :after)
-                                                          :before))))
-                          :on-drag-leave (fn [^js e]
-                                           (j/call e :preventDefault)
-                                           (set-drop! nil))
-                          :on-drop       (fn [^js e]
-                                           (.preventDefault e)
-                                           (set-drop! nil)
-                                           (when-let [source (receive-data e)]
-                                             (on-move {:destination id
-                                                       :source      source
-                                                       :side        active-drop})))
-                          :on-drag-end   (fn [^js e]
-                                           (set-drag! nil))
-                          :on-drag-start (fn [^js e]
-                                           (if @!should-drag?
-                                             (do
-                                               (set-drag! true)
-                                               (transfer-data e id))
-                                             (.preventDefault e)))}
-     :dragging           active-drag
-     :dropping           active-drop
-     :drop-indicator     (when active-drop
-                           (case axis
-                             :y (v/x [:div.absolute.bg-focus-accent
-                                      {:class ["h-[4px] z-[99] inset-x-0 rounded"
-                                               (case active-drop
-                                                 :before "top-[-2px]"
-                                                 :after "bottom-[-2px]" nil)]}])
-                             :x (v/x [:div.absolute.bg-focus-accent
-                                      {:class ["w-[4px] z-[99] inset-y-0 rounded"
-                                               (case active-drop
-                                                 :before "left-[-2px]"
-                                                 :after "right-[-2px]" nil)]}])))}))
+        [drag-id set-drag!] (h/use-state nil)
+        [[drop-id drop-type] set-drop!] (h/use-state nil)]
+    (fn [?child]
+      (let [id            (:sym ?child)
+            drop-type     (when (= drop-id id) drop-type)
+            !should-drag? (h/use-ref false)
+            dragging?     (= drag-id id)
+            on-move       (fn [{:keys [source side destination]}]
+                            (io/swap-many-children! ?parent re-order
+                                                    (get ?parent source)
+                                                    side
+                                                    (get ?parent destination))
+                            (entity.data/maybe-save-field ?child))]
+        {:drag-handle-props  {:on-mouse-down #(reset! !should-drag? true)
+                              :on-mouse-up   #(reset! !should-drag? false)}
+         :drag-subject-props {:draggable     true
+                              :data-dragging dragging?
+                              :data-dropping (some? drop-type)
+                              :on-drag-over  (j/fn [^js {:as e :keys [clientX
+                                                                      clientY
+                                                                      currentTarget]}]
+                                               (j/call e :preventDefault)
+                                               (.persist e)
+                                               (when (data-matches? e)
+                                                 (set-drop!
+                                                   (cond (= drag-id id) nil
+                                                         (= ?child (last ?parent)) (if (case axis
+                                                                                         :y (< clientY (element-center-y currentTarget))
+                                                                                         :x (< clientX (element-center-x currentTarget)))
+                                                                                     [id :before]
+                                                                                     [id :after])
+                                                         :else [id :before]))))
+                              :on-drag-leave (fn [^js e]
+                                               (j/call e :preventDefault)
+                                               (set-drop! nil))
+                              :on-drop       (fn [^js e]
+                                               (.preventDefault e)
+                                               (set-drop! nil)
+                                               (when-let [source (receive-data e)]
+                                                 (when-not (= source id)
+                                                   (on-move {:destination id
+                                                             :source      source
+                                                             :side        drop-type}))))
+                              :on-drag-end   (fn [^js e]
+                                               (set-drag! nil))
+                              :on-drag-start (fn [^js e]
+                                               (if @!should-drag?
+                                                 (do
+                                                   (set-drag! id)
+                                                   (transfer-data e id))
+                                                 (.preventDefault e)))}
+         :dragging           dragging?
+         :dropping           drop-type
+         :drop-indicator     (when drop-type
+                               (case axis
+                                 :y (v/x [:div.absolute.bg-focus-accent
+                                          {:class ["h-[4px] z-[99] inset-x-0 rounded"
+                                                   (case drop-type
+                                                     :before "top-[-2px]"
+                                                     :after "bottom-[-2px]" nil)]}])
+                                 :x (v/x [:div.absolute.bg-focus-accent
+                                          {:class ["w-[4px] z-[99] inset-y-0 rounded"
+                                                   (case drop-type
+                                                     :before "left-[-2px]"
+                                                     :after "right-[-2px]" nil)]}])))}))))

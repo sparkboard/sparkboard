@@ -214,7 +214,7 @@
                 [:el.accordion-content accordion/Content
                  (v/x content)]])))]))
 
-(def context-menu-item (v/from-element :el.text-sm.flex.items-center.outline-none.user-select-none.rounded.px-2.py-1 ContextMenu/Item
+(def context-menu-item (v/from-element :el.text-sm.flex.items-center.outline-none.user-select-none.rounded.px-2.py-1.cursor-default ContextMenu/Item
                                        {:class "data-[highlighted]:bg-gray-100"}))
 
 (v/defview context-menu [{:keys [trigger
