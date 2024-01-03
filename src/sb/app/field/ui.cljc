@@ -287,16 +287,82 @@
          :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]
       (form.ui/show-field-messages ?field)]]))
 
+(ui/defview add-image-button [?image-list]
+  (let [loading?       (:loading? ?image-list)
+        !selected-blob (h/use-state nil)
+        !dragging?     (h/use-state false)
+        thumbnail      @!selected-blob
+        !input         (h/use-ref)
+        on-file        (fn [file]
+                         (reset! !selected-blob (js/URL.createObjectURL file))
+                         (io/touch! ?image-list)
+                         (ui/with-submission [id (routing/POST `asset.data/upload!
+                                                               (doto (js/FormData.)
+                                                                 (.append "files" file)))
+                                              :form ?image-list]
+                           (io/add-many! ?image-list {:entity/id (sch/unwrap-id id)})
+                           (entity.data/maybe-save-field ?image-list)
+                           (reset! !selected-blob nil)
+                           (j/!set @!input :value nil)))]
+    ;; TODO handle on-save
+    [:label.absolute.inset-0.gap-2.flex-v.items-center.justify-center.p-3.gap-3.default-ring.default-ring-hover
+     {:for           (form.ui/field-id ?image-list)
+      :class         ["rounded"
+                      (if @!dragging?
+                        "outline-2 outline-focus-accent")]
+      :on-drag-over  (fn [^js e]
+                       (.preventDefault e)
+                       (reset! !dragging? true))
+      :on-drag-leave (fn [^js e]
+                       (reset! !dragging? false))
+      :on-drop       (fn [^js e]
+                       (.preventDefault e)
+                       (some-> (j/get-in e [:dataTransfer :files 0]) on-file))}
+
+     [:div.block.absolute.inset-0.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
+      (v/props {:class "text-muted-txt hover:text-txt bg-contain bg-no-repeat bg-center"}
+               (when thumbnail
+                 {:style {:background-image (asset.ui/css-url thumbnail)}})
+               #_{:style {:background-image "url(\"/assets/9d0dac6c-46bb-4086-8551-5bd533a9a2e8?op=bound&width=600\")"}})
+
+      (cond loading? [:div.rounded.bg-white.p-1 [icons/loading "w-4 h-4 text-txt/60"]]
+            (not thumbnail) (ui/upload-icon "w-5 h-5 m-auto"))
+
+      [:input.hidden
+       {:id        (form.ui/field-id ?image-list)
+        :ref       !input
+        :type      "file"
+        :accept    "image/webp, image/jpeg, image/gif, image/png, image/svg+xml"
+        :on-change #(some-> (j/get-in % [:target :files 0]) on-file)}]]
+     ;; put messages in a popover
+     (form.ui/show-field-messages ?image-list)]))
+
 (ui/defview images-field [?images {:field/keys [label can-edit?]}]
-  (for [{:syms [?id]} ?images
-        :let [url (asset.ui/asset-src @?id :card)]]
-    ;; TODO
-    ;; upload image,
-    ;; re-order images
-    [:div.relative {:key url}
-     [form.ui/show-label ?images label]
-     [:div.inset-0.bg-black.absolute.opacity-10]
-     [:img {:src url}]]))
+  (let [?current (h/use-state (first ?images))]
+    [:div.field-wrapper
+     (form.ui/show-label ?images label)
+     (when-let [{:syms [?id]} @?current]
+       (let [[url loading?] (ui/use-last-loaded (asset.ui/asset-src @?id :avatar))]
+         [:div.relative {:key url}
+          (when loading? [icons/loading "w-4 h-4 text-txt/60 absolute top-2 right-2"])
+          [:div.inset-0.bg-black.absolute.opacity-10]
+          [:img {:src url}]]))
+     ;; thumbnails
+     [:div.flex.gap-2.flex-wrap
+      (when can-edit? [:div.relative.h-16.w-16.flex-none [add-image-button ?images]])
+      (for [{:as ?image :syms [?id]} ?images
+            :let [url      (asset.ui/asset-src @?id :card)
+                  current? (= ?image @?current)]]
+        [radix/context-menu [:div.relative.w-16.h-16.rounded.overflow-hidden.bg-gray-50
+                             {:class    (when current? "outline outline-2 outline-black")
+                              :on-click #(reset! ?current ?image)
+                              :key      url}
+                             [:div.absolute.inset-0.bg-black.opacity-10.z-1]
+                             [:div.absolute.inset-0.z-2.bg-contain {:style {:background-image (asset.ui/css-url url)}}]]
+         {:items [[radix/context-menu-item {:on-select (fn []
+                                                         (io/remove-many! ?image)
+                                                         (entity.data/maybe-save-field ?images))}
+                   "Delete"]]}])]]))
 
 (ui/defview link-list-field [?links {:field/keys [label]}]
   [:div.field-wrapper
@@ -329,7 +395,7 @@
     (io/form
       (->> (?entries :many
                      {:field-entry/field field-entry/?field
-                      :image-list/images (image-list/?images :many {:entity/id (sch/unwrap-id ?id)})
+                      :image-list/images (image-list/?images :many {:entity/id ?id})
                       :video/url         video/?url
                       :select/value      select/?value
                       :link-list/links   (link-list/?links :many {:text link/?text

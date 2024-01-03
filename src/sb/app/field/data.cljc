@@ -70,7 +70,7 @@
    :field-option/label          {s- :string},
    :field-option/value          {s- :string},
    :video/url                   {s- :string}
-   :image-list/images           {s- [:sequential :entity/id]}
+   :image-list/images           {s- [:sequential [:map {:closed true} :entity/id]]}
    :link-list/links             {s- [:sequential :link-list/link]}
    :select/value                {s- :string}
    :field-entry/as-map          {s- [:map {:closed true}

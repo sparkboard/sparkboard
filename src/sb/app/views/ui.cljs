@@ -116,6 +116,27 @@
       url
       fallback)))
 
+(defn use-last-loaded [image-url]
+  (let [!last-loaded (h/use-state image-url)
+        !loaded      (h/use-state #{})]
+    (h/use-effect
+      (fn []
+        (when (and image-url (not (@!loaded image-url)))
+          (let [^js img (doto (js/document.createElement "img")
+                          (j/assoc-in! [:style :display] "none")
+                          (js/document.body.appendChild))]
+            (j/assoc! img
+                      :onload #(do (swap! !loaded conj image-url)
+                                   (.remove img))
+                      :src image-url)))
+        (when (and image-url
+                   (not= image-url @!last-loaded)
+                   (@!loaded image-url))
+          (reset! !last-loaded image-url))
+        nil)
+      [image-url (@!loaded image-url)])
+    [@!last-loaded (not= @!last-loaded image-url)]))
+
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 
 (comment

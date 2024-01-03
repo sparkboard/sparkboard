@@ -456,7 +456,7 @@
                                           :field.type/image-list (let [v (cond-> v (string? v) vector)]
                                                                    (when (seq v)
                                                                      (let [assets (mapv assets/link-asset v)]
-                                                                       {:image-list/images (mapv :entity/id assets)})))
+                                                                       {:image-list/images (mapv #(select-keys % [:entity/id]) assets)})))
                                           :field.type/link-list {:link-list/links
                                                                  (mapv #(rename-keys % {:label :text
                                                                                         :url   :url}) v)}

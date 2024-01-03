@@ -1,5 +1,6 @@
 (ns sb.app.views.radix
-  (:require #?(:cljs ["@radix-ui/react-accordion" :as accordion])
+  (:require #?(:cljs ["@radix-ui/react-context-menu" :as ContextMenu])
+            #?(:cljs ["@radix-ui/react-accordion" :as accordion])
             #?(:cljs ["@radix-ui/react-alert-dialog" :as alert])
             #?(:cljs ["@radix-ui/react-dialog" :as dialog])
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
@@ -212,3 +213,12 @@
                  [:el.accordion-trigger accordion/Trigger (v/x trigger) [icons/chevron-down]]]
                 [:el.accordion-content accordion/Content
                  (v/x content)]])))]))
+
+(def context-menu-item (v/from-element :el.text-sm.flex.items-center.outline-none.user-select-none.rounded.px-2.py-1 ContextMenu/Item
+                                       {:class "data-[highlighted]:bg-gray-100"}))
+
+(v/defview context-menu [trigger {:keys [id items] :or {id (str ::context-menu)}}]
+  [:el ContextMenu/Root
+   [:el ContextMenu/Trigger (v/x trigger)]
+   [:el.bg-white.rounded.overflow-hidden.p-1.shadow-md.min-w-32 ContextMenu/Content {:style {:z-index 20}}
+    (into [:<>] items)]])

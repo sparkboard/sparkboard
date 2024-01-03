@@ -114,12 +114,12 @@
                                   :field/wrapper-class "flex-auto"
                                   :class               "rounded-sm relative focus:z-2"
                                   :style               {:background-color @?color
-                                                  :color            (color/contrasting-text-color @?color)}}]
+                                                        :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-      [field.ui/color-field ?color {:style {:top -10
-                                            :left -10
-                                            :width 100
-                                            :height 100
+      [field.ui/color-field ?color {:style {:top      -10
+                                            :left     -10
+                                            :width    100
+                                            :height   100
                                             :position "absolute"}}]]
      [radix/dropdown-menu {:id       :field-option
                            :trigger  [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
@@ -167,9 +167,8 @@
     [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
      [:div.col-span-2.flex-v.gap-3
-      (view-field ?label {:field/multi-line? true})
-      (view-field ?hint {:field/multi-line? true
-                         :placeholder       "Further instructions"})]
+      (view-field ?label)
+      (view-field ?hint {:placeholder (t :tr/further-instructions)})]
 
      (when (= :field.type/select @?type)
        [:div.col-span-2.text-sm
@@ -188,7 +187,7 @@
                                           :confirm-fn   (fn []
                                                           (io/remove-many! ?field)
                                                           (entity.data/save-field ?field))})}
-        [:div.w-5.h-5.rounded.flex.items-center.justify-center.text-destructive  [icons/trash "w-4 h-4"]]
+        [:div.w-5.h-5.rounded.flex.items-center.justify-center.text-destructive [icons/trash "w-4 h-4"]]
         (t :tr/remove)]]]]))
 
 (ui/defview field-row
