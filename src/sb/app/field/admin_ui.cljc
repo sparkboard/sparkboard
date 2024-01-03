@@ -18,87 +18,8 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(defn element-center-y [el]
-  #?(:cljs
-     (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
-       (+ y (/ height 2)))))
-
-(defn re-order [xs source side destination]
-  {:post [(= (count %) (count xs))]}
-  (let [out (reduce (fn [out x]
-                      (if (= x destination)
-                        (into out (case side :before [source destination]
-                                             :after [destination source]))
-                        (conj out x)))
-                    []
-                    (remove #{source} xs))]
-    (when-not (= (count out) (count xs))
-      (throw (ex-info "re-order failed, destination not found" {:source source :destination destination})))
-    out))
-
-(defn orderable-props
-  [?child]
-  #?(:cljs
-     (let [?parent       (io/parent ?child)
-           group         (goog/getUid ?parent)
-           id            (:sym ?child)
-           on-move       (fn [{:keys [source side destination]}]
-                           (io/swap-many! ?parent re-order
-                                          (get ?parent source)
-                                          side
-                                          (get ?parent destination))
-                           (entity.data/save-field ?child))
-           transfer-data (fn [e data]
-                           (j/call-in e [:dataTransfer :setData] (str group)
-                                      (pr-str data)))
-
-           receive-data  (fn [e]
-                           (try
-                             (ui/read-string (j/call-in e [:dataTransfer :getData] (str group)))
-                             (catch js/Error e nil)))
-           data-matches? (fn [e]
-                           (some #{(str group)} (j/get-in e [:dataTransfer :types])))
-           [active-drag set-drag!] (h/use-state nil)
-           [active-drop set-drop!] (h/use-state nil)
-           !should-drag? (h/use-ref false)]
-       {:drag-handle-props  {:on-mouse-down #(reset! !should-drag? true)
-                             :on-mouse-up   #(reset! !should-drag? false)}
-        :drag-subject-props {:draggable     true
-                             :data-dragging active-drag
-                             :data-dropping active-drop
-                             :on-drag-over  (j/fn [^js {:as e :keys [clientY currentTarget]}]
-                                              (j/call e :preventDefault)
-                                              (when (data-matches? e)
-                                                (set-drop! (if (< clientY (element-center-y currentTarget))
-                                                             :before
-                                                             :after))))
-                             :on-drag-leave (fn [^js e]
-                                              (j/call e :preventDefault)
-                                              (set-drop! nil))
-                             :on-drop       (fn [^js e]
-                                              (.preventDefault e)
-                                              (set-drop! nil)
-                                              (when-let [source (receive-data e)]
-                                                (on-move {:destination id
-                                                          :source      source
-                                                          :side        active-drop})))
-                             :on-drag-end   (fn [^js e]
-                                              (set-drag! nil))
-                             :on-drag-start (fn [^js e]
-                                              (if @!should-drag?
-                                                (do
-                                                  (set-drag! true)
-                                                  (transfer-data e id))
-                                                (.preventDefault e)))}
-        :drop-indicator     (when active-drop
-                              (v/x [:div.absolute.bg-focus-accent
-                                    {:class ["h-[4px] z-[99] inset-x-0 rounded"
-                                             (case active-drop
-                                               :before "top-[-2px]"
-                                               :after "bottom-[-2px]" nil)]}]))})))
-
 (ui/defview show-option [{:as ?option :syms [?label ?value ?color]}]
-  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (orderable-props ?option)]
+  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (ui/orderable-props ?option {:axis :y})]
     [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
      (merge {:key @?value}
             drag-subject-props)
@@ -129,7 +50,7 @@
                                                                            :confirm-text (t :tr/remove)
                                                                            :confirm-fn   (fn []
                                                                                            (io/remove-many! ?option)
-                                                                                           (p/do (entity.data/save-field ?option)
+                                                                                           (p/do (entity.data/maybe-save-field ?option)
                                                                                                  (radix/close-alert!)))}))}
                                        (t :tr/remove)]]}]]))
 
@@ -147,7 +68,7 @@
                                                              '?label @?new
                                                              '?color "#ffffff"})
                                      (io/try-submit+ ?new
-                                       (p/let [result (entity.data/save-field ?options)]
+                                       (p/let [result (entity.data/maybe-save-field ?options)]
                                          (reset! ?new (:init ?new))
                                          result)))}
       [field.ui/text-field ?new {:placeholder "Option label" :field/wrapper-class "flex-auto"}]
@@ -186,7 +107,7 @@
                                           :confirm-text (t :tr/remove)
                                           :confirm-fn   (fn []
                                                           (io/remove-many! ?field)
-                                                          (entity.data/save-field ?field))})}
+                                                          (entity.data/maybe-save-field ?field))})}
         [:div.w-5.h-5.rounded.flex.items-center.justify-center.text-destructive [icons/trash "w-4 h-4"]]
         (t :tr/remove)]]]]))
 
@@ -198,7 +119,7 @@
         {:keys [icon]} (data/field-types @?type)
         {:keys [drag-handle-props
                 drag-subject-props
-                drop-indicator]} (orderable-props ?field)]
+                drop-indicator]} (ui/orderable-props ?field {:axis :y})]
     [:div.flex-v.relative.border-b
      ;; label row
      [:div.flex.gap-3.p-3.items-stretch.relative.cursor-default.relative.group
@@ -278,7 +199,7 @@
                          (prn [:client2 (last @?fields)])
                          (expand! (:field/id @?new-field))
                          (reset! !new-field nil)
-                         (entity.data/save-field ?fields)))}
+                         (entity.data/maybe-save-field ?fields)))}
          [:div.h-10.flex.items-center [(:icon (data/field-types @?type)) "icon-lg text-gray-700  mx-2"]]
          [field.ui/text-field ?label {:field/label         false
                                       :ref                 !autofocus-ref

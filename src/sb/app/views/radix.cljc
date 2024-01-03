@@ -217,7 +217,8 @@
 (def context-menu-item (v/from-element :el.text-sm.flex.items-center.outline-none.user-select-none.rounded.px-2.py-1 ContextMenu/Item
                                        {:class "data-[highlighted]:bg-gray-100"}))
 
-(v/defview context-menu [trigger {:keys [id items] :or {id (str ::context-menu)}}]
+(v/defview context-menu [{:keys [trigger
+                                 items]}]
   [:el ContextMenu/Root
    [:el ContextMenu/Trigger (v/x trigger)]
    [:el.bg-white.rounded.overflow-hidden.p-1.shadow-md.min-w-32 ContextMenu/Content {:style {:z-index 20}}

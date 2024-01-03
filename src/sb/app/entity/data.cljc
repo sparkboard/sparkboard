@@ -119,18 +119,12 @@
   [ctx e a v]
   (save-attributes! ctx e {a v}))
 
-(defn save-field [?field]
-  (when-let [{:as ?persisted-field :keys [db/id attribute]} (io/ancestor-by ?field :field/persisted?)]
-    (io/try-submit+ ?persisted-field
-      (save-attribute! nil id attribute @?persisted-field))))
-
 (defn maybe-save-field
   [?field]
-  (let [value @?field]
-    (when (and (io/closest ?field :field/persisted?)
-               (not= value (persisted-value ?field)))
-      (io/try-submit+ ?field
-        (save-field ?field)))))
+  (when-let [{:as ?persisted-field :keys [db/id attribute]} (io/ancestor-by ?field :field/persisted?)]
+    (when (not= @?field (persisted-value ?field))
+      (io/try-submit+ ?persisted-field
+        (save-attribute! nil id attribute @?persisted-field)))))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))

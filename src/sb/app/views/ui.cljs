@@ -9,20 +9,20 @@
             [cljs.reader :as edn]
             [clojure.pprint]
             [clojure.string :as str]
+            [inside-out.forms :as io]
             [inside-out.macros]
             [promesa.core :as p]
             [re-db.api :as db]
             [re-db.react]
             [sb.app.asset.ui :as asset.ui]
+            [sb.app.entity.data :as entity.data]
             [sb.client.sanitize :as sanitize]
             [sb.i18n]
             [sb.icons :as icons]
             [sb.routing :as routing]
             [shadow.cljs.modern :refer [defclass]]
-            [taoensso.tempura :as tempura]
             [yawn.hooks :as h]
-            [yawn.view :as v]
-            [sb.i18n :as i18n]))
+            [yawn.view :as v]))
 
 (defn dev? [] (= "dev" (db/get :env/config :env)))
 
@@ -302,3 +302,97 @@
     (f e)))
 
 (defn pprint [x] (clojure.pprint/pprint x))
+
+(defn element-center-y [el]
+  (j/let [^js {:keys [y height]} (j/call el :getBoundingClientRect)]
+    (+ y (/ height 2))))
+(defn element-center-x [el]
+  (j/let [^js {:keys [x width]} (j/call el :getBoundingClientRect)]
+    (+ x (/ width 2))))
+
+(defn re-order [xs source side destination]
+  {:post [(= (count %) (count xs))]}
+  (let [out (reduce (fn [out x]
+                      (if (= x destination)
+                        (into out (case side :before [source destination]
+                                             :after [destination source]))
+                        (conj out x)))
+                    []
+                    (remove #{source} xs))]
+    (when-not (= (count out) (count xs))
+      (throw (ex-info "re-order failed, destination not found" {:source source :destination destination})))
+    out))
+
+(defn orderable-props
+  [?child {:keys [axis] :or {axis :y}}]
+  (let [?parent       (io/parent ?child)
+        group         (goog/getUid ?parent)
+        id            (:sym ?child)
+        on-move       (fn [{:keys [source side destination]}]
+                        (io/swap-many-children! ?parent re-order
+                                                (get ?parent source)
+                                                side
+                                                (get ?parent destination))
+                        (entity.data/maybe-save-field ?child))
+        transfer-data (fn [e data]
+                        (j/call-in e [:dataTransfer :setData] (str group)
+                                   (pr-str data)))
+
+        receive-data  (fn [e]
+                        (try
+                          (read-string (j/call-in e [:dataTransfer :getData] (str group)))
+                          (catch js/Error e nil)))
+        data-matches? (fn [e]
+                        (some #{(str group)} (j/get-in e [:dataTransfer :types])))
+        [active-drag set-drag!] (h/use-state nil)
+        [active-drop set-drop!] (h/use-state nil)
+        !should-drag? (h/use-ref false)]
+    {:drag-handle-props  {:on-mouse-down #(reset! !should-drag? true)
+                          :on-mouse-up   #(reset! !should-drag? false)}
+     :drag-subject-props {:draggable     true
+                          :data-dragging active-drag
+                          :data-dropping active-drop
+                          :on-drag-over  (j/fn [^js {:as e :keys [clientX
+                                                                  clientY
+                                                                  currentTarget]}]
+                                           (j/call e :preventDefault)
+                                           (when (data-matches? e)
+                                             (set-drop! (if (= ?child (last ?parent))
+                                                          (if (case axis
+                                                                :y (< clientY (element-center-y currentTarget))
+                                                                :x (< clientX (element-center-x currentTarget)))
+                                                            :before
+                                                            :after)
+                                                          :before))))
+                          :on-drag-leave (fn [^js e]
+                                           (j/call e :preventDefault)
+                                           (set-drop! nil))
+                          :on-drop       (fn [^js e]
+                                           (.preventDefault e)
+                                           (set-drop! nil)
+                                           (when-let [source (receive-data e)]
+                                             (on-move {:destination id
+                                                       :source      source
+                                                       :side        active-drop})))
+                          :on-drag-end   (fn [^js e]
+                                           (set-drag! nil))
+                          :on-drag-start (fn [^js e]
+                                           (if @!should-drag?
+                                             (do
+                                               (set-drag! true)
+                                               (transfer-data e id))
+                                             (.preventDefault e)))}
+     :dragging           active-drag
+     :dropping           active-drop
+     :drop-indicator     (when active-drop
+                           (case axis
+                             :y (v/x [:div.absolute.bg-focus-accent
+                                      {:class ["h-[4px] z-[99] inset-x-0 rounded"
+                                               (case active-drop
+                                                 :before "top-[-2px]"
+                                                 :after "bottom-[-2px]" nil)]}])
+                             :x (v/x [:div.absolute.bg-focus-accent
+                                      {:class ["w-[4px] z-[99] inset-y-0 rounded"
+                                               (case active-drop
+                                                 :before "left-[-2px]"
+                                                 :after "right-[-2px]" nil)]}])))}))
