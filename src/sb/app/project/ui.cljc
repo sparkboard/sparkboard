@@ -120,32 +120,34 @@
                        field-entries]
          :keys        [project/badges
                        member/roles]} (data/show params)
-        [can-edit? dev-panel] (use-dev-panel project)]
+        [can-edit? dev-panel] (use-dev-panel project)
+        field-params {:member/roles    roles
+                      :field/can-edit? can-edit?}]
     [:<>
      dev-panel
      [:div.flex-v.gap-6.pb-6
       ;; title row
       [:div.flex
+
        [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
-        ;; TODO
-        ;; make title editable for `can-edit?` and have it autofocus if title = (tr :tr/untitled)
-        ;; - think about how to make the title field editable
-        ;; - dotted underline if editable?
-        title]
+        (entity.ui/use-persisted-attr project :entity/title (merge field-params
+                                                                   {:field/label     false
+                                                                    :field/unstyled? true}))]
 
        [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l.relative
         [radix/tooltip "Back to board"
          [:a {:class title-icon-classes
               :href  (routing/entity-path (:entity/parent project) 'ui/show)}
           [icons/arrow-left]]]
-        [radix/tooltip "Link to project"
-         [:a {:class title-icon-classes
-              :href  (routing/entity-path project :show)}
-          [icons/link-2]]]
+        (when (:entity/id project)
+          [radix/tooltip "Link to project"
+           [:a {:class title-icon-classes
+                :href  (routing/entity-path project :show)}
+            [icons/link-2]]])
         modal-close]]
 
       [:div.px-body.flex-v.gap-6
-       (field.ui/show-prose description)
+       (entity.ui/use-persisted-attr project :entity/description (merge field-params {:field/label false}))
        (when badges
          [:section
           (into [:ul]
@@ -160,18 +162,3 @@
         [manage-community-actions project (:project/community-actions project)]]
        (when video
          [field.ui/show-video video])]]]))
-
-(ui/defview new
-  {:route       "/new/p/:board-id"
-   :view/router :router/modal}
-  [{:keys [board-id]}]
-  (let [fields (data/fields {:board-id board-id})]
-    (forms/with-form [!project {:project/parent board-id
-                                :entity/title   ?title}]
-      [:<>
-       [:h3.flex.items-center.border-b.h-14
-        [:div.px-body.flex-auto (t :tr/new-project)] modal-close]
-       [:div.p-body
-
-        [ui/pprinted (map db/touch fields)]
-        ]])))

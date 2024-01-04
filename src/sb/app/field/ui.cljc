@@ -53,7 +53,7 @@
                             :on-change (:on-change props
                                          #(reset! v! (j/get-in % [:target :value])))})]
     [:div.auto-size
-     [:div.bg-black (select-keys props [:class :style])
+     [:div (select-keys props [:class :style])
       (str (:value props) " ")]
      [:textarea (assoc props :rows 1)]]))
 
@@ -91,57 +91,78 @@
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))
 
+(defn with-messages-popover [?field anchor]
+  (v/x [radix/persistent-popover
+        {:default-open? true
+         :content       (form.ui/show-field-messages ?field)
+         :classes       {:content "z-30 relative bg-white rounded shadow-lg px-3 py-2 border border-2 border-red-500"
+                         :arrow   "fill-red-500"
+                         :close   "rounded-full inline-flex items-center justify-center w-6 h-6 text-gray-500 absolute top-2 right-2"}}
+        anchor]))
+
 (ui/defview text-field
   "A text-input element that reads metadata from a ?field to display appropriately"
   [?field props]
   (let [{:as         props
-         :field/keys [multi-line?
+         :field/keys [classes
+                      multi-line?
                       wrap
                       unwrap
-                      wrapper-class]
+                      can-edit?
+                      unstyled?]
          :or         {wrap   identity
                       unwrap identity}} (merge props (:props (meta ?field)))
-        blur!   (fn [e] (j/call-in e [:target :blur]))
-        cancel! (fn [^js e]
-                  (.preventDefault e)
-                  (.stopPropagation e)
-                  (reset! ?field (entity.data/persisted-value ?field))
-                  (js/setTimeout #(blur! e) 0))
-        props   (v/merge-props props
-                               (form.ui/?field-props ?field
-                                                     (merge {:field/event->value (j/get-in [:target :value])
-                                                             :field/wrap         #(when-not (str/blank? %) %)
-                                                             :field/unwrap       #(or % "")}
-                                                            props))
+        blur!      (fn [e] (j/call-in e [:target :blur]))
+        cancel!    (fn [^js e]
+                     (.preventDefault e)
+                     (.stopPropagation e)
+                     (reset! ?field (entity.data/persisted-value ?field))
+                     (js/setTimeout #(blur! e) 0))
+        props      (v/merge-props props
+                                  (form.ui/?field-props ?field
+                                                        (merge {:field/event->value (j/get-in [:target :value])
+                                                                :field/wrap         #(when-not (str/blank? %) %)
+                                                                :field/unwrap       #(or % "")}
+                                                               props)))
+        classes    (merge (if (or unstyled?
+                                  (not can-edit?))
+                            {:wrapper "w-full"
+                             :input   (str "border-0 border-b-2 border-transparent text-inherit-all p-0 font-inherit focus:ring-0 "
+                                           "focus:border-focus-accent")}
+                            {:wrapper "w-full"
+                             :input   "form-text rounded default-ring"})
+                          classes)
+        data-props {:data-touched (:touched ?field)
+                    :data-invalid (not (io/valid? ?field))
+                    :data-focused (:focused ?field)}]
+    [:div.field-wrapper
+     (merge data-props {:class (:wrapper classes)})
+     (form.ui/show-label ?field (:field/label props) (:label classes))
+     [:div.flex-v.relative
+      (with-messages-popover ?field
+        [auto-size (-> (form.ui/pass-props props)
+                       (v/merge-props
+                         data-props
+                         {:disabled    (not can-edit?)
+                          :class       ["w-full" (:input classes)]
+                          :placeholder (:placeholder props)
+                          :on-key-down (let [save #(when (io/ancestor-by ?field :field/persisted?)
+                                                     (j/call % :preventDefault)
+                                                     (entity.data/maybe-save-field ?field))]
+                                         (ui/keydown-handler (merge {:Meta-Enter save
+                                                                     :Escape     cancel!
+                                                                     :Meta-.     cancel!}
+                                                                    (when-not multi-line?
+                                                                      {:Enter save}))))}))])
+      (when-let [postfix (or (:field/postfix props)
+                             (:field/postfix (meta ?field))
+                             (and (some-> (entity.data/persisted-value ?field)
+                                          (not= (:value props)))
+                                  [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
+        [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
 
-                               {:class       ["pr-8 rounded default-ring"
-                                              (when (:invalid (forms/types (forms/visible-messages ?field)))
-                                                "outline-invalid")]
-                                :placeholder (:placeholder props)
-                                :on-key-down (let [save #(when (io/ancestor-by ?field :field/persisted?)
-                                                           (j/call % :preventDefault)
-                                                           (entity.data/maybe-save-field ?field))]
-                                               (ui/keydown-handler (merge {:Meta-Enter save
-                                                                           :Escape     cancel!
-                                                                           :Meta-.     cancel!}
-                                                                          (when-not multi-line?
-                                                                            {:Enter save}))))})]
-    (v/x
-      [:div.field-wrapper
-       {:class wrapper-class}
-       (form.ui/show-label ?field (:field/label props))
-       [:div.flex-v.relative
-        [auto-size (v/merge-props {:class "form-text w-full"} (form.ui/pass-props props))]
-        (when-let [postfix (or (:field/postfix props)
-                               (:field/postfix (meta ?field))
-                               (and (some-> (entity.data/persisted-value ?field)
-                                            (not= (:value props)))
-                                    [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
-          [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
-
-        (when (:loading? ?field)
-          [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
-       (form.ui/show-field-messages ?field)])))
+      (when (:loading? ?field)
+        [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]]))
 
 (defn wrap-prose [value]
   (when-not (str/blank? value)
@@ -155,18 +176,6 @@
   ;; multi-line markdown editor with formatting
   (text-field ?string (merge {:field/multi-line? true}
                              props)))
-
-(ui/defview show-select [?field {:field/keys [label options can-edit?]} entry]
-  [:div.flex-v.gap-2
-   [:label.field-label label]
-   [radix/select-menu {:value           (or @?field "")
-                       :id              (str (:entity/id entry))
-                       :field/can-edit? can-edit?
-                       :field/options   (->> options
-                                             (map (fn [{:field-option/keys [label value color]}]
-                                                    {:text  label
-                                                     :value (or value "")}))
-                                             doall)}]])
 
 (comment
 

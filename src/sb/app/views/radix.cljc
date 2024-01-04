@@ -4,6 +4,7 @@
             #?(:cljs ["@radix-ui/react-alert-dialog" :as alert])
             #?(:cljs ["@radix-ui/react-dialog" :as dialog])
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
+            #?(:cljs ["@radix-ui/react-popover" :as popover])
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
             #?(:cljs ["@radix-ui/react-tooltip" :as tooltip])
@@ -223,3 +224,13 @@
    [:el ContextMenu/Trigger (v/x trigger)]
    [:el.bg-white.rounded.overflow-hidden.p-1.shadow-md.min-w-32 ContextMenu/Content {:style {:z-index 20}}
     (into [:<>] items)]])
+
+(v/defview persistent-popover [{:keys [content classes props]} anchor]
+  (v/x [:el.foo popover/Root (v/props (merge (:root props)
+                                             {:open (boolean content)
+                                              :style {:z-index 1}}))
+        [:el.hidden popover/Trigger]
+        [:el popover/Anchor anchor]
+        [:el popover/Content {:class (:content classes)}
+         [:el popover/Arrow {:class (:arrow classes)}]
+         content]]))

@@ -122,6 +122,13 @@
 }
 
 @layer utilities {
+
+    .text-inherit-all {
+        color: inherit;
+        font-size: inherit;
+        line-height: inherit;
+
+    }
     .labels-xs label {
         @apply text-xs
     }

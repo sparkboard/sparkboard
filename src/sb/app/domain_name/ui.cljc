@@ -45,6 +45,6 @@
     (field.ui/text-field ?name (merge props
                                       {:auto-complete       "off"
                                        :spell-check         false
-                                       :field/wrapper-class "flex-auto"
+                                       :field/classes       {:wrapper "flex-auto"}
                                        :field/label         false}))
     [:div.flex.items-center.text-sm.text-gray-500.h-10 ".sparkboard.com"]]])

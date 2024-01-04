@@ -34,9 +34,9 @@
              (:field/label ?field)
              (io/closest ?field #(some-> (:attribute %) attribute-label))))
 
-(defn show-label [?field & [label]]
+(defn show-label [?field & [label class]]
   (when-let [label (get-label ?field label)]
-    [:label.field-label {:for (field-id ?field)} label]))
+    [:label.field-label {:for (field-id ?field) :class class} label]))
 
 (defn ?field-props [?field
                     {:keys [field/event->value

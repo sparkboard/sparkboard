@@ -50,7 +50,7 @@
 
        (when owners
          [:div.flex-v.gap-2
-          [:label.field-label {} (t :tr/owner)]
+          [:label.field-label (t :tr/owner)]
           (radix/select-menu {:value           @?owner
                               :on-value-change (partial reset! ?owner)
                               :field/options
@@ -91,8 +91,7 @@
      [:div.btn.btn-white.overflow-hidden.relative
       (-> props
           (v/merge-props {:class (when error "ring-destructive ring-2")})
-          (assoc :on-click
-                 (when-not loading? on-click)))
+          (assoc :on-click (when-not loading? on-click)))
       (t :tr/new-project)
       (when (:loading? @!async-state)
         [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))

@@ -46,14 +46,12 @@
 (defn use-persisted-attr [e a & {:as props}]
   #?(:cljs
      (let [persisted-value (get e a)
-           make-field      (or (:make-field props)
-                               (:make-field (io/global-meta a))
+           make-field      (or (:make-field (io/global-meta a))
                                (fn [init _props] (io/field :init init)))
            ?field          (h/use-memo #(doto (make-field persisted-value props)
                                           (add-meta! {:attribute        a
                                                       :db/id            (sch/wrap-id e)
-                                                      :field/label      (u/some-or (:field/label props)
-                                                                                   (form.ui/attribute-label a))
+                                                      :field/label      (:field/label props)
                                                       :field/persisted? true}))
                                        ;; create a new field when the persisted value changes
                                        (h/use-deps persisted-value))]

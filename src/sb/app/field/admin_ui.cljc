@@ -31,11 +31,11 @@
                        "opacity-0 group-hover:opacity-100"
                        "cursor-drag"]})
        [icons/drag-dots]]]
-     [field.ui/text-field ?label {:field/label         false
-                                  :field/wrapper-class "flex-auto"
-                                  :class               "rounded-sm relative focus:z-2"
-                                  :style               {:background-color @?color
-                                                        :color            (color/contrasting-text-color @?color)}}]
+     [field.ui/text-field ?label {:field/label   false
+                                  :field/classes {:wrapper "flex-auto"}
+                                  :class         "rounded-sm relative focus:z-2"
+                                  :style         {:background-color @?color
+                                                  :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
       [field.ui/color-field ?color {:style {:top      -10
                                             :left     -10
@@ -72,7 +72,8 @@
                                          (p/let [result (entity.data/maybe-save-field ?options)]
                                            (reset! ?new (:init ?new))
                                            result)))}
-        [field.ui/text-field ?new {:placeholder "Option label" :field/wrapper-class "flex-auto"}]
+        [field.ui/text-field ?new {:placeholder "Option label"
+                                   :field/classes {:wrapper "flex-auto"}}]
         [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
      #_[ui/pprinted @?options]]))
 
@@ -161,14 +162,14 @@
                             :field/show-on-card?         ?show-on-card?})
             :init init))
 
-(ui/defview fields-editor [{:as ?fields :keys [field/label]} props]
+(ui/defview fields-editor [?fields props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
         [expanded expand!] (h/use-state nil)
-        use-order  (ui/use-orderable-parent ?fields {:axis :y})]
+        use-order      (ui/use-orderable-parent ?fields {:axis :y})]
     [:div.field-wrapper {:class "labels-semibold"}
      [:label.field-label {:class "flex items-center"}
-      label
+      (form.ui/get-label ?fields)
       [:div.flex.ml-auto.items-center
        (when-not @!new-field
          (radix/dropdown-menu {:id       :add-field
@@ -187,7 +188,7 @@
       (->> ?fields
            (map (fn [{:as ?field :syms [?id]}]
                   (field-row ?field
-                             {:use-order use-order
+                             {:use-order      use-order
                               :expanded?      (= expanded @?id)
                               :toggle-expand! #(expand! (fn [old]
                                                           (u/guard @?id (partial not= old))))})))
@@ -208,7 +209,7 @@
          [field.ui/text-field ?label {:field/label         false
                                       :ref                 !autofocus-ref
                                       :placeholder         (:field/label ?label)
-                                      :field/wrapper-class "flex-auto"}]
+                                      :field/classes       {:wrapper "flex-auto"}}]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (t :tr/add)]
          [:div.flex.items-center.justify-center.icon-light-gray.h-10.w-7
