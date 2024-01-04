@@ -83,6 +83,8 @@
   [{:keys [project-id member/roles]}]
   (merge {:member/roles roles}
          (q/pull `[~@entity.data/fields
+                   {:project/badges [:badge/label
+                                     :badge/color]}
                    :entity/field-entries
                    {:entity/parent
                     [~@entity.data/fields

@@ -37,11 +37,7 @@
                                   :style         {:background-color @?color
                                                   :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-      [field.ui/color-field ?color {:style {:top      -10
-                                            :left     -10
-                                            :width    100
-                                            :height   100
-                                            :position "absolute"}}]]
+      [field.ui/color-field ?color nil]]
      [radix/dropdown-menu {:id       :field-option
                            :trigger  [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
                                       [icons/ellipsis-horizontal "w-4 h-4"]]

@@ -223,19 +223,23 @@
 (def context-menu-item (v/from-element :el.text-sm.flex.items-center.outline-none.user-select-none.rounded.px-2.py-1.cursor-default ContextMenu/Item
                                        {:class "data-[highlighted]:bg-gray-100"}))
 
+(def float-small "bg-white rounded overflow-hidden shadow-md")
+
 (v/defview context-menu [{:keys [trigger
                                  items]}]
   [:el ContextMenu/Root
    [:el ContextMenu/Trigger (v/x trigger)]
-   [:el.bg-white.rounded.overflow-hidden.p-1.shadow-md.min-w-32 ContextMenu/Content {:style {:z-index 20}}
+   [:el ContextMenu/Content {:style {:z-index 20}
+                             :class [float-small
+                                     "p-1 min-w-32"]}
     (into [:<>] items)]])
 
 (v/defview persistent-popover [{:keys [content classes props]} anchor]
-  (v/x [:el.foo popover/Root (v/props (merge (:root props)
-                                             {:open (boolean content)
-                                              :style {:z-index 1}}))
+  (v/x [:el popover/Root (v/props (merge (:root props)
+                                         {:open  (boolean content)
+                                          :style {:z-index 1}}))
         [:el.hidden popover/Trigger]
         [:el popover/Anchor anchor]
-        [:el popover/Content {:class (:content classes)}
+        [:el.outline-none popover/Content {:class (:content classes)}
          [:el popover/Arrow {:class (:arrow classes)}]
          content]]))

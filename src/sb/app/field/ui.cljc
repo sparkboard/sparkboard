@@ -1,5 +1,6 @@
 (ns sb.app.field.ui
-  (:require [applied-science.js-interop :as j]
+  (:require #?(:cljs ["@radix-ui/react-popover" :as Pop])
+            [applied-science.js-interop :as j]
             [clojure.set :as set]
             [clojure.string :as str]
             [inside-out.forms :as io]
@@ -17,7 +18,10 @@
             [sb.schema :as sch]
             [sb.util :as u]
             [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [sb.color :as color]
+            [sb.i18n :refer [t]]
+            [promesa.core :as p]))
 
 #?(:cljs
    (defn parse-video-url [url]
@@ -109,7 +113,8 @@
                       wrap
                       unwrap
                       can-edit?
-                      unstyled?]
+                      unstyled?
+                      keybindings]
          :or         {wrap   identity
                       unwrap identity}} (merge props (:props (meta ?field)))
         blur!      (fn [e] (j/call-in e [:target :blur]))
@@ -135,37 +140,39 @@
         data-props {:data-touched (:touched ?field)
                     :data-invalid (not (io/valid? ?field))
                     :data-focused (:focused ?field)}]
-    [:div.field-wrapper
-     (merge data-props {:class (:wrapper classes)})
-     (form.ui/show-label ?field (:field/label props) (:label classes))
-     [:div.flex-v.relative
-      (with-messages-popover ?field
-        [auto-size (-> (form.ui/pass-props props)
-                       (v/merge-props
-                         data-props
-                         {:disabled    (not can-edit?)
-                          :class       ["w-full" (:input classes)]
-                          :placeholder (:placeholder props)
-                          :on-key-down (let [save #(when (io/ancestor-by ?field :field/persisted?)
-                                                     (j/call % :preventDefault)
-                                                     (entity.data/maybe-save-field ?field))]
-                                         (ui/keydown-handler (merge {:Meta-Enter save
-                                                                     :Escape     cancel!
-                                                                     :Meta-.     cancel!}
-                                                                    (when-not multi-line?
-                                                                      {:Enter save}))))}))])
-      (when-let [postfix (or (:field/postfix props)
-                             (:field/postfix (meta ?field))
-                             (and (some-> (entity.data/persisted-value ?field)
-                                          (not= (:value props)))
-                                  [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
-        [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
+    (when (or can-edit? (u/some-str (:value props)))
+      [:div.field-wrapper
+       (merge data-props {:class (:wrapper classes)})
+       (form.ui/show-label ?field (:field/label props) (:label classes))
+       [:div.flex-v.relative
+        (with-messages-popover ?field
+          [auto-size (-> (form.ui/pass-props props)
+                         (v/merge-props
+                           data-props
+                           {:disabled    (not can-edit?)
+                            :class       ["w-full" (:input classes)]
+                            :placeholder (:placeholder props)
+                            :on-key-down (let [save #(when (io/ancestor-by ?field :field/persisted?)
+                                                       (j/call % :preventDefault)
+                                                       (entity.data/maybe-save-field ?field))]
+                                           (ui/keydown-handler (merge {:Meta-Enter save
+                                                                       :Escape     cancel!
+                                                                       :Meta-.     cancel!}
+                                                                      (when-not multi-line?
+                                                                        {:Enter save})
+                                                                      keybindings)))}))])
+        (when-let [postfix (or (:field/postfix props)
+                               (:field/postfix (meta ?field))
+                               (and (some-> (entity.data/persisted-value ?field)
+                                            (not= (:value props)))
+                                    [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
+          [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
 
-      (when (:loading? ?field)
-        [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
-     (when-let [hint (and (:focused ?field)
-                          (:field/hint props))]
-       [:div.text-gray-500.text-sm hint])]))
+        (when (:loading? ?field)
+          [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
+       (when-let [hint (and (:focused ?field)
+                            (:field/hint props))]
+         [:div.text-gray-500.text-sm hint])])))
 
 (defn wrap-prose [value]
   (when-not (str/blank? value)
@@ -200,7 +207,7 @@
    [icons/play-circle "icon-xl w-20 h-20 text-white drop-shadow-2xl transition-all hover:scale-110 "]])
 
 (ui/defview video-field
-  {:key (fn [?field] #?(:cljs (goog/getUid ?field)))}
+  {:key (fn [?field _] #?(:cljs (goog/getUid ?field)))}
   [?field {:as props :keys [field/can-edit?]}]
   (let [!editing? (h/use-state (nil? @?field))]
     [:div.field-wrapper
@@ -237,15 +244,79 @@
    (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
-(ui/defview color-field [?field props]
+(ui/defview color-field
+  ;; color field must be contained within a relative.overflow-hidden element, which it expands to fill.
+  [?field props]
   [:input.default-ring.default-ring-hover.rounded
    (-> (form.ui/?field-props ?field
                              (merge props {:field/event->value (j/get-in [:target :value])
                                            :save-on-change?    true}))
-       (v/merge-props props)
+       (v/merge-props {:style {:top      -10
+                               :left     -10
+                               :width    100
+                               :height   100
+                               :position "absolute"}} props)
        (assoc :type "color")
        (update :value #(or % "#ffffff"))
        (form.ui/pass-props))])
+
+
+(ui/defview new-badge [?badges close!]
+  ;; TODO
+  ;; - Enable the "add badge" in project ellipsis menu
+  ;; - color picker should show colors already used in the board?
+  ;; - right-click on a badge for a context menu: [edit, remove]
+  (let [!form (h/use-ref)]
+    (io/with-form [?badge {:badge/label ?label
+                           :badge/color (?color :init "#dddddd")}
+                   :required [?label ?color]]
+      (let [submit! (fn []
+                      (io/add-many! ?badges @?badge)
+                      (io/clear! ?badge)
+                      (p/let [res (entity.data/maybe-save-field ?badges)]
+                        (when-not (:error res)
+                          (close!))))]
+        [:el.relative Pop/Root {:open true :on-open-change #(close!)}
+         [:el Pop/Anchor]
+         [:el Pop/Content {:as-child true}
+          [:div.p-2.z-10 {:class radix/float-small}
+           [:form.outline-none.flex.gap-2.items-stretch
+            {:ref       !form
+             :on-submit (fn [e]
+                          (.preventDefault e)
+                          (submit!))}
+            [text-field ?label {:placeholder       (t :tr/label)
+                                :field/keybindings {:Enter submit!}
+                                :field/multi-line? false
+                                :field/can-edit?   true
+                                :field/label       false}]
+            [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
+            [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
+           (form.ui/show-field-messages ?badges)]]]))))
+
+(ui/defview badges-field [?badges {:field/keys [can-edit?]}]
+  [:div.flex.gap-1
+   (for [{:as   ?badge
+          :syms [?label ?color]} ?badges
+         :let [bg    (or (u/some-str @?color) "#ffffff")
+               color (color/contrasting-text-color bg)]]
+     [radix/context-menu {:trigger [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
+                                    {:key   @?label
+                                     :style {:background-color bg :color color}} @?label]
+                          :items   [[radix/context-menu-item
+                                     {:on-select (fn []
+                                                   (io/remove-many! ?badge)
+                                                   (entity.data/maybe-save-field ?badges))}
+                                     (t :tr/remove)]]}])
+   (let [!open (h/use-state false)]
+     (when can-edit?
+       [:div.inline-flex.text-sm.gap-1.items-center
+        {:on-click #(reset! !open true)}
+        (when-not (seq ?badges) "Add Badge")
+        [icons/plus "w-4 h-4 icon-gray"]
+        (when @!open
+          [new-badge ?badges #(reset! !open false)])]))])
+
 
 (ui/defview image-field [?field props]
   (let [src            (asset.ui/asset-src @?field :card)

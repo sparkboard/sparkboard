@@ -90,24 +90,32 @@
 
 #?(:cljs
    (defn use-dev-panel [entity]
-     (let [!dev-edit? (h/use-state nil)
-           can-edit?  (if-some [edit? @!dev-edit?]
-                        edit?
-                        (validate/editing-role? (:member/roles entity)))]
-       [can-edit? (when (ui/dev?)
-                    [radix/select-menu {:value           @!dev-edit?
-                                        :on-value-change (partial reset! !dev-edit?)
-                                        :field/classes {:trigger "flex items-center px-2 icon-gray text-sm self-start"
-                                                        :content (str radix/menu-content-classes " text-sm")}
-                                        :field/can-edit? true
-                                        :field/options   [{:value nil :text "Current User"}
-                                                          {:value true :text "Editor"}
-                                                          {:value false :text "Viewer"}]}])])))
+     (let [m {"Current" (:member/roles entity)
+              "Editor" #{:role/editor}
+              "Viewer" #{}
+              "Admin" #{:role/admin}}
+           !roles (h/use-state "Current")
+           roles (m @!roles)]
+       [(validate/editing-role? roles)
+        roles
+        (when (ui/dev?)
+          [radix/select-menu {:value           @!roles
+                              :on-value-change #(reset! !roles %)
+                              :field/classes   {:trigger "flex items-center px-2 icon-gray text-sm self-start"
+                                                :content (str radix/menu-content-classes " text-sm")}
+                              :field/can-edit? true
+                              :field/options   [{:value "Current" :text "Current"}
+                                                {:value "Editor" :text "Editor"}
+                                                {:value "Viewer" :text "Viewer"}
+                                                {:value  "Admin" :text "Admin"}]}])
+        ])))
 
 (def title-icon-classes "px-1 py-2 icon-light-gray")
 
 (def modal-close [radix/dialog-close
                   [:div {:class title-icon-classes} [icons/close]]])
+
+
 
 (ui/defview show
   {:route       "/p/:project-id"
@@ -120,7 +128,7 @@
                        field-entries]
          :keys        [project/badges
                        member/roles]} (data/show params)
-        [can-edit? dev-panel] (use-dev-panel project)
+        [can-edit? roles dev-panel] (use-dev-panel project)
         field-params {:member/roles    roles
                       :field/can-edit? can-edit?}]
     [:<>
@@ -137,6 +145,11 @@
        dev-panel
        [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l.relative
 
+        (when (:role/admin roles)
+          [radix/dropdown-menu
+           {:trigger  [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
+            :children [[{:on-click #()} "Add Badge"]]}])
+
         [radix/tooltip "Back to board"
          [:a {:class title-icon-classes
               :href  (routing/entity-path (:entity/parent project) 'ui/show)}
@@ -149,12 +162,10 @@
         modal-close]]
 
       [:div.px-body.flex-v.gap-6
-       (entity.ui/use-persisted-attr project :entity/description (merge field-params {:field/label false}))
-       (when badges
-         [:section
-          (into [:ul]
-                (map (fn [bdg] [:li.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex (:badge/label bdg)]))
-                badges)])
+       (entity.ui/use-persisted-attr project :entity/description (merge field-params
+                                                                        {:field/label false
+                                                                         :placeholder "Description"}))
+       (entity.ui/use-persisted-attr project :project/badges field-params)
        (entity.ui/use-persisted-attr project
                                      :entity/field-entries
                                      {:entity/fields   (->> project :entity/parent :board/project-fields)

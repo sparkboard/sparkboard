@@ -11,5 +11,8 @@
                         :prose/format
                         :prose/string]}}
 
-    {:content/badge {s- [:map {:closed true} :badge/label]}
-     :badge/label   {s- :string}}))
+    {:content/badge {s- [:map {:closed true}
+                         :badge/label
+                         :badge/color]}
+     :badge/label   {s- :string}
+     :badge/color   {s- :html/color}}))

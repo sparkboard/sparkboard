@@ -31,6 +31,11 @@
   {:string               {:view field.ui/text-field}
    :http/url             {:view field.ui/text-field}
    :boolean              {:view field.ui/checkbox-field}
+   :project/badges       {:view       field.ui/badges-field
+                          :make-field (fn [init _props]
+                                        (io/field :many {:badge/label ?label
+                                                         :badge/color ?color}
+                                                  :init init))}
    :prose/as-map         {:view       field.ui/prose-field
                           :make-field (fn [init _props]
                                         (io/form {:prose/format (prose/?format :init :prose.format/markdown)

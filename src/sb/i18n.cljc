@@ -342,6 +342,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/label                           {:en "Label"
                                           :fr "Étiquette"
                                           :es "Etiqueta"}
+     :tr/color                           {:en "Color"
+                                          :fr "Couleur"
+                                          :es "Color"}
      :tr/hint                            {:en "Hint"
                                           :fr "Indice"
                                           :es "Pista"}
