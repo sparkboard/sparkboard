@@ -86,7 +86,7 @@
                                                  ?show-at-registration?
                                                  ?show-on-card?]}]
   (let [view-field (fn [?field & [props]]
-                     (view-field ?field props))]
+                     (view-field ?field (merge props {:field/can-edit? true})))]
     [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
      [:div.col-span-2.flex-v.gap-3
@@ -199,9 +199,7 @@
         [:form.flex.gap-2.items-start.relative
          {:on-submit (ui/prevent-default
                        (fn [e]
-                         (prn [:client1 @?new-field])
                          (io/add-many! ?fields @?new-field)
-                         (prn [:client2 (last @?fields)])
                          (expand! (:field/id @?new-field))
                          (reset! !new-field nil)
                          (entity.data/maybe-save-field ?fields)))}

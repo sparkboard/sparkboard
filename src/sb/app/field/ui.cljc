@@ -162,7 +162,10 @@
         [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
 
       (when (:loading? ?field)
-        [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]]))
+        [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
+     (when-let [hint (and (:focused ?field)
+                          (:field/hint props))]
+       [:div.text-gray-500.text-sm hint])]))
 
 (defn wrap-prose [value]
   (when-not (str/blank? value)
@@ -404,7 +407,7 @@
           (-> @?entry :field-entry/field :field/id))}
   [?entry props]
   (let [field (:field-entry/field @?entry)
-        props (merge (select-keys field [:field/label :field/options])
+        props (merge (select-keys field [:field/label :field/hint :field/options])
                      (select-keys props [:field/can-edit?]))]
     (case (:field/type field)
       :field.type/video [video-field

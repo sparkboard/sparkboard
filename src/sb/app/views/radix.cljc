@@ -32,7 +32,7 @@
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-3 py-2 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 cursor-default "
+  (str "block px-3 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 cursor-default "
        (if selected?
          "text-txt/50 "
          (str "hover:bg-primary/5 "
@@ -85,26 +85,31 @@
 (defn select-menu [{:as props :keys [id
                                      placeholder
                                      field/options
-                                     field/can-edit?]
+                                     field/can-edit?
+                                     field/classes]
                     :or {id :radix-select}}]
-  (v/x
-    [:el sel/Root (cond-> (form.ui/pass-props (dissoc props :trigger :placeholder))
-                          (not can-edit?)
-                          (assoc :disabled true))
-     [:el.btn.bg-white.flex.items-center.rounded.whitespace-nowrap.gap-1.group.default-ring.default-ring-hover.px-3 sel/Trigger
-      {:class [(if can-edit?
-                 "disabled:text-gray-400"
-                 "text-gray-900")]}
-      [:el sel/Value {:placeholder (v/x placeholder)}]
-      [:div.flex-grow]
-      (when can-edit?
-        [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down)])]
-     [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
-      [:el sel/Content {:class menu-content-classes}
-       [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
-       (into [:el sel/Viewport {}] (map select-item) options)
-       [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
-       [:el sel/Arrow]]]]))
+  (let [classes (merge {:trigger "btn bg-white flex items-center rounded whitespace-nowrap gap-1 group default-ring default-ring-hover px-3"
+                        :content menu-content-classes}
+                       classes)]
+    (v/x
+      [:el sel/Root (cond-> (form.ui/pass-props (dissoc props :trigger :placeholder))
+                            (not can-edit?)
+                            (assoc :disabled true))
+       [:el sel/Trigger
+        {:class [(:trigger classes)
+                 (if can-edit?
+                   "disabled:text-gray-400"
+                   "text-gray-900")]}
+        [:el sel/Value {:placeholder (v/x placeholder)}]
+        [:div.flex-grow]
+        (when can-edit?
+          [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down)])]
+       [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
+        [:el sel/Content {:class (:content classes)}
+         [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
+         (into [:el sel/Viewport {}] (map select-item) options)
+         [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
+         [:el sel/Arrow]]]])))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))

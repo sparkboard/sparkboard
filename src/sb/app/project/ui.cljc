@@ -95,14 +95,14 @@
                         edit?
                         (validate/editing-role? (:member/roles entity)))]
        [can-edit? (when (ui/dev?)
-                    [:div.p-body.bg-gray-100.border-b.flex.gap-3
-                     [:div.flex-auto.text-sm [ui/pprinted (:member/roles entity)]]
-                     [radix/select-menu {:value           @!dev-edit?
-                                         :on-value-change (partial reset! !dev-edit?)
-                                         :field/can-edit? true
-                                         :field/options   [{:value nil :text "Current User"}
-                                                           {:value true :text "Editor"}
-                                                           {:value false :text "Viewer"}]}]])])))
+                    [radix/select-menu {:value           @!dev-edit?
+                                        :on-value-change (partial reset! !dev-edit?)
+                                        :field/classes {:trigger "flex items-center px-2 icon-gray text-sm self-start"
+                                                        :content (str radix/menu-content-classes " text-sm")}
+                                        :field/can-edit? true
+                                        :field/options   [{:value nil :text "Current User"}
+                                                          {:value true :text "Editor"}
+                                                          {:value false :text "Viewer"}]}])])))
 
 (def title-icon-classes "px-1 py-2 icon-light-gray")
 
@@ -124,7 +124,7 @@
         field-params {:member/roles    roles
                       :field/can-edit? can-edit?}]
     [:<>
-     dev-panel
+
      [:div.flex-v.gap-6.pb-6
       ;; title row
       [:div.flex
@@ -134,7 +134,9 @@
                                                                    {:field/label     false
                                                                     :field/unstyled? true}))]
 
+       dev-panel
        [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l.relative
+
         [radix/tooltip "Back to board"
          [:a {:class title-icon-classes
               :href  (routing/entity-path (:entity/parent project) 'ui/show)}
