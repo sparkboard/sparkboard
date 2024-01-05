@@ -88,20 +88,46 @@
               :entity/description
               :entity/created-at
               :entity/deleted-at
+              :entity/video
               {:image/avatar [:entity/id]}
               {:image/background [:entity/id]}
               {:entity/domain-name [:domain-name/name]}])
+
+(defn required? [parent-schema child-attr]
+  (-> parent-schema
+      (mu/find child-attr)
+      (mu/-required-map-entry?)))
+
+(defn ignore-optional-nils [parent-schema m]
+  (reduce-kv (fn [m k v]
+               (if (and (nil? v) (not (required? parent-schema k)))
+                 (dissoc m k)
+                 m))
+             m
+             m))
+
+(defn retract-nils
+  [m]
+  (let [nils (->> m (filter #(nil? (val %))) (map key))
+        m (apply dissoc m nils)
+        e (:db/id m)]
+    (cond-> []
+            (seq m) (conj m)
+            (seq nils) (into (for [a nils] [:db/retract e a])))))
 
 (q/defx save-attributes!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} e m]
   (let [e             (sch/wrap-id e)
-        _             (validate/assert-can-edit! e account-id)
-        {:as entity :keys [entity/id entity/kind]} (db/entity e)
-        parent-schema (-> (keyword (name kind) "as-map")
-                          (@sch/!malli-registry))
-        txs           [(assoc m :db/id e)]]
-    (validate/assert m (mu/select-keys parent-schema (keys m)))
+        _             (validate/assert-can-edit! account-id e)
+        txs           (-> (assoc m :db/id e)
+                          retract-nils)]
+
+    (let [parent-schema            (-> (keyword (name (:entity/kind (db/entity e))) "as-map")
+                                       (@sch/!malli-registry))
+          without-nils             (ignore-optional-nils parent-schema m)]
+      (validate/assert without-nils (mu/select-keys parent-schema (keys without-nils))))
+
     (try
       (db/transact! txs)
       (catch Exception e (def E e) (throw e)))

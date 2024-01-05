@@ -1,18 +1,12 @@
 (ns sb.app.entity.ui
-  (:require [clojure.string :as str]
-            [inside-out.forms :as io]
-            [re-db.api :as db]
+  (:require [inside-out.forms :as io]
             [sb.app.asset.ui :as asset.ui]
-            [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as data]
-            [sb.app.field.ui :as field.ui]
-            [sb.app.form.ui :as form.ui]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]
-            [sb.util :as u]
-            [sb.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
@@ -84,7 +78,7 @@
     [:div.line-clamp-2 title]]])
 
 (ui/defview settings-button [entity]
-  (when-let [path (and (validate/editing-role? (:member/roles entity))
+  (when-let [path (and (az/editor-role? (:member/roles entity))
                        (some-> (routing/entity-route entity 'admin-ui/settings)
                                routing/path-for))]
     [:a.button

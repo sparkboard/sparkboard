@@ -5,8 +5,11 @@
             [sb.schema :as sch]))
 
 (defn editor-role? [roles]
-  (or (:role/admin roles)
-      (:role/collaborate roles)))
+  (or (:role/self roles)
+      (:role/project-admin roles)
+      (:role/project-editor roles)
+      (:role/board-admin roles)
+      (:role/org-admin roles)))
 
 #?(:clj
    (defn membership-id [account-id entity-id]
@@ -29,29 +32,38 @@
       (unauthorized! "User not signed in"))
     params))
 
-#?(:clj
-   (defn get-roles [account-id entity-id]
-     (let [account-id (dl/resolve-id account-id)
-           entity-id  (dl/resolve-id entity-id)]
-       (if (= account-id entity-id)
-         #{:role/owner}
-         (db/get (membership-id account-id entity-id) :member/roles)))))
+(defn entity-roles [account-id entity-id]
+  (let [account-id (dl/resolve-id account-id)
+        entity-id  (dl/resolve-id entity-id)]
+    (if (= account-id entity-id)
+      #{:role/self}
+      (let [kind         (:entity/kind (db/entity entity-id))
+            roles        (:member/roles (db/entity
+                                          ;; queries merge :member/roles onto entities, so in cljs we can read roles directly from the entity.
+                                          ;; re-db in-membery doesn't support tuple attrs that we use for memberships.
+                                          #?(:cljs entity-id
+                                             :clj  (membership-id account-id entity-id))))
+            scoped-roles (for [role roles]
+                           (keyword "role" (str (name kind) "-" (name role))))]
+        scoped-roles))))
 
-#?(:clj
-   (defn roles-for [account-id entity-id]
-     (->> (db/entity entity-id)
-          (iterate :entity/parent)
-          (take-while identity)
-          (mapcat (partial get-roles account-id))
-          (into #{}))))
+(defn all-roles [account-id entity-id]
+  (->> (db/entity entity-id)
+       (iterate :entity/parent)
+       (take-while identity)
+       (mapcat (partial entity-roles account-id))
+       (into #{})))
+
+(def can-edit? (comp editor-role? all-roles))
 
 (comment
   (let [account-id [:entity/id #uuid"b03a4669-a7ef-3e8e-bddc-8413e004c338"]
-        entity-id [:entity/id #uuid"a4ede6c0-22c2-3902-86ef-c1b8149d0a75"]]
-    (roles-for account-id entity-id)))
+        entity-id  [:entity/id #uuid"a4ede6c0-22c2-3902-86ef-c1b8149d0a75"]]
+    (all-roles account-id entity-id)
+    (db/touch (db/entity entity-id))))
 
 #?(:clj
    (defn with-roles [entity-key]
      (fn [req params]
        (when-let [account-id (some-> (-> req :account :entity/id) sch/wrap-id)]
-         (assoc params :member/roles (roles-for account-id (entity-key params)))))))
+         (assoc params :member/roles (all-roles account-id (entity-key params)))))))

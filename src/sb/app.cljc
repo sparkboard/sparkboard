@@ -22,7 +22,8 @@
             [sb.app.social-feed.ui]
             [sb.app.vote.ui]
             [sb.i18n :refer [t]]
-            [sb.transit :as t]))
+            [sb.transit :as t]
+            [sb.util :as u]))
 
 #?(:cljs
    (def client-endpoints (t/read (shadow.resource/inline "public/js/sparkboard.views.transit.json"))))
@@ -38,8 +39,9 @@
                                                   :init init))}
    :prose/as-map         {:view       field.ui/prose-field
                           :make-field (fn [init _props]
-                                        (io/form {:prose/format (prose/?format :init :prose.format/markdown)
-                                                  :prose/string prose/?string}
+                                        (io/form (-> {:prose/format (prose/?format :init :prose.format/markdown)
+                                                      :prose/string prose/?string}
+                                                     (u/guard :prose/string))
                                                  :init init))}
    :account/email        {:props      {:type        "email"
                                        :placeholder (t :tr/email)}
@@ -52,6 +54,7 @@
    :field/options        {:view field.admin-ui/options-editor}
    :entity/domain-name   {:view       domain.ui/domain-field
                           :make-field domain.ui/make-domain-field}
+   :entity/video         {:view field.ui/video-field}
    :entity/fields        {:view       field.admin-ui/fields-editor
                           :make-field field.admin-ui/make-field:fields}
    :entity/field-entries {:view       field.ui/entries-field

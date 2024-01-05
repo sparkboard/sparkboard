@@ -1,5 +1,5 @@
 (ns sb.app.content.data
-  (:require [sb.schema :as sch :refer [s-]]))
+  (:require [sb.schema :as sch :refer [s- ?]]))
 
 (sch/register!
   (merge
@@ -9,7 +9,7 @@
      :prose/string {s- :string}
      :prose/as-map {s- [:map {:closed true}
                         :prose/format
-                        :prose/string]}}
+                        (? :prose/string)]}}
 
     {:content/badge {s- [:map {:closed true}
                          :badge/label

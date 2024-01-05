@@ -20,8 +20,7 @@
                                           :member/as-map]]}
    :member/role                     {s- [:enum
                                          :role/admin
-                                         :role/owner
-                                         :role/collaborate
+                                         :role/editor
                                          :role/member]}
    :member/roles                    (merge sch/keyword
                                            sch/many

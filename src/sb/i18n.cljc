@@ -36,6 +36,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
     {:tr/cancel                          {:en "Cancel"
                                           :fr "Annuler"
                                           :es "Cancelar"}
+     :tr/add-badge                       {:en "Add badge"
+                                          :fr "Ajouter un badge"
+                                          :es "Añadir insignia"}
      :tr/further-instructions            {:en "Further instructions"
                                           :fr "Instructions supplémentaires"
                                           :es "Instrucciones adicionales"}

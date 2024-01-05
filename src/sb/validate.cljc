@@ -7,6 +7,7 @@
             [sb.server.datalevin :as dl]
             [sb.i18n :refer [t]]
             [re-db.api :as db]
+            [sb.authorize :as az]
             [sb.util :as u]))
 
 (defn humanized [schema value]
@@ -91,17 +92,9 @@
          (assert (-> (mu/optional-keys schema)
                      (mu/assoc :entity/domain-name (mu/optional-keys :domain-name/as-map)))))))
 
-(defn editing-role? [roles]
-  (boolean (some #{:role/owner :role/admin :role/collaborate} roles)))
-
-(defn can-edit? [entity-id account-id]
-  (let [entity-id  (dl/resolve-id entity-id)
-        account-id (dl/resolve-id account-id)]
-    (or (= entity-id account-id)                            ;; entity _is_ account
-        #?(:clj (->> (dl/entity [:member/entity+account [entity-id account-id]])
-                     :member/roles
-                     editing-role?)
-           :cljs (editing-role? (db/get entity-id :member/roles))))))
+(defn can-edit? [account-id entity-id]
+  (-> (az/entity-roles account-id entity-id)
+      az/editor-role?))
 
 (defn permission-denied! []
   (ex-info "Permission denied"
@@ -116,8 +109,8 @@
                                 :inside-out.forms/messages-by-path {() [reason]}}}}))
 
 #?(:clj
-   (defn assert-can-edit! [entity-id account-id]
-     (when-not (can-edit? entity-id account-id)
+   (defn assert-can-edit! [account-id entity-id]
+     (when-not (can-edit? account-id entity-id)
        (permission-denied!))))
 
 

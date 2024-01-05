@@ -95,7 +95,7 @@
 (q/defx settings!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} {:as org :keys [entity.data/id]}]
-  (validate/assert-can-edit! id account-id)
+  (validate/assert-can-edit! account-id id)
   (let [org (validate/conform org :org/as-map)]
     (db/transact! [org])
     {:body org}))
@@ -107,7 +107,7 @@
                    (validate/conform :org/as-map))
         member (-> {:member/entity  org
                     :member/account account-id
-                    :member/roles   #{:role/owner}}
+                    :member/roles   #{:role/admin}}
                    (dl/new-entity :member))]
     (db/transact! [member])
     org))

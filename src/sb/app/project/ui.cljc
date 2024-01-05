@@ -90,25 +90,24 @@
 
 #?(:cljs
    (defn use-dev-panel [entity]
-     (let [m {"Current" (:member/roles entity)
-              "Editor" #{:role/editor}
-              "Viewer" #{}
-              "Admin" #{:role/admin}}
-           !roles (h/use-state "Current")
-           roles (m @!roles)]
-       [(validate/editing-role? roles)
+     (let [m      {"Current User"   (:member/roles entity)
+                   "Project Editor" #{:role/project-editor}
+                   "Board Admin"    #{:role/board-admin}
+                   "Visitor"        #{}}
+           !roles (h/use-state "Current User")
+           roles  (m @!roles)]
+       [(az/editor-role? roles)
         roles
         (when (ui/dev?)
           [radix/select-menu {:value           @!roles
                               :on-value-change #(reset! !roles %)
-                              :field/classes   {:trigger "flex items-center px-2 icon-gray text-sm self-start"
+                              :field/classes   {:trigger "flex items-center px-2 icon-gray text-sm self-start focus-visible:ring-0"
                                                 :content (str radix/menu-content-classes " text-sm")}
                               :field/can-edit? true
-                              :field/options   [{:value "Current" :text "Current"}
-                                                {:value "Editor" :text "Editor"}
-                                                {:value "Viewer" :text "Viewer"}
-                                                {:value  "Admin" :text "Admin"}]}])
-        ])))
+                              :field/options   [{:value "Current User" :text "Current User"}
+                                                {:value "Project Editor" :text "Project Editor"}
+                                                {:value "Visitor" :text "Visitor"}
+                                                {:value "Board Admin" :text "Board Admin"}]}])])))
 
 (def title-icon-classes "px-1 py-2 icon-light-gray")
 
@@ -121,13 +120,7 @@
   {:route       "/p/:project-id"
    :view/router :router/modal}
   [params]
-  (let [{:as          project
-         :entity/keys [title
-                       description
-                       video
-                       field-entries]
-         :keys        [project/badges
-                       member/roles]} (data/show params)
+  (let [project (data/show params)
         [can-edit? roles dev-panel] (use-dev-panel project)
         field-params {:member/roles    roles
                       :field/can-edit? can-edit?}]
@@ -144,8 +137,7 @@
 
        dev-panel
        [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l.relative
-
-        (when (:role/admin roles)
+        (when (:role/board-admin roles)
           [radix/dropdown-menu
            {:trigger  [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
             :children [[{:on-click #()} "Add Badge"]]}])
@@ -165,6 +157,7 @@
        (entity.ui/use-persisted-attr project :entity/description (merge field-params
                                                                         {:field/label false
                                                                          :placeholder "Description"}))
+       (entity.ui/use-persisted-attr project :entity/video field-params)
        (entity.ui/use-persisted-attr project :project/badges field-params)
        (entity.ui/use-persisted-attr project
                                      :entity/field-entries
@@ -172,6 +165,4 @@
                                       :member/roles    roles
                                       :field/can-edit? can-edit?})
        [:section.flex-v.gap-2.items-start
-        [manage-community-actions project (:project/community-actions project)]]
-       (when video
-         [field.ui/show-video video])]]]))
+        [manage-community-actions project (:project/community-actions project)]]]]]))

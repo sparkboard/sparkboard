@@ -152,13 +152,16 @@
                            {:disabled    (not can-edit?)
                             :class       ["w-full" (:input classes)]
                             :placeholder (:placeholder props)
-                            :on-key-down (let [save #(when (io/ancestor-by ?field :field/persisted?)
-                                                       (j/call % :preventDefault)
-                                                       (entity.data/maybe-save-field ?field))]
-                                           (ui/keydown-handler (merge {:Meta-Enter save
-                                                                       :Escape     cancel!
+                            :on-key-down (let [save (fn [^js e]
+                                                      (if (io/ancestor-by ?field :field/persisted?)
+                                                        (entity.data/maybe-save-field ?field)
+                                                        (some-> (j/get-in e [:target :form])
+                                                                (j/call :requestSubmit)))
+                                                      (.preventDefault e))]
+                                           (ui/keydown-handler (merge {:Escape     cancel!
                                                                        :Meta-.     cancel!}
-                                                                      (when-not multi-line?
+                                                                      (if multi-line?
+                                                                        {:Meta-Enter save}
                                                                         {:Enter save})
                                                                       keybindings)))}))])
         (when-let [postfix (or (:field/postfix props)
@@ -209,22 +212,17 @@
 (ui/defview video-field
   {:key (fn [?field _] #?(:cljs (goog/getUid ?field)))}
   [?field {:as props :keys [field/can-edit?]}]
-  (let [!editing? (h/use-state (nil? @?field))]
-    [:div.field-wrapper
-     ;; preview shows persisted value?
-     [:div.flex.items-center
-      [:div.flex-auto (form.ui/show-label ?field (:field/label props))]
-      #_(when can-edit?
-          [:div.place-self-end [:a {:on-click #(swap! !editing? not)}
-                                [(if @!editing? icons/chevron-up icons/chevron-down) "icon-gray"]]])]
-     (when-let [url (:video/url @?field)]
-       [show-video url])
-     (when can-edit?
-       (text-field ?field (merge props
-                                 {:field/label  false
-                                  :placeholder  "YouTube or Vimeo url"
-                                  :field/wrap   (partial hash-map :video/url)
-                                  :field/unwrap :video/url})))]))
+  [:div.field-wrapper
+   ;; preview shows persisted value?
+   [:div.flex.items-center
+    (when (and can-edit? (not (u/some-str @?field)))
+      [:div.flex-auto (form.ui/show-label ?field (:field/label props))])]
+   (when-let [url @?field]
+     [show-video url])
+   (when can-edit?
+     (text-field ?field (merge props
+                               {:field/label false
+                                :placeholder "YouTube or Vimeo url"})))])
 
 (ui/defview select-field [?field {:as props :field/keys [label options]}]
   [:div.field-wrapper
@@ -294,28 +292,36 @@
             [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
            (form.ui/show-field-messages ?badges)]]]))))
 
-(ui/defview badges-field [?badges {:field/keys [can-edit?]}]
-  [:div.flex.gap-1
-   (for [{:as   ?badge
-          :syms [?label ?color]} ?badges
-         :let [bg    (or (u/some-str @?color) "#ffffff")
-               color (color/contrasting-text-color bg)]]
-     [radix/context-menu {:trigger [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
-                                    {:key   @?label
-                                     :style {:background-color bg :color color}} @?label]
-                          :items   [[radix/context-menu-item
-                                     {:on-select (fn []
-                                                   (io/remove-many! ?badge)
-                                                   (entity.data/maybe-save-field ?badges))}
-                                     (t :tr/remove)]]}])
-   (let [!open (h/use-state false)]
-     (when can-edit?
-       [:div.inline-flex.text-sm.gap-1.items-center
-        {:on-click #(reset! !open true)}
-        (when-not (seq ?badges) "Add Badge")
-        [icons/plus "w-4 h-4 icon-gray"]
+#?(:cljs
+   (defn use-new-badge [?badges]
+     (let [!open (h/use-state false)]
+       [#(reset! !open true)
         (when @!open
-          [new-badge ?badges #(reset! !open false)])]))])
+          [new-badge ?badges #(reset! !open false)])])))
+
+(ui/defview badges-field [?badges {:keys [field/can-edit? member/roles]}]
+  (let [[new! new-screen] (use-new-badge ?badges)
+        board-admin? (:role/board-admin roles)]
+    (when (or (seq ?badges) board-admin?)
+      [:div.flex.gap-1
+       (for [{:as   ?badge
+              :syms [?label ?color]} ?badges
+             :let [bg    (or (u/some-str @?color) "#ffffff")
+                   color (color/contrasting-text-color bg)]]
+         [radix/context-menu {:trigger [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
+                                        {:key   @?label
+                                         :style {:background-color bg :color color}} @?label]
+                              :items   [[radix/context-menu-item
+                                         {:on-select (fn []
+                                                       (io/remove-many! ?badge)
+                                                       (entity.data/maybe-save-field ?badges))}
+                                         (t :tr/remove)]]}])
+       (when board-admin?
+         [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
+          {:on-click new!}
+          (when-not (seq ?badges) [:span.cursor-default (t :tr/add-badge)])
+          [icons/plus "w-4 h-4 icon-gray"]
+          new-screen])])))
 
 
 (ui/defview image-field [?field props]
@@ -481,9 +487,7 @@
         props (merge (select-keys field [:field/label :field/hint :field/options])
                      (select-keys props [:field/can-edit?]))]
     (case (:field/type field)
-      :field.type/video [video-field
-                         ('video/?url ?entry)
-                         props]
+      :field.type/video [video-field ('video/?url ?entry) props]
       :field.type/select [select-field ('select/?value ?entry) props]
       :field.type/link-list [link-list-field ('link-list/?links ?entry) props]
       :field.type/image-list [images-field ('image-list/?images ?entry) props]

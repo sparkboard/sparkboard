@@ -27,10 +27,9 @@
 
 (defn role-kw [role-name]
   (case role-name
-    "editor" :role/collaborate
-    "collaborator" :role/collaborate
+    "editor" :role/editor
     "admin" :role/admin
-    "owner" :role/owner
+    "owner" :role/admin
     "member" nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -433,9 +432,9 @@
 
 (defn video-value [v]
   (when (and v (not (str/blank? v)))
-    (cond (re-find #"vimeo" v) {:video/url v}
-          (re-find #"youtube" v) {:video/url v}
-          :else {:video/url (str "https://www.youtube.com/watch?v=" v)})))
+    (cond (re-find #"vimeo" v) v
+          (re-find #"youtube" v) v
+          :else (str "https://www.youtube.com/watch?v=" v))))
 
 (defn parse-fields [managed-by-k to-k]
   (fn [m]
@@ -959,7 +958,7 @@
                                                                              (let [role (if (and (not (:role member))
                                                                                                  (= account-id (some->> (:entity/created-by project)
                                                                                                                         (to-uuid :account))))
-                                                                                          :role/owner
+                                                                                          :role/admin
                                                                                           (some-> (:role member) role-kw))]
                                                                                (merge {:entity/id      (composite-uuid :member project-id account-id)
                                                                                        :entity/kind    :member

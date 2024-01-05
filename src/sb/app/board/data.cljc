@@ -137,12 +137,12 @@
        (mapv (db/pull `[~@entity.data/fields]))))
 
 (defn authorize-edit! [board account-id]
-  (when-not (or (validate/can-edit? board account-id)
-                (validate/can-edit? (:entity/parent board) account-id))
+  (when-not (or (validate/can-edit? account-id board)
+                (validate/can-edit? account-id (:entity/parent board) ))
     (validate/permission-denied!)))
 
 (defn authorize-create! [board account-id]
-  (when-not (validate/can-edit? (:entity/parent board) account-id)
+  (when-not (validate/can-edit? account-id (:entity/parent board))
     (validate/permission-denied!)))
 
 (q/defx new!
@@ -161,8 +161,8 @@
 (q/defquery settings
   {:prepare [az/with-account-id!
              (az/with-roles :board-id)
-             (fn [_ {:as params :keys [member/roles board-id account-id]}]
-               (validate/assert-can-edit! board-id account-id)
+             (fn [_ {:as params :keys [board-id account-id]}]
+               (validate/assert-can-edit! account-id board-id)
                params)]}
   [{:keys [board-id member/roles]}]
   (some->
