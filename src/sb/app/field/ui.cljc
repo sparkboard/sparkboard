@@ -212,17 +212,19 @@
 (ui/defview video-field
   {:key (fn [?field _] #?(:cljs (goog/getUid ?field)))}
   [?field {:as props :keys [field/can-edit?]}]
-  [:div.field-wrapper
-   ;; preview shows persisted value?
-   [:div.flex.items-center
-    (when (and can-edit? (not (u/some-str @?field)))
-      [:div.flex-auto (form.ui/show-label ?field (:field/label props))])]
-   (when-let [url @?field]
-     [show-video url])
-   (when can-edit?
-     (text-field ?field (merge props
-                               {:field/label false
-                                :placeholder "YouTube or Vimeo url"})))])
+  (let [value (u/some-str @?field)]
+    (when (or can-edit? value)
+      [:div.field-wrapper
+       ;; preview shows persisted value?
+       [:div.flex.items-center
+        (when (and can-edit? (not value))
+          [:div.flex-auto (form.ui/show-label ?field (:field/label props))])]
+       (when value
+         [show-video value])
+       (when can-edit?
+         (text-field ?field (merge props
+                                   {:field/label false
+                                    :placeholder "YouTube or Vimeo url"})))])))
 
 (ui/defview select-field [?field {:as props :field/keys [label options]}]
   [:div.field-wrapper
