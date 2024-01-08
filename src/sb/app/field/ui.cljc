@@ -95,14 +95,40 @@
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))
 
-(defn with-messages-popover [?field anchor]
+(defn error-popover [anchor content]
   (v/x [radix/persistent-popover
         {:default-open? true
-         :content       (form.ui/show-field-messages ?field)
+         :content       (v/x content)
          :classes       {:content "z-30 relative bg-white rounded shadow-lg px-3 py-2 border border-2 border-red-500"
                          :arrow   "fill-red-500"
                          :close   "rounded-full inline-flex items-center justify-center w-6 h-6 text-gray-500 absolute top-2 right-2"}}
         anchor]))
+
+(defn with-messages-popover [?field anchor]
+  (error-popover anchor (form.ui/show-field-messages ?field)))
+
+(defn btn-progress-bar [classes]
+  (v/x [:div.h-1.progress-bar.inset-x-0.top-0.absolute {:class classes}]))
+
+(ui/defview action-btn [{:as   props
+                         :keys [on-click
+                                classes]} child]
+  (let [!async-state (h/use-state nil)
+        on-click     (fn [e]
+                       (reset! !async-state {:loading? true})
+                       (p/let [result (on-click e)]
+                         (reset! !async-state (when (:error result) result))))
+        {:keys [loading? error]} @!async-state]
+    (cond-> [:div.btn.relative
+             (-> props
+                 (dissoc :classes)
+                 (assoc :on-click (when-not loading? on-click))
+                 (v/merge-props {:class (:btn classes)}))
+             (when (:loading? @!async-state)
+               [btn-progress-bar (:progress-bar classes)])
+             child]
+            error
+            (error-popover error))))
 
 (ui/defview text-field
   "A text-input element that reads metadata from a ?field to display appropriately"
@@ -264,9 +290,7 @@
                                 on-submit
                                 close!]}]
   ;; TODO
-  ;; - Enable the "add badge" in project ellipsis menu
   ;; - color picker should show colors already used in the board?
-  ;; - right-click on a badge for a context menu: [edit, remove]
   (let [!ref    (h/use-ref)
         {:as ?badge :syms [?label ?color]} (h/use-memo #(io/form {:badge/label ?label
                                                                   :badge/color (?color :init "#dddddd")}
@@ -292,19 +316,20 @@
         [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
        (form.ui/show-field-messages (or (io/parent ?badge) ?badge))]]]))
 
-(ui/defview badges-field [?badges {:keys [field/can-edit? member/roles]}]
+(ui/defview badges-field* [?badges {:keys [member/roles]}]
   (let [board-admin? (:role/board-admin roles)
         !editing     (h/use-state nil)]
-    (when (or (seq ?badges) board-admin?)
-      [:div.flex.gap-1
-       (for [{:as   ?badge
-              :syms [?label ?color]} ?badges
-             :let [bg    (or (u/some-str @?color) "#ffffff")
-                   color (color/contrasting-text-color bg)]]
+    [:div.flex.gap-1
+     (for [{:as   ?badge
+            :syms [?label ?color]} ?badges
+           :let [bg    (or (u/some-str @?color) "#ffffff")
+                 color (color/contrasting-text-color bg)
+                 badge (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
+                             {:key   @?label
+                              :style {:background-color bg :color color}} @?label])]]
+       (if board-admin?
          [radix/context-menu {:trigger [:div
-                                        [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
-                                         {:key   @?label
-                                          :style {:background-color bg :color color}} @?label]
+                                        badge
                                         (when (= ?badge @!editing)
                                           [badge-form {:?badge    ?badge
                                                        :close!    #(reset! !editing nil)
@@ -321,22 +346,28 @@
                                          (t :tr/remove)]
                                         [radix/context-menu-item
                                          {:on-select (fn [] (p/do (p/delay 0) (reset! !editing ?badge)))}
-                                         (t :tr/edit)]]}])
-       (let [!creating-new (h/use-state false)]
-         (when board-admin?
-           [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
-            {:on-click #(reset! !creating-new true)}
-            (when-not (seq ?badges) [:span.cursor-default (t :tr/add-badge)])
-            [icons/plus "w-4 h-4 icon-gray"]
-            (when @!creating-new
-              [badge-form {:on-submit (fn [?badge close!]
-                                        (io/add-many! ?badges @?badge)
-                                        (io/clear! ?badge)
-                                        (p/let [res (entity.data/maybe-save-field ?badges)]
-                                          (when-not (:error res)
-                                            (close!))))
-                           :init      {:badge/color "#dddddd"}
-                           :close!    #(reset! !creating-new false)}])]))])))
+                                         (t :tr/edit)]]}]
+         badge))
+     (let [!creating-new (h/use-state false)]
+       (when board-admin?
+         [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
+          {:on-click #(reset! !creating-new true)}
+          (when-not (seq ?badges) [:span.cursor-default (t :tr/add-badge)])
+          [icons/plus "w-4 h-4 icon-gray"]
+          (when @!creating-new
+            [badge-form {:on-submit (fn [?badge close!]
+                                      (io/add-many! ?badges @?badge)
+                                      (io/clear! ?badge)
+                                      (p/let [res (entity.data/maybe-save-field ?badges)]
+                                        (when-not (:error res)
+                                          (close!))))
+                         :init      {:badge/color "#dddddd"}
+                         :close!    #(reset! !creating-new false)}])]))]))
+
+(ui/defview badges-field [?badges {:as props :keys [member/roles]}]
+  (when (or (seq ?badges)
+            (:role/board-admin roles))
+    (badges-field* ?badges props)))
 
 
 (ui/defview image-field [?field props]
@@ -450,33 +481,36 @@
                 drag-subject-props
                 dragging
                 dropping]} (use-order ?image)
-        current? (= @!?current ?image)]
-    [radix/context-menu
-     {:key     url
-      :trigger (v/x [:div.relative.transition-all
-                     (v/merge-props {:class    (when (= dropping :before) "pl-4")
-                                     :on-click #(reset! !?current ?image)}
-                                    drag-handle-props
-                                    drag-subject-props)
-                     [:img.object-contain.h-16.w-16.rounded.overflow-hidden.bg-gray-50.transition-all
-                      {:src   url
-                       :class [(when dragging "opacity-20 w-0")
-                               (when current? "outline outline-2 outline-black")]}]])
-      :items   [[radix/context-menu-item {:on-select (fn []
-                                                       (io/remove-many! ?image)
-                                                       (entity.data/maybe-save-field ?images))}
-                 "Delete"]]}]))
+        current? (= @!?current ?image)
+        img (v/x [:img.object-contain.h-16.w-16.rounded.overflow-hidden.bg-gray-50.transition-all
+                  {:src   url
+                   :class [(when dragging "opacity-20 w-0")
+                           (when current? "outline outline-2 outline-black")]}])]
+    (if can-edit?
+      [radix/context-menu
+       {:key     url
+        :trigger (v/x [:div.relative.transition-all
+                       (v/merge-props {:class    (when (= dropping :before) "pl-4")
+                                       :on-click #(reset! !?current ?image)}
+                                      drag-handle-props
+                                      drag-subject-props)
+                       img])
+        :items   [[radix/context-menu-item {:on-select (fn []
+                                                         (io/remove-many! ?image)
+                                                         (entity.data/maybe-save-field ?images))}
+                   "Delete"]]}]
+      img)))
 
 (ui/defview images-field [?images {:as props :field/keys [label can-edit?]}]
   (let [!?current (h/use-state (first ?images))
-        use-order (ui/use-orderable-parent ?images {:axis :x})]
+        use-order (ui/use-orderable-parent ?images {:axis :x})
+        [selected-url loading?] (some-> @!?current ('?id) deref (asset.ui/asset-src :card) ui/use-last-loaded)]
     [:div.field-wrapper
      (form.ui/show-label ?images label)
-     (when-let [{:syms [?id]} @!?current]
-       (let [[url loading?] (ui/use-last-loaded (asset.ui/asset-src @?id :card))]
-         [:div.relative.flex.items-center.justify-center {:key url}
-          (when loading? [icons/loading "w-4 h-4 text-txt/60 absolute top-2 right-2"])
-          [:img {:src url}]]))
+     (when selected-url
+       [:div.relative.flex.items-center.justify-center {:key selected-url}
+        (when loading? [icons/loading "w-4 h-4 text-txt/60 absolute top-2 right-2"])
+        [:img.max-h-80 {:src selected-url}]])
      ;; thumbnails
      [:div.flex.gap-2.flex-wrap
       (when can-edit? [:div.relative.h-16.w-16.flex-none [add-image-button ?images]])

@@ -42,6 +42,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/edit                            {:en "Edit"
                                           :fr "Modifier"
                                           :es "Editar"}
+     :tr/publish                         {:en "Publish"
+                                          :fr "Publier"
+                                          :es "Publicar"}
+     :tr/drafts                          {:en "Drafts"
+                                          :fr "Brouillons"
+                                          :es "Borradores"}
      :tr/further-instructions            {:en "Further instructions"
                                           :fr "Instructions supplémentaires"
                                           :es "Instrucciones adicionales"}

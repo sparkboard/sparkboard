@@ -7,7 +7,8 @@
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
-            [sb.validate :as validate]))
+            [sb.validate :as validate]
+            [sb.util :as u]))
 
 (sch/register!
   {:board/project-numbers?               {s-    :boolean
@@ -118,27 +119,38 @@
     (merge board {:member/roles roles})
     (throw (ex-info "Board not found!" {:status 400}))))
 
+(def project-fields `[~@entity.data/fields])
+(def member-fields {:member/account [:entity/id
+                                     :entity/kind
+                                     {:image/avatar [:entity/id]}
+                                     :account/display-name]})
+
 (q/defquery members
   {:prepare [(az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
   (->> (db/where [[:member/entity board-id]])
        (remove :entity/archived?)
        (mapv (db/pull `[~@entity.data/fields
-                        {:member/account [:entity/id
-                                          :entity/kind
-                                          {:image/avatar [:entity/id]}
-                                          :account/display-name]}]))))
+                        ~member-fields]))))
 
 (q/defquery projects
   {:prepare [(az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
   (->> (db/where [[:entity/parent board-id]])
-       (remove :entity/archived?)
-       (mapv (db/pull `[~@entity.data/fields]))))
+       (remove (some-fn :entity/draft? :entity/archived?))
+       (mapv (db/pull project-fields))))
+
+(q/defquery drafts
+  {:prepare az/with-account-id}
+  [{:keys [account-id]}]
+  (into []
+        (comp (filter (comp (every-pred :entity/draft? #(= :project (:entity/kind %))) :member/entity))
+              (map #(db/pull project-fields (:member/entity %))))
+        (db/where [[:member/account (dl/resolve-id account-id)]])))
 
 (defn authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? account-id board)
-                (validate/can-edit? account-id (:entity/parent board) ))
+                (validate/can-edit? account-id (:entity/parent board)))
     (validate/permission-denied!)))
 
 (defn authorize-create! [board account-id]

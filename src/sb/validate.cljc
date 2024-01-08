@@ -93,8 +93,8 @@
                      (mu/assoc :entity/domain-name (mu/optional-keys :domain-name/as-map)))))))
 
 (defn can-edit? [account-id entity-id]
-  (-> (az/entity-roles account-id entity-id)
-      az/editor-role?))
+  (or (-> (az/scoped-roles account-id entity-id)
+          az/editor-role?)))
 
 (defn permission-denied! []
   (ex-info "Permission denied"

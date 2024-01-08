@@ -84,7 +84,6 @@
         on-click     (fn [e]
                        (reset! !async-state {:loading? true})
                        (p/let [result (on-click e)]
-                         (prn :res result)
                          (reset! !async-state (when (:error result) result))))
         {:keys [loading? error]} @!async-state]
     [radix/tooltip {:delay-duration 0} error
@@ -131,7 +130,11 @@
                :let [x (t x)]]
            {:title x :value x})]]
 
+
        [radix/tab-content {:value (t :tr/projects)}
+        (some->> (seq (data/drafts nil))
+                 (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
+                       (map entity.ui/row)))
         (into [:div.grid]
               (comp (ui/filtered @?filter)
                     (map entity.ui/row))

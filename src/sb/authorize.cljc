@@ -2,7 +2,8 @@
   (:require [clojure.set :as set]
             [re-db.api :as db]
             [sb.server.datalevin :as dl]
-            [sb.schema :as sch]))
+            [sb.schema :as sch])
+  #?(:clj (:import [re_db.read Entity])))
 
 (defn editor-role? [roles]
   (or (:role/self roles)
@@ -11,9 +12,11 @@
       (:role/board-admin roles)
       (:role/org-admin roles)))
 
-#?(:clj
-   (defn membership-id [account-id entity-id]
-     (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
+(defn membership-id [account-id entity-id]
+  #?(:clj
+     (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])
+     :cljs
+     (dl/resolve-id entity-id)))
 
 (defn require-account! [req params]
   (when-not (-> req :account :entity/id)
@@ -32,27 +35,35 @@
       (unauthorized! "User not signed in"))
     params))
 
-(defn entity-roles [account-id entity-id]
-  (let [account-id (dl/resolve-id account-id)
-        entity-id  (dl/resolve-id entity-id)]
-    (if (= account-id entity-id)
-      #{:role/self}
-      (let [kind         (:entity/kind (db/entity entity-id))
-            roles        (:member/roles (db/entity
-                                          ;; queries merge :member/roles onto entities, so in cljs we can read roles directly from the entity.
-                                          ;; re-db in-membery doesn't support tuple attrs that we use for memberships.
-                                          #?(:cljs entity-id
-                                             :clj  (membership-id account-id entity-id))))
-            scoped-roles (for [role roles]
-                           (keyword "role" (str (name kind) "-" (name role))))]
-        scoped-roles))))
+(defn get-entity [x]
+  (if (instance? #?(:cljs re-db.read/Entity :clj Entity) x)
+    x
+    (db/entity (dl/resolve-id x))))
 
-(defn all-roles [account-id entity-id]
-  (->> (db/entity entity-id)
+(defn get-roles [account-id entity-id]
+  (:member/roles (db/entity (membership-id account-id entity-id))))
+
+(defn scoped-roles [account-id entity-id]
+  (if (= account-id entity-id)
+    #{:role/self}
+    (let [{:as entity :keys [entity/kind]} (get-entity entity-id)]
+      (->> (:member/roles #?(:cljs entity
+                             :clj  (db/entity (membership-id account-id entity-id))))
+           (into #{}
+                 (map (fn [role]
+                        (keyword "role"
+                                 (str (name kind) "-" (name role))))))))))
+
+(defn inherited-roles [account-id entity-id]
+  (->> (:entity/parent (get-entity entity-id))
        (iterate :entity/parent)
        (take-while identity)
-       (mapcat (partial entity-roles account-id))
+       (mapcat (partial scoped-roles account-id))
        (into #{})))
+
+(defn all-roles [account-id entity-id]
+  (into (get-roles account-id entity-id)
+        (inherited-roles account-id entity-id)))
 
 (def can-edit? (comp editor-role? all-roles))
 
@@ -65,5 +76,6 @@
 #?(:clj
    (defn with-roles [entity-key]
      (fn [req params]
-       (when-let [account-id (some-> (-> req :account :entity/id) sch/wrap-id)]
-         (assoc params :member/roles (all-roles account-id (entity-key params)))))))
+       (if-let [account-id (some-> (-> req :account :entity/id) sch/wrap-id)]
+         (assoc params :member/roles (get-roles account-id (entity-key params)))
+         params))))

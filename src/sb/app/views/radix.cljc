@@ -228,7 +228,7 @@
 (v/defview context-menu [{:keys [trigger
                                  items]}]
   [:el ContextMenu/Root
-   [:el ContextMenu/Trigger (v/x trigger)]
+   [:el.cursor-context-menu ContextMenu/Trigger (v/x trigger)]
    [:el ContextMenu/Content {:style {:z-index 20}
                              :class [float-small
                                      "p-1 min-w-32"]}
