@@ -39,6 +39,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/add-badge                       {:en "Add badge"
                                           :fr "Ajouter un badge"
                                           :es "Añadir insignia"}
+     :tr/edit                            {:en "Edit"
+                                          :fr "Modifier"
+                                          :es "Editar"}
      :tr/further-instructions            {:en "Further instructions"
                                           :fr "Instructions supplémentaires"
                                           :es "Instrucciones adicionales"}

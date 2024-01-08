@@ -158,8 +158,8 @@
                                                         (some-> (j/get-in e [:target :form])
                                                                 (j/call :requestSubmit)))
                                                       (.preventDefault e))]
-                                           (ui/keydown-handler (merge {:Escape     cancel!
-                                                                       :Meta-.     cancel!}
+                                           (ui/keydown-handler (merge {:Escape cancel!
+                                                                       :Meta-. cancel!}
                                                                       (if multi-line?
                                                                         {:Meta-Enter save}
                                                                         {:Enter save})
@@ -260,70 +260,83 @@
        (update :value #(or % "#ffffff"))
        (form.ui/pass-props))])
 
-
-(ui/defview new-badge [?badges close!]
+(ui/defview badge-form [{:keys [init
+                                on-submit
+                                close!]}]
   ;; TODO
   ;; - Enable the "add badge" in project ellipsis menu
   ;; - color picker should show colors already used in the board?
   ;; - right-click on a badge for a context menu: [edit, remove]
-  (let [!form (h/use-ref)]
-    (io/with-form [?badge {:badge/label ?label
-                           :badge/color (?color :init "#dddddd")}
-                   :required [?label ?color]]
-      (let [submit! (fn []
-                      (io/add-many! ?badges @?badge)
-                      (io/clear! ?badge)
-                      (p/let [res (entity.data/maybe-save-field ?badges)]
-                        (when-not (:error res)
-                          (close!))))]
-        [:el.relative Pop/Root {:open true :on-open-change #(close!)}
-         [:el Pop/Anchor]
-         [:el Pop/Content {:as-child true}
-          [:div.p-2.z-10 {:class radix/float-small}
-           [:form.outline-none.flex.gap-2.items-stretch
-            {:ref       !form
-             :on-submit (fn [e]
-                          (.preventDefault e)
-                          (submit!))}
-            [text-field ?label {:placeholder       (t :tr/label)
-                                :field/keybindings {:Enter submit!}
-                                :field/multi-line? false
-                                :field/can-edit?   true
-                                :field/label       false}]
-            [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
-            [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
-           (form.ui/show-field-messages ?badges)]]]))))
-
-#?(:cljs
-   (defn use-new-badge [?badges]
-     (let [!open (h/use-state false)]
-       [#(reset! !open true)
-        (when @!open
-          [new-badge ?badges #(reset! !open false)])])))
+  (let [!ref    (h/use-ref)
+        {:as ?badge :syms [?label ?color]} (h/use-memo #(io/form {:badge/label ?label
+                                                                  :badge/color (?color :init "#dddddd")}
+                                                                 :required [?label ?color]
+                                                                 :init init)
+                                                       (h/use-deps init))
+        submit! #(on-submit ?badge close!)]
+    [:el.relative Pop/Root {:open true :on-open-change #(do (prn :on-open-change %) (close!))}
+     [:el Pop/Anchor]
+     [:el Pop/Content {:as-child true}
+      [:div.p-2.z-10 {:class radix/float-small}
+       [:form.outline-none.flex.gap-2.items-stretch
+        {:ref       !ref
+         :on-submit (fn [e]
+                      (.preventDefault e)
+                      (submit!))}
+        [text-field ?label {:placeholder       (t :tr/label)
+                            :field/keybindings {:Enter submit!}
+                            :field/multi-line? false
+                            :field/can-edit?   true
+                            :field/label       false}]
+        [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
+        [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
+       (form.ui/show-field-messages (or (io/parent ?badge) ?badge))]]]))
 
 (ui/defview badges-field [?badges {:keys [field/can-edit? member/roles]}]
-  (let [[new! new-screen] (use-new-badge ?badges)
-        board-admin? (:role/board-admin roles)]
+  (let [board-admin? (:role/board-admin roles)
+        !editing     (h/use-state nil)]
     (when (or (seq ?badges) board-admin?)
       [:div.flex.gap-1
        (for [{:as   ?badge
               :syms [?label ?color]} ?badges
              :let [bg    (or (u/some-str @?color) "#ffffff")
                    color (color/contrasting-text-color bg)]]
-         [radix/context-menu {:trigger [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
-                                        {:key   @?label
-                                         :style {:background-color bg :color color}} @?label]
+         [radix/context-menu {:trigger [:div
+                                        [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
+                                         {:key   @?label
+                                          :style {:background-color bg :color color}} @?label]
+                                        (when (= ?badge @!editing)
+                                          [badge-form {:?badge    ?badge
+                                                       :close!    #(reset! !editing nil)
+                                                       :init      @?badge
+                                                       :on-submit (fn [?new-badge close!]
+                                                                    (reset! ?badge @?new-badge)
+                                                                    (p/let [res (entity.data/maybe-save-field ?badge)]
+                                                                      (when-not (:error res)
+                                                                        (close!))))}])]
                               :items   [[radix/context-menu-item
                                          {:on-select (fn []
                                                        (io/remove-many! ?badge)
                                                        (entity.data/maybe-save-field ?badges))}
-                                         (t :tr/remove)]]}])
-       (when board-admin?
-         [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
-          {:on-click new!}
-          (when-not (seq ?badges) [:span.cursor-default (t :tr/add-badge)])
-          [icons/plus "w-4 h-4 icon-gray"]
-          new-screen])])))
+                                         (t :tr/remove)]
+                                        [radix/context-menu-item
+                                         {:on-select (fn [] (p/do (p/delay 0) (reset! !editing ?badge)))}
+                                         (t :tr/edit)]]}])
+       (let [!creating-new (h/use-state false)]
+         (when board-admin?
+           [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
+            {:on-click #(reset! !creating-new true)}
+            (when-not (seq ?badges) [:span.cursor-default (t :tr/add-badge)])
+            [icons/plus "w-4 h-4 icon-gray"]
+            (when @!creating-new
+              [badge-form {:on-submit (fn [?badge close!]
+                                        (io/add-many! ?badges @?badge)
+                                        (io/clear! ?badge)
+                                        (p/let [res (entity.data/maybe-save-field ?badges)]
+                                          (when-not (:error res)
+                                            (close!))))
+                           :init      {:badge/color "#dddddd"}
+                           :close!    #(reset! !creating-new false)}])]))])))
 
 
 (ui/defview image-field [?field props]
