@@ -89,22 +89,3 @@
     {:type     "submit"
      :disabled (not (io/submittable? ?form))}
     label]])
-
-(ui/defview filter-field [?field attrs]
-  (let [loading? (or (:loading? ?field) (:loading? attrs))]
-    [:div.flex.relative.items-stretch.flex-auto
-     [:input.pr-9.border.border-gray-300.w-full.rounded-lg.p-3
-      (-> (?field-props ?field {:event->props (j/get-in [:target :value])})
-          (v/merge-props
-            {:class       "outline-none focus-visible:outline-4 outline-offset-0 focus-visible:outline-gray-200"
-             :placeholder "Search..."
-             :on-key-down #(when (= "Escape" (.-key ^js %))
-                             (reset! ?field nil))})
-          (update :value #(or % "")))]
-     [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
-      {:class "text-txt/40"}
-      (cond loading? (icons/loading "w-4 h-4 rotate-3s")
-            (seq @?field) [:div.contents.cursor-pointer
-                           {:on-click #(reset! ?field nil)}
-                           (icons/close "w-5 h-5")]
-            :else (icons/search "w-6 h-6"))]]))

@@ -203,6 +203,16 @@
                             (:field/hint props))]
          [:div.text-gray-500.text-sm hint])])))
 
+(ui/defview filter-field [?field attrs]
+  [:div.relative.flex-auto.flex
+   [text-field ?field {:field/can-edit? true
+                       :field/classes   {:wrapper "flex-auto items-stretch"
+                                         :input "form-text rounded default-ring pr-9"}
+                       :placeholder     (t :tr/search)}]
+   [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
+    {:class "text-txt/40"}
+    (icons/search "w-6 h-6")]])
+
 (defn wrap-prose [value]
   (when-not (str/blank? value)
     {:prose/format :prose.format/markdown
@@ -482,10 +492,10 @@
                 dragging
                 dropping]} (use-order ?image)
         current? (= @!?current ?image)
-        img (v/x [:img.object-contain.h-16.w-16.rounded.overflow-hidden.bg-gray-50.transition-all
-                  {:src   url
-                   :class [(when dragging "opacity-20 w-0")
-                           (when current? "outline outline-2 outline-black")]}])]
+        img      (v/x [:img.object-contain.h-16.w-16.rounded.overflow-hidden.bg-gray-50.transition-all
+                       {:src   url
+                        :class [(when dragging "opacity-20 w-0")
+                                (when current? "outline outline-2 outline-black")]}])]
     (if can-edit?
       [radix/context-menu
        {:key     url

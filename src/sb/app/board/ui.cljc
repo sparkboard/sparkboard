@@ -1,5 +1,6 @@
 (ns sb.app.board.ui
   (:require [inside-out.forms :as forms]
+            [inside-out.forms :as io]
             [promesa.core :as p]
             [re-db.api :as db]
             [sb.app.account.data :as account.data]
@@ -8,7 +9,6 @@
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
-            [sb.app.form.ui :as form.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
@@ -100,13 +100,13 @@
   [{:as params :keys [board-id]}]
   (let [{:as board :keys [member/roles]} (data/show {:board-id board-id})
         !current-tab (h/use-state (t :tr/projects))
-        ?filter      (h/use-state nil)]
+        ?filter      (h/use-memo #(io/field))]
     [:<>
      [header/entity board (list (entity.ui/settings-button board))]
      [:div.p-body
 
       [:div.flex.gap-4.items-stretch
-       [form.ui/filter-field ?filter nil]
+       [field.ui/filter-field ?filter nil]
        [action-button
         {:on-click (fn [_]
                      (p/let [{:as   result
@@ -144,7 +144,8 @@
         (into [:div.grid]
               (comp (map #(merge (account.data/account-as-entity (:member/account %))
                                  (db/touch %)))
-                    (map entity.ui/row))
+                    (map (fn [member]
+                           (v/x [entity.ui/row member]))))
               (data/members {:board-id board-id}))
         ]]]]))
 

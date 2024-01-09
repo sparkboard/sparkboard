@@ -120,10 +120,11 @@
     (throw (ex-info "Board not found!" {:status 400}))))
 
 (def project-fields `[~@entity.data/fields])
-(def member-fields {:member/account [:entity/id
-                                     :entity/kind
-                                     {:image/avatar [:entity/id]}
-                                     :account/display-name]})
+(def member-fields [{:member/account [:entity/id
+                                      :entity/kind
+                                      {:image/avatar [:entity/id]}
+                                      :account/display-name]}
+                    :member/roles])
 
 (q/defquery members
   {:prepare [(az/with-roles :board-id)]}
@@ -131,7 +132,7 @@
   (->> (db/where [[:member/entity board-id]])
        (remove :entity/archived?)
        (mapv (db/pull `[~@entity.data/fields
-                        ~member-fields]))))
+                        ~@member-fields]))))
 
 (q/defquery projects
   {:prepare [(az/with-roles :board-id)]}

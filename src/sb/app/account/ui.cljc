@@ -99,7 +99,7 @@
        (when-let [{:keys [org board project]} entities]
          [:div.p-body.flex-v.gap-8
           (when (> (count all) 6)
-            [form.ui/filter-field ?filter nil])
+            [field.ui/filter-field ?filter nil])
           (let [limit (partial ui/truncate-items {:limit 10})]
             [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-2.md:gap-8.-mx-2
              (when (seq project)

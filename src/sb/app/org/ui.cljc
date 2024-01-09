@@ -40,7 +40,7 @@
        [:div.p-body (field.ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch
-         [form.ui/filter-field ?filter {:loading? (:loading? result)}]
+         [field.ui/filter-field ?filter {:loading? (:loading? result)}]
          [:a.btn.btn-white.flex.items-center.px-3
           {:href (routes/path-for ['sb.app.board-data/new
                                    {:query-params {:org-id (:entity/id org)}}])}

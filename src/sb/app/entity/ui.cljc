@@ -88,12 +88,14 @@
 (ui/defview row
   {:key :entity/id}
   [{:as   entity
-    :keys [entity/title image/avatar member/roles]}]
+    :keys [entity/title member/roles]}]
   [:div.flex.hover:bg-gray-100.rounded-lg
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
     {:href (routing/entity-path entity 'ui/show)}
     [ui/avatar {:size 10} entity]
-    [:div.line-clamp-2.leading-snug.flex-grow title]]])
+    [:div.line-clamp-2.leading-snug.flex-grow.flex title
+     (for [role roles]
+       [:span.rounded.bg-gray-100.px-2.py-1.text-sm {:key role} (name role)])]]])
 
 (ui/defview show-filtered-results
   {:key :title}
