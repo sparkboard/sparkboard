@@ -96,12 +96,12 @@
                             image/avatar]} children]
   (let [entity-href (routes/entity-path entity 'ui/show)]
     [:div.header
-     (when avatar
-       [:a.contents {:href entity-href}
+     [:a.contents {:href entity-href}
+      (when avatar
         [:img.h-10
-         {:src (asset.ui/asset-src avatar :avatar)}]])
+         {:src (asset.ui/asset-src avatar :avatar)}])
 
-     [:h3.hover:underline title]
+      [:h3.hover:underline.text-xl.font-semibold title]]
 
      [:div.flex-grow]
      (into [:div.flex.gap-1]
