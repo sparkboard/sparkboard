@@ -54,7 +54,7 @@
         form-hint  :div.text-gray-500.text-sm
         board {:board-id board-id}]
     [:<>
-     [header/entity (board.data/show board) (list (entity.ui/settings-button board))]
+     [header/entity (board.data/show board) nil]
      [:div.p-body.flex-v.gap-8
 
       [ui/show-markdown "Creating a new project is a multi-step process."]

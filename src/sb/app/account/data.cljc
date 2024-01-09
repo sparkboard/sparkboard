@@ -38,7 +38,7 @@
   (into []
         (comp (map :member/entity)
               (filter (comp #{:org} :entity/kind))
-              (map (q/pull entity.data/fields)))
+              (map (q/pull entity.data/entity-keys)))
         (db/where [[:member/account account-id]])))
 
 (q/defquery all

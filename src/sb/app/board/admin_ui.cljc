@@ -22,7 +22,7 @@
                           (use-persisted-attr board attr (merge {:field/can-edit? true} props)))]
 
       [:<>
-       (header/entity board (list (entity.ui/settings-button board)))
+       (header/entity board nil)
 
        [radix/accordion {:class    "max-w-[600px] mx-auto my-6 flex-v gap-6"
                          :multiple true}
@@ -38,8 +38,8 @@
 
         [:div.field-label (t :tr/projects-and-members)]
         [:div.flex-v.gap-4
-         (use-persisted :board/member-fields)
-         (use-persisted :board/project-fields)]
+         (use-persisted :entity/member-fields)
+         (use-persisted :entity/project-fields)]
 
 
         [:div.field-label (t :tr/registration)]

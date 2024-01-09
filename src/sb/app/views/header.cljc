@@ -7,6 +7,7 @@
             [sb.app.chat.ui :as chat.ui]
             [sb.app.account.data :as account.data]
             [sb.app.entity.ui :as entity.ui]
+            [sb.authorize :as az]
             [sb.i18n :as i :refer [t]]
             [sb.routing :as routes]
             [sb.app.views.ui :as ui]
@@ -14,7 +15,8 @@
             [sb.app.views.radix :as radix]
             [sb.util :as u]
             [yawn.hooks :as h]
-            [yawn.util :as yu]))
+            [yawn.util :as yu]
+            [sb.routing :as routing]))
 
 #?(:cljs
    (defn lang-menu-content []
@@ -90,6 +92,7 @@
 
 (ui/defview entity [{:as   entity
                      :keys [entity/title
+                            member/roles
                             image/avatar]} children]
   (let [entity-href (routes/entity-path entity 'ui/show)]
     [:div.header
@@ -98,12 +101,13 @@
         [:img.h-10
          {:src (asset.ui/asset-src avatar :avatar)}]])
 
-     [:a.contents {:href entity-href} [:h3.hover:underline title]]
+     [:h3.hover:underline title]
 
      [:div.flex-grow]
      (into [:div.flex.gap-1]
            (concat children
-                   [(radix/dropdown-menu
+                   [(entity.ui/settings-button entity)
+                    (radix/dropdown-menu
                       {:id       :show-recents
                        :trigger  [:button (t :tr/recent) down-arrow]
                        :children (map (fn [entity]

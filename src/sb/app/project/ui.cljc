@@ -166,7 +166,7 @@
        (entity.ui/use-persisted-attr project :entity/video field-params)
        (entity.ui/use-persisted-attr project
                                      :entity/field-entries
-                                     {:entity/fields   (->> project :entity/parent :board/project-fields)
+                                     {:entity/fields   (->> project :entity/parent :entity/project-fields)
                                       :member/roles    roles
                                       :field/can-edit? can-edit?})
        [:section.flex-v.gap-2.items-start

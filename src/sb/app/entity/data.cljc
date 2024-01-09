@@ -46,6 +46,8 @@
                                      :site
                                      :asset
                                      :chat.message]}
+     :entity/project-fields     {s- :entity/fields}
+     :entity/member-fields      {s- :entity/fields}
      :entity/draft?             {:doc "Entity is not yet published - visible only to creator/team"
                                  s-   :boolean}
      :entity/description        {:doc "Description of an entity (for card/header display)"
@@ -83,15 +85,15 @@
 
 (def id-fields [:entity/id :entity/kind])
 
-(def fields `[~@id-fields
-              :entity/title
-              :entity/description
-              :entity/created-at
-              :entity/deleted-at
-              :entity/video
-              {:image/avatar [:entity/id]}
-              {:image/background [:entity/id]}
-              {:entity/domain-name [:domain-name/name]}])
+(def entity-keys `[~@id-fields
+                   :entity/title
+                   :entity/description
+                   :entity/created-at
+                   :entity/deleted-at
+                   :entity/video
+                   {:image/avatar [:entity/id]}
+                   {:image/background [:entity/id]}
+                   {:entity/domain-name [:domain-name/name]}])
 
 (defn required? [parent-schema child-attr]
   (-> parent-schema
@@ -109,8 +111,8 @@
 (defn retract-nils
   [m]
   (let [nils (->> m (filter #(nil? (val %))) (map key))
-        m (apply dissoc m nils)
-        e (:db/id m)]
+        m    (apply dissoc m nils)
+        e    (:db/id m)]
     (cond-> []
             (seq m) (conj m)
             (seq nils) (into (for [a nils] [:db/retract e a])))))
@@ -118,14 +120,14 @@
 (q/defx save-attributes!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} e m]
-  (let [e             (sch/wrap-id e)
-        _             (validate/assert-can-edit! account-id e)
-        txs           (-> (assoc m :db/id e)
-                          retract-nils)]
+  (let [e   (sch/wrap-id e)
+        _   (validate/assert-can-edit! account-id e)
+        txs (-> (assoc m :db/id e)
+                retract-nils)]
 
-    (let [parent-schema            (-> (keyword (name (:entity/kind (db/entity e))) "as-map")
-                                       (@sch/!malli-registry))
-          without-nils             (ignore-optional-nils parent-schema m)]
+    (let [parent-schema (-> (keyword (name (:entity/kind (db/entity e))) "as-map")
+                            (@sch/!malli-registry))
+          without-nils  (ignore-optional-nils parent-schema m)]
       (validate/assert without-nils (mu/select-keys parent-schema (keys without-nils))))
 
     (try

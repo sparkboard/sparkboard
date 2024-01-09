@@ -77,8 +77,9 @@
    [:div.flex.items-center.px-3.leading-snug
     [:div.line-clamp-2 title]]])
 
-(ui/defview settings-button [entity]
-  (when-let [path (and (az/editor-role? (:member/roles entity))
+(ui/defview settings-button [{:as entity :keys [member/roles]}]
+  (when-let [path (and (or (:role/admin roles)
+                           (:role/org-admin roles))
                        (some-> (routing/entity-route entity 'admin-ui/settings)
                                routing/path-for))]
     [:a.button
@@ -93,9 +94,7 @@
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
     {:href (routing/entity-path entity 'ui/show)}
     [ui/avatar {:size 10} entity]
-    [:div.line-clamp-2.leading-snug.flex-grow.flex title
-     (for [role roles]
-       [:span.rounded.bg-gray-100.px-2.py-1.text-sm {:key role} (name role)])]]])
+    [:div.line-clamp-2.leading-snug.flex-grow.flex title]]])
 
 (ui/defview show-filtered-results
   {:key :title}

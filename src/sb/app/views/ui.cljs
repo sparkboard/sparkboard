@@ -42,7 +42,7 @@
                           (j/!set :innerHTML (.render Markdown (or source "")))
                           (linkify-element))))
                   [@!ref source])
-    (v/x [:div {:class                   "prose contents"
+    (v/x [:div {:class                   "overflow-hidden"
                 :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
 
@@ -240,10 +240,7 @@
         props (dissoc props :size)]
     (or
       (when-let [src (asset.ui/asset-src avatar :avatar)]
-        [:div.bg-no-repeat.bg-center.bg-contain
-         (v/merge-props {:style {:background-image (asset.ui/css-url src)}
-                         :class class}
-                        props)])
+        [:img.object-cover (v/merge-props {:class class :src src} props)])
       (when-let [txt (or display-name title)]
         [:div.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
          (v/merge-props {:class class} props)

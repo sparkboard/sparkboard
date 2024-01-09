@@ -22,6 +22,8 @@
                                          (? :domain-name/redirect-url)
                                          (? :domain/owner)]})})
 
+(def domain-keys [{:entity/domain-name [:domain-name/name]}])
+
 (defn normalize-domain [domain]
   (-> domain
       (str/lower-case)

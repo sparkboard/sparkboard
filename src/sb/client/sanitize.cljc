@@ -25,6 +25,6 @@
                                        linkify-element)
                               (js/document.createElement "div"))))))
       [@!el html])
-    [:div.contents
+    [:div.overflow-hidden
      {:ref                     !el
       :dangerouslySetInnerHTML {:__html ""}}]))

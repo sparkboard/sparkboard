@@ -416,12 +416,12 @@
           :field.type/prose))
 
 (def !all-fields
-    (delay
-      (->> (coll-entities :board/as-map)
-           (mapcat (juxt :board/member-fields :board/project-fields))
-           (mapcat identity)
-           (map (juxt :field/id identity))
-           (into {}))))
+  (delay
+    (->> (coll-entities :board/as-map)
+         (mapcat (juxt :entity/member-fields :entity/project-fields))
+         (mapcat identity)
+         (map (juxt :field/id identity))
+         (into {}))))
 
 (defn prose [s]
   (when-not (str/blank? s)
@@ -577,7 +577,33 @@
                                                           "Board Template"
                                                           "Untitled Board")))))
                (let [field-xf (fn [m a v]
-                                (let [managed-by (:entity/id m)]
+                                (let [managed-by (:entity/id m)
+                                      show-on-card-labels #{"A propos de moi"
+                                                            "Une phrase pour me présenter"
+                                                            "Who are you?"
+                                                            "Présentez-vous !"
+                                                            "Je me présente en une phrase"
+                                                            "One sentence Intro"
+                                                            "One-Sentence Intro / Vous en quelques mots"
+                                                            "One-Sentence Intro"
+                                                            "Introducción de una oración"
+                                                            "Une phrase qui me représente"
+                                                            "My intro in 50 words! "
+                                                            "Introduction brève | One-Sentence Intro"
+                                                            "Je me présente en une phrase / I introduce myself in one sentence "
+                                                            "Phrase d'introduction"
+                                                            "Who are you? One-Sentence Intro- Qui etes-vous? une petite phrase d'intro svp"
+                                                            "Un mot d'introduction ?"
+                                                            "Présentez-vous en une phrase"
+                                                            "My intro in 50 words!"
+                                                            "Stel jezelf voor in 1 zin:"
+                                                            "One liner"
+                                                            "Décrivez vous en une phrase"
+                                                            "Décrivez-vous en une phrase"
+                                                            "About Me"
+                                                            "Qui suis-je ?"
+                                                            "Qui suis-je ? "
+                                                            "One sentence intro"}]
                                   (assoc m a
                                            (try (->> v
                                                      (flat-map :field/id
@@ -612,10 +638,14 @@
                                                                                                          (filter #(get % "default"))
                                                                                                          first
                                                                                                          (get "value")))
-                                                                 (update :field/type parse-field-type)))))
+                                                                 (update :field/type parse-field-type)
+                                                                 (as-> m
+                                                                       (if (show-on-card-labels (:field/label m))
+                                                                         (assoc m :field/show-on-card? true)
+                                                                         m))))))
                                                 (catch Exception e (prn a v) (throw e))))))]
-                 ["groupFields" (& field-xf (rename :board/project-fields))
-                  "userFields" (& field-xf (rename :board/member-fields))])
+                 ["groupFields" (& field-xf (rename :entity/project-fields))
+                  "userFields" (& field-xf (rename :entity/member-fields))])
 
                "groupNumbers" (rename :board/project-numbers?)
                "projectNumbers" (rename :board/project-numbers?)
@@ -874,7 +904,7 @@
                                                          custom-tags false} (group-by (comp boolean :entity/id) tags)]
                                                     (-> m
                                                         (u/assoc-seq :member/tags (mapv (comp uuid-ref :entity/id) tags))
-                                                        (u/assoc-seq :member/ad-hoc-tags (vec custom-tags))
+                                                        (u/assoc-seq :member/custom-tags (vec custom-tags))
                                                         (dissoc :tags)))))
 
                                        :newsletterSubscribe (rename :member/newsletter-subscription?)

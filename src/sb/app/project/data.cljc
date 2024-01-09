@@ -81,21 +81,21 @@
 (q/defquery show
   {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id member/roles]}]
-  (merge (q/pull `[~@entity.data/fields
+  (merge (q/pull `[~@entity.data/entity-keys
                    {:project/badges [:badge/label
                                      :badge/color]}
                    :entity/field-entries
                    :entity/draft?
                    {:entity/parent
-                    [~@entity.data/fields
-                     {:board/project-fields ~field.data/field-keys}]}]
+                    [~@entity.data/entity-keys
+                     {:entity/project-fields ~field.data/field-keys}]}]
                  project-id)
          {:member/roles roles}))
 
 (q/defquery fields [{:keys [board-id]}]
   (-> (q/pull `[~@entity.data/id-fields
-                {:board/project-fields ~field.data/field-keys}] board-id)
-      :board/project-fields))
+                {:entity/project-fields ~field.data/field-keys}] board-id)
+      :entity/project-fields))
 
 (q/defx new!
   {:prepare [az/with-account-id!]}

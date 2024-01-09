@@ -123,6 +123,10 @@
 
 @layer utilities {
 
+    .tag-sm {
+        @apply rounded h-5 px-2 text-sm inline-flex items-center whitespace-nowrap no-underline
+    }
+
     .text-inherit-all {
         color: inherit;
         font-size: inherit;

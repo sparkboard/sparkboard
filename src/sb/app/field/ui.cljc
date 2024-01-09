@@ -207,7 +207,7 @@
   [:div.relative.flex-auto.flex
    [text-field ?field {:field/can-edit? true
                        :field/classes   {:wrapper "flex-auto items-stretch"
-                                         :input "form-text rounded default-ring pr-9"}
+                                         :input   "form-text rounded default-ring pr-9"}
                        :placeholder     (t :tr/search)}]
    [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
     {:class "text-txt/40"}
@@ -235,7 +235,7 @@
   (video-field [:field.video/youtube-sdgurl "gMpYX2oev0M"])
   )
 
-(ui/defview show-video [url]
+(ui/defview show-video-url [url]
   [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.relative
    {:href   url
     :target "_blank"
@@ -256,7 +256,7 @@
         (when (and can-edit? (not value))
           [:div.flex-auto (form.ui/show-label ?field (:field/label props))])]
        (when value
-         [show-video value])
+         [show-video-url value])
        (when can-edit?
          (text-field ?field (merge props
                                    {:field/label false
@@ -538,7 +538,7 @@
 
    ])
 
-(ui/defview show-entry
+(ui/defview show-entry-field
   {:key (fn [?entry props]
           (-> @?entry :field-entry/field :field/id))}
   [?entry props]
@@ -552,6 +552,48 @@
       :field.type/image-list [images-field ('image-list/?images ?entry) props]
       :field.type/prose [prose-field ?entry props]
       (str "no match" field))))
+
+(defn show-select:card [{:keys [field/options]} {:keys [select/value]}]
+  (let [{:keys [field-option/label
+                field-option/color]
+         :or {color "#dddddd"}} (u/find-first options #(= value (:field-option/value %)))]
+    [:div {:class radix/select-trigger-classes
+           :style {:background-color color
+                   :color (color/contrasting-text-color color)}}
+     label]))
+
+(defn show-image-list:card [{:keys [image-list/images]}]
+  (when-let [{:keys [entity/id]} (first images)]
+    [:img.max-h-80 {:src (asset.ui/asset-src id :card)}]))
+
+(defn show-prose:card [field {:as m :prose/keys [format string]}]
+  (when-not (str/blank? string)
+    (let [string (u/truncate-string string 140)]
+      (case format
+        :prose.format/html [sanitize/safe-html string]
+        :prose.format/markdown [ui/show-markdown string]))))
+
+(defn clean-url [url]
+  (when url
+    (-> url
+        (str/replace #"^https?://(?:www)?" "")
+        (u/truncate-string 20))))
+
+(defn show-link-list:card [field {:keys [link-list/links]}]
+  (v/x
+    [:div.flex-v.gap-3
+     (for [{:keys [text url]} links]
+       [:a.text-black.underline {:href url} (or text (clean-url url))])]))
+
+(ui/defview show-entry:card {:key (comp :field/id :field-entry/field)}
+  [{:as entry :keys [field-entry/field]}]
+  (case (:field/type field)
+    :field.type/video [show-video-url (:video/url entry)]
+    :field.type/select [show-select:card field entry]
+    :field.type/link-list [show-link-list:card field entry]
+    :field.type/image-list [show-image-list:card field entry ]
+    :field.type/prose [show-prose:card field entry]
+    (str "no match" field)))
 
 (defn make-field:entries [init {:keys [entity/fields]}]
   (let [init (for [field fields]
@@ -579,4 +621,4 @@
   (doall (for [?entry (seq ?entries)
                :when (or can-edit?
                          (data/entry-value @?entry))]
-           (show-entry ?entry props))))
+           (show-entry-field ?entry props))))

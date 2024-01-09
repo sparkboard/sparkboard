@@ -82,13 +82,15 @@
      [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
      [:el sel/ItemIndicator]]))
 
+(def select-trigger-classes "btn bg-white flex items-center rounded whitespace-nowrap gap-1 group default-ring default-ring-hover px-3")
+
 (defn select-menu [{:as props :keys [id
                                      placeholder
                                      field/options
                                      field/can-edit?
                                      field/classes]
                     :or {id :radix-select}}]
-  (let [classes (merge {:trigger "btn bg-white flex items-center rounded whitespace-nowrap gap-1 group default-ring default-ring-hover px-3"
+  (let [classes (merge {:trigger select-trigger-classes
                         :content menu-content-classes}
                        classes)]
     (v/x
@@ -228,7 +230,7 @@
 (v/defview context-menu [{:keys [trigger
                                  items]}]
   [:el ContextMenu/Root
-   [:el.cursor-context-menu ContextMenu/Trigger (v/x trigger)]
+   [:el.cursor-context-menu.select-none ContextMenu/Trigger {:as-child true} (v/x trigger)]
    [:el ContextMenu/Content {:style {:z-index 20}
                              :class [float-small
                                      "p-1 min-w-32"]}

@@ -8,6 +8,7 @@
             [sb.app.board.data :as data]
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.ui :as entity.ui]
+            [sb.app.member.ui :as member.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.project.data :as project.data]
@@ -99,11 +100,11 @@
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
   (let [{:as board :keys [member/roles]} (data/show {:board-id board-id})
-        !current-tab (h/use-state (t :tr/projects))
+        !current-tab (h/use-state (t :tr/members #_:tr/projects))
         ?filter      (h/use-memo #(io/field))]
     [:<>
-     [header/entity board (list (entity.ui/settings-button board))]
-     [:div.p-body
+     [header/entity board nil]
+     [:div.p-body.flex-v.gap-6
 
       [:div.flex.gap-4.items-stretch
        [field.ui/filter-field ?filter nil]
@@ -141,11 +142,8 @@
               (data/projects {:board-id board-id}))]
 
        [radix/tab-content {:value (t :tr/members)}
-        (into [:div.grid]
-              (comp (map #(merge (account.data/account-as-entity (:member/account %))
-                                 (db/touch %)))
-                    (map (fn [member]
-                           (v/x [entity.ui/row member]))))
+        (into [:div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3]
+              (map  (partial member.ui/card {:entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))}))
               (data/members {:board-id board-id}))
         ]]]]))
 

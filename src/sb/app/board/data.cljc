@@ -8,7 +8,8 @@
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
             [sb.validate :as validate]
-            [sb.util :as u]))
+            [sb.util :as u]
+            [sb.app.field.data :as field.data]))
 
 (sch/register!
   {:board/project-numbers?               {s-    :boolean
@@ -30,8 +31,6 @@
    :board/sticky-color                   {:doc "Deprecate - sticky notes can pick their own colors"
                                           s-   :html/color}
    :board/member-tags                    {s- [:sequential :tag/as-map]}
-   :board/project-fields                 {s- :entity/fields}
-   :board/member-fields                  {s- :entity/fields}
    :board/invite-email-text              {:hint "Text of email sent when inviting a user to a board."
                                           s-    :string},
    :board/registration-newsletter-field? {:hint "During registration, request permission to send the user an email newsletter"
@@ -80,10 +79,10 @@
                                               (? :board/labels)
                                               (? :board/max-members-per-project)
                                               (? :board/max-projects-per-member)
-                                              (? :board/member-fields)
+                                              (? :entity/member-fields)
                                               (? :board/member-tags)
                                               (? :board/new-projects-require-approval?)
-                                              (? :board/project-fields)
+                                              (? :entity/project-fields)
                                               (? :board/project-sharing-buttons)
                                               (? :board/registration-codes)
                                               (? :board/invite-email-text)
@@ -112,18 +111,26 @@
   {:prepare [(member.data/member:log-visit! :board-id)
              (az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
-  (if-let [board (db/pull `[~@entity.data/fields
+  (if-let [board (db/pull `[~@entity.data/entity-keys
+                            :entity/member-fields
+                            :entity/project-fields
                             :board/registration-open?
-                            {:entity/parent [~@entity.data/fields :org/show-org-tab?]}]
+                            {:entity/parent [~@entity.data/entity-keys :org/show-org-tab?]}]
                           board-id)]
     (merge board {:member/roles roles})
     (throw (ex-info "Board not found!" {:status 400}))))
 
-(def project-fields `[~@entity.data/fields])
+(def project-fields `[~@entity.data/entity-keys])
 (def member-fields [{:member/account [:entity/id
                                       :entity/kind
                                       {:image/avatar [:entity/id]}
                                       :account/display-name]}
+                    {:member/tags [:entity/id
+                                   :tag/label
+                                   :tag/background-color]}
+                    :entity/field-entries
+                    {:member/entity [:entity/id]}
+                    {:member/custom-tags [:tag/label]}
                     :member/roles])
 
 (q/defquery members
@@ -131,7 +138,7 @@
   [{:keys [board-id member/roles]}]
   (->> (db/where [[:member/entity board-id]])
        (remove :entity/archived?)
-       (mapv (db/pull `[~@entity.data/fields
+       (mapv (db/pull `[~@entity.data/entity-keys
                         ~@member-fields]))))
 
 (q/defquery projects
@@ -179,9 +186,9 @@
                params)]}
   [{:keys [board-id member/roles]}]
   (some->
-    (q/pull `[~@entity.data/fields
-              {:board/member-fields ~field.data/field-keys}
-              {:board/project-fields ~field.data/field-keys}] board-id)
+    (q/pull `[~@entity.data/entity-keys
+              {:entity/member-fields ~field.data/field-keys}
+              {:entity/project-fields ~field.data/field-keys}] board-id)
     (merge {:member/roles roles})))
 (comment
   [:ul                                                      ;; i18n stuff

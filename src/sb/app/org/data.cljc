@@ -55,15 +55,15 @@
 (q/defquery settings
   [{:keys [org-id]}]
   ;; all the settings that can be changed
-  (q/pull `[~@entity.data/fields]
+  (q/pull `[~@entity.data/entity-keys]
           org-id))
 
 (q/defquery show
   {:prepare [az/with-account-id!
              (member.data/member:log-visit! :org-id)]}
   [{:keys [org-id]}]
-  (q/pull `[~@entity.data/fields
-            {:entity/_parent ~entity.data/fields}]
+  (q/pull `[~@entity.data/entity-keys
+            {:entity/_parent ~entity.data/entity-keys}]
           (dl/resolve-id org-id)))
 
 (q/defx search-once
@@ -72,7 +72,7 @@
   (when q
     {:q        q
      :boards   (dl/q (u/template
-                       `[:find [(pull ?board ~entity.data/fields) ...]
+                       `[:find [(pull ?board ~entity.data/entity-keys) ...]
                          :in $ ?terms ?org
                          :where
                          [?board :entity/parent ?org]
@@ -80,7 +80,7 @@
                      q
                      org-id)
      :projects (->> (dl/q (u/template
-                            `[:find [(pull ?project [~@entity.data/fields
+                            `[:find [(pull ?project [~@entity.data/entity-keys
                                                      :project/sticky?
                                                      {:entity/parent [:entity/id]}]) ...]
                               :in $ ?terms ?org

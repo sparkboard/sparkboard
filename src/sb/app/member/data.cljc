@@ -29,7 +29,7 @@
    :member/account                  (sch/ref :one)
 
    :member/tags                     (sch/ref :many :tag/as-map)
-   :member/ad-hoc-tags              {s- [:sequential [:map {:closed true} :tag/label]]}
+   :member/custom-tags              {s- [:sequential [:map {:closed true} :tag/label]]}
 
    ;; TODO: move/remove. this should simply be a field that an organizer adds.
    :member/newsletter-subscription? {s- :boolean},
@@ -59,7 +59,7 @@
 
                                          (? :member/inactive?)
                                          (? :member/email-frequency)
-                                         (? :member/ad-hoc-tags)
+                                         (? :member/custom-tags)
                                          (? :member/newsletter-subscription?)
                                          (? :member/tags)
                                          (? :member/roles)
@@ -77,7 +77,7 @@
   {:prepare az/require-account!}
   [params]
   (dissoc (q/pull `[{:member/tags [:*]}
-                    {:member/account [~@entity.data/fields
+                    {:member/account [~@entity.data/entity-keys
                                       :account/display-name]}]
                   (:member-id params))
           :member/password))
@@ -123,9 +123,9 @@
           search-term)))
 
 (comment
-  (search {:account-id     [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
-              ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
-              :search-term "matt"}))
+  (search {:account-id  [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
+           ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
+           :search-term "matt"}))
 
 #?(:clj
    (defn member:log-visit! [entity-key]

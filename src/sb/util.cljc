@@ -154,6 +154,11 @@
   (when-not (str/blank? s)
     s))
 
+(defn truncate-string [s n]
+  (if (> (count s) n)
+    (str (subs s 0 (- n 3)) "...")
+    s))
+
 (defn wrap
   [[left right] s]
   (str left s right))

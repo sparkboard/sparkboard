@@ -36,7 +36,7 @@
                                 :q     q}))))))
         [q])
       [:div
-       (header/entity org (list (entity.ui/settings-button org)))
+       (header/entity org nil)
        [:div.p-body (field.ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch

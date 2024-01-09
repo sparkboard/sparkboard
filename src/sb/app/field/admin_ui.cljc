@@ -96,7 +96,7 @@
      [:div.contents.labels-normal
       (view-field ?required?)
       (view-field ?show-as-filter?)
-      (when (= :board/member-fields (:attribute (io/parent ?field)))
+      (when (= :entity/member-fields (:attribute (io/parent ?field)))
         (view-field ?show-at-registration?))
       (view-field ?show-on-card?)
       [:div
