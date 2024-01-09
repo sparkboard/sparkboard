@@ -333,7 +333,7 @@
 
     .form-text {
         @apply
-        flex w-full px-3 placeholder-gray-400
+        flex w-full py-2 px-3 placeholder-gray-400
         disabled:cursor-not-allowed disabled:opacity-50
     }
 
