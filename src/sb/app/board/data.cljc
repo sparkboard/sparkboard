@@ -30,7 +30,6 @@
    :board/max-projects-per-member        {s- :int}
    :board/sticky-color                   {:doc "Deprecate - sticky notes can pick their own colors"
                                           s-   :html/color}
-   :board/member-tags                    {s- [:sequential :tag/as-map]}
    :board/invite-email-text              {:hint "Text of email sent when inviting a user to a board."
                                           s-    :string},
    :board/registration-newsletter-field? {:hint "During registration, request permission to send the user an email newsletter"
@@ -80,7 +79,7 @@
                                               (? :board/max-members-per-project)
                                               (? :board/max-projects-per-member)
                                               (? :entity/member-fields)
-                                              (? :board/member-tags)
+                                              (? :entity/member-tags)
                                               (? :board/new-projects-require-approval?)
                                               (? :entity/project-fields)
                                               (? :board/project-sharing-buttons)
@@ -127,7 +126,7 @@
                                       :account/display-name]}
                     {:member/tags [:entity/id
                                    :tag/label
-                                   :tag/background-color]}
+                                   :tag/color]}
                     :entity/field-entries
                     {:member/entity [:entity/id]}
                     {:member/custom-tags [:tag/label]}
@@ -187,6 +186,7 @@
   [{:keys [board-id member/roles]}]
   (some->
     (q/pull `[~@entity.data/entity-keys
+              :entity/member-tags
               {:entity/member-fields ~field.data/field-keys}
               {:entity/project-fields ~field.data/field-keys}] board-id)
     (merge {:member/roles roles})))

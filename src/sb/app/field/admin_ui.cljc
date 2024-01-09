@@ -1,13 +1,12 @@
 (ns sb.app.field.admin-ui
-  (:require [applied-science.js-interop :as j]
+  (:require #?(:cljs ["@radix-ui/react-popover" :as Pop])
             [clojure.string :as str]
             [inside-out.forms :as io]
             [promesa.core :as p]
-            [re-db.reactive :as r]
-            [sb.app.entity.ui :as entity.ui :refer [view-field]]
             [sb.app.entity.data :as entity.data]
-            [sb.app.field.ui :as field.ui]
+            [sb.app.entity.ui :refer [view-field]]
             [sb.app.field.data :as data]
+            [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -68,7 +67,7 @@
                                          (p/let [result (entity.data/maybe-save-field ?options)]
                                            (reset! ?new (:init ?new))
                                            result)))}
-        [field.ui/text-field ?new {:placeholder "Option label"
+        [field.ui/text-field ?new {:placeholder   "Option label"
                                    :field/classes {:wrapper "flex-auto"}}]
         [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
      #_[ui/pprinted @?options]]))
@@ -200,13 +199,121 @@
                          (reset! !new-field nil)
                          (entity.data/maybe-save-field ?fields)))}
          [:div.h-10.flex.items-center [(:icon (data/field-types @?type)) "icon-lg text-gray-700  mx-2"]]
-         [field.ui/text-field ?label {:field/label         false
-                                      :ref                 !autofocus-ref
-                                      :placeholder         (:field/label ?label)
-                                      :field/classes       {:wrapper "flex-auto"}}]
+         [field.ui/text-field ?label {:field/label   false
+                                      :ref           !autofocus-ref
+                                      :placeholder   (:field/label ?label)
+                                      :field/classes {:wrapper "flex-auto"}}]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (t :tr/add)]
          [:div.flex.items-center.justify-center.icon-light-gray.h-10.w-7
           {:on-mouse-down #(reset! !new-field nil)}
           [icons/close "w-4 h-4 "]]]
         [:div.pl-12.py-2 (form.ui/show-field-messages ?new-field)]])]))
+
+(defn make-field:tags [init props]
+  (io/field :many (u/prune {:tag/id          ?id
+                            :tag/label       ?label
+                            :tag/color       ?color
+                            :tag/restricted? ?restricted?})
+            :init init))
+
+(ui/defview tag-form [{:keys [?state
+                              init
+                              on-submit
+                              close!]}]
+  (let [!ref    (h/use-ref)
+        {:as ?tag :syms [?label ?color ?restricted?]} (h/use-memo #(io/form (u/prune {:tag/id          ?id
+                                                                                      :tag/label       ?label
+                                                                                      :tag/color       (?color :init "#dddddd")
+                                                                                      :tag/restricted? (?restricted? :field/label (t :tr/restricted))})
+                                                                            :required [?label]
+                                                                            :init init)
+                                                                  (h/use-deps init))
+        submit! #(on-submit ?tag close!)]
+    [:el.relative Pop/Root {:open true :on-open-change #(close!)}
+     [:el Pop/Anchor]
+     [:el Pop/Content {:as-child true}
+      [:div.p-2.z-10 {:class radix/float-small}
+       [:form.outline-none.flex-v.gap-2.items-stretch
+        {:ref       !ref
+         :on-submit (fn [e]
+                      (.preventDefault e)
+                      (submit!))}
+        [:div.flex.gap-2
+         [field.ui/text-field ?label {:placeholder       (t :tr/label)
+                                      :field/keybindings {:Enter submit!}
+                                      :field/multi-line? false
+                                      :field/can-edit?   true
+                                      :field/label       false}]
+
+         [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [field.ui/color-field ?color {:field/can-edit? true}]]
+         [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
+        [field.ui/checkbox-field ?restricted? {:field/can-edit? true
+                                               :field/classes   {:wrapper "pl-3"}}]]
+       (form.ui/show-field-messages ?state)]]]))
+
+(ui/defview show-tag
+  {:key (fn [_ ?tag] #?(:cljs (goog/getUid ?tag)))}
+  [{:keys [?tags
+           !editing
+           use-order]} ?tag]
+  (let [{:syms [?label ?color]} ?tag
+        bg    (or (u/some-str @?color) "#dddddd")
+        color (color/contrasting-text-color bg)
+        tag   (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
+                    {:key   @?label
+                     :style {:background-color bg :color color}} @?label])
+        {:keys [drag-handle-props
+                drag-subject-props
+                dragging
+                dropping]} (use-order ?tag)]
+    [radix/context-menu {:trigger [:div.transition-all
+                                   (v/merge-props drag-handle-props
+                                                  drag-subject-props
+                                                  {:class (cond (= dropping :before) "pl-2"
+                                                                dragging "opacity-20")})
+                                   tag
+                                   (when (= ?tag @!editing)
+                                     [tag-form {:close!    #(reset! !editing nil)
+                                                :?state    ?tags
+                                                :init      @?tag
+                                                :on-submit (fn [?new-tag close!]
+                                                             (reset! ?tag @?new-tag)
+                                                             (p/let [res (entity.data/maybe-save-field ?tag)]
+                                                               (when-not (:error res)
+                                                                 (reset! ?tag @?new-tag)
+                                                                 (close!))))}])]
+                         :items   [[radix/context-menu-item
+                                    {:on-select (fn []
+                                                  (io/remove-many! ?tag)
+                                                  (entity.data/maybe-save-field ?tags))}
+                                    (t :tr/remove)]
+                                   [radix/context-menu-item
+                                    {:on-select (fn [] (p/do (p/delay 0) (reset! !editing ?tag)))}
+                                    (t :tr/edit)]]}]))
+
+(ui/defview tags-editor [?tags _]
+  (let [!editing  (h/use-state nil)
+        use-order (ui/use-orderable-parent ?tags {:axis :x})]
+    [:div.field-wrapper
+     (form.ui/show-label ?tags)
+     [:div.flex.gap-1
+      (map (partial show-tag {:?tags     ?tags
+                              :!editing  !editing
+                              :use-order use-order}) ?tags)
+      (let [!creating-new (h/use-state false)]
+        [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
+         {:on-click #(reset! !creating-new true)}
+         [:span.cursor-default (t :tr/add-tag)]
+         [icons/plus "w-4 h-4 icon-gray"]
+         (when @!creating-new
+           [tag-form {:?state    ?tags
+                      :on-submit (fn [?tag close!]
+                                   (io/add-many! ?tags (assoc @?tag :tag/id (random-uuid)))
+                                   (p/let [res (entity.data/maybe-save-field ?tags)]
+                                     (when-not (:error res)
+                                       (io/clear! ?tag)
+                                       (close!))
+                                     res))
+                      :init      {:badge/color "#dddddd"}
+                      :close!    #(reset! !creating-new false)}])])]]))

@@ -24,6 +24,9 @@
       [:<>
        (header/entity board nil)
 
+       #_[:div {:class "max-w-[600px] mx-auto my-6 flex-v gap-6"}
+          (use-persisted :entity/member-tags)]
+
        [radix/accordion {:class    "max-w-[600px] mx-auto my-6 flex-v gap-6"
                          :multiple true}
 
@@ -38,6 +41,7 @@
 
         [:div.field-label (t :tr/projects-and-members)]
         [:div.flex-v.gap-4
+         (use-persisted :entity/member-tags)
          (use-persisted :entity/member-fields)
          (use-persisted :entity/project-fields)]
 

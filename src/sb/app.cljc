@@ -57,6 +57,8 @@
    :entity/video         {:view field.ui/video-field}
    :entity/fields        {:view       field.admin-ui/fields-editor
                           :make-field field.admin-ui/make-field:fields}
+   :entity/member-tags   {:view field.admin-ui/tags-editor
+                          :make-field field.admin-ui/make-field:tags}
    :entity/field-entries {:view       field.ui/entries-field
                           :make-field field.ui/make-field:entries}
    :asset/as-map         {:view field.ui/image-field}})

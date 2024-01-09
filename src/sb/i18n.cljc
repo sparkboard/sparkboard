@@ -48,6 +48,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/drafts                          {:en "Drafts"
                                           :fr "Brouillons"
                                           :es "Borradores"}
+     :tr/add-tag                         {:en "Add tag"
+                                          :fr "Ajouter un mot-clé"
+                                          :es "Añadir etiqueta"}
+     :tr/restricted                      {:en "Restricted"
+                                          :fr "Restreint"
+                                          :es "Restringido"}
      :tr/further-instructions            {:en "Further instructions"
                                           :fr "Instructions supplémentaires"
                                           :es "Instrucciones adicionales"}

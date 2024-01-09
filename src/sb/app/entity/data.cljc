@@ -9,17 +9,17 @@
 
 (sch/register!
   (merge
-    {:tag/id               unique-uuid
-     :tag/background-color {s- :html/color},
-     :tag/label            {s- :string},,
-     :tag/restricted?      {:doc "Tag may only be modified by an admin of the owner of this tag"
-                            s-   :boolean}
-     :tag/as-map           {:doc "Description of a tag which may be applied to an entity."
-                            s-   [:map {:closed true}
-                                  :tag/id
-                                  :tag/label
-                                  (? :tag/background-color)
-                                  (? :tag/restricted?)]}}
+    {:tag/id          unique-uuid
+     :tag/color       {s- :html/color},
+     :tag/label       {s- :string},,
+     :tag/restricted? {:doc "Tag may only be modified by an admin of the owner of this tag"
+                       s-   :boolean}
+     :tag/as-map      {:doc "Description of a tag which may be applied to an entity."
+                       s-   [:map {:closed true}
+                             :tag/id
+                             :tag/label
+                             (? :tag/color)
+                             (? :tag/restricted?)]}}
 
     {:entity/id                 unique-uuid
      :entity/title              {:doc         "Title of entity, for card/header display."
@@ -48,6 +48,7 @@
                                      :chat.message]}
      :entity/project-fields     {s- :entity/fields}
      :entity/member-fields      {s- :entity/fields}
+     :entity/member-tags        {s- [:sequential :tag/as-map]}
      :entity/draft?             {:doc "Entity is not yet published - visible only to creator/team"
                                  s-   :boolean}
      :entity/description        {:doc "Description of an entity (for card/header display)"

@@ -66,6 +66,7 @@
   [?field props]
   (let [messages (forms/visible-messages ?field)
         loading? (:loading? ?field)
+        {:keys [field/classes]} props
         props    (-> (v/merge-props (form.ui/?field-props ?field
                                                           (merge {:field/event->value (comp boolean (j/get-in [:target :checked]))}
                                                                  props))
@@ -83,6 +84,7 @@
                      (update :checked boolean))
         ]
     [:div.flex.flex-col.gap-1.relative
+
      [:label.relative.flex.items-center
       (when loading?
         [:div.h-5.w-5.inline-flex.items-center.justify-center.absolute
@@ -296,11 +298,10 @@
        (update :value #(or % "#ffffff"))
        (form.ui/pass-props))])
 
-(ui/defview badge-form [{:keys [init
+(ui/defview badge-form [{:keys [?state
+                                init
                                 on-submit
                                 close!]}]
-  ;; TODO
-  ;; - color picker should show colors already used in the board?
   (let [!ref    (h/use-ref)
         {:as ?badge :syms [?label ?color]} (h/use-memo #(io/form {:badge/label ?label
                                                                   :badge/color (?color :init "#dddddd")}
@@ -308,7 +309,7 @@
                                                                  :init init)
                                                        (h/use-deps init))
         submit! #(on-submit ?badge close!)]
-    [:el.relative Pop/Root {:open true :on-open-change #(do (prn :on-open-change %) (close!))}
+    [:el.relative Pop/Root {:open true :on-open-change #(close!)}
      [:el Pop/Anchor]
      [:el Pop/Content {:as-child true}
       [:div.p-2.z-10 {:class radix/float-small}
@@ -324,7 +325,7 @@
                             :field/label       false}]
         [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
         [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
-       (form.ui/show-field-messages (or (io/parent ?badge) ?badge))]]]))
+       (form.ui/show-field-messages ?state)]]]))
 
 (ui/defview badges-field* [?badges {:keys [member/roles]}]
   (let [board-admin? (:role/board-admin roles)
@@ -341,8 +342,8 @@
          [radix/context-menu {:trigger [:div
                                         badge
                                         (when (= ?badge @!editing)
-                                          [badge-form {:?badge    ?badge
-                                                       :close!    #(reset! !editing nil)
+                                          [badge-form {:close!    #(reset! !editing nil)
+                                                       :?state    ?badges
                                                        :init      @?badge
                                                        :on-submit (fn [?new-badge close!]
                                                                     (reset! ?badge @?new-badge)
@@ -367,10 +368,11 @@
           (when @!creating-new
             [badge-form {:on-submit (fn [?badge close!]
                                       (io/add-many! ?badges @?badge)
-                                      (io/clear! ?badge)
                                       (p/let [res (entity.data/maybe-save-field ?badges)]
                                         (when-not (:error res)
+                                          (io/clear! ?badge)
                                           (close!))))
+                         :?state ?badges
                          :init      {:badge/color "#dddddd"}
                          :close!    #(reset! !creating-new false)}])]))]))
 
@@ -556,17 +558,17 @@
 (defn show-select:card [{:keys [field/options]} {:keys [select/value]}]
   (let [{:keys [field-option/label
                 field-option/color]
-         :or {color "#dddddd"}} (u/find-first options #(= value (:field-option/value %)))]
+         :or   {color "#dddddd"}} (u/find-first options #(= value (:field-option/value %)))]
     [:div {:class radix/select-trigger-classes
            :style {:background-color color
-                   :color (color/contrasting-text-color color)}}
+                   :color            (color/contrasting-text-color color)}}
      label]))
 
 (defn show-image-list:card [{:keys [image-list/images]}]
   (when-let [{:keys [entity/id]} (first images)]
     [:img.max-h-80 {:src (asset.ui/asset-src id :card)}]))
 
-(defn show-prose:card [field {:as m :prose/keys [format string]}]
+(ui/defview show-prose:card [field {:as m :prose/keys [format string]}]
   (when-not (str/blank? string)
     (let [string (u/truncate-string string 140)]
       (case format
@@ -591,7 +593,7 @@
     :field.type/video [show-video-url (:video/url entry)]
     :field.type/select [show-select:card field entry]
     :field.type/link-list [show-link-list:card field entry]
-    :field.type/image-list [show-image-list:card field entry ]
+    :field.type/image-list [show-image-list:card field entry]
     :field.type/prose [show-prose:card field entry]
     (str "no match" field)))
 

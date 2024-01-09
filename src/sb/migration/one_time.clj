@@ -660,14 +660,14 @@
                                                                                 (to-uuid :tag %)))
                                              (map #(-> %
                                                        (dissoc "order")
-                                                       (rename-keys {"color"    :tag/background-color
+                                                       (rename-keys {"color"    :tag/color
                                                                      "name"     :tag/label
                                                                      "label"    :tag/label
                                                                      "restrict" :tag/restricted?})
                                                        (u/update-some {:tag/restricted? (constantly true)})))
                                              (filter :tag/label)
                                              vec))))
-                         (rename :board/member-tags))
+                         (rename :entity/member-tags))
                "social" (& (xf (fn [m] (into {} (mapcat {"facebook" [[:social.sharing-button/facebook true]]
                                                          "twitter"  [[:social.sharing-button/twitter true]]
                                                          "qrCode"   [[:social.sharing-button/qr-code true]]

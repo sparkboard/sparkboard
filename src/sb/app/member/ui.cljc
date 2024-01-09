@@ -25,16 +25,16 @@
      (when-let [tags (seq (concat tags custom-tags))]
        [:section [:h3 (t :tr/tags)]
         (into [:ul]
-              (map (fn [{:tag/keys [label background-color]}]
-                     [:li {:style (when background-color {:background-color background-color})} label]))
+              (map (fn [{:tag/keys [label color]}]
+                     [:li {:style (when color {:background-color color})} label]))
               tags)])
      (when avatar [:img {:src (asset.ui/asset-src avatar :card)}])]))
 
-(defn show-tag [{:keys [tag/label tag/background-color] :or {background-color "#dddddd"}}]
+(defn show-tag [{:keys [tag/label tag/color] :or {color "#dddddd"}}]
   [:div.tag-sm
    {:key   label
-    :style {:background-color background-color
-            :color            (color/contrasting-text-color background-color)}}
+    :style {:background-color color
+            :color            (color/contrasting-text-color color)}}
    label])
 
 (ui/defview card
