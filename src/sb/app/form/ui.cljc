@@ -3,11 +3,14 @@
             [inside-out.forms]
             [inside-out.forms :as io]
             [sb.app.entity.data :as entity.data]
+            [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.color :as color]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.util :as u]
+            [yawn.hooks :as h]
             [yawn.view :as v]))
 
 
@@ -16,15 +19,6 @@
      (str "field-" (goog/getUid ?field))
      :clj
      (str "field-" (:sym ?field))))
-
-
-(defn pass-props [props]
-  (reduce (fn [m k]
-            (cond-> m
-                    (qualified-keyword? k)
-                    (dissoc k)))
-          props
-          (keys props)))
 
 (defn attribute-label [a]
   (sb.i18n/tr* (keyword "tr" (name a))))
@@ -89,3 +83,18 @@
     {:type     "submit"
      :disabled (not (io/submittable? ?form))}
     label]])
+
+#?(:cljs
+   (defn use-dev-panel [entity role-map default]
+     (let [!roles    (h/use-state default)
+           roles     (role-map @!roles)]
+       [(az/editor-role? roles)
+        roles
+        (when (ui/dev?)
+          [radix/select-menu {:value           @!roles
+                              :on-value-change #(reset! !roles %)
+                              :field/classes   {:trigger "flex items-center px-2 icon-gray text-sm self-start focus-visible:ring-0"
+                                                :content (str radix/menu-content-classes " text-sm")}
+                              :field/can-edit? true
+                              :field/options   (->> (keys role-map)
+                                                    (mapv (fn [k] {:value k :text k})))}])])))

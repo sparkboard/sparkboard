@@ -34,6 +34,7 @@
    :boolean              {:view field.ui/checkbox-field}
    :project/badges       {:view field.ui/badges-field}
    :prose/as-map         {:view field.ui/prose-field}
+   :entity/tags          {:view field.ui/tags-field}
    :account/email        {:props      {:type        "email"
                                        :placeholder (t :tr/email)}
                           :validators [form.ui/email-validator]}

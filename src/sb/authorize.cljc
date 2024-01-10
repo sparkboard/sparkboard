@@ -2,7 +2,8 @@
   (:require [clojure.set :as set]
             [re-db.api :as db]
             [sb.server.datalevin :as dl]
-            [sb.schema :as sch])
+            [sb.schema :as sch]
+            [sb.util :as u])
   #?(:clj (:import [re_db.read Entity])))
 
 (defn editor-role? [roles]
@@ -12,11 +13,6 @@
       (:role/board-admin roles)
       (:role/org-admin roles)))
 
-(defn membership-id [account-id entity-id]
-  #?(:clj
-     (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])
-     :cljs
-     (dl/resolve-id entity-id)))
 
 (defn require-account! [req params]
   (when-not (-> req :account :entity/id)
@@ -35,37 +31,39 @@
       (unauthorized! "User not signed in"))
     params))
 
+(defn entity? [x]
+  (instance? #?(:cljs re-db.read/Entity :clj Entity) x))
+
 (defn get-entity [x]
-  (if (instance? #?(:cljs re-db.read/Entity :clj Entity) x)
+  (if (entity? x)
     x
     (db/entity (dl/resolve-id x))))
 
-(defn get-roles [account-id entity-id]
-  (:member/roles (db/entity (membership-id account-id entity-id))))
+(defn get-roles [account-id entity]
+  (or (case (:entity/kind entity)
+        :account (when (sch/id= account-id (:entity/id entity)) #{:role/self})
+        :member (when (sch/id= account-id (-> entity :member/account :entity/id)) #{:role/self})
+        (:member/roles #?(:cljs entity
+                          :clj (db/entity (dl/entid [:member/entity+account [(:db/id entity) (dl/resolve-id account-id)]])))))
+      #{}))
 
-(defn scoped-roles [account-id entity-id]
-  (if (= account-id entity-id)
-    #{:role/self}
-    (let [{:as entity :keys [entity/kind]} (get-entity entity-id)]
-      (->> (:member/roles #?(:cljs entity
-                             :clj  (db/entity (membership-id account-id entity-id))))
-           (into #{}
-                 (map (fn [role]
-                        (keyword "role"
-                                 (str (name kind) "-" (name role))))))))))
+(defn scoped-roles [account-id {:as entity :keys [entity/kind]}]
+  (->> (get-roles account-id entity)
+       (into #{}
+             (map (fn [role]
+                    (keyword "role"
+                             (str (name kind) "-" (name role))))))))
 
-(defn inherited-roles [account-id entity-id]
-  (->> (:entity/parent (get-entity entity-id))
+(defn inherited-roles [account-id entity]
+  (->> (:entity/parent entity)
        (iterate :entity/parent)
        (take-while identity)
        (mapcat (partial scoped-roles account-id))
        (into #{})))
 
-(defn all-roles [account-id entity-id]
-  (into (get-roles account-id entity-id)
-        (inherited-roles account-id entity-id)))
-
-(def can-edit? (comp editor-role? all-roles))
+(defn all-roles [account-id entity]
+  (into (get-roles account-id  entity)
+        (inherited-roles account-id entity)))
 
 (comment
   (let [account-id [:entity/id #uuid"b03a4669-a7ef-3e8e-bddc-8413e004c338"]
@@ -77,5 +75,5 @@
    (defn with-roles [entity-key]
      (fn [req params]
        (if-let [account-id (some-> (-> req :account :entity/id) sch/wrap-id)]
-         (assoc params :member/roles (get-roles account-id (entity-key params)))
+         (assoc params :member/roles (get-roles account-id (get-entity (entity-key params))))
          params))))

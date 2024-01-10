@@ -48,6 +48,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/drafts                          {:en "Drafts"
                                           :fr "Brouillons"
                                           :es "Borradores"}
+     :tr/edit-tags                       {:en "Edit tags"
+                                          :fr "Modifier les mots-clés"
+                                          :es "Editar etiquetas"}
      :tr/add-tag                         {:en "Add tag"
                                           :fr "Ajouter un mot-clé"
                                           :es "Añadir etiqueta"}

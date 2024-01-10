@@ -3,6 +3,7 @@
             [re-db.api :as db]
             [sb.authorize :as az]
             [sb.query :as q]
+            [sb.server.datalevin :as dl]
             [sb.schema :as sch :refer [? s- unique-uuid]]
             [sb.validate :as validate]
             [inside-out.forms :as io]))
@@ -122,11 +123,12 @@
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} e m]
   (let [e   (sch/wrap-id e)
-        _   (validate/assert-can-edit! account-id e)
+        entity (dl/entity e)
+        _   (validate/assert-can-edit! account-id entity)
         txs (-> (assoc m :db/id e)
                 retract-nils)]
 
-    (let [parent-schema (-> (keyword (name (:entity/kind (db/entity e))) "as-map")
+    (let [parent-schema (-> (keyword (name (:entity/kind entity)) "as-map")
                             (@sch/!malli-registry))
           without-nils  (ignore-optional-nils parent-schema m)]
       (validate/assert without-nils (mu/select-keys parent-schema (keys without-nils))))

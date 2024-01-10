@@ -21,7 +21,8 @@
             [yawn.view :as v]
             [sb.color :as color]
             [sb.i18n :refer [t]]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            [re-db.api :as db]))
 
 #?(:cljs
    (defn parse-video-url [url]
@@ -90,7 +91,7 @@
         [:div.h-5.w-5.inline-flex.items-center.justify-center.absolute
          [ui/loading:spinner "h-3 w-3"]])
       [:input.h-5.w-5.rounded.border-gray-300.text-primary
-       (form.ui/pass-props props)]
+       (u/dissoc-qualified props)]
       [:div.flex-v.gap-1.ml-2
        (when-let [label (form.ui/get-label ?field (:field/label props))]
          [:div.flex.items-center.h-5 label])
@@ -174,7 +175,7 @@
        (form.ui/show-label ?field (:field/label props) (:label classes))
        [:div.flex-v.relative
         (with-messages-popover ?field
-          [auto-size (-> (form.ui/pass-props props)
+          [auto-size (-> (u/dissoc-qualified props)
                          (v/merge-props
                            data-props
                            {:disabled    (not can-edit?)
@@ -302,7 +303,7 @@
                                :position "absolute"}} props)
        (assoc :type "color")
        (update :value #(or % "#ffffff"))
-       (form.ui/pass-props))])
+       (u/dissoc-qualified))])
 
 (ui/defview plural-item-form [{:as   props
                                :keys [?items
@@ -671,3 +672,55 @@
                :when (or can-edit?
                          (data/entry-value @?entry))]
            (show-entry-field ?entry props))))
+
+(ui/defview tags-field
+  {:make-?field (fn [init _props]
+                  (io/field :many {:tag/id ?id}
+                            :init init))}
+  [?tags {:as props :keys [field/can-edit?]}]
+  (let [all-tags  (-> (io/closest ?tags :db/id)
+                      db/entity
+                      :member/entity
+                      :entity/member-tags)
+        by-id     (reduce #(assoc %1 (:tag/id %2) %2) {} all-tags)
+        selected  (into #{} (map :tag/id) @?tags)
+        [editing? edit!] (h/use-state (empty? selected))
+        to-add    (seq (remove (comp selected :tag/id) all-tags))]
+    [:div.flex-v.gap-1
+     [:div.flex.flex-wrap.gap-2
+      (doall (for [{:as ?tag :syms [?id]} ?tags
+                   :let [{:tag/keys [id label color]} (by-id @?id)]]
+               [:div.tag-md.cursor-default.gap-1.group
+                {:key      id
+                 :style    (color/color-pair color)
+                 :on-click (when editing?
+                             #(do (io/remove-many! ?tag)
+                                  (entity.data/maybe-save-field ?tags)))}
+                label
+                (when editing?
+                  [icons/x-mark "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"])]))]
+     (when to-add
+       [:div.flex-v.gap-2
+        (when-not editing?
+          [:div.tag-md.px-1.hover:bg-gray-100.text-gray-400.hover:text-gray-700.cursor-default {:on-click #(edit! not)}
+           (t :tr/edit-tags)])
+        (when editing?
+          [:div.bg-gray-100.rounded-lg.border-gray-400.p-3.flex.items-center.gap-2
+           [:div.flex.flex-wrap.gap-2
+            (for [{:tag/keys [id label color]} to-add]
+              [:div.tag-md.cursor-default.group
+               {:key      id
+                :style    (color/color-pair color)
+                :on-click #(do (io/add-many! ?tags {:tag/id id})
+                               (entity.data/maybe-save-field ?tags))}
+               label
+               [icons/plus-thick "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"]])]
+           [:div.hover:bg-gray-200.p-2.rounded {:on-click #(edit! not)} [icons/checkmark "flex-none"]]])
+        [form.ui/show-field-messages ?tags]])]
+    )
+  ;; pass in a list of tags (from parent) to show. group-by (set @?tags).
+  ;; show each tag,
+  ;; if can-edit,
+  ;;  - show an "x" for removing each tag,
+  ;;  - show unused tags, click-to-add
+  )

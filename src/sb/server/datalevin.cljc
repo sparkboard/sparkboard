@@ -74,7 +74,7 @@
 
 (defn entity [id]
   #?(:clj  (dl/entity @conn (resolve-id id))
-     :cljs (db/entity id)))
+     :cljs (db/entity (resolve-id id))))
 
 #?(:clj
    (defn transact! [txs]

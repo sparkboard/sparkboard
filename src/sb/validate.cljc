@@ -109,11 +109,9 @@
                                 :inside-out.forms/messages-by-path {() [reason]}}}}))
 
 #?(:clj
-   (defn assert-can-edit! [account-id entity-id]
-     (when-not (can-edit? account-id entity-id)
+   (defn assert-can-edit! [account-id entity]
+     (when-not (can-edit? account-id entity)
        (permission-denied!))))
-
-
 
 (comment
 

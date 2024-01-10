@@ -3,10 +3,10 @@
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
+            [sb.app.form.ui :as form.ui]
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
-            [sb.authorize :as az]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -85,89 +85,64 @@
 
        ])))
 
-#?(:cljs
-   (defn use-dev-panel [entity]
-     (let [all-roles (az/all-roles nil (:entity/id entity))
-           m      {"Current User"   all-roles
-                   "Project Editor" #{:role/project-editor}
-                   "Board Admin"    #{:role/board-admin}
-                   "Visitor"        #{}}
-           !roles (h/use-state "Current User")
-           roles  (m @!roles)]
-       [(az/editor-role? roles)
-        roles
-        (when (ui/dev?)
-          [radix/select-menu {:value           @!roles
-                              :on-value-change #(reset! !roles %)
-                              :field/classes   {:trigger "flex items-center px-2 icon-gray text-sm self-start focus-visible:ring-0"
-                                                :content (str radix/menu-content-classes " text-sm")}
-                              :field/can-edit? true
-                              :field/options   [{:value "Current User" :text "Current User"}
-                                                {:value "Project Editor" :text "Project Editor"}
-                                                {:value "Visitor" :text "Visitor"}
-                                                {:value "Board Admin" :text "Board Admin"}]}])])))
-
-(def title-icon-classes "px-1 py-2 icon-light-gray")
-
-(def modal-close [radix/dialog-close
-                  [:div {:class title-icon-classes} [icons/close]]])
-
 (ui/defview show
   {:route       "/p/:project-id"
    :view/router :router/modal}
   [params]
   (let [project      (data/show params)
-        [can-edit? roles dev-panel] (use-dev-panel project)
+        [can-edit? roles dev-panel] (form.ui/use-dev-panel project {"Current User"   (:member/roles project)
+                                                                    "Project Editor" #{:role/project-editor}
+                                                                    "Board Admin"    #{:role/board-admin}
+                                                                    "Visitor"        #{}} "Current User")
         field-params {:member/roles    roles
                       :field/can-edit? can-edit?}]
-    [:<>
+    [:div.flex-v.gap-6.pb-6
+     ;; title row
+     [:div.flex-v
+      (when (:entity/draft? project)
+        [:div.border-b-2.border-dashed.px-body.py-3.flex.items-center.justify-center.gap-3
+         [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
+         [field.ui/action-btn {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
+                               :classes  {:btn          "btn-primary px-4 py-2"
+                                          :progress-bar "text-[rgba(255,255,255,0.5)]"}}
+          (t :tr/publish)]])
+      [:div.flex
+       [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
+        (entity.ui/use-persisted-attr project :entity/title (merge field-params
+                                                                   {:field/label       false
+                                                                    :field/multi-line? false
+                                                                    :field/unstyled?   (some-> (:entity/title project)
+                                                                                               (not= "Untitled"))}))]
 
-     [:div.flex-v.gap-6.pb-6
-      ;; title row
-      [:div.flex-v
-       (when (:entity/draft? project)
-         [:div.border-b-2.border-dashed.px-body.py-3.flex.items-center.justify-center.gap-3
-          [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
-          [field.ui/action-btn {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
-                                :classes  {:btn          "btn-primary px-4 py-2"
-                                           :progress-bar "text-[rgba(255,255,255,0.5)]"}}
-           (t :tr/publish)]])
-       [:div.flex
-        [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
-         (entity.ui/use-persisted-attr project :entity/title (merge field-params
-                                                                    {:field/label       false
-                                                                     :field/multi-line? false
-                                                                     :field/unstyled?   (some-> (:entity/title project)
-                                                                                                (not= "Untitled"))}))]
+       dev-panel
+       [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
+        (comment
+          (when (:role/board-admin roles)
+            ;; - archive
+            [radix/dropdown-menu
+             {:trigger  [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
+              :children []}]))
 
-        dev-panel
-        [:div.flex.self-start.ml-auto.px-1.rounded-bl-lg.border-b.border-l.relative
-         (when (:role/board-admin roles)
-           [radix/dropdown-menu
-            {:trigger  [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
-             :children [[{:on-click #()} "Add Badge"]]}])
+        [radix/tooltip "Back to board"
+         [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}
+          [icons/arrow-left]]]
+        (when (:entity/id project)
+          [radix/tooltip "Link to project"
+           [:a.modal-title-icon {:href (routing/entity-path project :show)}
+            [icons/link-2]]])
+        [radix/dialog-close
+         [:div.modal-title-icon [icons/close]]]]]]
 
-         [radix/tooltip "Back to board"
-          [:a {:class title-icon-classes
-               :href  (routing/entity-path (:entity/parent project) 'ui/show)}
-           [icons/arrow-left]]]
-         (when (:entity/id project)
-           [radix/tooltip "Link to project"
-            [:a {:class title-icon-classes
-                 :href  (routing/entity-path project :show)}
-             [icons/link-2]]])
-         modal-close]]]
-
-      [:div.px-body.flex-v.gap-6
-       (entity.ui/use-persisted-attr project :project/badges field-params)
-       (entity.ui/use-persisted-attr project :entity/description (merge field-params
-                                                                        {:field/label false
-                                                                         :placeholder "Description"}))
-       (entity.ui/use-persisted-attr project :entity/video field-params)
-       (entity.ui/use-persisted-attr project
-                                     :entity/field-entries
-                                     {:entity/fields   (->> project :entity/parent :entity/project-fields)
-                                      :member/roles    roles
-                                      :field/can-edit? can-edit?})
-       [:section.flex-v.gap-2.items-start
-        [manage-community-actions project (:project/community-actions project)]]]]]))
+     [:div.px-body.flex-v.gap-6
+      (entity.ui/use-persisted-attr project :project/badges field-params)
+      (entity.ui/use-persisted-attr project :entity/description (merge field-params
+                                                                       {:field/label false
+                                                                        :placeholder "Description"}))
+      (entity.ui/use-persisted-attr project :entity/video field-params)
+      (entity.ui/use-persisted-attr project
+                                    :entity/field-entries
+                                    {:entity/fields   (->> project :entity/parent :entity/project-fields)
+                                     :member/roles    roles
+                                     :field/can-edit? can-edit?})
+      [:section.flex-v.gap-2.items-start
+       [manage-community-actions project (:project/community-actions project)]]]]))

@@ -13,8 +13,8 @@
             [yawn.util]
             [sb.i18n :refer [t]]
             [re-db.reactive :as r]
-            [sb.app.form.ui :as form.ui]
-            [yawn.hooks :as h]))
+            [yawn.hooks :as h]
+            [sb.util :as u]))
 
 
 (def menu-root (v/from-element :el dm/Root {:modal false}))
@@ -94,7 +94,7 @@
                         :content menu-content-classes}
                        classes)]
     (v/x
-      [:el sel/Root (cond-> (form.ui/pass-props (dissoc props :trigger :placeholder))
+      [:el sel/Root (cond-> (u/dissoc-qualified (dissoc props :trigger :placeholder))
                             (not can-edit?)
                             (assoc :disabled true))
        [:el sel/Trigger

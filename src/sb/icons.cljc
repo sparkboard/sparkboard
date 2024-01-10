@@ -124,15 +124,14 @@
              :fill-rule "evenodd"
              :clip-rule "evenodd"}]]))
 
-(defn plus-circle [& [classes]]
-  (v/x
-    [:svg.icon {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor" :class classes}
-     [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"}]]))
-
 (defn plus [& [classes]]
   (v/x
     [:svg.icon {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor" :class classes}
      [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M12 4.5v15m7.5-7.5h-15"}]]))
+
+(defn plus-thick [& [classes]]
+  [:svg.icon {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 16 16" :fill "currentColor"}
+   [:path {:d "M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z"}]])
 
 (defn video [& [classes]]
   (v/x
@@ -187,3 +186,16 @@
 (defn paper-plane [& [classes]]
   (v/x
     [:svg.icon {:class classes :width "15" :height "15" :viewBox "0 0 15 15" :fill "none" :xmlns "http://www.w3.org/2000/svg"} [:path {:d "M1.20308 1.04312C1.00481 0.954998 0.772341 1.0048 0.627577 1.16641C0.482813 1.32802 0.458794 1.56455 0.568117 1.75196L3.92115 7.50002L0.568117 13.2481C0.458794 13.4355 0.482813 13.672 0.627577 13.8336C0.772341 13.9952 1.00481 14.045 1.20308 13.9569L14.7031 7.95693C14.8836 7.87668 15 7.69762 15 7.50002C15 7.30243 14.8836 7.12337 14.7031 7.04312L1.20308 1.04312ZM4.84553 7.10002L2.21234 2.586L13.2689 7.50002L2.21234 12.414L4.84552 7.90002H9C9.22092 7.90002 9.4 7.72094 9.4 7.50002C9.4 7.27911 9.22092 7.10002 9 7.10002H4.84553Z" :fill "currentColor" :fill-rule "evenodd" :clip-rule "evenodd"}]]))
+
+(defn x-circle [& [classes]]
+  (v/x
+    [:svg.icon {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 16 16" :fill "currentColor"}
+     [:path {:fill-rule "evenodd" :d "M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm2.78-4.22a.75.75 0 0 1-1.06 0L8 9.06l-1.72 1.72a.75.75 0 1 1-1.06-1.06L6.94 8 5.22 6.28a.75.75 0 0 1 1.06-1.06L8 6.94l1.72-1.72a.75.75 0 1 1 1.06 1.06L9.06 8l1.72 1.72a.75.75 0 0 1 0 1.06Z" :clip-rule "evenodd"}]]))
+
+(defn x-mark [& [classes]]
+  [:svg.icon {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 16 16" :fill "currentColor"}
+   [:path {:d "M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"}]])
+
+(defn plus-circle [& [classes]]
+  [:svg.icon {:class classes :xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 16 16" :fill "currentColor"}
+   [:path {:fill-rule "evenodd" :d "M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm.75-10.25v2.5h2.5a.75.75 0 0 1 0 1.5h-2.5v2.5a.75.75 0 0 1-1.5 0v-2.5h-2.5a.75.75 0 0 1 0-1.5h2.5v-2.5a.75.75 0 0 1 1.5 0Z" :clip-rule "evenodd"}]])

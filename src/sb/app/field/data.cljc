@@ -204,9 +204,10 @@
 (q/defx add-field
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} e a new-field]
-  (validate/assert-can-edit! account-id e)
   (let [e               (sch/wrap-id e)
-        existing-fields (a (db/entity e))
+        entity (dl/entity e)
+        _ (validate/assert-can-edit! account-id entity)
+        existing-fields (a entity)
         field           (assoc new-field :field/id (dl/new-uuid :field))]
     (validate/assert field :field/as-map)
     (db/transact! [[:db/add e a (conj existing-fields field)]])
@@ -215,8 +216,8 @@
 (q/defx remove-field
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} parent-id a field-id]
-  (validate/assert-can-edit! account-id parent-id)
   (let [parent (db/entity (sch/wrap-id parent-id))]
+    (validate/assert-can-edit! account-id parent)
     (db/transact! [[:db/add (:db/id parent) a (->> (get parent a)
                                                    (remove (comp #{field-id} :field/id))
                                                    vec)]])
@@ -248,9 +249,9 @@
      :prose/format (:prose/format entry)}))
 
 (q/defx save-entry! [{:keys [account-id]} parent-id field-id entry]
-  (validate/assert-can-edit! account-id parent-id)
   (let [field   (db/entity (sch/wrap-id field-id))
         parent  (db/entity (sch/wrap-id parent-id))
+        _ (validate/assert-can-edit! account-id parent)
         entries (assoc (get parent :entity/field-entries) field-id entry)]
     (validate/assert (db/touch field) :field/as-map)
     (validate/assert entry :field-entry/as-map)

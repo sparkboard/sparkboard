@@ -101,16 +101,12 @@
   ;; create membership
   )
 
-#?(:clj
-   (defn membership-id [entity-id account-id]
-     (dl/entity [:member/entity+account [(dl/resolve-id entity-id)
-                                         (dl/resolve-id account-id)]])))
-
 (q/defquery show
   {:prepare [(member.data/member:log-visit! :board-id)
              (az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
   (if-let [board (db/pull `[~@entity.data/entity-keys
+                            :entity/member-tags
                             :entity/member-fields
                             :entity/project-fields
                             :board/registration-open?
@@ -124,12 +120,12 @@
                                       :entity/kind
                                       {:image/avatar [:entity/id]}
                                       :account/display-name]}
-                    {:member/tags [:entity/id
+                    {:entity/tags [:entity/id
                                    :tag/label
                                    :tag/color]}
                     :entity/field-entries
                     {:member/entity [:entity/id]}
-                    {:member/custom-tags [:tag/label]}
+                    {:entity/custom-tags [:tag/label]}
                     :member/roles])
 
 (q/defquery members
@@ -181,7 +177,7 @@
   {:prepare [az/with-account-id!
              (az/with-roles :board-id)
              (fn [_ {:as params :keys [board-id account-id]}]
-               (validate/assert-can-edit! account-id board-id)
+               (validate/assert-can-edit! account-id (dl/entity board-id))
                params)]}
   [{:keys [board-id member/roles]}]
   (some->

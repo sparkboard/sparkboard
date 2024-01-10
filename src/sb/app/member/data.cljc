@@ -28,8 +28,8 @@
    :member/entity                   (sch/ref :one)
    :member/account                  (sch/ref :one)
 
-   :member/tags                     (sch/ref :many :tag/as-map)
-   :member/custom-tags              {s- [:sequential [:map {:closed true} :tag/label]]}
+   :entity/tags                     {s- [:sequential [:map {:closed true} :tag/id]]}
+   :entity/custom-tags              {s- [:sequential [:map {:closed true} :tag/label]]}
 
    ;; TODO: move/remove. this should simply be a field that an organizer adds.
    :member/newsletter-subscription? {s- :boolean},
@@ -59,9 +59,9 @@
 
                                          (? :member/inactive?)
                                          (? :member/email-frequency)
-                                         (? :member/custom-tags)
+                                         (? :entity/custom-tags)
                                          (? :member/newsletter-subscription?)
-                                         (? :member/tags)
+                                         (? :entity/tags)
                                          (? :member/roles)
                                          (? :member/last-visited)
 
@@ -76,11 +76,16 @@
 (q/defquery show
   {:prepare az/require-account!}
   [params]
-  (dissoc (q/pull `[{:member/tags [:*]}
+  (dissoc (q/pull `[~@entity.data/entity-keys
+                    :entity/tags
+                    :member/field-entries
+                    {:member/entity [:entity/id
+                                     :entity/kind
+                                     :entity/member-tags
+                                     :entity/member-fields]}
                     {:member/account [~@entity.data/entity-keys
                                       :account/display-name]}]
-                  (:member-id params))
-          :member/password))
+                  (:member-id params))))
 
 #?(:clj
    (defn membership-id [account-id entity-id]

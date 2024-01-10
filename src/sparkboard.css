@@ -123,10 +123,6 @@
 
 @layer utilities {
 
-    .tag-sm {
-        @apply rounded h-5 px-2 text-sm inline-flex items-center whitespace-nowrap no-underline
-    }
-
     .text-inherit-all {
         color: inherit;
         font-size: inherit;
@@ -251,7 +247,17 @@
 
 @layer components {
 
+    .tag-sm {
+        @apply gap-1 rounded h-5 px-2 text-sm inline-flex items-center whitespace-nowrap no-underline
+    }
 
+    .tag-md {
+        @apply gap-1 rounded h-6 px-3 text-sm inline-flex items-center whitespace-nowrap no-underline
+    }
+
+    .modal-title-icon {
+        @apply px-1 py-2 icon-light-gray
+    }
 
     .accordion-content[data-state='open'] {
         animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);

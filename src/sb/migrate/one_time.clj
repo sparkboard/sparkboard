@@ -906,8 +906,8 @@
                                                         {tags        true
                                                          custom-tags false} (group-by (comp boolean :entity/id) tags)]
                                                     (-> m
-                                                        (u/assoc-seq :member/tags (mapv (comp uuid-ref :entity/id) tags))
-                                                        (u/assoc-seq :member/custom-tags (vec custom-tags))
+                                                        (u/assoc-seq :entity/tags (mapv :tag/id tags))
+                                                        (u/assoc-seq :entity/custom-tags (vec custom-tags))
                                                         (dissoc :tags)))))
 
                                        :newsletterSubscribe (rename :member/newsletter-subscription?)

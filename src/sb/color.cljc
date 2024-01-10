@@ -30,3 +30,5 @@
     "#000000"))
 
 (def contrasting-text-color (memoize contrasting-text-color*))
+(defn color-pair [bg]
+  {:background-color bg :color (contrasting-text-color bg)})

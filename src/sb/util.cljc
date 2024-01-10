@@ -162,3 +162,11 @@
 (defn wrap
   [[left right] s]
   (str left s right))
+
+(defn dissoc-qualified [m]
+  (reduce (fn [m k]
+            (cond-> m
+                    (qualified-keyword? k)
+                    (dissoc k)))
+          m
+          (keys m)))
