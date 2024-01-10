@@ -183,5 +183,3 @@
                               :stream       (io/input-stream bytes)})
         (dl/transact! [[:db/add (:db/id asset) :asset/variants (:db/id variant)]])
         (variant-link asset variant)))))
-
-

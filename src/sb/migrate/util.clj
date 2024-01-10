@@ -1,4 +1,4 @@
-(ns sb.migration.util
+(ns sb.migrate.util
   (:require [java-time :as time])
   (:import (java.util Date)))
 

@@ -1,5 +1,5 @@
-(ns sb.migration.core
-  (:require [sb.migration.one-time :as one-time]
+(ns sb.migrate.core
+  (:require [sb.migrate.one-time :as one-time]
             [re-db.api :as db]
             [sb.schema :as sch]
             [sb.app]))

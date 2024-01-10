@@ -23,23 +23,20 @@
                              {:visibility :always})))))
          (io/debounce 300))))
 
-
-(defn make-domain-field [init _props]
-  (io/form {:domain-name/name
-            (some-> domain-name/?name
-                    u/some-str
-                    data/normalize-domain
-                    data/qualify-domain)}
-           :meta {domain-name/?name {:init (or (some-> init
-                                                       :domain-name/name
-                                                       data/unqualify-domain)
-                                               "")
-                                     :validators [data/domain-valid-string
-                                                  #?(:cljs (availability-validator))]}}
-           ))
-
 (ui/defview domain-field
-  {:make-?field make-domain-field}
+  {:make-?field (fn [init _props]
+                  (io/form {:domain-name/name
+                            (some-> domain-name/?name
+                                    u/some-str
+                                    data/normalize-domain
+                                    data/qualify-domain)}
+                           :meta {domain-name/?name {:init (or (some-> init
+                                                                       :domain-name/name
+                                                                       data/unqualify-domain)
+                                                               "")
+                                                     :validators [data/domain-valid-string
+                                                                  #?(:cljs (availability-validator))]}}
+                           ))}
   [{:as ?field :syms [domain-name/?name]} props]
   [:div.field-wrapper
    [form.ui/show-label ?field (:field/label props)]

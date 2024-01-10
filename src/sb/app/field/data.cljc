@@ -63,8 +63,10 @@
 
    :link-list/link              {:todo "Tighten validation after cleaning up db"
                                  s-    [:map {:closed true}
-                                        (? [:text :string])
-                                        [:url :string]]}
+                                        (? :link/label)
+                                        :link/url]}
+   :link/label                  {s- :string}
+   :link/url                    {s- :http/url}
    :field-option/color          {s- :html/color},
    :field-option/default        {s- :string},
    :field-option/label          {s- :string},
@@ -255,3 +257,7 @@
     (db/transact! [[:db/add (:db/id parent) :entity/field-entries entries]])
     {:txs [{:entity/id            (:entity/id parent)
             :entity/field-entries entries}]}))
+
+(comment
+  *e
+  (db/touch (db/entity [:entity/id (java.util.UUID/fromString "a4a3ebc8-5f01-3107-be70-9857db054f52")])))

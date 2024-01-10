@@ -222,14 +222,12 @@
 
 (def unwrap-prose :prose/string)
 
-(defn make-prose-?field [init _props]
-  (io/form (-> {:prose/format (prose/?format :init :prose.format/markdown)
-                :prose/string prose/?string}
-               (u/guard :prose/string))
-           :init init))
-
 (ui/defview prose-field
-  {:make-?field make-prose-?field}
+  {:make-?field (fn [init _props]
+                  (io/form (-> {:prose/format (prose/?format :init :prose.format/markdown)
+                                :prose/string prose/?string}
+                               (u/guard :prose/string))
+                           :init init))}
   [{:as ?prose-field :prose/syms [?format ?string]} props]
   ;; TODO
   ;; multi-line markdown editor with formatting
@@ -387,13 +385,11 @@
                                                 res))
                                  :close! #(reset! !creating-new false))])]))]]))
 
-(defn make-badges-?field [init _props]
-  (io/field :many {:badge/label ?label
-                   :badge/color ?color}
-            :init init))
-
 (ui/defview badges-field
-  {:make-?field make-badges-?field}
+  {:make-?field (fn [init _props]
+                  (io/field :many {:badge/label ?label
+                                   :badge/color ?color}
+                            :init init))}
   [?badges {:as props :keys [member/roles]}]
   (when (or (seq ?badges)
             (:role/board-admin roles))
@@ -425,7 +421,6 @@
                                                 (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
                                                       {:key   @?label
                                                        :style {:background-color bg :color color}} @?label])))}))))
-
 
 (ui/defview image-field [?field props]
   (let [src            (asset.ui/asset-src @?field :card)
@@ -569,15 +564,20 @@
         (when loading? [icons/loading "w-4 h-4 text-txt/60 absolute top-2 right-2"])
         [:img.max-h-80 {:src selected-url}]])
      ;; thumbnails
-     [:div.flex.gap-2.flex-wrap
-      (when can-edit? [:div.relative.h-16.w-16.flex-none [add-image-button ?images]])
-      (->> ?images
-           (map (partial image-thumbnail
-                         (merge props {:use-order use-order
-                                       :!?current !?current
-                                       :?images   ?images}))))]]))
+     (when (or (> (count (seq ?images)) 1)
+               can-edit?)
+       [:div.flex.gap-2.flex-wrap
+        (when can-edit? [:div.relative.h-16.w-16.flex-none [add-image-button ?images]])
+        (->> ?images
+             (map (partial image-thumbnail
+                           (merge props {:use-order use-order
+                                         :!?current !?current
+                                         :?images   ?images}))))])]))
 
-(ui/defview link-list-field [?links {:field/keys [label]}]
+(ui/defview link-list-field
+  {:make-?field (fn [init _props]
+                  (io/field :many {}))}
+  [?links {:field/keys [label]}]
   [:div.field-wrapper
    (form.ui/show-label ?links label)
    (for [{:syms [link/?text link/?url]} ?links]

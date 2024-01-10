@@ -98,7 +98,8 @@
                             (not can-edit?)
                             (assoc :disabled true))
        [:el sel/Trigger
-        {:class [(:trigger classes)
+        {:class ["whitespace-nowrap"
+                 (:trigger classes)
                  (if can-edit?
                    "disabled:text-gray-400"
                    "text-gray-900")]}

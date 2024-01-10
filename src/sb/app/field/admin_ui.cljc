@@ -143,22 +143,20 @@
      (when expanded?
        (field-row-detail ?field))]))
 
-(defn make-field:fields [init props]
-  (io/field :many (u/prune {:field/id                    ?id
-                            :field/type                  ?type
-                            :field/label                 ?label
-                            :field/hint                  ?hint
-                            :field/options               (?options :many {:field-option/label ?label
-                                                                          :field-option/value ?value
-                                                                          :field-option/color ?color})
-                            :field/required?             ?required?
-                            :field/show-as-filter?       ?show-as-filter?
-                            :field/show-at-registration? ?show-at-registration?
-                            :field/show-on-card?         ?show-on-card?})
-            :init init))
-
 (ui/defview fields-editor
-  {:make-?field make-field:fields}
+  {:make-?field (fn [init props]
+                  (io/field :many (u/prune {:field/id                    ?id
+                                            :field/type                  ?type
+                                            :field/label                 ?label
+                                            :field/hint                  ?hint
+                                            :field/options               (?options :many {:field-option/label ?label
+                                                                                          :field-option/value ?value
+                                                                                          :field-option/color ?color})
+                                            :field/required?             ?required?
+                                            :field/show-as-filter?       ?show-as-filter?
+                                            :field/show-at-registration? ?show-at-registration?
+                                            :field/show-on-card?         ?show-on-card?})
+                            :init init))}
   [?fields props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
@@ -212,15 +210,13 @@
           [icons/close "w-4 h-4 "]]]
         [:div.pl-12.py-2 (form.ui/show-field-messages ?new-field)]])]))
 
-(defn make-field:tags [init props]
-  (io/field :many (u/prune {:tag/id          ?id
-                            :tag/label       ?label
-                            :tag/color       ?color
-                            :tag/restricted? ?restricted?})
-            :init init))
-
 (ui/defview tags-editor
-  {:make-?field make-field:tags}
+  {:make-?field (fn  [init props]
+                  (io/field :many (u/prune {:tag/id          ?id
+                                            :tag/label       ?label
+                                            :tag/color       ?color
+                                            :tag/restricted? ?restricted?})
+                            :init init))}
   [?tags _]
   (field.ui/plural-editor
     {:?items     ?tags

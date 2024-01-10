@@ -1,4 +1,4 @@
-(ns sb.migration.one-time
+(ns sb.migrate.one-time
   (:require [clojure.instant :as inst]
             [clojure.java.shell :refer [sh]]
             [clojure.set :refer [rename-keys]]
@@ -436,6 +436,8 @@
           (re-find #"youtube" v) v
           :else (str "https://www.youtube.com/watch?v=" v))))
 
+(def ^:dynamic *assets* nil)
+
 (defn parse-fields [managed-by-k to-k]
   (fn [m]
     (if-some [field-ks (->> (keys m)
@@ -455,10 +457,11 @@
                                           :field.type/image-list (let [v (cond-> v (string? v) vector)]
                                                                    (when (seq v)
                                                                      (let [assets (mapv assets/link-asset v)]
+                                                                       (some-> *assets* (swap! into assets))
                                                                        {:image-list/images (mapv #(select-keys % [:entity/id]) assets)})))
                                           :field.type/link-list {:link-list/links
-                                                                 (mapv #(rename-keys % {:label :text
-                                                                                        :url   :url}) v)}
+                                                                 (mapv #(rename-keys % {:label :link/label
+                                                                                        :url   :link/url}) v)}
                                           :field.type/select {:select/value v}
                                           :field.type/prose (prose v)
                                           :field.type/video (video-value v)
@@ -577,7 +580,7 @@
                                                           "Board Template"
                                                           "Untitled Board")))))
                (let [field-xf (fn [m a v]
-                                (let [managed-by (:entity/id m)
+                                (let [managed-by          (:entity/id m)
                                       show-on-card-labels #{"A propos de moi"
                                                             "Une phrase pour me présenter"
                                                             "Who are you?"
@@ -1250,9 +1253,11 @@
 
 (defn all-entities
   "Flat list of all entities (no inline nesting)" []
-  (into []
-        (flatten-entities-xf)
-        (root-entities)))
+  (binding [*assets* (atom [])]
+    (let [entities (into []
+                         (flatten-entities-xf)
+                         (root-entities))]
+      (into entities @*assets*))))
 
 (defn contains-somewhere?
   "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
