@@ -20,14 +20,18 @@
 
 (def persisted-value data/persisted-value)
 
+(defn get-view [?field props]
+  (or (:view props)
+      (:view ?field)
+      (some-> (:attribute ?field) io/global-meta :view)
+      (throw (ex-info (str "No view declared for field: " (:sym ?field) (:attribute ?field)) {:sym       (:sym ?field)
+                                                                                              :attribute (:attribute ?field)}))))
+
 (defn view-field [?field & [props]]
-  (let [view (or (:view props)
-                 (:view ?field)
-                 (some-> (:attribute ?field) io/global-meta :view)
-                 (throw (ex-info (str "No view declared for field: " (:sym ?field) (:attribute ?field)) {:sym       (:sym ?field)
-                                                                                                         :attribute (:attribute ?field)})))]
-    [view ?field (merge (:props ?field)
-                        (dissoc props :view))]))
+  [(get-view ?field props)
+   ?field
+   (merge (:props ?field)
+          (dissoc props :view))])
 
 (defn add-meta! [?field m]
   (swap! (io/!meta ?field) merge
@@ -40,7 +44,8 @@
 (defn use-persisted-attr [e a & {:as props}]
   #?(:cljs
      (let [persisted-value (get e a)
-           make-field      (or (:make-field (io/global-meta a))
+           view            (or (:view props) (-> a io/global-meta :view))
+           make-field      (or (:make-?field (meta view))
                                (fn [init _props] (io/field :init init)))
            ?field          (h/use-memo #(doto (make-field persisted-value props)
                                           (add-meta! {:attribute        a
@@ -49,14 +54,13 @@
                                                       :field/persisted? true}))
                                        ;; create a new field when the persisted value changes
                                        (h/use-deps persisted-value))]
-       (view-field ?field props))))
+       (view-field ?field (assoc props :view view)))))
 
 #?(:cljs
    (defn href [{:as e :entity/keys [kind id]} key]
      (when e
        (let [tag (keyword (name kind) (name key))]
          (routing/path-for [tag {(keyword (str (name kind) "-id")) id}])))))
-
 
 (ui/defview card:compact
   {:key :entity/id}

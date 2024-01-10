@@ -1,7 +1,7 @@
 (ns sb.app.board.admin-ui
   (:require [inside-out.forms :as io]
             [sb.app.board.data :as data]
-            [sb.app.entity.ui :as entity.ui :refer [use-persisted-attr view-field]]
+            [sb.app.entity.ui :as entity.ui :refer [use-persisted-attr]]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]

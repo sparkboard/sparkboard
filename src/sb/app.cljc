@@ -32,17 +32,8 @@
   {:string               {:view field.ui/text-field}
    :http/url             {:view field.ui/text-field}
    :boolean              {:view field.ui/checkbox-field}
-   :project/badges       {:view       field.ui/badges-field
-                          :make-field (fn [init _props]
-                                        (io/field :many {:badge/label ?label
-                                                         :badge/color ?color}
-                                                  :init init))}
-   :prose/as-map         {:view       field.ui/prose-field
-                          :make-field (fn [init _props]
-                                        (io/form (-> {:prose/format (prose/?format :init :prose.format/markdown)
-                                                      :prose/string prose/?string}
-                                                     (u/guard :prose/string))
-                                                 :init init))}
+   :project/badges       {:view field.ui/badges-field}
+   :prose/as-map         {:view field.ui/prose-field}
    :account/email        {:props      {:type        "email"
                                        :placeholder (t :tr/email)}
                           :validators [form.ui/email-validator]}
@@ -52,13 +43,9 @@
                           :validators [(io/min-length 8)]}
    :entity/title         {:validators [(io/min-length 3)]}
    :field/options        {:view field.admin-ui/options-editor}
-   :entity/domain-name   {:view       domain.ui/domain-field
-                          :make-field domain.ui/make-domain-field}
+   :entity/domain-name   {:view domain.ui/domain-field}
    :entity/video         {:view field.ui/video-field}
-   :entity/fields        {:view       field.admin-ui/fields-editor
-                          :make-field field.admin-ui/make-field:fields}
-   :entity/member-tags   {:view field.admin-ui/tags-editor
-                          :make-field field.admin-ui/make-field:tags}
-   :entity/field-entries {:view       field.ui/entries-field
-                          :make-field field.ui/make-field:entries}
+   :entity/fields        {:view field.admin-ui/fields-editor}
+   :entity/member-tags   {:view field.admin-ui/tags-editor}
+   :entity/field-entries {:view field.ui/entries-field}
    :asset/as-map         {:view field.ui/image-field}})

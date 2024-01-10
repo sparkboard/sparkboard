@@ -222,7 +222,15 @@
 
 (def unwrap-prose :prose/string)
 
-(ui/defview prose-field [{:as ?prose-field :prose/syms [?format ?string]} props]
+(defn make-prose-?field [init _props]
+  (io/form (-> {:prose/format (prose/?format :init :prose.format/markdown)
+                :prose/string prose/?string}
+               (u/guard :prose/string))
+           :init init))
+
+(ui/defview prose-field
+  {:make-?field make-prose-?field}
+  [{:as ?prose-field :prose/syms [?format ?string]} props]
   ;; TODO
   ;; multi-line markdown editor with formatting
   (text-field ?string (merge {:field/multi-line? true}
@@ -298,88 +306,125 @@
        (update :value #(or % "#ffffff"))
        (form.ui/pass-props))])
 
-(ui/defview badge-form [{:keys [?state
-                                init
-                                on-submit
-                                close!]}]
-  (let [!ref    (h/use-ref)
-        {:as ?badge :syms [?label ?color]} (h/use-memo #(io/form {:badge/label ?label
-                                                                  :badge/color (?color :init "#dddddd")}
-                                                                 :required [?label ?color]
-                                                                 :init init)
-                                                       (h/use-deps init))
-        submit! #(on-submit ?badge close!)]
+(ui/defview plural-item-form [{:as   props
+                               :keys [?items
+                                      make-?item
+                                      edit-?item
+                                      init
+                                      on-submit
+                                      close!]}]
+  (let [?item   (h/use-memo #(make-?item init props) (h/use-deps init))
+        submit! #(on-submit ?item close!)]
     [:el.relative Pop/Root {:open true :on-open-change #(close!)}
      [:el Pop/Anchor]
      [:el Pop/Content {:as-child true}
       [:div.p-2.z-10 {:class radix/float-small}
-       [:form.outline-none.flex.gap-2.items-stretch
-        {:ref       !ref
-         :on-submit (fn [e]
-                      (.preventDefault e)
-                      (submit!))}
-        [text-field ?label {:placeholder       (t :tr/label)
-                            :field/keybindings {:Enter submit!}
-                            :field/multi-line? false
-                            :field/can-edit?   true
-                            :field/label       false}]
-        [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
-        [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
-       (form.ui/show-field-messages ?state)]]]))
+       (edit-?item ?item submit!)
+       (form.ui/show-field-messages ?items)]]]))
 
-(ui/defview badges-field* [?badges {:keys [member/roles]}]
-  (let [board-admin? (:role/board-admin roles)
-        !editing     (h/use-state nil)]
-    [:div.flex.gap-1
-     (for [{:as   ?badge
-            :syms [?label ?color]} ?badges
-           :let [bg    (or (u/some-str @?color) "#ffffff")
-                 color (color/contrasting-text-color bg)
-                 badge (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
-                             {:key   @?label
-                              :style {:background-color bg :color color}} @?label])]]
-       (if board-admin?
-         [radix/context-menu {:trigger [:div
-                                        badge
-                                        (when (= ?badge @!editing)
-                                          [badge-form {:close!    #(reset! !editing nil)
-                                                       :?state    ?badges
-                                                       :init      @?badge
-                                                       :on-submit (fn [?new-badge close!]
-                                                                    (reset! ?badge @?new-badge)
-                                                                    (p/let [res (entity.data/maybe-save-field ?badge)]
-                                                                      (when-not (:error res)
-                                                                        (close!))))}])]
-                              :items   [[radix/context-menu-item
-                                         {:on-select (fn []
-                                                       (io/remove-many! ?badge)
-                                                       (entity.data/maybe-save-field ?badges))}
-                                         (t :tr/remove)]
-                                        [radix/context-menu-item
-                                         {:on-select (fn [] (p/do (p/delay 0) (reset! !editing ?badge)))}
-                                         (t :tr/edit)]]}]
-         badge))
-     (let [!creating-new (h/use-state false)]
-       (when board-admin?
-         [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
-          {:on-click #(reset! !creating-new true)}
-          (when-not (seq ?badges) [:span.cursor-default (t :tr/add-badge)])
-          [icons/plus "w-4 h-4 icon-gray"]
-          (when @!creating-new
-            [badge-form {:on-submit (fn [?badge close!]
-                                      (io/add-many! ?badges @?badge)
-                                      (p/let [res (entity.data/maybe-save-field ?badges)]
-                                        (when-not (:error res)
-                                          (io/clear! ?badge)
-                                          (close!))))
-                         :?state ?badges
-                         :init      {:badge/color "#dddddd"}
-                         :close!    #(reset! !creating-new false)}])]))]))
+(ui/defview show-plural-item
+  {:key (fn [_ ?item] #?(:cljs (goog/getUid ?item)))}
+  [{:as   props
+    :keys [use-order
+           ?items
+           !editing
+           show-?item
+           field/can-edit?]} ?item]
+  (let [{:keys [drag-handle-props
+                drag-subject-props
+                dragging
+                dropping]} (use-order ?item)]
+    (if can-edit?
+      [radix/context-menu {:trigger [:div.transition-all
+                                     (v/merge-props drag-handle-props
+                                                    drag-subject-props
+                                                    {:class (cond (= dropping :before) "pl-2"
+                                                                  dragging "opacity-20")})
+                                     (show-?item ?item props)
+                                     (when (= ?item @!editing)
+                                       [plural-item-form (assoc props
+                                                           :close! #(reset! !editing nil)
+                                                           :init @?item
+                                                           :on-submit (fn [?new-item close!]
+                                                                        (reset! ?item @?new-item)
+                                                                        (p/let [res (entity.data/maybe-save-field ?item)]
+                                                                          (when-not (:error res)
+                                                                            (reset! ?item @?new-item)
+                                                                            (close!)))))])]
+                           :items   [[radix/context-menu-item
+                                      {:on-select (fn []
+                                                    (io/remove-many! ?item)
+                                                    (entity.data/maybe-save-field ?items))}
+                                      (t :tr/remove)]
+                                     [radix/context-menu-item
+                                      {:on-select (fn [] (p/do (p/delay 0) (reset! !editing ?item)))}
+                                      (t :tr/edit)]]}]
+      (show-?item ?item props))))
 
-(ui/defview badges-field [?badges {:as props :keys [member/roles]}]
+(ui/defview plural-editor [{:as   props
+                            :keys [?items
+                                   field/can-edit?]}]
+  (let [!editing  (h/use-state nil)
+        use-order (ui/use-orderable-parent ?items {:axis :x})]
+    [:div.field-wrapper
+     (form.ui/show-label ?items (:field/label props))
+     [:div.flex.gap-1
+      (map (partial show-plural-item (assoc props :!editing !editing :use-order use-order)) ?items)
+      (let [!creating-new (h/use-state false)]
+        (when can-edit?
+          [:div.inline-flex.text-sm.gap-1.items-center.rounded.hover:bg-gray-100.p-1
+           {:on-click #(reset! !creating-new true)}
+           [:span.cursor-default (:add-label props (t :tr/add))]
+           [icons/plus "w-4 h-4 icon-gray"]
+           (when @!creating-new
+             [plural-item-form (assoc props
+                                 :on-submit (fn [?item close!]
+                                              (io/add-many! ?items @?item)
+                                              (p/let [res (entity.data/maybe-save-field ?items)]
+                                                (when-not (:error res)
+                                                  (io/clear! ?item)
+                                                  (close!))
+                                                res))
+                                 :close! #(reset! !creating-new false))])]))]]))
+
+(defn make-badges-?field [init _props]
+  (io/field :many {:badge/label ?label
+                   :badge/color ?color}
+            :init init))
+
+(ui/defview badges-field
+  {:make-?field make-badges-?field}
+  [?badges {:as props :keys [member/roles]}]
   (when (or (seq ?badges)
             (:role/board-admin roles))
-    (badges-field* ?badges props)))
+    (plural-editor (merge props
+                          {:?items          ?badges
+                           :field/label     (when-not (:role/board-admin roles) false)
+                           :field/can-edit? (:role/board-admin roles)
+                           :make-?item      (fn [init props]
+                                              (io/form {:badge/label ?label
+                                                        :badge/color (?color :init "#dddddd")}
+                                                       :required [?label ?color]
+                                                       :init init))
+                           :edit-?item      (fn [{:as ?badge :syms [?label ?color]} submit!]
+                                              [:form.outline-none.flex.gap-2.items-stretch
+                                               {:on-submit (fn [e]
+                                                             (.preventDefault e)
+                                                             (submit!))}
+                                               [text-field ?label {:placeholder       (t :tr/label)
+                                                                   :field/keybindings {:Enter submit!}
+                                                                   :field/multi-line? false
+                                                                   :field/can-edit?   true
+                                                                   :field/label       false}]
+                                               [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
+                                               [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]])
+                           :show-?item      (fn [{:as   ?badge
+                                                  :syms [?label ?color]} {:keys [member/roles]}]
+                                              (let [bg    (or (u/some-str @?color) "#ffffff")
+                                                    color (color/contrasting-text-color bg)]
+                                                (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
+                                                      {:key   @?label
+                                                       :style {:background-color bg :color color}} @?label])))}))))
 
 
 (ui/defview image-field [?field props]
@@ -597,7 +642,7 @@
     :field.type/prose [show-prose:card field entry]
     (str "no match" field)))
 
-(defn make-field:entries [init {:keys [entity/fields]}]
+(defn make-entries-?field [init {:keys [entity/fields]}]
   (let [init (for [field fields]
                (merge #:field-entry{:field field} (get init (:field/id field))))]
     (io/form
@@ -616,9 +661,11 @@
                         [(:field/id field) (dissoc entry :field-entry/field)])))
            u/prune))))
 
-(ui/defview entries-field [{:syms [?entries]}
-                           {:as   props
-                            :keys [field/can-edit?]}]
+(ui/defview entries-field
+  {:make-?field make-entries-?field}
+  [{:syms [?entries]}
+   {:as   props
+    :keys [field/can-edit?]}]
 
   (doall (for [?entry (seq ?entries)
                :when (or can-edit?

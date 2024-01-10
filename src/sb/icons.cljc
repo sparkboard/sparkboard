@@ -54,6 +54,11 @@
        "M13 8a.75.75 0 01.671.415l4.25 8.5a.75.75 0 11-1.342.67L15.787 16h-5.573l-.793 1.585a.75.75 0 11-1.342-.67l4.25-8.5A.75.75 0 0113 8zm2.037 6.5L13 10.427 10.964 14.5h4.073z"
        :clipRule "evenodd"}]]))
 
+(defn lock:micro [& [classes]]
+  (v/x
+    [:svg.icon {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 16 16" :fill "currentColor" :class classes}
+     [:path {:fill-rule "evenodd" :d "M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" :clip-rule "evenodd"}]]))
+
 (defn checkmark [& [classes]]
   (v/x
     [:svg.icon {:class classes :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}

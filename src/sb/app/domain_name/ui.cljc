@@ -38,7 +38,9 @@
                                                   #?(:cljs (availability-validator))]}}
            ))
 
-(ui/defview domain-field [{:as ?field :syms [domain-name/?name]} props]
+(ui/defview domain-field
+  {:make-?field make-domain-field}
+  [{:as ?field :syms [domain-name/?name]} props]
   [:div.field-wrapper
    [form.ui/show-label ?field (:field/label props)]
    [:div.flex.gap-2.items-stretch
