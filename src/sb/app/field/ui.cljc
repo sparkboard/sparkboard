@@ -702,11 +702,11 @@
      (when to-add
        [:div.flex-v.gap-2
         (when-not editing?
-          [:div.tag-md.px-1.hover:bg-gray-100.text-gray-400.hover:text-gray-700.cursor-default {:on-click #(edit! not)}
+          [:div.tag-md.px-1.hover:bg-gray-100.text-gray-400.hover:text-gray-700.cursor-default.mr-auto {:on-click #(edit! not)}
            (t :tr/edit-tags)])
         (when editing?
-          [:div.bg-gray-100.rounded-lg.border-gray-400.p-3.flex.items-center.gap-2
-           [:div.flex.flex-wrap.gap-2
+          [:div.bg-gray-100.rounded-lg.border-gray-400.flex.items-stretch.mt-2.mr-auto
+           [:div.flex.flex-wrap.gap-2.p-3.
             (for [{:tag/keys [id label color]} to-add]
               [:div.tag-md.cursor-default.group
                {:key      id
@@ -715,7 +715,7 @@
                                (entity.data/maybe-save-field ?tags))}
                label
                [icons/plus-thick "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"]])]
-           [:div.hover:bg-gray-200.p-2.rounded {:on-click #(edit! not)} [icons/checkmark "flex-none"]]])
+           [:div.hover:bg-gray-200.p-2.rounded.flex.items-center.m-1.-ml-2 {:on-click #(edit! not)} [icons/checkmark "flex-none"]]])
         [form.ui/show-field-messages ?tags]])]
     )
   ;; pass in a list of tags (from parent) to show. group-by (set @?tags).
