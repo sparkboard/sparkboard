@@ -30,24 +30,25 @@
                        "opacity-0 group-hover:opacity-100"
                        "cursor-drag"]})
        [icons/drag-dots]]]
-     [field.ui/text-field ?label {:field/label   false
-                                  :field/classes {:wrapper "flex-auto"}
-                                  :class         "rounded-sm relative focus:z-2"
-                                  :style         {:background-color @?color
-                                                  :color            (color/contrasting-text-color @?color)}}]
+     [field.ui/text-field ?label {:field/label     false
+                                  :field/can-edit? true
+                                  :field/classes   {:wrapper "flex-auto"}
+                                  :class           "rounded-sm relative focus:z-2"
+                                  :style           {:background-color @?color
+                                                    :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
       [field.ui/color-field ?color nil]]
-     [radix/dropdown-menu {:id       :field-option
-                           :trigger  [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
-                                      [icons/ellipsis-horizontal "w-4 h-4"]]
-                           :children [[{:on-select (fn [_]
-                                                     (radix/simple-alert! {:message      "Are you sure you want to remove this?"
-                                                                           :confirm-text (t :tr/remove)
-                                                                           :confirm-fn   (fn []
-                                                                                           (io/remove-many! ?option)
-                                                                                           (p/do (entity.data/maybe-save-field ?option)
-                                                                                                 (radix/close-alert!)))}))}
-                                       (t :tr/remove)]]}]]))
+     [radix/dropdown-menu {:id      :field-option
+                           :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
+                                     [icons/ellipsis-horizontal "w-4 h-4"]]
+                           :items   [[{:on-select (fn [_]
+                                                    (radix/simple-alert! {:message      "Are you sure you want to remove this?"
+                                                                          :confirm-text (t :tr/remove)
+                                                                          :confirm-fn   (fn []
+                                                                                          (io/remove-many! ?option)
+                                                                                          (p/do (entity.data/maybe-save-field ?option)
+                                                                                                (radix/close-alert!)))}))}
+                                      (t :tr/remove)]]}]]))
 
 (ui/defview options-editor [?options]
   (let [use-order (ui/use-orderable-parent ?options {:axis :y})]
@@ -68,6 +69,7 @@
                                            (reset! ?new (:init ?new))
                                            result)))}
         [field.ui/text-field ?new {:placeholder   "Option label"
+                                   :field/can-edit? true
                                    :field/classes {:wrapper "flex-auto"}}]
         [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
      #_[ui/pprinted @?options]]))
@@ -157,28 +159,31 @@
                                             :field/show-at-registration? ?show-at-registration?
                                             :field/show-on-card?         ?show-on-card?})
                             :init init))}
-  [?fields props]
+  [?fields field-props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
         [expanded expand!] (h/use-state nil)
         use-order      (ui/use-orderable-parent ?fields {:axis :y})]
     [:div.field-wrapper {:class "labels-semibold"}
-     [:label.field-label {:class "flex items-center"}
-      (form.ui/get-label ?fields)
-      [:div.flex.ml-auto.items-center
-       (when-not @!new-field
-         (radix/dropdown-menu {:id       :add-field
-                               :trigger  [:div.text-sm.text-gray-500.font-normal.hover:underline.cursor-pointer.place-self-center
-                                          "Add Field"]
-                               :children (for [[type {:keys [icon field/label]}] data/field-types]
-                                           [{:on-select #(let [id (random-uuid)]
-                                                           (reset! !new-field
-                                                                   (io/form {:field/id    id
-                                                                             :field/type  ?type
-                                                                             :field/label ?label}
-                                                                            :init {:field/type type}
-                                                                            :required [?label])))}
-                                            [:div.flex.gap-4.items-center.cursor-default [icon "text-gray-600"] label]])}))]]
+     [:div.flex.items-center
+      [form.ui/show-label ?fields nil]
+      [:div.flex-auto]
+      (when-not @!new-field
+        (radix/dropdown-menu {:id      :add-field
+                              :trigger [:div.text-sm.text-gray-500.font-normal.hover:underline.cursor-pointer.place-self-center
+                                        "Add Field"]
+                              :items   (for [[type {:keys [icon field/label]}] data/field-types]
+                                         [{:class     "flex items-center h-8"
+                                           :on-select #(let [id (random-uuid)]
+                                                         (reset! !new-field
+                                                                 (io/form {:field/id    id
+                                                                           :field/type  ?type
+                                                                           :field/label ?label}
+                                                                          :init {:field/type type}
+                                                                          :required [?label])))}
+                                          [:div.flex.gap-3.items-center.cursor-default
+                                           [icon "text-gray-600 -ml-1"]
+                                           label]])}))]
      [:div.flex-v.border.rounded.labels-sm
       (->> ?fields
            (map (fn [{:as ?field :syms [?id]}]
@@ -199,10 +204,11 @@
                          (reset! !new-field nil)
                          (entity.data/maybe-save-field ?fields)))}
          [:div.h-10.flex.items-center [(:icon (data/field-types @?type)) "icon-lg text-gray-700  mx-2"]]
-         [field.ui/text-field ?label {:field/label   false
-                                      :ref           !autofocus-ref
-                                      :placeholder   (:field/label ?label)
-                                      :field/classes {:wrapper "flex-auto"}}]
+         [field.ui/text-field ?label (merge field-props
+                                            {:field/label   false
+                                             :ref           !autofocus-ref
+                                             :placeholder   (:field/label ?label)
+                                             :field/classes {:wrapper "flex-auto"}})]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (t :tr/add)]
          [:div.flex.items-center.justify-center.icon-light-gray.h-10.w-7
@@ -211,45 +217,46 @@
         [:div.pl-12.py-2 (form.ui/show-field-messages ?new-field)]])]))
 
 (ui/defview tags-editor
-  {:make-?field (fn  [init props]
+  {:make-?field (fn [init props]
                   (io/field :many (u/prune {:tag/id          ?id
                                             :tag/label       ?label
                                             :tag/color       ?color
                                             :tag/restricted? ?restricted?})
                             :init init))}
-  [?tags _]
+  [?tags field-props]
   (field.ui/plural-editor
-    {:?items     ?tags
+    {:?items          ?tags
      :field/can-edit? true
-     :make-?item (fn [init props]
-                   (let [id (random-uuid)]
-                     (io/form (u/prune {:tag/id          (?id :init id)
-                                        :tag/label       ?label
-                                        :tag/color       (?color :init "#dddddd")
-                                        :tag/restricted? (?restricted? :field/label (t :tr/restricted))})
-                              :required [?label]
-                              :init init)))
-     :edit-?item (fn [{:as ?item :syms [?label ?color ?restricted?]} submit!]
-                   [:form.outline-none.flex-v.gap-2.items-stretch
-                    {:on-submit (fn [e]
-                                  (.preventDefault e)
-                                  (submit!))}
-                    [:div.flex.gap-2
-                     [field.ui/text-field ?label {:placeholder       (t :tr/label)
-                                                  :field/keybindings {:Enter submit!}
-                                                  :field/multi-line? false
-                                                  :field/can-edit?   true
-                                                  :field/label       false}]
-                     [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [field.ui/color-field ?color {:field/can-edit? true}]]
-                     [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
-                    [field.ui/checkbox-field ?restricted? {:field/can-edit? true
-                                                           :field/classes   {:wrapper "pl-3"}}]])
-     :show-?item (fn [{:syms [?label ?color ?restricted?]} _props]
-                   (let [bg    (or (u/some-str @?color) "#dddddd")
-                         color (color/contrasting-text-color bg)]
-                     (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex.gap-1.items-center
-                           {:key   @?label
-                            :style {:background-color bg :color color}}
-                           @?label
-                           (when @?restricted?
-                             [icons/lock:micro "w-3 h-3"])])))}))
+     :make-?item      (fn [init props]
+                        (let [id (random-uuid)]
+                          (io/form (u/prune {:tag/id          (?id :default id)
+                                             :tag/label       ?label
+                                             :tag/color       (?color :default "#dddddd")
+                                             :tag/restricted? (?restricted? :field/label (t :tr/restricted))})
+                                   :required [?label]
+                                   :init init)))
+     :edit-?item      (fn [{:as ?item :syms [?label ?color ?restricted?]} submit!]
+                        [:form.outline-none.flex-v.gap-2.items-stretch
+                         {:on-submit (fn [e]
+                                       (.preventDefault e)
+                                       (submit!))}
+                         [:div.flex.gap-2
+                          [field.ui/text-field ?label (merge field-props
+                                                             {:placeholder       (t :tr/label)
+                                                              :field/keybindings {:Enter submit!}
+                                                              :field/multi-line? false
+                                                              :field/label       false})]
+                          [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1
+                           [field.ui/color-field ?color field-props]]
+                          [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
+                         [field.ui/checkbox-field ?restricted? (merge field-props
+                                                                      {:field/classes {:wrapper "pl-3"}})]])
+     :show-?item      (fn [{:syms [?label ?color ?restricted?]} _props]
+                        (let [bg    (or (u/some-str @?color) "#dddddd")
+                              color (color/contrasting-text-color bg)]
+                          (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex.gap-1.items-center
+                                {:key   @?label
+                                 :style {:background-color bg :color color}}
+                                @?label
+                                (when @?restricted?
+                                  [icons/lock:micro "w-3 h-3"])])))}))

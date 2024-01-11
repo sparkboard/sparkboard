@@ -46,11 +46,17 @@
                 :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
 
+(defn filter-value [entity]
+  (case (:entity/kind entity)
+    :account  (:account/display-name entity)
+    :member (-> (:member/account entity) :account/display-name)
+    (:entity/title entity)))
+
 (defn filtered [match-text]
   (comp
     (remove :entity/archived?)
     (filter (if match-text
-              #(re-find (re-pattern (str "(?i)" match-text)) (:entity/title %))
+              #(some->> (filter-value %) (re-find (re-pattern (str "(?i)" match-text))))
               identity))))
 
 (defn pprinted [x & _]

@@ -58,7 +58,7 @@
 (def menu-sub-trigger (v/from-element :el dm/SubTrigger {:class (menu-item-classes false)}))
 
 
-(defn dropdown-menu [{:keys [id trigger sub? children] :or {id :radix-portal}}]
+(defn dropdown-menu [{:keys [id trigger sub? items] :or {id :radix-portal}}]
   (let [root-el    (if sub? menu-sub-root menu-root)
         trigger-el (if sub? menu-sub-trigger menu-trigger)
         content-el (if sub? menu-sub-content menu-content)]
@@ -70,7 +70,7 @@
                     (if (:trigger props)
                       (dropdown-menu (assoc props :sub? true))
                       (into [menu-item props] children)))
-                  children))])))
+                  items))])))
 
 (v/defview select-item
   {:key :value}

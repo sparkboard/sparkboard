@@ -515,12 +515,12 @@
 
 
 (comment
-  (first @!tag->id))
+  (first @!tag->id)
+  (get-in @!tag->id [(java.util.UUID/fromString "a17f78a0-6757-3da3-ac3d-265f7c9c3d0f")]))
 
 (defn resolve-tag [board-id tag-string]
-  (if-let [tag-id (get-in @!tag->id [board-id (str/lower-case tag-string)])]
-    (when-not (= :NO_TAG tag-id)
-      {:tag/id tag-id})
+  (if-let [tag-id (get-in @!tag->id [(sch/unwrap-id board-id) (str/lower-case tag-string)])]
+    {:tag/id tag-id}
     {:tag/label tag-string}))
 
 (defn mongo-id? [x]
@@ -904,9 +904,9 @@
                                        :tags (& (fn [m a v]
                                                   (let [tags (keep (partial resolve-tag (:member/entity m)) v)
                                                         {tags        true
-                                                         custom-tags false} (group-by (comp boolean :entity/id) tags)]
+                                                         custom-tags false} (group-by (comp boolean :tag/id) tags)]
                                                     (-> m
-                                                        (u/assoc-seq :entity/tags (mapv :tag/id tags))
+                                                        (u/assoc-seq :entity/tags tags)
                                                         (u/assoc-seq :entity/custom-tags (vec custom-tags))
                                                         (dissoc :tags)))))
 

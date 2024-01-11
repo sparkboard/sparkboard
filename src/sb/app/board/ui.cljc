@@ -143,7 +143,9 @@
 
        [radix/tab-content {:value (t :tr/members)}
         (into [:div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3]
-              (map  (partial member.ui/card {:entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))}))
+              (comp (ui/filtered @?filter)
+                    (map (partial member.ui/row {:entity/member-tags   (:entity/member-tags board)
+                                                 :entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))})))
               (data/members {:board-id board-id}))
         ]]]]))
 

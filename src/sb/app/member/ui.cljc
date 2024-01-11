@@ -18,6 +18,7 @@
   (let [{:as member :keys [member/account]} (data/show params)
         [can-edit? roles dev-panel] (form.ui/use-dev-panel member {"Current User" (az/all-roles (:account-id params) member)
                                                                    "Board Admin"  #{:role/board-admin}
+                                                                   "This User"    #{:role/self}
                                                                    "Visitor"      #{}}
                                                            "Current User")
         field-params {:member/roles    roles
@@ -26,9 +27,9 @@
      ;; title row
      [:div.flex-v
       [:div.flex.px-6.gap-3
-       [ui/avatar {:size 18} account]
+       (when (:image/avatar account) [ui/avatar {:size 20} account])
        [:div.flex-v.gap-2
-        [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-6 (-> member :member/account :account/display-name)]
+        [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (-> member :member/account :account/display-name)]
         (entity.ui/use-persisted-attr member :entity/tags field-params)]
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
@@ -62,24 +63,25 @@
             :color            (color/contrasting-text-color color)}}
    label])
 
-(ui/defview card
+(ui/defview row
   {:key (fn [_ member] (str (:entity/id member)))}
-  [{:keys [entity/member-fields]} member]
+  [{:keys [entity/member-fields
+           entity/member-tags]} member]
   (let [{:keys [entity/field-entries
                 entity/tags
                 entity/custom-tags
                 member/account]} member
         {:keys [account/display-name]} account]
-    [:a.flex-v.hover:bg-gray-100.rounded-lg
+    [:a.flex-v.hover:bg-gray-100.rounded-lg #_.rounded-xl.border.shadow
      {:href (routing/entity-path member 'ui/show)}
-
-
-     [:div.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
+     [:div.flex.relative.gap-3.items-start.p-2.cursor-default.flex-auto
       [ui/avatar {:size 10} account]
-      [:div.line-clamp-2.leading-snug.flex-grow.flex-v.gap-1 display-name
+      [:div.line-clamp-2.leading-snug.flex-grow.flex-v.gap-1.mt-2 display-name
        [:div.flex.flex-wrap.gap-1
-        (map show-tag tags)
-        (map show-tag custom-tags)]]]
+        (->> member-tags
+             (filter (comp (into #{} (map :tag/id) tags) :tag/id))
+             (map show-tag))
+        [:div.flex.flex-wrap.gap-1 (map show-tag custom-tags)]]]]
      ;; show card entries on hover?
      #_(when-let [entries (seq
                             (for [{:as field :keys [field/id

@@ -137,10 +137,11 @@
      (fn [req params]
        (when-let [id (some-> (-> req :account :entity/id)
                              (membership-id (entity-key params)))]
-         (db/transact! [[:db/add id :member/last-visited
-                         (-> (time/offset-date-time)
-                             time/instant
-                             Date/from)]]))
+         (re-db.reactive/silently
+           (db/transact! [[:db/add id :member/last-visited
+                           (-> (time/offset-date-time)
+                               time/instant
+                               Date/from)]])))
        params)))
 
 (defn new-entity-with-membership [entity account-id roles]

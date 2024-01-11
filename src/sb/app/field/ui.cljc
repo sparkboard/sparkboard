@@ -291,19 +291,28 @@
 
 (ui/defview color-field
   ;; color field must be contained within a relative.overflow-hidden element, which it expands to fill.
-  [?field props]
-  [:input.default-ring.default-ring-hover.rounded
-   (-> (form.ui/?field-props ?field
-                             (merge props {:field/event->value (j/get-in [:target :value])
-                                           :save-on-change?    true}))
-       (v/merge-props {:style {:top      -10
-                               :left     -10
-                               :width    100
-                               :height   100
-                               :position "absolute"}} props)
-       (assoc :type "color")
-       (update :value #(or % "#ffffff"))
-       (u/dissoc-qualified))])
+  [?field {:as props :keys [field/color-list]}]
+  (let [list-id (str (goog/getUid ?field) "-colors")]
+    [:<>
+     (when (seq color-list)
+       [:datalist {:id list-id}
+        (doall
+          (for [color color-list]
+            [:option {:value color :key color}]))])
+     [:input.default-ring.default-ring-hover.rounded
+      (-> (form.ui/?field-props ?field
+                                (merge props
+                                       {:field/event->value (j/get-in [:target :value])
+                                        :save-on-change?    true}))
+          (v/merge-props {:list (when (seq color-list) list-id)
+                          :style {:top      -10
+                                  :left     -10
+                                  :width    100
+                                  :height   100
+                                  :position "absolute"}} props)
+          (assoc :type "color")
+          (update :value #(or % "#ffffff"))
+          (u/dissoc-qualified))]]))
 
 (ui/defview plural-item-form [{:as   props
                                :keys [?items
@@ -367,7 +376,7 @@
         use-order (ui/use-orderable-parent ?items {:axis :x})]
     [:div.field-wrapper
      (form.ui/show-label ?items (:field/label props))
-     [:div.flex.gap-1
+     [:div.flex.flex-wrap.gap-1
       (map (partial show-plural-item (assoc props :!editing !editing :use-order use-order)) ?items)
       (let [!creating-new (h/use-state false)]
         (when can-edit?
@@ -389,7 +398,7 @@
 (ui/defview badges-field
   {:make-?field (fn [init _props]
                   (io/field :many {:badge/label ?label
-                                   :badge/color ?color}
+                                   :badge/color (?color :default "#dddddd")}
                             :init init))}
   [?badges {:as props :keys [member/roles]}]
   (when (or (seq ?badges)
@@ -400,7 +409,7 @@
                            :field/can-edit? (:role/board-admin roles)
                            :make-?item      (fn [init props]
                                               (io/form {:badge/label ?label
-                                                        :badge/color (?color :init "#dddddd")}
+                                                        :badge/color (?color :default "#dddddd")}
                                                        :required [?label ?color]
                                                        :init init))
                            :edit-?item      (fn [{:as ?badge :syms [?label ?color]} submit!]
@@ -677,15 +686,22 @@
   {:make-?field (fn [init _props]
                   (io/field :many {:tag/id ?id}
                             :init init))}
-  [?tags {:as props :keys [field/can-edit?]}]
-  (let [all-tags  (-> (io/closest ?tags :db/id)
-                      db/entity
-                      :member/entity
-                      :entity/member-tags)
-        by-id     (reduce #(assoc %1 (:tag/id %2) %2) {} all-tags)
-        selected  (into #{} (map :tag/id) @?tags)
-        [editing? edit!] (h/use-state (empty? selected))
-        to-add    (seq (remove (comp selected :tag/id) all-tags))]
+  [?tags {:as props :keys [field/can-edit? member/roles]}]
+  (let [all-tags (-> (io/closest ?tags :db/id)
+                     db/entity
+                     :member/entity
+                     :entity/member-tags)
+        by-id    (reduce #(assoc %1 (:tag/id %2) %2) {} all-tags)
+        selected (into #{} (map :tag/id) @?tags)
+        [editing? edit!] (h/use-state (and (empty? selected)
+                                           (:role/self roles)))
+        editing? (and can-edit? editing?)
+        to-add   (and can-edit? (->> all-tags
+                                     (remove (fn [tag]
+                                               (or (selected (:tag/id tag))
+                                                   (and (:tag/restricted? tag)
+                                                        (not (:role/board-admin roles))))))
+                                     seq))]
     [:div.flex-v.gap-1
      [:div.flex.flex-wrap.gap-2
       (doall (for [{:as ?tag :syms [?id]} ?tags

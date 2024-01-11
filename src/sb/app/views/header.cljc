@@ -36,8 +36,8 @@
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
                                                    classes]}
    (radix/dropdown-menu
-     {:trigger  [icons/languages]
-      :children (lang-menu-content)})])
+     {:trigger [icons/languages]
+      :items   (lang-menu-content)})])
 
 (ui/defview chats-list []
   (let [params {:account-id (db/get :env/config :account-id)}
@@ -78,13 +78,13 @@
   (if-let [account (db/get :env/config :account)]
     [:<>
      (radix/dropdown-menu
-       {:trigger  [:button {:tab-index 0}
-                   [:img.rounded-full.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
-        :children [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (t :tr/home)]
-                   [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
-                   [{:sub?     true
-                     :trigger  [icons/languages "w-5 h-5"]
-                     :children (lang-menu-content)}]]})]
+       {:trigger [:button {:tab-index 0}
+                  [:img.rounded-full.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
+        :items   [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (t :tr/home)]
+                  [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
+                  [{:sub?     true
+                    :trigger  [icons/languages "w-5 h-5"]
+                    :children (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
 
@@ -94,32 +94,31 @@
                      :keys [entity/title
                             member/roles
                             image/avatar]} children]
-  (let [entity-href (routes/entity-path entity 'ui/show)]
+  (let [path (routes/entity-path entity 'ui/show)]
     [:div.header
-     [:a.contents {:href entity-href}
-      (when avatar
+     (when avatar
+       [:a {:href path}
         [:img.h-10
-         {:src (asset.ui/asset-src avatar :avatar)}])
-
-      [:h3.hover:underline.text-xl.font-semibold title]]
+         {:src (asset.ui/asset-src avatar :avatar)}]])
+     [:a.hover:underline.text-xl.font-semibold.text-ellipsis.truncate.self-center {:href path} title]
 
      [:div.flex-grow]
      (into [:div.flex.gap-1]
            (concat children
                    [(entity.ui/settings-button entity)
                     (radix/dropdown-menu
-                      {:id       :show-recents
-                       :trigger  [:button (t :tr/recent) down-arrow]
-                       :children (map (fn [entity]
-                                        [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
-                                         (:entity/title entity)])
-                                      (when-let [recent-ids (account.data/recent-ids nil)]
-                                        (filterv (comp recent-ids :entity/id)
-                                                 (account.data/all nil))))})
+                      {:id      :show-recents
+                       :trigger [:button (t :tr/recent) down-arrow]
+                       :items   (map (fn [entity]
+                                       [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
+                                        (:entity/title entity)])
+                                     (when-let [recent-ids (account.data/recent-ids nil)]
+                                       (filterv (comp recent-ids :entity/id)
+                                                (account.data/all nil))))})
                     (radix/dropdown-menu
-                      {:id       :new
-                       :trigger  [:button (t :tr/new) down-arrow]
-                       :children [[{:on-select #(routes/nav! 'sb.app.board.ui/new)} (t :tr/board)]
-                                  [{:on-select #(routes/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
+                      {:id      :new
+                       :trigger [:button (t :tr/new) down-arrow]
+                       :items   [[{:on-select #(routes/nav! 'sb.app.board.ui/new)} (t :tr/board)]
+                                 [{:on-select #(routes/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
                     [chat]
                     [account]]))]))

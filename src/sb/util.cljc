@@ -170,3 +170,17 @@
                     (dissoc k)))
           m
           (keys m)))
+
+(defn index-by
+  ([coll keyfn]
+   (reduce (fn [out x] (assoc out (keyfn x) x)) {} coll))
+  ([coll keyfn valfn]
+   (reduce (fn [out x] (assoc out (keyfn x) (valfn x))) {} coll)))
+
+
+(defmacro timed [label & body]
+  `(let [start# (System/currentTimeMillis)]
+     (try
+       ~@body
+       (finally
+         (println (str ~label ": " (- (System/currentTimeMillis) start#) "ms"))))))

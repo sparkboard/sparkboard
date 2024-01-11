@@ -18,15 +18,19 @@
   {:route "/b/:board-id/settings"}
   [{:as params :keys [board-id]}]
   (when-let [board (data/settings params)]
-    (let [use-persisted (fn [attr & [props]]
-                          (use-persisted-attr board attr (merge {:field/can-edit? true} props)))]
+    (let [colors        (->> [(->> board :entity/member-tags (keep :tag/color))
+                              (->> board :entity/member-fields (mapcat :field/options) (keep :field-option/color))
+                              (->> board :entity/project-fields (mapcat :field/options) (keep :field-option/color))]
+                             (apply concat)
+                             (into #{}))
+          use-persisted (fn [attr & [props]]
+                          (use-persisted-attr board attr (merge {:field/can-edit?  true
+                                                                 :field/color-list colors} props)))]
 
       [:<>
        (header/entity board nil)
-
-       #_[:div {:class "max-w-[600px] mx-auto my-6 flex-v gap-6"}
-          (use-persisted :entity/member-tags)]
-
+       #_(for [color colors]
+           [:div.w-8.h-8.m-1.rounded {:key color :style {:background-color color}}])
        [radix/accordion {:class    "max-w-[600px] mx-auto my-6 flex-v gap-6"
                          :multiple true}
 
@@ -36,12 +40,14 @@
          (use-persisted :entity/title)
          (use-persisted :entity/description)
          (use-persisted :entity/domain-name)
-         (use-persisted :image/avatar {:field/label (t :tr/logo)})]
+         (use-persisted :image/avatar {:field/label (t :tr/logo)})
+         (use-persisted :entity/member-tags)
+         ]
 
 
         [:div.field-label (t :tr/projects-and-members)]
         [:div.flex-v.gap-4
-         (use-persisted :entity/member-tags)
+
          (use-persisted :entity/member-fields)
          (use-persisted :entity/project-fields)]
 

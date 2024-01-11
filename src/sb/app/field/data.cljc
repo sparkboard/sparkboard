@@ -112,11 +112,11 @@
                  :field/show-on-card?
                  :field/type])
 
-(def field-types {:field.type/prose      {:icon        icons/text
+(def field-types {:field.type/prose      {:icon        icons/bars-3-bottom-left
                                           :field/label (t :tr/text)}
-                  :field.type/select     {:icon        icons/dropdown-menu
+                  :field.type/select     {:icon        icons/queue-list
                                           :field/label (t :tr/menu)}
-                  :field.type/video      {:icon        icons/video
+                  :field.type/video      {:icon        icons/play-circle
                                           :field/label (t :tr/video)}
                   :field.type/link-list  {:icon        icons/link-2
                                           :field/label (t :tr/links)}

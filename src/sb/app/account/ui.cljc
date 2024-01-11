@@ -115,7 +115,7 @@
                 [title (t :tr/orgs)]
                 (limit (map entity.ui/row org))])])])
        [:div.p-body
-        (when (empty? (:board entities))
+        (when (and (empty? @?filter) (empty? (:board entities)))
           [ui/hero
            (ui/show-markdown
              (t :tr/start-board-new))

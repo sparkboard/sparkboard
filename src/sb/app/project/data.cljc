@@ -7,7 +7,8 @@
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
-            [sb.validate :as validate]))
+            [sb.validate :as validate]
+            [sb.util :as u]))
 
 (sch/register!
   (merge
@@ -81,16 +82,17 @@
 (q/defquery show
   {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id member/roles]}]
-  (merge (q/pull `[~@entity.data/entity-keys
-                   {:project/badges [:badge/label
-                                     :badge/color]}
-                   :entity/field-entries
-                   :entity/draft?
-                   {:entity/parent
-                    [~@entity.data/entity-keys
-                     {:entity/project-fields ~field.data/field-keys}]}]
-                 project-id)
-         {:member/roles roles}))
+  (u/timed `show
+           (merge (q/pull `[~@entity.data/entity-keys
+                            {:project/badges [:badge/label
+                                              :badge/color]}
+                            :entity/field-entries
+                            :entity/draft?
+                            {:entity/parent
+                             [~@entity.data/entity-keys
+                              {:entity/project-fields ~field.data/field-keys}]}]
+                          project-id)
+                  {:member/roles roles})))
 
 (q/defquery fields [{:keys [board-id]}]
   (-> (q/pull `[~@entity.data/id-fields

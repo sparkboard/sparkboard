@@ -45,16 +45,17 @@
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
-  (->> (q/pull '[{:member/_account [:member/roles
-                                    :member/last-visited
-                                    {:member/entity [:entity/id
-                                                     :entity/kind
-                                                     :entity/title
-                                                     {:image/avatar [:entity/id]}
-                                                     {:image/background [:entity/id]}]}]}]
-               account-id)
-       :member/_account
-       (map #(u/lift-key % :member/entity))))
+  (u/timed `all
+           (->> (q/pull '[{:member/_account [:member/roles
+                                             :member/last-visited
+                                             {:member/entity [:entity/id
+                                                              :entity/kind
+                                                              :entity/title
+                                                              {:image/avatar [:entity/id]}
+                                                              {:image/background [:entity/id]}]}]}]
+                        account-id)
+                :member/_account
+                (map #(u/lift-key % :member/entity)))))
 
 (q/defquery recent-ids
   {:endpoint {:query true}

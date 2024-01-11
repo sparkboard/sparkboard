@@ -52,7 +52,7 @@
   (let [field      :div.flex-v.gap-3
         form-label :div.text-primary.text-sm.font-medium.flex.items-center
         form-hint  :div.text-gray-500.text-sm
-        board {:board-id board-id}]
+        board      {:board-id board-id}]
     [:<>
      [header/entity (board.data/show board) nil]
      [:div.p-body.flex-v.gap-8
@@ -61,7 +61,7 @@
 
       (ui/with-form [!project {:entity/title  ?title
                                :entity/parent board-id}]
-                    [:form
+        [:form
          {:ref       nil #_(ui/use-autofocus-ref)
           :on-submit (fn [e]
                        (.preventDefault e)
@@ -103,8 +103,8 @@
             [tag-detail-label label [tag-icon emoji]]
             [tag-detail-input {:value detail :on-change #()}]
             [:div.absolute.right-0.top-0.bottom-0.flex.items-center.p-2.hover:bg-gray-100.rounded-r-lg.cursor-pointer
-             [radix/dropdown-menu {:trigger  [icons/ellipsis-horizontal "w-4 h-4"]
-                                   :children [[{:on-select #()} "Remove"]]}]]])]
+             [radix/dropdown-menu {:trigger [icons/ellipsis-horizontal "w-4 h-4"]
+                                   :items   [[{:on-select #()} "Remove"]]}]]])]
         [:div.flex.gap-3
          [:input.form-text.w-80
           {:placeholder "What kind of help are you looking for?"}]
@@ -145,10 +145,10 @@
             [:div.flex-v.gap-2
              (for [{:as ?child :syms [?title ?detail ?complete]} ?items]
                [:div.flex.w-full.gap-2.items-start {:key (goog/getUid ?child)}
-                [radix/dropdown-menu {:trigger  [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
-                                                 [icons/ellipsis-horizontal "w-4 h-4"]]
-                                      :children [[{:on-select #(swap! ?complete not)} (if @?complete "Activate" "Done")]
-                                                 [{:on-select #(forms/remove-many! ?child)} "Remove"]]}]
+                [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
+                                                [icons/ellipsis-horizontal "w-4 h-4"]]
+                                      :items   [[{:on-select #(swap! ?complete not)} (if @?complete "Activate" "Done")]
+                                                [{:on-select #(forms/remove-many! ?child)} "Remove"]]}]
                 [:div.flex-auto {:class (when @?complete "line-through text-gray-500")}
                  [inline-text-field editor? ?title]
                  (when-not @?complete
@@ -192,10 +192,10 @@
              (for [{:as ?child :syms [?title ?detail ?complete]} ?items]
                [:div.flex.w-full.gap-2.items-start.group.cursor-pointer {:key (goog/getUid ?child)}
                 (if editor?
-                  [radix/dropdown-menu {:trigger  [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
-                                                   [icons/ellipsis-horizontal "w-4 h-4"]]
-                                        :children [[{:on-select #(swap! ?complete not)} (if @?complete "Activate" "Done")]
-                                                   [{:on-select #(forms/remove-many! ?child)} "Remove"]]}]
+                  [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
+                                                  [icons/ellipsis-horizontal "w-4 h-4"]]
+                                        :items   [[{:on-select #(swap! ?complete not)} (if @?complete "Activate" "Done")]
+                                                  [{:on-select #(forms/remove-many! ?child)} "Remove"]]}]
                   "•")
                 [:div.flex-auto {:class (when @?complete "line-through text-gray-500")}
                  [inline-text-field editor? ?title]

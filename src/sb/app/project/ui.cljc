@@ -114,14 +114,15 @@
                                                                     :field/unstyled?   (some-> (:entity/title project)
                                                                                                (not= "Untitled"))}))]
 
-       dev-panel
+
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
+        dev-panel
         (comment
           (when (:role/board-admin roles)
             ;; - archive
             [radix/dropdown-menu
              {:trigger  [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
-              :children []}]))
+              :items []}]))
 
         [radix/tooltip "Back to board"
          [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}

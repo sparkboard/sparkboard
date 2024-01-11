@@ -470,7 +470,7 @@
         px-body gap-2 flex h-16 p-3 items-stretch text-sm
     }
 
-    .header h3 {
+    .header h3, .header .h3 {
         @apply items-center hidden sm:inline-flex
     }
     .header button, .header .button {
