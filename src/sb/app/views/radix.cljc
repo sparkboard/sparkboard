@@ -82,7 +82,7 @@
      [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
      [:el sel/ItemIndicator]]))
 
-(def select-trigger-classes "btn bg-white flex items-center rounded whitespace-nowrap gap-1 group default-ring default-ring-hover px-3")
+(def select-trigger-classes "bg-white inline-flex items-center justify-start rounded whitespace-nowrap gap-1 group default-ring default-ring-hover py-1 px-3")
 
 (defn select-menu [{:as props :keys [id
                                      placeholder

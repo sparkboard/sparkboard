@@ -193,12 +193,12 @@
                                                                         {:Meta-Enter save}
                                                                         {:Enter save})
                                                                       keybindings)))}))])
-        (when-let [postfix (or (:field/postfix props)
-                               (:field/postfix (meta ?field))
-                               (and (some-> (entity.data/persisted-value ?field)
-                                            (not= (:value props)))
-                                    [icons/pencil-outline "w-4 h-4 text-txt/40"]))]
-          [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 postfix])
+        ;; show pencil when value is modified
+        (when (and (or (:focused ?field) (:touched ?field))
+                   (io/closest ?field :field/persisted?)
+                   (not= (u/some-str (entity.data/persisted-value ?field))
+                         (u/some-str (:value props))))
+          [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 [icons/pencil-outline "w-4 h-4 text-txt/40"]])
 
         (when (:loading? ?field)
           [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
@@ -271,21 +271,33 @@
                                    {:field/label false
                                     :placeholder "YouTube or Vimeo url"})))])))
 
-(ui/defview select-field [?field {:as props :field/keys [label options]}]
+(defn show-select-value [{:keys [field/options]} value]
+  (let [{:keys [field-option/label
+                field-option/color]
+         :or   {color "#dddddd"}} (u/find-first options #(= value (:field-option/value %)))]
+    [:div.inline-flex.items-center.gap-1.rounded.whitespace-nowrap.py-1.px-3.mr-auto
+     {:style (color/color-pair color)}
+     label]))
+
+(ui/defview select-field [?field {:as props :field/keys [label
+                                                         options
+                                                         can-edit?]}]
   [:div.field-wrapper
    (form.ui/show-label ?field label)
-   [radix/select-menu (-> (form.ui/?field-props ?field (merge {:field/event->value identity}
-                                                              props))
-                          (set/rename-keys {:on-change :on-value-change})
-                          (assoc :on-value-change (fn [v]
-                                                    (reset! ?field v)
-                                                    (entity.data/maybe-save-field ?field))
-                                 :field/can-edit? (:field/can-edit? props)
-                                 :field/options (->> options
-                                                     (map (fn [{:field-option/keys [label value color]}]
-                                                            {:text  label
-                                                             :value value}))
-                                                     doall)))]
+   (if can-edit?
+     [radix/select-menu (-> (form.ui/?field-props ?field (merge {:field/event->value identity}
+                                                                props))
+                            (set/rename-keys {:on-change :on-value-change})
+                            (assoc :on-value-change (fn [v]
+                                                      (reset! ?field v)
+                                                      (entity.data/maybe-save-field ?field))
+                                   :field/can-edit? (:field/can-edit? props)
+                                   :field/options (->> options
+                                                       (map (fn [{:field-option/keys [label value color]}]
+                                                              {:text  label
+                                                               :value value}))
+                                                       doall)))]
+     [show-select-value props @?field])
    (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
@@ -304,7 +316,7 @@
                                 (merge props
                                        {:field/event->value (j/get-in [:target :value])
                                         :save-on-change?    true}))
-          (v/merge-props {:list (when (seq color-list) list-id)
+          (v/merge-props {:list  (when (seq color-list) list-id)
                           :style {:top      -10
                                   :left     -10
                                   :width    100
@@ -610,15 +622,6 @@
       :field.type/prose [prose-field ?entry props]
       (str "no match" field))))
 
-(defn show-select:card [{:keys [field/options]} {:keys [select/value]}]
-  (let [{:keys [field-option/label
-                field-option/color]
-         :or   {color "#dddddd"}} (u/find-first options #(= value (:field-option/value %)))]
-    [:div {:class radix/select-trigger-classes
-           :style {:background-color color
-                   :color            (color/contrasting-text-color color)}}
-     label]))
-
 (defn show-image-list:card [{:keys [image-list/images]}]
   (when-let [{:keys [entity/id]} (first images)]
     [:img.max-h-80 {:src (asset.ui/asset-src id :card)}]))
@@ -646,7 +649,7 @@
   [{:as entry :keys [field-entry/field]}]
   (case (:field/type field)
     :field.type/video [show-video-url (:video/url entry)]
-    :field.type/select [show-select:card field entry]
+    :field.type/select [show-select-value field (:select/value entry)]
     :field.type/link-list [show-link-list:card field entry]
     :field.type/image-list [show-image-list:card field entry]
     :field.type/prose [show-prose:card field entry]
@@ -696,16 +699,17 @@
         [editing? edit!] (h/use-state (and (empty? selected)
                                            (:role/self roles)))
         editing? (and can-edit? editing?)
+        admin?   (:role/board-admin roles)
         to-add   (and can-edit? (->> all-tags
                                      (remove (fn [tag]
                                                (or (selected (:tag/id tag))
                                                    (and (:tag/restricted? tag)
-                                                        (not (:role/board-admin roles))))))
+                                                        (not admin?)))))
                                      seq))]
     [:div.flex-v.gap-1
      [:div.flex.flex-wrap.gap-2
       (doall (for [{:as ?tag :syms [?id]} ?tags
-                   :let [{:tag/keys [id label color]} (by-id @?id)]]
+                   :let [{:tag/keys [id label color restricted?]} (by-id @?id)]]
                [:div.tag-md.cursor-default.gap-1.group
                 {:key      id
                  :style    (color/color-pair color)
@@ -713,6 +717,8 @@
                              #(do (io/remove-many! ?tag)
                                   (entity.data/maybe-save-field ?tags)))}
                 label
+                (when (and editing? restricted?)
+                  [icons/lock:micro "w-3 h-3 -mr-1"])
                 (when editing?
                   [icons/x-mark "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"])]))]
      (when to-add
@@ -723,13 +729,15 @@
         (when editing?
           [:div.bg-gray-100.rounded-lg.border-gray-400.flex.items-stretch.mt-2.mr-auto
            [:div.flex.flex-wrap.gap-2.p-3.
-            (for [{:tag/keys [id label color]} to-add]
+            (for [{:tag/keys [id label color restricted?]} to-add]
               [:div.tag-md.cursor-default.group
                {:key      id
                 :style    (color/color-pair color)
                 :on-click #(do (io/add-many! ?tags {:tag/id id})
                                (entity.data/maybe-save-field ?tags))}
                label
+               (when restricted?
+                 [icons/lock:micro "w-3 h-3 -mr-1"])
                [icons/plus-thick "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"]])]
            [:div.hover:bg-gray-200.p-2.rounded.flex.items-center.m-1.-ml-2 {:on-click #(edit! not)} [icons/checkmark "flex-none"]]])
         [form.ui/show-field-messages ?tags]])]

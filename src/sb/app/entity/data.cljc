@@ -169,7 +169,8 @@
 (defn persisted-value [?field]
   (if-let [{:keys [db/id attribute]} (when (:field/persisted? ?field) ?field)]
     (get (db/entity id) attribute)
-    (:init ?field)
+    (or (:init ?field)
+        (:default ?field))
     #_(throw-no-persistence! ?field)))
 
 (q/defx save-attribute!

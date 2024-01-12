@@ -247,6 +247,59 @@
 
 @layer components {
 
+    .btn {
+        @apply
+        inline-flex items-center justify-center
+        font-medium
+        transition-colors disabled:opacity-50 disabled:pointer-events-none
+        rounded no-underline
+        px-3 py-2 cursor-default
+
+    }
+
+    .btn.btn-lg {
+        @apply text-lg px-4 py-3
+    }
+
+    .btn.destruct {
+        @apply bg-red-600 hover:bg-red-700 text-white
+    }
+
+    .btn.thin {
+        @apply border border-gray-200 hover:border-gray-300 cursor-default
+    }
+
+    .btn-white {
+        @apply
+        hover:bg-black/5
+        focus:bg-black/10
+        text-primary/80
+        inline-flex items-center justify-center py-1 px-3
+        default-ring default-ring-hover
+    }
+
+    .btn-primary {
+        @apply
+        ring-offset-back bg-primary text-primary-txt
+        hover:bg-primary/90 focus-visible:bg-primary/90
+        disabled:bg-primary active:ring-0
+        px-6 py-3
+    }
+
+    .btn-darken {
+        @apply
+        hover:bg-black/10 focus-visible:bg-black/10 focus-visible:outline-none
+    }
+
+    .btn-base {
+        @apply px-4 py-2
+    }
+
+    .btn-transp {
+        @apply
+        hover:bg-black/10 focus-visible:bg-black/10 focus-visible:outline-none
+    }
+
     .tag-sm {
         @apply gap-1 rounded h-5 px-2 text-sm inline-flex items-center whitespace-nowrap no-underline
     }
@@ -389,59 +442,6 @@
 
     .form-inline:focus {
         box-shadow: none;
-    }
-
-    .btn {
-        @apply
-        inline-flex items-center justify-center
-        font-medium
-        transition-colors disabled:opacity-50 disabled:pointer-events-none
-        rounded no-underline
-        px-3 py-2 cursor-default
-
-    }
-
-    .btn.btn-lg {
-        @apply text-lg px-4 py-3
-    }
-
-    .btn.destruct {
-        @apply bg-red-600 hover:bg-red-700 text-white
-    }
-
-    .btn.thin {
-        @apply border border-gray-200 hover:border-gray-300 cursor-default
-    }
-
-    .btn-white {
-        @apply
-        hover:bg-black/5
-        focus:bg-black/10
-        text-primary/80
-        inline-flex items-center justify-center py-1 px-3
-        default-ring default-ring-hover
-    }
-
-    .btn-primary {
-        @apply
-        ring-offset-back bg-primary text-primary-txt
-        hover:bg-primary/90 focus-visible:bg-primary/90
-        disabled:bg-primary active:ring-0
-        px-6 py-3
-    }
-
-    .btn-darken {
-        @apply
-        hover:bg-black/10 focus-visible:bg-black/10 focus-visible:outline-none
-    }
-
-    .btn-base {
-        @apply px-4 py-2
-    }
-
-    .btn-transp {
-        @apply
-        hover:bg-black/10 focus-visible:bg-black/10 focus-visible:outline-none
     }
 
     input[type=checkbox], input[type=checkbox]:focus {

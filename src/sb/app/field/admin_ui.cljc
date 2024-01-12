@@ -17,7 +17,8 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(ui/defview show-option [use-order {:as ?option :syms [?label ?value ?color]}]
+(ui/defview show-option [{:as props :keys [option/use-order]}
+                         {:as ?option :syms [?label ?value ?color]}]
   (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (use-order ?option)]
     [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
      (merge {:key @?value}
@@ -37,7 +38,7 @@
                                   :style           {:background-color @?color
                                                     :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-      [field.ui/color-field ?color nil]]
+      [field.ui/color-field ?color props]]
      [radix/dropdown-menu {:id      :field-option
                            :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
                                      [icons/ellipsis-horizontal "w-4 h-4"]]
@@ -50,14 +51,14 @@
                                                                                                 (radix/close-alert!)))}))}
                                       (t :tr/remove)]]}]]))
 
-(ui/defview options-editor [?options]
+(ui/defview options-editor [?options props]
   (let [use-order (ui/use-orderable-parent ?options {:axis :y})]
     [:div.col-span-2.flex-v.gap-3
      [:label.field-label (t :tr/options)]
      (when (:loading? ?options)
        [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
      (into [:div.flex-v]
-           (map (partial show-option use-order) ?options))
+           (map (partial show-option (assoc props :option/use-order use-order)) ?options))
      (let [?new (h/use-memo #(io/field :init ""))]
        [:form.flex.gap-2 {:on-submit (fn [^js e]
                                        (.preventDefault e)
@@ -68,9 +69,9 @@
                                          (p/let [result (entity.data/maybe-save-field ?options)]
                                            (reset! ?new (:init ?new))
                                            result)))}
-        [field.ui/text-field ?new {:placeholder   "Option label"
+        [field.ui/text-field ?new {:placeholder     "Option label"
                                    :field/can-edit? true
-                                   :field/classes {:wrapper "flex-auto"}}]
+                                   :field/classes   {:wrapper "flex-auto"}}]
         [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
      #_[ui/pprinted @?options]]))
 
@@ -81,9 +82,9 @@
                                                  ?required?
                                                  ?show-as-filter?
                                                  ?show-at-registration?
-                                                 ?show-on-card?]}]
-  (let [view-field (fn [?field & [props]]
-                     (view-field ?field (merge props {:field/can-edit? true})))]
+                                                 ?show-on-card?]} props]
+  (let [view-field (fn [?field & [more-props]]
+                     (view-field ?field (merge props more-props)))]
     [:div.bg-gray-100.gap-3.grid.grid-cols-2.pl-12.pr-7.pt-4.pb-6
 
      [:div.col-span-2.flex-v.gap-3
@@ -112,9 +113,10 @@
 
 (ui/defview field-row
   {:key (fn [{:syms [?id]} _] @?id)}
-  [?field {:keys [expanded?
-                  toggle-expand!
-                  use-order]}]
+  [?field {:as   props
+           :keys [field-row/expanded?
+                  field-row/toggle-expand!
+                  field-row/use-order]}]
   (let [{:syms [?type ?label]} ?field
         {:keys [icon]} (data/field-types @?type)
         {:keys [drag-handle-props
@@ -143,7 +145,7 @@
       [:div.flex.items-center.group-hover:text-black.text-gray-500.pl-2
        [icons/chevron-down:mini (str "w-4" (when expanded? " rotate-180"))]]]
      (when expanded?
-       (field-row-detail ?field))]))
+       (field-row-detail ?field props))]))
 
 (ui/defview fields-editor
   {:make-?field (fn [init props]
@@ -159,7 +161,7 @@
                                             :field/show-at-registration? ?show-at-registration?
                                             :field/show-on-card?         ?show-on-card?})
                             :init init))}
-  [?fields field-props]
+  [?fields props]
   (let [!new-field     (h/use-state nil)
         !autofocus-ref (ui/use-autofocus-ref)
         [expanded expand!] (h/use-state nil)
@@ -188,10 +190,11 @@
       (->> ?fields
            (map (fn [{:as ?field :syms [?id]}]
                   (field-row ?field
-                             {:use-order      use-order
-                              :expanded?      (= expanded @?id)
-                              :toggle-expand! #(expand! (fn [old]
-                                                          (u/guard @?id (partial not= old))))})))
+                             (merge props
+                                    #:field-row{:use-order      use-order
+                                                :expanded?      (= expanded @?id)
+                                                :toggle-expand! #(expand! (fn [old]
+                                                                            (u/guard @?id (partial not= old))))}))))
            doall)]
      (when-let [{:as   ?new-field
                  :syms [?type ?label]} @!new-field]
@@ -204,7 +207,7 @@
                          (reset! !new-field nil)
                          (entity.data/maybe-save-field ?fields)))}
          [:div.h-10.flex.items-center [(:icon (data/field-types @?type)) "icon-lg text-gray-700  mx-2"]]
-         [field.ui/text-field ?label (merge field-props
+         [field.ui/text-field ?label (merge props
                                             {:field/label   false
                                              :ref           !autofocus-ref
                                              :placeholder   (:field/label ?label)
