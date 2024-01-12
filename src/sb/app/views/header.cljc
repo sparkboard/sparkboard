@@ -5,9 +5,8 @@
             [sb.app.asset.ui :as asset.ui]
             [sb.app.chat.data :as chat.data]
             [sb.app.chat.ui :as chat.ui]
-            [sb.app.account.data :as account.data]
             [sb.app.entity.ui :as entity.ui]
-            [sb.authorize :as az]
+            [sb.app.member.data :as member.data]
             [sb.i18n :as i :refer [t]]
             [sb.routing :as routes]
             [sb.app.views.ui :as ui]
@@ -16,7 +15,8 @@
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.util :as yu]
-            [sb.routing :as routing]))
+            [sb.routing :as routing]
+            [sb.query :as q]))
 
 #?(:cljs
    (defn lang-menu-content []
@@ -25,12 +25,12 @@
                             (p/do
                               (i/set-locale! {:i18n/locale v})
                               (js/window.location.reload)))]
-       (map (fn [lang]
-              (let [selected (= lang current-locale)]
-                [{:selected selected
-                  :on-click (when-not selected #(on-select lang))}
-                 (get-in i/dict [lang :meta/lect])]))
-            (keys i/dict)))))
+       (mapv (fn [lang]
+               (let [selected (= lang current-locale)]
+                 [{:selected selected
+                   :on-click (when-not selected #(on-select lang))}
+                  (get-in i/dict [lang :meta/lect])]))
+             (keys i/dict)))))
 
 (ui/defview lang [classes]
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
@@ -84,11 +84,24 @@
                   [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
                   [{:sub?     true
                     :trigger  [icons/languages "w-5 h-5"]
-                    :children (lang-menu-content)}]]})]
+                    :items (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
 
 (def down-arrow (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4"))
+
+(ui/defview recents []
+  (when-let [entities (-> (:value (q/use [`member.data/descriptions {:ids @routing/!recent-ids}]))
+                          ui/use-last-some)]
+    (when (seq entities)
+      (radix/dropdown-menu
+        {:id      :show-recents
+         :trigger [:button (t :tr/recent) down-arrow]
+         :items   (into []
+                        (map (fn [entity]
+                               [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
+                                (:entity/title entity)]))
+                        entities)}))))
 
 (ui/defview entity [{:as   entity
                      :keys [entity/title
@@ -106,15 +119,7 @@
      (into [:div.flex.gap-1]
            (concat children
                    [(entity.ui/settings-button entity)
-                    (radix/dropdown-menu
-                      {:id      :show-recents
-                       :trigger [:button (t :tr/recent) down-arrow]
-                       :items   (map (fn [entity]
-                                       [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
-                                        (:entity/title entity)])
-                                     (when-let [recent-ids (account.data/recent-ids nil)]
-                                       (filterv (comp recent-ids :entity/id)
-                                                (account.data/all nil))))})
+                    (recents)
                     (radix/dropdown-menu
                       {:id      :new
                        :trigger [:button (t :tr/new) down-arrow]

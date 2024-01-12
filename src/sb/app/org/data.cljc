@@ -59,8 +59,7 @@
           org-id))
 
 (q/defquery show
-  {:prepare [az/with-account-id!
-             (member.data/member:log-visit! :org-id)]}
+  {:prepare [az/with-account-id!]}
   [{:keys [org-id]}]
   (q/pull `[~@entity.data/entity-keys
             {:entity/_parent ~entity.data/entity-keys}]

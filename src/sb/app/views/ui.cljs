@@ -143,6 +143,15 @@
       [image-url (@!loaded image-url)])
     [@!last-loaded (not= @!last-loaded image-url)]))
 
+(defn use-last-some [value]
+  (let [!last-value (h/use-state value)]
+    (h/use-effect (fn []
+                    (when (and (some? value) (not= value @!last-value))
+                      (reset! !last-value value))
+                    nil)
+                  (h/use-deps value))
+    @!last-value))
+
 (def email-schema [:re #"^[^@]+@[^@]+$"])
 
 (comment

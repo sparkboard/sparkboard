@@ -6,7 +6,9 @@
             [sb.server.datalevin :as dl]
             [sb.schema :as sch :refer [? s- unique-uuid]]
             [sb.validate :as validate]
-            [inside-out.forms :as io]))
+            [inside-out.forms :as io]
+            [clojure.set :as set]
+            [sb.util :as u]))
 
 (sch/register!
   (merge
@@ -119,14 +121,39 @@
             (seq m) (conj m)
             (seq nils) (into (for [a nils] [:db/retract e a])))))
 
+(def rules
+  {:entity/tags (fn validate-changed-tags [roles k entity m]
+                  (when-not (= :member (:entity/kind entity))
+                    (validate/validation-failed! "Only members may have tags"))
+                  (let [tags-before  (into #{} (map :tag/id) (k entity))
+                        tags-after   (into #{} (map :tag/id) (k m))
+                        tags-changed (concat
+                                       (set/difference tags-before tags-after) ;; removed
+                                       (set/difference tags-after tags-before)) ;; added
+                        admin? (:role/board-admin roles)]
+                    (when (seq tags-changed)
+                      (let [tag-defs (-> entity :member/entity :entity/member-tags (u/index-by :tag/id))]
+                        (doseq [tag-id tags-changed         ;; added
+                                :let [tag (get tag-defs tag-id)]
+                                :when (:tag/restricted? tag)]
+                          (when (and (not admin?) (:tag/restricted? tag))
+                            (validate/permission-denied! "Only admins may modify restricted tags"))
+                          (when (not tag)
+                            (validate/validation-failed! (str "Tag " tag-id " does not exist"))))))))})
+
 (q/defx save-attributes!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id]} e m]
-  (let [e   (sch/wrap-id e)
+  (let [e      (sch/wrap-id e)
         entity (dl/entity e)
-        _   (validate/assert-can-edit! account-id entity)
-        txs (-> (assoc m :db/id e)
-                retract-nils)]
+        roles  (az/all-roles account-id entity)
+        _      (validate/assert-can-edit! roles)
+        txs    (-> (assoc m :db/id e)
+                   retract-nils)]
+    (doseq [k (keys m)
+            :let [rule (get rules k)]
+            :when rule]
+      (rule roles k entity m))
 
     (let [parent-schema (-> (keyword (name (:entity/kind entity)) "as-map")
                             (@sch/!malli-registry))

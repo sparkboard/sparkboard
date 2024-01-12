@@ -92,26 +92,31 @@
          (assert (-> (mu/optional-keys schema)
                      (mu/assoc :entity/domain-name (mu/optional-keys :domain-name/as-map)))))))
 
-(defn can-edit? [account-id entity-id]
-  (or (-> (az/scoped-roles account-id entity-id)
-          az/editor-role?)))
+(defn can-edit? [account-id entity]
+  (-> (az/all-roles account-id entity)
+      az/editor-role?))
 
-(defn permission-denied! []
-  (ex-info "Permission denied"
-           {:response {:status 400
-                       :body   {:error                             "Permission denied"
-                                :inside-out.forms/messages-by-path {() ["Permission denied"]}}}}))
+(defn permission-denied! [& [message]]
+  (let [message (or message "Permission denied")]
+    (ex-info message
+             {:response {:status 400
+                         :body   {:error                             message
+                                  :inside-out.forms/messages-by-path {() [message]}}}})))
 
-(defn validation-failed! [reason]
-  (ex-info "Validation failed"
-           {:response {:status 400
-                       :body   {:error                             "validation failed"
-                                :inside-out.forms/messages-by-path {() [reason]}}}}))
+(defn validation-failed! [& [message]]
+  (let [message (or message "Validation failed")]
+    (ex-info message
+             {:response {:status 400
+                         :body   {:error                             message
+                                  :inside-out.forms/messages-by-path {() [message]}}}})))
 
 #?(:clj
-   (defn assert-can-edit! [account-id entity]
-     (when-not (can-edit? account-id entity)
-       (permission-denied!))))
+   (defn assert-can-edit!
+     ([roles]
+      (when-not (az/editor-role? roles)
+        (permission-denied!)))
+     ([account-id entity]
+      (assert-can-edit! (az/all-roles account-id entity)))))
 
 (comment
 

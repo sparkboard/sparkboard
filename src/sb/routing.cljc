@@ -9,6 +9,7 @@
             [re-db.reactive :as r]
             [re-db.xform :as xf]
             [reitit.core :as reit]
+            [sb.client.local-storage :as local]
             [sb.http :as http]
             [sb.query-params :as query-params]
             [sb.schema :as sch]
@@ -68,6 +69,20 @@
 (defonce !location (r/atom nil))
 (defn tag->endpoint [tag method]
   (get-in @!tag->endpoints [tag method]))
+
+(defonce !recent-ids (local/$local-storage ::recently-viewed-ids ()))
+
+(r/redef !track-recents
+  (r/reaction!
+    (swap! !recent-ids
+           (fn [ids]
+             (->> (concat (->> @!location vals
+                               (mapcat :match/params)
+                               (filter (comp #{:org-id :board-id :project-id} key))
+                               (map (comp sch/unwrap-id val)))
+                          ids)
+                  distinct
+                  (take 6))))))
 
 (defn aux:parse-path
   "Given a `path` string, returns map of {<route-name>, <path>}

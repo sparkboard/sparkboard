@@ -32,7 +32,7 @@
                                                          :sideOffset        0}))
 
 (defn menu-item-classes [selected?]
-  (str "block px-3 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 cursor-default "
+  (str "flex items-center px-3 h-8 rounded mx-1 relative hover:outline-0 data-[highlighted]:bg-gray-100 cursor-default "
        (if selected?
          "text-txt/50 "
          (str "hover:bg-primary/5 "

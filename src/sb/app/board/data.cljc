@@ -102,8 +102,7 @@
   )
 
 (q/defquery show
-  {:prepare [(member.data/member:log-visit! :board-id)
-             (az/with-roles :board-id)]}
+  {:prepare [(az/with-roles :board-id)]}
   [{:keys [board-id member/roles]}]
   (u/timed `show
            (if-let [board (db/pull `[~@entity.data/entity-keys

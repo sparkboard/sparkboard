@@ -47,25 +47,15 @@
   [{:keys [account-id]}]
   (u/timed `all
            (->> (q/pull '[{:member/_account [:member/roles
-                                             :member/last-visited
                                              {:member/entity [:entity/id
                                                               :entity/kind
                                                               :entity/title
+                                                              :entity/created-at
                                                               {:image/avatar [:entity/id]}
                                                               {:image/background [:entity/id]}]}]}]
                         account-id)
                 :member/_account
                 (map #(u/lift-key % :member/entity)))))
-
-(q/defquery recent-ids
-  {:endpoint {:query true}
-   :prepare  az/with-account-id!}
-  [params]
-  (->> (all params)
-       (filter :member/last-visited)
-       (sort-by :member/last-visited #(compare %2 %1))
-       (into #{} (comp (take 8)
-                       (map :entity/id)))))
 
 #?(:clj
    (defn login!

@@ -1,17 +1,15 @@
 (ns sb.app.member.data
-  (:require #?(:clj [java-time.api :as time])
-            [re-db.api :as db]
-            [sb.app.entity.data :as entity.data]
+  (:require [sb.app.entity.data :as entity.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
-            [sb.server.datalevin :as dl])
+            [sb.server.datalevin :as dl]
+            [sb.util :as u]
+            [re-db.api :as db])
   #?(:clj (:import [java.util Date])))
 
 (sch/register!
   {:roles/as-map                    {s- :member/as-map}
-   :member/last-visited             (merge sch/instant
-                                           {s- 'inst?})
    :member/entity+account           (merge {:db/tupleAttrs [:member/entity :member/account]}
                                            sch/unique-value)
    :member/_entity                  {s- [:or
@@ -63,7 +61,6 @@
                                          (? :member/newsletter-subscription?)
                                          (? :entity/tags)
                                          (? :member/roles)
-                                         (? :member/last-visited)
 
                                          ;; TODO, backfill?
                                          (? :entity/created-at)
@@ -95,6 +92,33 @@
    (defn ensure-membership! [account-id entity-id]
      (when-not (membership-id account-id entity-id)
        (throw (ex-info "Not a member" {:status 403})))))
+
+(defn member-active? [member]
+  (and (not (:member/inactive? member))
+       (not (:entity/deleted-at member))))
+
+#?(:clj
+   (defn can-view? [account-id entity]
+     (let [visibility-entity (case (:entity/kind entity)
+                               (:board :org) entity
+                               :project (:entity/parent entity)
+                               :member (:member/entity entity))]
+       (or (:entity/public? visibility-entity)
+           (some-> (membership-id account-id entity)
+                   db/entity
+                   member-active?)))))
+
+(q/defquery descriptions
+  {:endpoint {:query true}
+   :prepare  az/with-account-id!}
+  [{:as params :keys [account-id ids]}]
+  (u/timed `descriptions
+           (into []
+                 (comp (map (comp db/entity sch/wrap-id))
+                       (filter member-active?)
+                       (map (db/pull `[~@entity.data/entity-keys
+                                       :entity/public?])))
+                 ids)))
 
 (q/defquery search
   {:prepare [az/with-account-id!]}
@@ -131,18 +155,6 @@
   (search {:account-id  [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
            ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
            :search-term "matt"}))
-
-#?(:clj
-   (defn member:log-visit! [entity-key]
-     (fn [req params]
-       (when-let [id (some-> (-> req :account :entity/id)
-                             (membership-id (entity-key params)))]
-         (re-db.reactive/silently
-           (db/transact! [[:db/add id :member/last-visited
-                           (-> (time/offset-date-time)
-                               time/instant
-                               Date/from)]])))
-       params)))
 
 (defn new-entity-with-membership [entity account-id roles]
   {:entity/id      (random-uuid)
