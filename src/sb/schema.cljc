@@ -1,11 +1,13 @@
 (ns sb.schema
   (:refer-clojure :exclude [ref keyword])
-  (:require [malli.core :as m]
+  (:require #?(:cljs ["spark-md5" :as SparkMD5])
+            [clojure.string :as str]
+            [malli.core :as m]
             [malli.error :refer [humanize]]
             [malli.registry :as mr]
             [re-db.schema :as rs]
             [sb.util :as u]
-            [re-db.read :as read ]))
+            [re-db.read :as read]))
 
 (defn wrap-id [id]
   (cond (uuid? id) [:entity/id id]
@@ -44,12 +46,12 @@
    {:pre [(keyword? nesting-schema)]}
    (case cardinality :one (merge rs/ref
                                  rs/one
-                                 {s- (conj db-id nesting-schema)
+                                 {s-                (conj db-id nesting-schema)
                                   :malli/ref-schema nesting-schema})
                      :many (merge rs/ref
                                   rs/many
-                                  {s- [:sequential
-                                       (conj db-id nesting-schema)]
+                                  {s-                [:sequential
+                                                      (conj db-id nesting-schema)]
                                    :malli/ref-schema nesting-schema}))))
 
 (def unique-id-str (merge rs/unique-id
@@ -216,7 +218,7 @@
 (def kind->prefix* {:org          "a0"
                     :board        "a1"
                     :collection   "a2"
-                    :member       "a3"
+                    :membership   "a3"
                     :project      "a4"
                     :field        "a5"
                     :discussion   "a7"
@@ -236,10 +238,68 @@
 (def prefix->kind* (zipmap (vals kind->prefix*) (keys kind->prefix*)))
 
 (defn kind [uuid]
-  (let [uuid (unwrap-id uuid)
+  (let [uuid   (unwrap-id uuid)
         prefix (subs (str uuid) 0 2)]
     (or (prefix->kind* prefix)
         (throw (ex-info (str "Unknown kind for uuid prefix " prefix) {:uuid uuid :prefix prefix})))))
 
 (defn kind->prefix [kind]
   (or (kind->prefix* kind) (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))))
+
+
+
+#?(:cljs
+   (defn bytes-to-hex! [bytes]
+     (doseq [i (range (count bytes))]
+       (aset bytes i (str (let [hex (js/Number.prototype.toString.call (aget bytes i) 16)]
+                            (if (< (count hex) 2) (str "0" hex) hex)))))
+     (.join bytes "")))
+
+#?(:cljs
+   (defn hex-to-bytes [hex]
+     (let [out #js[]]
+       (doseq [i (range (Math/floor (/ (count hex) 2)))]
+         (aset out i (js/parseInt (subs hex
+                                        (* 2 i)
+                                        (* 2 (inc i)))
+                                  16)))
+       out)))
+
+(defn uuid-from-string [input]
+  #?(:clj (java.util.UUID/nameUUIDFromBytes (.getBytes input))
+     :cljs
+     (let [md5-bytes (hex-to-bytes (SparkMD5/hash input))]
+       (-> md5-bytes
+           (doto (aset 6 (-> (aget md5-bytes 6)
+                             (bit-and 0x0f)
+                             (bit-or 0x30)))
+                 (aset 8 (-> (aget md5-bytes 8)
+                             (bit-and 0x3f)
+                             (bit-or 0x80))))
+           bytes-to-hex!
+           (clojure.string/replace #"(\w{8})(\w{4})(\w{4})(\w{4})(\w{12})"
+                                   "$1-$2-$3-$4-$5")
+           uuid))))
+
+
+(defn to-uuid [kind s]
+  (let [prefix (kind->prefix kind)]
+    (uuid-from-string (str prefix (subs (str s) 2)))))
+
+(defn composite-uuid [kind & ss]
+  (to-uuid kind (->> ss
+                     (map (comp #(subs (str %) 2) unwrap-id))
+                     sort
+                     (str/join ":"))))
+
+(comment
+  (uuid-from-string "foo")
+  (to-uuid :membership
+           "3a4669-a7ef-3e8e-bddc-8413e004c338:f3ab74-5ab9-3597-8b0f-4199d5a75b78")
+  (uuid-from-string "3a4669-a7ef-3e8e-bddc-8413e004c338:f3ab74-5ab9-3597-8b0f-4199d5a75b78")
+  (composite-uuid :membership
+                  #uuid "a1f3ab74-5ab9-3597-8b0f-4199d5a75b78",
+                  #uuid "b03a4669-a7ef-3e8e-bddc-8413e004c338")
+
+  (dotimes [n 1000]
+    (to-uuid :project "something is here, here we go")))

@@ -47,7 +47,7 @@
   (case (:entity/kind ent)
     :org (= org-id (:entity/id ent))
     :board (= org-id (:entity/parent ent))
-    :member (= org-id (-> ent :member/entity :entity/parent))
+    :membership (= org-id (-> ent :membership/entity :entity/parent))
     :project (= org-id (:entity/parent ent))
     false))
 
@@ -65,7 +65,7 @@
    (defn pull [expr id] (dl/pull @conn expr id)))
 
 (defn entid [id]
-  #?(:clj (dl/entid @conn id)
+  #?(:clj  (dl/entid @conn id)
      :cljs id))
 
 

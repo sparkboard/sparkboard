@@ -9,84 +9,84 @@
   #?(:clj (:import [java.util Date])))
 
 (sch/register!
-  {:roles/as-map                    {s- :member/as-map}
-   :member/entity+account           (merge {:db/tupleAttrs [:member/entity :member/account]}
-                                           sch/unique-value)
-   :member/_entity                  {s- [:or
-                                         :member/as-map
-                                         [:sequential
-                                          :member/as-map]]}
-   :member/role                     {s- [:enum
-                                         :role/admin
-                                         :role/editor
-                                         :role/member]}
-   :member/roles                    (merge sch/keyword
-                                           sch/many
-                                           {s- [:set :member/role]})
-   :member/entity                   (sch/ref :one)
-   :member/account                  (sch/ref :one)
+  {:roles/as-map                        {s- :membership/as-map}
+   :membership/entity+account           (merge {:db/tupleAttrs [:membership/entity :membership/account]}
+                                               sch/unique-value)
+   :membership/_entity                  {s- [:or
+                                             :membership/as-map
+                                             [:sequential
+                                              :membership/as-map]]}
+   :membership/role                     {s- [:enum
+                                             :role/admin
+                                             :role/editor
+                                             :role/member]}
+   :membership/roles                    (merge sch/keyword
+                                               sch/many
+                                               {s- [:set :membership/role]})
+   :membership/entity                   (sch/ref :one)
+   :membership/account                  (sch/ref :one)
 
-   :entity/tags                     {s- [:sequential [:map {:closed true} :tag/id]]}
-   :entity/custom-tags              {s- [:sequential [:map {:closed true} :tag/label]]}
+   :entity/tags                         {s- [:sequential [:map {:closed true} :tag/id]]}
+   :entity/custom-tags                  {s- [:sequential [:map {:closed true} :tag/label]]}
 
    ;; TODO: move/remove. this should simply be a field that an organizer adds.
-   :member/newsletter-subscription? {s- :boolean},
+   :membership/newsletter-subscription? {s- :boolean},
 
    ;; TODO: move email-frequency to a separate place (focused on notifications)
-   :member/email-frequency          {s- [:enum
-                                         :member.email-frequency/never
-                                         :member.email-frequency/daily
-                                         :member.email-frequency/periodic
-                                         :member.email-frequency/instant]}
+   :membership/email-frequency          {s- [:enum
+                                             :member.email-frequency/never
+                                             :member.email-frequency/daily
+                                             :member.email-frequency/periodic
+                                             :member.email-frequency/instant]}
 
 
    ;; TODO: better define this state.
    ;; - used for people who are no longer attending / need to be managed by organizers.
    ;; - different than deleted - user can still sign in to reactivate?
-   :member/inactive?                {:doc   "Marks a member inactive, hidden."
-                                     :admin true
-                                     :todo  "If an inactive member signs in to a board, mark as active again?"
-                                     s-     :boolean},
+   :membership/inactive?                {:doc   "Marks a member inactive, hidden."
+                                         :admin true
+                                         :todo  "If an inactive member signs in to a board, mark as active again?"
+                                         s-     :boolean},
 
 
-   :member/as-map                   {s- [:map {:closed true}
-                                         :entity/id
-                                         :entity/kind
-                                         :member/entity
-                                         :member/account
+   :membership/as-map                   {s- [:map {:closed true}
+                                             :entity/id
+                                             :entity/kind
+                                             :membership/entity
+                                             :membership/account
 
-                                         (? :member/inactive?)
-                                         (? :member/email-frequency)
-                                         (? :entity/custom-tags)
-                                         (? :member/newsletter-subscription?)
-                                         (? :entity/tags)
-                                         (? :member/roles)
+                                             (? :membership/inactive?)
+                                             (? :membership/email-frequency)
+                                             (? :entity/custom-tags)
+                                             (? :membership/newsletter-subscription?)
+                                             (? :entity/tags)
+                                             (? :membership/roles)
 
-                                         ;; TODO, backfill?
-                                         (? :entity/created-at)
-                                         (? :entity/updated-at)
+                                             ;; TODO, backfill?
+                                             (? :entity/created-at)
+                                             (? :entity/updated-at)
 
-                                         (? :entity/field-entries)
-                                         (? :entity/deleted-at)
-                                         (? :entity/modified-by)]}})
+                                             (? :entity/field-entries)
+                                             (? :entity/deleted-at)
+                                             (? :entity/modified-by)]}})
 
 (q/defquery show
   {:prepare az/require-account!}
   [params]
   (dissoc (q/pull `[~@entity.data/entity-keys
                     :entity/tags
-                    :member/field-entries
-                    {:member/entity [:entity/id
-                                     :entity/kind
-                                     :entity/member-tags
-                                     :entity/member-fields]}
-                    {:member/account [~@entity.data/entity-keys
-                                      :account/display-name]}]
+                    :entity/field-entries
+                    {:membership/entity [:entity/id
+                                         :entity/kind
+                                         :entity/member-tags
+                                         :entity/member-fields]}
+                    {:membership/account [~@entity.data/entity-keys
+                                          :account/display-name]}]
                   (:member-id params))))
 
 #?(:clj
    (defn membership-id [account-id entity-id]
-     (dl/entid [:member/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
+     (dl/entid [:membership/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
 
 #?(:clj
    (defn ensure-membership! [account-id entity-id]
@@ -94,7 +94,7 @@
        (throw (ex-info "Not a member" {:status 403})))))
 
 (defn member-active? [member]
-  (and (not (:member/inactive? member))
+  (and (not (:membership/inactive? member))
        (not (:entity/deleted-at member))))
 
 #?(:clj
@@ -102,7 +102,7 @@
      (let [visibility-entity (case (:entity/kind entity)
                                (:board :org) entity
                                :project (:entity/parent entity)
-                               :member (:member/entity entity))]
+                               :membership (:membership/entity entity))]
        (or (:entity/public? visibility-entity)
            (some-> (membership-id account-id entity)
                    db/entity
@@ -132,8 +132,8 @@
                                      {:image/avatar [:entity/id]}]) ...]
               :in $ ?entity ?search-term
               :where
-              [?m :member/entity ?entity]
-              [?m :member/account ?account]
+              [?m :membership/entity ?entity]
+              [?m :membership/account ?account]
               [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]]
             entity-id
             search-term))
@@ -143,10 +143,10 @@
                                         {:image/avatar [:entity/id]}]) ...]
             :in $ ?my-account ?search-term
             :where
-            [?me :member/account ?my-account]
-            [?me :member/entity ?entity]
-            [?you :member/entity ?entity]
-            [?you :member/account ?your-account]
+            [?me :membership/account ?my-account]
+            [?me :membership/entity ?entity]
+            [?you :membership/entity ?entity]
+            [?you :membership/account ?your-account]
             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
           account-id
           search-term)))
@@ -157,8 +157,8 @@
            :search-term "matt"}))
 
 (defn new-entity-with-membership [entity account-id roles]
-  {:entity/id      (random-uuid)
-   :entity/kind    :member
-   :member/account (sch/wrap-id account-id)
-   :member/entity  entity
-   :member/roles   roles})
+  {:entity/id          (random-uuid)
+   :entity/kind        :membership
+   :membership/account (sch/wrap-id account-id)
+   :membership/entity  entity
+   :membership/roles   roles})

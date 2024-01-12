@@ -103,7 +103,7 @@
 
 (q/defquery show
   {:prepare [(az/with-roles :board-id)]}
-  [{:keys [board-id member/roles]}]
+  [{:keys [board-id membership/roles]}]
   (u/timed `show
            (if-let [board (db/pull `[~@entity.data/entity-keys
                                      :entity/member-tags
@@ -112,46 +112,46 @@
                                      :board/registration-open?
                                      {:entity/parent [~@entity.data/entity-keys :org/show-org-tab?]}]
                                    board-id)]
-             (merge board {:member/roles roles})
+             (merge board {:membership/roles roles})
              (throw (ex-info "Board not found!" {:status 400})))))
 
 (def project-fields `[~@entity.data/entity-keys])
-(def member-fields [{:member/account [:entity/id
-                                      :entity/kind
-                                      {:image/avatar [:entity/id]}
-                                      :account/display-name]}
+(def member-fields [{:membership/account [:entity/id
+                                          :entity/kind
+                                          {:image/avatar [:entity/id]}
+                                          :account/display-name]}
                     {:entity/tags [:entity/id
                                    :tag/label
                                    :tag/color]}
                     :entity/field-entries
-                    {:member/entity [:entity/id]}
+                    {:membership/entity [:entity/id]}
                     {:entity/custom-tags [:tag/label]}
-                    :member/roles])
+                    :membership/roles])
 
 (q/defquery members
   {:prepare [(az/with-roles :board-id)]}
-  [{:keys [board-id member/roles]}]
+  [{:keys [board-id membership/roles]}]
   (u/timed `members
-           (->> (db/where [[:member/entity board-id]])
-                (remove :entity/archived?)
+           (->> (db/where [[:membership/entity board-id]])
+                (remove (some-fn :entity/deleted-at :entity/archived?))
                 (mapv (db/pull `[~@entity.data/entity-keys
                                  ~@member-fields])))))
 
 (q/defquery projects
   {:prepare [(az/with-roles :board-id)]}
-  [{:keys [board-id member/roles]}]
+  [{:keys [board-id membership/roles]}]
   (u/timed `projects
            (->> (db/where [[:entity/parent board-id]])
-                (remove (some-fn :entity/draft? :entity/archived?))
+                (remove (some-fn :entity/draft? :entity/deleted-at :entity/archived?))
                 (mapv (db/pull project-fields)))))
 
 (q/defquery drafts
   {:prepare az/with-account-id}
   [{:keys [account-id]}]
   (into []
-        (comp (filter (comp (every-pred :entity/draft? #(= :project (:entity/kind %))) :member/entity))
-              (map #(db/pull project-fields (:member/entity %))))
-        (db/where [[:member/account (dl/resolve-id account-id)]])))
+        (comp (filter (comp (every-pred :entity/draft? #(= :project (:entity/kind %))) :membership/entity))
+              (map #(db/pull project-fields (:membership/entity %))))
+        (db/where [[:membership/account (dl/resolve-id account-id)]])))
 
 (defn authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? account-id board)
@@ -168,10 +168,10 @@
   (let [board  (-> (dl/new-entity board :board :by account-id)
                    (validate/conform :board/as-map))
         _      (authorize-create! board account-id)
-        member (-> {:member/entity  board
-                    :member/account account-id
-                    :member/roles   #{:role/admin}}
-                   (dl/new-entity :member))]
+        member (-> {:membership/entity  board
+                    :membership/account account-id
+                    :membership/roles   #{:role/admin}}
+                   (dl/new-entity :membership))]
     (db/transact! [member])
     board))
 
@@ -181,14 +181,14 @@
              (fn [_ {:as params :keys [board-id account-id]}]
                (validate/assert-can-edit! account-id (dl/entity board-id))
                params)]}
-  [{:keys [board-id member/roles]}]
+  [{:keys [board-id membership/roles]}]
   (u/timed `settings
            (some->
              (q/pull `[~@entity.data/entity-keys
                        :entity/member-tags
                        {:entity/member-fields ~field.data/field-keys}
                        {:entity/project-fields ~field.data/field-keys}] board-id)
-             (merge {:member/roles roles}))))
+             (merge {:membership/roles roles}))))
 (comment
   [:ul                                                      ;; i18n stuff
    [:li "suggested locales:" (str (:entity/locale-suggestions board))]

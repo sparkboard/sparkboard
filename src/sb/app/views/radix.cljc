@@ -59,7 +59,8 @@
 (def menu-sub-trigger (v/from-element :el dm/SubTrigger {:class (menu-item-classes false)}))
 
 (defn menubar-root [props children]
-  (into [:el menubar/Root props] children))
+  (v/x
+    (into [:el menubar/Root props] children)))
 
 (declare menubar-menu)
 
@@ -68,7 +69,7 @@
     [:el menubar/Sub
      [:el menubar/SubTrigger {:as-child true} [:el menubar/Item {:class (menu-item-classes false)} trigger]]
      [:el menubar/Portal
-      (into [:el menubar/SubContent {:class menu-content-classes
+      (into [:el menubar/SubContent {:class             menu-content-classes
                                      :collision-padding 8} content]
             (for [[props & children] items]
               (if (:items props)
@@ -80,7 +81,7 @@
     [:el menubar/Menu
      [:el menubar/Trigger {:as-child true} trigger]
      [:el menubar/Portal
-      (into [:el menubar/Content {:class menu-content-classes
+      (into [:el menubar/Content {:class             menu-content-classes
                                   :collision-padding 8} content]
             (for [[props & children] items]
               (if (:items props)

@@ -104,9 +104,9 @@
   [{:keys [account-id org]}]
   (let [org    (-> (dl/new-entity org :org :by account-id)
                    (validate/conform :org/as-map))
-        member (-> {:member/entity  org
-                    :member/account account-id
-                    :member/roles   #{:role/admin}}
-                   (dl/new-entity :member))]
+        member (-> {:membership/entity  org
+                    :membership/account account-id
+                    :membership/roles   #{:role/admin}}
+                   (dl/new-entity :membership))]
     (db/transact! [member])
     org))

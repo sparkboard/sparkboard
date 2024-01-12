@@ -1,5 +1,6 @@
 (ns sb.app.project.ui
   (:require [inside-out.forms :as forms]
+            [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
@@ -10,8 +11,11 @@
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
+            [sb.schema :as sch]
+            [sb.util :as u]
             [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [re-db.api :as db]))
 
 (def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
 (def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
@@ -85,17 +89,48 @@
 
        ])))
 
+(def get-tag
+  (memoize
+    (fn [membership-id tag-id]
+      (-> (db/entity membership-id) :membership/entity :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))))
+
+(ui/defview project-members [project props]
+  [:div.grid.grid-cols-2.gap-2
+   (for [[i member] (->> (take 10 (repeat (first (:membership/_entity project))))
+                         (sort-by u/compare:desc :entity/created-at)
+                         (map-indexed (fn [i x] [i x])))
+         :let [{{:as account :keys [account/display-name]} :membership/account
+                :keys                                      [entity/tags]} member
+
+               ;; a bit of a hack; a way to jump from an account to a board membership
+               ;; (:board-membership :membership [:membership/acc
+               board-membership (db/entity [:entity/id (sch/composite-uuid :membership
+                                                                           (:entity/parent project)
+                                                                           account)])]]
+     [:div.flex.items-center.gap-2.text-sm {:key      i
+                                            :on-click #(routing/nav! (routing/entity-route member 'ui/show))}
+      [:img.object-cover.rounded.w-8.h-8 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]
+      display-name
+      (ui/pprinted @(db/entity [:entity/id (sch/composite-uuid :membership
+                                                               (sch/unwrap-id (:entity/parent project))
+                                                               (sch/unwrap-id account))]))
+
+      (for [tag tags
+            :let [tag (get-tag (:db/id member) (:tag/id tag))]]
+        (str tag))])]
+  )
+
 (ui/defview show
   {:route       "/p/:project-id"
    :view/router :router/modal}
   [params]
   (let [project      (data/show params)
-        [can-edit? roles dev-panel] (form.ui/use-dev-panel project {"Current User"   (:member/roles project)
+        [can-edit? roles dev-panel] (form.ui/use-dev-panel project {"Current User"   (:membership/roles project)
                                                                     "Project Editor" #{:role/project-editor}
                                                                     "Board Admin"    #{:role/board-admin}
                                                                     "Visitor"        #{}} "Current User")
-        field-params {:member/roles    roles
-                      :field/can-edit? can-edit?}]
+        field-params {:membership/roles roles
+                      :field/can-edit?  can-edit?}]
     [:div.flex-v.gap-6.pb-6
      ;; title row
      [:div.flex-v
@@ -121,8 +156,8 @@
           (when (:role/board-admin roles)
             ;; - archive
             [radix/dropdown-menu
-             {:trigger  [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
-              :items []}]))
+             {:trigger [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
+              :items   []}]))
 
         [radix/tooltip "Back to board"
          [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}
@@ -142,8 +177,12 @@
       (entity.ui/use-persisted-attr project :entity/video field-params)
       (entity.ui/use-persisted-attr project
                                     :entity/field-entries
-                                    {:entity/fields   (->> project :entity/parent :entity/project-fields)
-                                     :member/roles    roles
-                                     :field/can-edit? can-edit?})
+                                    {:entity/fields    (->> project :entity/parent :entity/project-fields)
+                                     :membership/roles roles
+                                     :field/can-edit?  can-edit?})
+
+      [project-members project field-params]
+
+
       [:section.flex-v.gap-2.items-start
        [manage-community-actions project (:project/community-actions project)]]]]))

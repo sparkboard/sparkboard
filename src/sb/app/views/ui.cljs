@@ -48,16 +48,14 @@
 
 (defn filter-value [entity]
   (case (:entity/kind entity)
-    :account  (:account/display-name entity)
-    :member (-> (:member/account entity) :account/display-name)
+    :account (:account/display-name entity)
+    :membership (-> (:membership/account entity) :account/display-name)
     (:entity/title entity)))
 
 (defn filtered [match-text]
-  (comp
-    (remove :entity/archived?)
-    (filter (if match-text
-              #(some->> (filter-value %) (re-find (re-pattern (str "(?i)" match-text))))
-              identity))))
+  (filter (if match-text
+            #(some->> (filter-value %) (re-find (re-pattern (str "(?i)" match-text))))
+            identity)))
 
 (defn pprinted [x & _]
   [:pre.whitespace-pre-wrap (with-out-str (clojure.pprint/pprint x))])

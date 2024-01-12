@@ -15,21 +15,21 @@
   {:route       "/m/:member-id"
    :view/router :router/modal}
   [params]
-  (let [{:as member :keys [member/account]} (data/show params)
+  (let [{:as member :keys [membership/account]} (data/show params)
         [can-edit? roles dev-panel] (form.ui/use-dev-panel member {"Current User" (az/all-roles (:account-id params) member)
                                                                    "Board Admin"  #{:role/board-admin}
                                                                    "This User"    #{:role/self}
                                                                    "Visitor"      #{}}
                                                            "Current User")
-        field-params {:member/roles    roles
-                      :field/can-edit? can-edit?}]
+        field-params {:membership/roles roles
+                      :field/can-edit?  can-edit?}]
     [:div.flex-v.gap-6.py-6
      ;; title row
      [:div.flex-v
       [:div.flex.px-6.gap-3
        (when (:image/avatar account) [ui/avatar {:size 20} account])
        [:div.flex-v.gap-2
-        [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (-> member :member/account :account/display-name)]
+        [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (-> member :membership/account :account/display-name)]
         (entity.ui/use-persisted-attr member :entity/tags field-params)]
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
@@ -42,7 +42,7 @@
               :items   []}]))
 
         [radix/tooltip "Back to board"
-         [:a.modal-title-icon {:href (routing/entity-path (:member/entity member) 'ui/show)}
+         [:a.modal-title-icon {:href (routing/entity-path (:membership/entity member) 'ui/show)}
           [icons/arrow-left]]]
         [radix/tooltip "Link to member"
          [:a.modal-title-icon {:href (routing/entity-path member 'ui/show)}
@@ -52,9 +52,9 @@
      [:div.px-body.flex-v.gap-6
       (entity.ui/use-persisted-attr member
                                     :entity/field-entries
-                                    {:entity/fields   (->> member :member/entity :entity/member-fields)
-                                     :member/roles    roles
-                                     :field/can-edit? can-edit?})]]))
+                                    {:entity/fields    (->> member :membership/entity :entity/member-fields)
+                                     :membership/roles roles
+                                     :field/can-edit?  can-edit?})]]))
 
 (defn show-tag [{:keys [tag/label tag/color] :or {color "#dddddd"}}]
   [:div.tag-sm
@@ -70,7 +70,7 @@
   (let [{:keys [entity/field-entries
                 entity/tags
                 entity/custom-tags
-                member/account]} member
+                membership/account]} member
         {:keys [account/display-name]} account]
     [:a.flex-v.hover:bg-gray-100.rounded-lg #_.rounded-xl.border.shadow
      {:href (routing/entity-path member 'ui/show)}

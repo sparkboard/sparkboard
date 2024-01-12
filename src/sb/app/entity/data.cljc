@@ -33,7 +33,7 @@
                                      :org
                                      :board
                                      :collection
-                                     :member
+                                     :membership
                                      :project
                                      :field
                                      :discussion
@@ -123,16 +123,16 @@
 
 (def rules
   {:entity/tags (fn validate-changed-tags [roles k entity m]
-                  (when-not (= :member (:entity/kind entity))
+                  (when-not (= :membership (:entity/kind entity))
                     (validate/validation-failed! "Only members may have tags"))
                   (let [tags-before  (into #{} (map :tag/id) (k entity))
                         tags-after   (into #{} (map :tag/id) (k m))
                         tags-changed (concat
                                        (set/difference tags-before tags-after) ;; removed
                                        (set/difference tags-after tags-before)) ;; added
-                        admin? (:role/board-admin roles)]
+                        admin?       (:role/board-admin roles)]
                     (when (seq tags-changed)
-                      (let [tag-defs (-> entity :member/entity :entity/member-tags (u/index-by :tag/id))]
+                      (let [tag-defs (-> entity :membership/entity :entity/member-tags (u/index-by :tag/id))]
                         (doseq [tag-id tags-changed         ;; added
                                 :let [tag (get tag-defs tag-id)]
                                 :when (:tag/restricted? tag)]

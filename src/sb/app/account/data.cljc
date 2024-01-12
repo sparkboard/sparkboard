@@ -36,26 +36,27 @@
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
   (into []
-        (comp (map :member/entity)
+        (comp (map :membership/entity)
               (filter (comp #{:org} :entity/kind))
               (map (q/pull entity.data/entity-keys)))
-        (db/where [[:member/account account-id]])))
+        (db/where [[:membership/account account-id]])))
 
 (q/defquery all
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
   (u/timed `all
-           (->> (q/pull '[{:member/_account [:member/roles
-                                             {:member/entity [:entity/id
-                                                              :entity/kind
-                                                              :entity/title
-                                                              :entity/created-at
-                                                              {:image/avatar [:entity/id]}
-                                                              {:image/background [:entity/id]}]}]}]
+           (->> (q/pull '[{:membership/_account
+                           [:membership/roles
+                            {:membership/entity [:entity/id
+                                                 :entity/kind
+                                                 :entity/title
+                                                 :entity/created-at
+                                                 {:image/avatar [:entity/id]}
+                                                 {:image/background [:entity/id]}]}]}]
                         account-id)
-                :member/_account
-                (map #(u/lift-key % :member/entity)))))
+                :membership/_account
+                (map #(u/lift-key % :membership/entity)))))
 
 #?(:clj
    (defn login!

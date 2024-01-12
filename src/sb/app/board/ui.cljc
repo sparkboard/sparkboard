@@ -68,12 +68,13 @@
 (ui/defview register
   {:route "/b/:board-id/register"}
   [{:as params :keys [route]}]
-  (ui/with-form [!member {:member/name ?name :member/password ?pass}]
+  (ui/with-form [!membership {:membership/name     ?name
+                              :membership/password ?pass}]
     [:div
      [:h3 (t :tr/register)]
      [field.ui/text-field ?name nil]
      [field.ui/text-field ?pass nil]
-     [:button {:on-click #(p/let [res (routing/POST route @!member)]
+     [:button {:on-click #(p/let [res (routing/POST route @!membership)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)
                                 (routing/nav! [:board/read params])
@@ -99,7 +100,7 @@
 (ui/defview show
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
-  (let [{:as board :keys [member/roles]} (data/show {:board-id board-id})
+  (let [{:as board :keys [membership/roles]} (data/show {:board-id board-id})
         !current-tab (h/use-state (t :tr/members #_:tr/projects))
         ?filter      (h/use-memo #(io/field))]
     [:<>

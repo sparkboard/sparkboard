@@ -94,7 +94,7 @@
 (ui/defview row
   {:key :entity/id}
   [{:as   entity
-    :keys [entity/title member/roles]}]
+    :keys [entity/title membership/roles]}]
   [:div.flex.hover:bg-gray-100.rounded-lg
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
     {:href (routing/entity-path entity 'ui/show)}

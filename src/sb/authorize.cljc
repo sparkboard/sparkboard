@@ -42,9 +42,9 @@
 (defn get-roles [account-id entity]
   (or (case (:entity/kind entity)
         :account (when (sch/id= account-id (:entity/id entity)) #{:role/self})
-        :member (when (sch/id= account-id (-> entity :member/account :entity/id)) #{:role/self})
-        (:member/roles #?(:cljs entity
-                          :clj (db/entity (dl/entid [:member/entity+account [(:db/id entity) (dl/resolve-id account-id)]])))))
+        :membership (when (sch/id= account-id (-> entity :membership/account :entity/id)) #{:role/self})
+        (:membership/roles #?(:cljs entity
+                              :clj  (db/entity (dl/entid [:membership/entity+account [(:db/id entity) (dl/resolve-id account-id)]])))))
       #{}))
 
 (defn scoped-roles [account-id {:as entity :keys [entity/kind]}]
@@ -62,7 +62,7 @@
        (into #{})))
 
 (defn all-roles [account-id entity]
-  (into (get-roles account-id  entity)
+  (into (get-roles account-id entity)
         (inherited-roles account-id entity)))
 
 (comment
@@ -75,5 +75,5 @@
    (defn with-roles [entity-key]
      (fn [req params]
        (if-let [account-id (some-> (-> req :account :entity/id) sch/wrap-id)]
-         (assoc params :member/roles (get-roles account-id (get-entity (entity-key params))))
+         (assoc params :membership/roles (get-roles account-id (get-entity (entity-key params))))
          params))))

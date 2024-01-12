@@ -10,7 +10,7 @@
             [malli.core :as m]
             [malli.generator :as mg]
             [sb.app.chat.data :as chat]
-            [sb.schema :as sch]
+            [sb.schema :as sch :refer [composite-uuid]]
             [sb.server.datalevin :as sb.dl :refer [conn]]
             [sb.server.env :as env]
             [re-db.api :as db]
@@ -56,7 +56,7 @@
 
 (def MONGODB_URI (-> env/config :prod :mongodb/readonly-uri))
 
-(def mongo-colls {:member/as-map       "users"
+(def mongo-colls {:membership/as-map   "users"
                   :account/as-map      "users"
                   :ballot/as-map       "users"
                   :notification/as-map "notificationschemas"
@@ -150,7 +150,7 @@
                             (nil? (:firebaseAccount %))
                             (nil? (:boardId %))
                             (= "example" (:boardId %))))
-               (read-coll :member/as-map))))
+               (read-coll :membership/as-map))))
 
 (def !firebaseAccount->email
   (delay
@@ -208,17 +208,8 @@
           member-id)
     (@!member-id->account-uuid (get-oid member-id))))
 
-(defn composite-uuid [kind & ss]
-  (to-uuid kind (->> ss
-                     (map #(do (assert (uuid? %)) %))
-                     (map str)
-                     sort
-                     (str/join ":"))))
-
 (defn uuid-ref [kind s]
-  (let [id (to-uuid kind s)]
-
-    [:entity/id id]))
+  [:entity/id (to-uuid kind s)])
 
 (comment
   (coll-entities :ballot/as-map)
@@ -805,15 +796,15 @@
                                                             :let [account (parse-sparkboard-id user)
                                                                   ent     (parse-sparkboard-id ent)
                                                                   _       (assert (= (:kind account) :account))]]
-                                                        {:entity/id      (composite-uuid :member (:uuid ent) (:uuid account))
-                                                         :entity/kind    :member
-                                                         :member/account (uuid-ref :account (:uuid account))
-                                                         :member/entity  (:ref ent)
-                                                         :member/roles   (into #{}
-                                                                               (comp (filter val)
-                                                                                     (map key)
-                                                                                     (map role-kw))
-                                                                               role-map)})))
+                                                        {:entity/id          (composite-uuid :membership (:uuid ent) (:uuid account))
+                                                         :entity/kind        :membership
+                                                         :membership/account (uuid-ref :account (:uuid account))
+                                                         :membership/entity  (:ref ent)
+                                                         :membership/roles   (into #{}
+                                                                                   (comp (filter val)
+                                                                                         (map key)
+                                                                                         (map role-kw))
+                                                                                   role-map)})))
                                                e-u-r))]
               ::firebase              ["socialFeed" (xf (partial change-keys
                                                                  ["twitterHashtags" (& (xf #(into #{} (str/split % #"\s+"))) (rename :social-feed.twitter/hashtags))
@@ -855,14 +846,14 @@
                                        ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
                                                                   (missing-entity? :board/as-map (:ballot/board %))
                                                                   (not (:ballot/account %))))]
-              :member/as-map          [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+              :membership/as-map      [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                        ::always (remove-when (comp nil? :firebaseAccount))
                                        ::always (remove-when :entity/deleted-at)
                                        ::always (remove-when :suspectedFake)
-                                       ::always (add-kind :member)
+                                       ::always (add-kind :membership)
 
-                                       ::defaults {:member/inactive?       false
-                                                   :member/email-frequency :member.email-frequency/periodic}
+                                       ::defaults {:membership/inactive?       false
+                                                   :membership/email-frequency :member.email-frequency/periodic}
                                        :lastModifiedBy rm
                                        :salt rm
                                        :hash rm
@@ -872,16 +863,16 @@
                                        :_id (fn [m a v]
                                               (-> m
                                                   (assoc :entity/created-at (bson-id-timestamp (get-oid v))
-                                                         :entity/id (composite-uuid :member
+                                                         :entity/id (composite-uuid :membership
                                                                                     (to-uuid :board (:boardId m))
                                                                                     (to-uuid :account (:firebaseAccount m))))
                                                   (dissoc a)))
-                                       :boardId (uuid-ref-as :board :member/entity)
+                                       :boardId (uuid-ref-as :board :membership/entity)
 
-                                       ::always (parse-fields :member/entity :entity/field-entries)
+                                       ::always (parse-fields :membership/entity :entity/field-entries)
                                        :account rm
 
-                                       :firebaseAccount (uuid-ref-as :account :member/account)
+                                       :firebaseAccount (uuid-ref-as :account :membership/account)
 
                                        :emailFrequency (& (xf #(case %
                                                                  "never" :member.email-frequency/never
@@ -889,7 +880,7 @@
                                                                  "periodic" :member.email-frequency/periodic
                                                                  "instant" :member.email-frequency/instant
                                                                  :member.email-frequency/periodic))
-                                                          (rename :member/email-frequency))
+                                                          (rename :membership/email-frequency))
                                        :acceptedTerms rm
                                        :contact_me rm
 
@@ -900,9 +891,9 @@
 
                                        :name rm
                                        :roles (& (xf #(into #{} (keep role-kw) %))
-                                                 (rename :member/roles))
+                                                 (rename :membership/roles))
                                        :tags (& (fn [m a v]
-                                                  (let [tags (keep (partial resolve-tag (:member/entity m)) v)
+                                                  (let [tags (keep (partial resolve-tag (:membership/entity m)) v)
                                                         {tags        true
                                                          custom-tags false} (group-by (comp boolean :tag/id) tags)]
                                                     (-> m
@@ -910,8 +901,8 @@
                                                         (u/assoc-seq :entity/custom-tags (vec custom-tags))
                                                         (dissoc :tags)))))
 
-                                       :newsletterSubscribe (rename :member/newsletter-subscription?)
-                                       :active (& (xf not) (rename :member/inactive?)) ;; same as deleted?
+                                       :newsletterSubscribe (rename :membership/newsletter-subscription?)
+                                       :active (& (xf not) (rename :membership/inactive?)) ;; same as deleted?
                                        :picture rm
                                        :votesByDomain rm
                                        :feedbackRating rm
@@ -993,13 +984,13 @@
                                                                                                                         (to-uuid :account))))
                                                                                           :role/admin
                                                                                           (some-> (:role member) role-kw))]
-                                                                               (merge {:entity/id      (composite-uuid :member project-id account-id)
-                                                                                       :entity/kind    :member
-                                                                                       :member/entity  (uuid-ref :project project-id)
-                                                                                       :member/account (uuid-ref :account account-id)}
-                                                                                      (when role {:member/roles #{role}})))))
+                                                                               (merge {:entity/id          (composite-uuid :membership project-id account-id)
+                                                                                       :entity/kind        :membership
+                                                                                       :membership/entity  (uuid-ref :project project-id)
+                                                                                       :membership/account (uuid-ref :account account-id)}
+                                                                                      (when role {:membership/roles #{role}})))))
                                                                          v))))
-                                                  (rename :member/_entity))
+                                                  (rename :membership/_entity))
 
                                        ::always (remove-when #(and (not (:entity/created-by %))
                                                                    (empty? (:members/_entity %))))

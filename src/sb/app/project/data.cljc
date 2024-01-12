@@ -54,7 +54,7 @@
                                      (? :entity/created-by)
                                      (? :entity/deleted-at)
                                      (? :entity/modified-by)
-                                     (? :member/_entity)
+                                     (? :membership/_entity)
                                      (? [:project/card-classes {:doc          "css classes for card"
                                                                 :to-deprecate true}
                                          [:sequential :string]])
@@ -81,18 +81,30 @@
 
 (q/defquery show
   {:prepare [(az/with-roles :project-id)]}
-  [{:keys [project-id member/roles]}]
+  [{:keys [project-id membership/roles]}]
   (u/timed `show
-           (merge (q/pull `[~@entity.data/entity-keys
+           (merge (q/pull `[:entity/id
+                            :entity/kind
+                            :entity/title
+                            :entity/description
+                            :entity/video
                             {:project/badges [:badge/label
                                               :badge/color]}
                             :entity/field-entries
                             :entity/draft?
+                            {:membership/_entity [:entity/id
+                                                  :entity/kind
+                                                  :entity/created-at
+                                                  :membership/roles
+                                                  {:membership/account [:account/display-name
+                                                                        :entity/id
+                                                                        :entity/kind
+                                                                        {:image/avatar [:entity/id]}]}]}
                             {:entity/parent
                              [~@entity.data/entity-keys
                               {:entity/project-fields ~field.data/field-keys}]}]
                           project-id)
-                  {:member/roles roles})))
+                  {:membership/roles roles})))
 
 (q/defquery fields [{:keys [board-id]}]
   (-> (q/pull `[~@entity.data/id-fields
@@ -104,7 +116,7 @@
   [{:keys [account-id]} project]
   ;; TODO
   ;; verify that user is allowed to create a new project in parent
-  (let [project (dl/new-entity project :project :by account-id)
+  (let [project    (dl/new-entity project :project :by account-id)
         membership (member.data/new-entity-with-membership project account-id #{:role/admin})]
     (validate/assert project :project/as-map)
     (db/transact! [membership])

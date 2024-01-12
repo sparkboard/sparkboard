@@ -412,7 +412,7 @@
                   (io/field :many {:badge/label ?label
                                    :badge/color (?color :default "#dddddd")}
                             :init init))}
-  [?badges {:as props :keys [member/roles]}]
+  [?badges {:as props :keys [membership/roles]}]
   (when (or (seq ?badges)
             (:role/board-admin roles))
     (plural-editor (merge props
@@ -437,7 +437,7 @@
                                                [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
                                                [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]])
                            :show-?item      (fn [{:as   ?badge
-                                                  :syms [?label ?color]} {:keys [member/roles]}]
+                                                  :syms [?label ?color]} {:keys [membership/roles]}]
                                               (let [bg    (or (u/some-str @?color) "#ffffff")
                                                     color (color/contrasting-text-color bg)]
                                                 (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex
@@ -689,10 +689,10 @@
   {:make-?field (fn [init _props]
                   (io/field :many {:tag/id ?id}
                             :init init))}
-  [?tags {:as props :keys [field/can-edit? member/roles]}]
+  [?tags {:as props :keys [field/can-edit? membership/roles]}]
   (let [all-tags (-> (io/closest ?tags :db/id)
                      db/entity
-                     :member/entity
+                     :membership/entity
                      :entity/member-tags)
         by-id    (reduce #(assoc %1 (:tag/id %2) %2) {} all-tags)
         selected (into #{} (map :tag/id) @?tags)
