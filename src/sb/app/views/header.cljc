@@ -16,7 +16,8 @@
             [yawn.hooks :as h]
             [yawn.util :as yu]
             [sb.routing :as routing]
-            [sb.query :as q]))
+            [sb.query :as q]
+            [yawn.view :as v]))
 
 #?(:cljs
    (defn lang-menu-content []
@@ -52,7 +53,7 @@
         (t :tr/view-all)]]
       (t :tr/no-messages))))
 
-(ui/defview chat []
+(ui/defview chat-old []
   (let [!open? (h/use-state false)
         unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]
     [:el Popover/Root
@@ -74,17 +75,30 @@
         (when @!open?
           (chats-list))]]]]))
 
+(ui/defview chat []
+  (let [unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]
+    [radix/menubar-menu {:trigger (v/x [:button {:tab-index 0}
+                                        (when unread
+                                          [:div.z-10.absolute.font-bold.text-xs.text-center.text-focus-accent
+                                           {:style {:top 2 :right 0 :width 20}}
+                                           unread])
+                                        [icons/paper-plane (when unread "text-focus-accent")]])
+                         :content (v/x
+                                    [:Suspense {}
+                                     [:div.bg-white.p-2
+                                      {:style {:width 360}}
+                                      [chats-list]]])}]))
+
 (ui/defview account []
   (if-let [account (db/get :env/config :account)]
     [:<>
-     (radix/dropdown-menu
+     (radix/menubar-menu
        {:trigger [:button {:tab-index 0}
                   [:img.rounded-full.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
         :items   [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (t :tr/home)]
                   [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
-                  [{:sub?     true
-                    :trigger  [icons/languages "w-5 h-5"]
-                    :items (lang-menu-content)}]]})]
+                  [{:trigger [icons/languages "w-5 h-5"]
+                    :items   (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
      {:href (routes/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
 
@@ -94,13 +108,11 @@
   (when-let [entities (-> (:value (q/use [`member.data/descriptions {:ids @routing/!recent-ids}]))
                           ui/use-last-some)]
     (when (seq entities)
-      (radix/dropdown-menu
-        {:id      :show-recents
-         :trigger [:button (t :tr/recent) down-arrow]
-         :items   (into []
-                        (map (fn [entity]
-                               [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
-                                (:entity/title entity)]))
+      (radix/menubar-menu
+        {:trigger [:button (t :tr/recent) down-arrow]
+         :items   (mapv (fn [entity]
+                          [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
+                           (:entity/title entity)])
                         entities)}))))
 
 (ui/defview entity [{:as   entity
@@ -116,14 +128,14 @@
      [:a.hover:underline.text-xl.font-semibold.text-ellipsis.truncate.self-center {:href path} title]
 
      [:div.flex-grow]
-     (into [:div.flex.gap-1]
-           (concat children
-                   [(entity.ui/settings-button entity)
-                    (recents)
-                    (radix/dropdown-menu
-                      {:id      :new
-                       :trigger [:button (t :tr/new) down-arrow]
-                       :items   [[{:on-select #(routes/nav! 'sb.app.board.ui/new)} (t :tr/board)]
-                                 [{:on-select #(routes/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
-                    [chat]
-                    [account]]))]))
+     [:div.flex.gap-1
+      (entity.ui/settings-button entity)
+      [radix/menubar-root {:class "contents"}
+       (concat children
+               [(recents)
+                (radix/menubar-menu
+                  {:trigger [:button (t :tr/new) down-arrow]
+                   :items   [[{:on-select #(routes/nav! 'sb.app.board.ui/new)} (t :tr/board)]
+                             [{:on-select #(routes/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
+                [chat]
+                [account]])]]]))

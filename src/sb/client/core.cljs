@@ -32,7 +32,7 @@
 (ui/defview root
   []
   (let [{:as match :keys [router/root
-                          router/modal]} (react/useDeferredValue @routing/!location)]
+                          router/modal]} (do #_react/useDeferredValue @routing/!location)]
     [:div.w-full.font-sans
      (dev-info match)
      [:Suspense {:fallback default-loading-bar}

@@ -81,14 +81,15 @@
    [:div.flex.items-center.px-3.leading-snug
     [:div.line-clamp-2 title]]])
 
-(ui/defview settings-button [{:as entity :keys [member/roles]}]
-  (when-let [path (and (or (:role/admin roles)
-                           (:role/org-admin roles))
-                       (some-> (routing/entity-route entity 'admin-ui/settings)
-                               routing/path-for))]
-    [:a.button
-     {:href path}
-     [icons/gear "icon-lg"]]))
+(ui/defview settings-button [entity]
+  (let [roles (az/all-roles nil entity)]
+    (when-let [path (and (or (:role/admin roles)
+                             (:role/org-admin roles))
+                         (some-> (routing/entity-route entity 'admin-ui/settings)
+                                 routing/path-for))]
+      [:a.button
+       {:href path}
+       [icons/gear "icon-lg"]])))
 
 (ui/defview row
   {:key :entity/id}

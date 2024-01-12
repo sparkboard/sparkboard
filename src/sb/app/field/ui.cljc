@@ -528,7 +528,7 @@
                        (.preventDefault e)
                        (some-> (j/get-in e [:dataTransfer :files 0]) on-file))}
 
-     [:div.block.absolute.inset-0.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
+     [:div.block.absolute.inset-0.rounded.flex.items-center.justify-center.rounded-lg
       (v/props {:class "text-muted-txt hover:text-txt bg-contain bg-no-repeat bg-center"}
                (when thumbnail
                  {:style {:background-image (asset.ui/css-url thumbnail)}})
