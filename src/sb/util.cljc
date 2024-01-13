@@ -184,3 +184,6 @@
        ~@body
        (finally
          (println (str ~label ": " (- (System/currentTimeMillis) start#) "ms"))))))
+
+(defmacro for! [& body]
+  `(doall (for ~@body)))

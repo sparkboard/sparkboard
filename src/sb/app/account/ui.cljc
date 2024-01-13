@@ -6,17 +6,15 @@
             [sb.app.account.data :as data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
-            [sb.app.form.ui :as form.ui]
+            [sb.app.membership.data :as member.data]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
-            [sb.icons :as icons]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
-
 
 (defn account:sign-in-with-google []
   (v/x
@@ -39,32 +37,32 @@
   (ui/with-form [!account {:account/email    (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
-                (let [!step (h/use-state :email)]
-                  [:form.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
-                   {:on-submit (fn [^js e]
-                                 (.preventDefault e)
-                                 (case @!step
-                                   :email (do (reset! !step :password)
-                                              (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
-                                   :password (p/let [res (routes/POST 'sb.server.account/login! @!account)]
-                                               (js/console.log "res" res)
-                                               (prn :res res))))}
+    (let [!step (h/use-state :email)]
+      [:form.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       {:on-submit (fn [^js e]
+                     (.preventDefault e)
+                     (case @!step
+                       :email (do (reset! !step :password)
+                                  (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
+                       :password (p/let [res (routing/POST 'sb.server.account/login! @!account)]
+                                   (js/console.log "res" res)
+                                   (prn :res res))))}
 
 
-                   [:div.flex-v.gap-2
-                    [field.ui/text-field ?email nil]
-                    (when (= :password @!step)
-                      [field.ui/text-field ?password {:id "account-password"}])
-                    (str (forms/visible-messages !account))
-                    [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
-                     (t :tr/continue-with-email)]]
+       [:div.flex-v.gap-2
+        [field.ui/text-field ?email nil]
+        (when (= :password @!step)
+          [field.ui/text-field ?password {:id "account-password"}])
+        (str (forms/visible-messages !account))
+        [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
+         (t :tr/continue-with-email)]]
 
-                   [:div.relative
-                    [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
-                    [:div.relative.flex.justify-center.text-xs.uppercase
-                     [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
-                   [account:sign-in-with-google]
-                   [account:sign-in-terms]])))
+       [:div.relative
+        [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+        [:div.relative.flex.justify-center.text-xs.uppercase
+         [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
+       [account:sign-in-with-google]
+       [account:sign-in-terms]])))
 
 (ui/defview sign-in
   {:route "/login"}
@@ -82,44 +80,63 @@
 (ui/defview show
   {:route            "/"
    :endpoint/public? true}
-  [params]
-  (if (db/get :env/config :account-id)
-    (let [?filter  (h/use-callback (forms/field))
-          all      (data/all {})
-          account  (db/get :env/config :account)
-          title    (v/from-element :div.font-medium.text-xl.px-2)
-          section  (v/from-element :div.flex-v.gap-2)
-          entities (-> (group-by :entity/kind all)
-                       (update-vals #(->> (sequence (ui/filtered @?filter) %)
-                                          (sort-by :entity/created-at u/compare:desc)))
-                       (u/guard seq))]
+  [{:keys [account-id]} params]
+  (if account-id
+    (let [?filter       (h/use-callback (forms/field))
+          all           (data/all {})
+          account       (db/get :env/config :account)
+          {:as entities :keys [board org]} (-> (->> all (map :membership/entity) (group-by :entity/kind))
+                                               (update-vals #(sort-by :entity/created-at u/compare:desc %))
+                                               (u/guard seq))
+          boards-by-org (group-by :entity/parent board)
+          match-text    @?filter]
       [:div.divide-y
        [header/entity (data/account-as-entity account) nil]
 
-       (when-let [{:keys [org board project]} entities]
+       (when (seq entities)
          [:div.p-body.flex-v.gap-8
           (when (> (count all) 6)
             [field.ui/filter-field ?filter nil])
           (let [limit (partial ui/truncate-items {:limit 10})]
-            [:div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-2.md:gap-8.-mx-2
-             (when (seq project)
-               [section
-                [title (t :tr/projects)]
-                (limit (map entity.ui/row project))])
-             (when (seq board)
-               [section
-                [title (t :tr/boards)]
-                (limit (map entity.ui/row board))])
-             (when (seq org)
-               [section
-                [title (t :tr/orgs)]
-                (limit (map entity.ui/row org))])])])
+            (when (seq org)
+              [:div.flex-v.gap-4
+               (u/for! [org org
+                        :let [projects-by-board (into {}
+                                                      (keep (fn [board]
+                                                              (when-let [projects (->> (member.data/membership account-id board)
+                                                                                       :membership/_member
+                                                                                       (into []
+                                                                                             (comp (map :membership/entity)
+                                                                                                   (ui/filtered @?filter)))
+                                                                                       seq)]
+                                                                [board projects])))
+                                                      (get boards-by-org org))
+                              boards            (into []
+                                                      (filter (fn [board]
+                                                                (or (contains? projects-by-board board)
+                                                                    (ui/match-entity match-text board))))
+                                                      (get boards-by-org org))]
+                        :when (or (seq boards)
+                                  (seq projects-by-board)
+                                  (ui/match-entity match-text org))]
+                 [:div.contents {:key (:entity/id org)}
+                  [:div.text-lg.font-semibold (:entity/title org)]
+                  (limit
+                    (u/for! [board boards
+                             :let [projects (get projects-by-board board)]]
+                      [:div.flex-v
+                       [entity.ui/row board]
+                       [:div.pl-14.ml-1.flex.flex-wrap.gap-2.mt-2
+                        (u/for! [project projects]
+                          [:a.bg-gray-100.hover:bg-gray-200.rounded.h-12.inline-flex.items-center.px-3.cursor-default
+                           {:href (routing/entity-path project 'ui/show)}
+                           (:entity/title project)])]]))])]))])
        [:div.p-body
-        (when (and (empty? @?filter) (empty? (:board entities)))
+        (when (and (empty? match-text) (empty? (:board entities)))
           [ui/hero
            (ui/show-markdown
              (t :tr/start-board-new))
            [:a.btn.btn-primary.btn-base {:class "mt-6"
-                                         :href  (routes/path-for ['sb.app.board-data/new])}
+                                         :href  (routing/path-for ['sb.app.board-data/new])}
             (t :tr/create-first-board)]])]])
     (ui/redirect `sign-in)))

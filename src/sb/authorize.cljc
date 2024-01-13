@@ -42,9 +42,9 @@
 (defn get-roles [account-id entity]
   (or (case (:entity/kind entity)
         :account (when (sch/id= account-id (:entity/id entity)) #{:role/self})
-        :membership (when (sch/id= account-id (-> entity :membership/account :entity/id)) #{:role/self})
+        :membership (when (sch/id= account-id (-> entity :membership/member :entity/id)) #{:role/self})
         (:membership/roles #?(:cljs entity
-                              :clj  (db/entity (dl/entid [:membership/entity+account [(:db/id entity) (dl/resolve-id account-id)]])))))
+                              :clj  (db/entity (dl/entid [:membership/entity+member [(:db/id entity) (dl/resolve-id account-id)]])))))
       #{}))
 
 (defn scoped-roles [account-id {:as entity :keys [entity/kind]}]

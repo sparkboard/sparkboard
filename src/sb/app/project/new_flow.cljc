@@ -2,7 +2,6 @@
   (:require [inside-out.forms :as forms]
             [re-db.api :as db]
             [sb.app.board.data :as board.data]
-            [sb.app.entity.ui :as entity.ui]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -10,7 +9,7 @@
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.query :as q]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.server.datalevin :as dl]
             [sb.validate :as validate]
             [yawn.hooks :as h]
@@ -68,7 +67,7 @@
                        (ui/with-submission [result (new! {:project @!project})
                                             :form !project]
                          (prn result)
-                         (routes/nav! 'sb.app.board-data/show {:board-id board-id})))}
+                         (routing/nav! 'sb.app.board-data/show {:board-id board-id})))}
          [form
 
 

@@ -4,12 +4,12 @@
             [promesa.core :as p]
             [sb.app.chat.data :as data]
             [sb.app.field.ui :as field.ui]
-            [sb.app.member.data :as member.data]
+            [sb.app.membership.data :as member.data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.schema :as sch]
             [sb.util :as u]
             [yawn.hooks :as h]
@@ -51,7 +51,7 @@
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
     [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
-     {:href  (routes/path-for [`chat {:chat-id id}])
+     {:href  (routing/path-for [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} other]
      [:div.flex-v.w-full.overflow-hidden
@@ -161,12 +161,12 @@
         [chat-messages params]
         [chat-header params])]]))
 
-(routes/register-route chat
-                       {:alias-of chats
+(routing/register-route chat
+                        {:alias-of chats
                         :route    "/chats/:chat-id"
                         :view/router   :router/modal})
 
-(routes/register-route new-chat
-                       {:alias-of chats
+(routing/register-route new-chat
+                        {:alias-of chats
                         :route    "/chats/:entity-id/new/:other-id"
                         :view/router   :router/modal})

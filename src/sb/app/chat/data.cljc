@@ -7,6 +7,10 @@
             [sb.server.datalevin :as dl]
             [sb.util :as u]))
 
+;; TODO
+;; fix these queries to reflect the change in schema,
+;; chat participants are "board memberships" now rather than accounts
+
 (def entity-fields [:entity/id :entity/created-at :entity/updated-at])
 
 (sch/register!

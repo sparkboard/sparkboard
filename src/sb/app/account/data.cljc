@@ -6,6 +6,7 @@
     [sb.authorize :as az]
     [sb.query :as q]
     [sb.schema :as sch :refer [?]]
+    [sb.server.datalevin :as dl]
     [sb.util :as u]))
 
 (sch/register!
@@ -39,24 +40,51 @@
         (comp (map :membership/entity)
               (filter (comp #{:org} :entity/kind))
               (map (q/pull entity.data/entity-keys)))
-        (db/where [[:membership/account account-id]])))
+        (db/where [[:membership/member account-id]])))
 
+(comment
+  (let [account-id [:entity/id #uuid "b03a4669-a7ef-3e8e-bddc-8413e004c338"]]
+    (u/timed `all
+             (->> (q/pull `[{:membership/_member
+                             [:membership/roles
+                              :entity/id
+                              :entity/kind
+                              {:membership/entity [:entity/id
+                                                   :entity/kind
+                                                   :entity/title
+                                                   :entity/created-at
+                                                   {:image/avatar [:entity/id]}
+                                                   {:image/background [:entity/id]}]}
+                              {:membership/_member :...}]}] account-id)
+                  :membership/_member
+                  (mapcat #(cons % (:membership/_member %)))
+                  (map #(assoc (:membership/entity %) :membership/roles (:membership/roles %)))))))
 (q/defquery all
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
+  (prn account-id)
   (u/timed `all
-           (->> (q/pull '[{:membership/_account
+           (->> (q/pull `[{:membership/_member
                            [:membership/roles
+                            :entity/id
+                            :entity/kind
+                            {:membership/member [:entity/id
+                                                 :entity/kind
+                                                 :account/display-name
+                                                 {:image/avatar [:entity/id]}]}
                             {:membership/entity [:entity/id
                                                  :entity/kind
                                                  :entity/title
                                                  :entity/created-at
+                                                 {:entity/parent [:entity/id]}
                                                  {:image/avatar [:entity/id]}
-                                                 {:image/background [:entity/id]}]}]}]
-                        account-id)
-                :membership/_account
-                (map #(u/lift-key % :membership/entity)))))
+                                                 {:image/background [:entity/id]}]}
+                            {:membership/_member :...}]}] account-id)
+                :membership/_member
+                #_(mapcat #(cons % (:membership/_member %)))
+                #_(map #(assoc-in % [:membership/entity :membership/roles] (:membership/roles %)))
+                #_clojure.pprint/pprint)))
 
 #?(:clj
    (defn login!

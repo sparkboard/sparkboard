@@ -8,7 +8,7 @@
             [sb.app.board.data :as data]
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.ui :as entity.ui]
-            [sb.app.member.ui :as member.ui]
+            [sb.app.membership.ui :as member.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.project.data :as project.data]
@@ -134,7 +134,7 @@
 
 
        [radix/tab-content {:value (t :tr/projects)}
-        (some->> (seq (data/drafts nil))
+        (some->> (seq (data/drafts {:board-id board-id}))
                  (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
                        (map entity.ui/row)))
         (into [:div.grid]

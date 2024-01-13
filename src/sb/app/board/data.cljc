@@ -2,7 +2,7 @@
   (:require [re-db.api :as db]
             [sb.app.field.data :as field.data]
             [sb.app.entity.data :as entity.data]
-            [sb.app.member.data :as member.data]
+            [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -102,7 +102,8 @@
   )
 
 (q/defquery show
-  {:prepare [(az/with-roles :board-id)]}
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `show
            (if-let [board (db/pull `[~@entity.data/entity-keys
@@ -116,10 +117,10 @@
              (throw (ex-info "Board not found!" {:status 400})))))
 
 (def project-fields `[~@entity.data/entity-keys])
-(def member-fields [{:membership/account [:entity/id
-                                          :entity/kind
-                                          {:image/avatar [:entity/id]}
-                                          :account/display-name]}
+(def member-fields [{:membership/member [:entity/id
+                                         :entity/kind
+                                         {:image/avatar [:entity/id]}
+                                         :account/display-name]}
                     {:entity/tags [:entity/id
                                    :tag/label
                                    :tag/color]}
@@ -129,16 +130,18 @@
                     :membership/roles])
 
 (q/defquery members
-  {:prepare [(az/with-roles :board-id)]}
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
-  (u/timed `members
-           (->> (db/where [[:membership/entity board-id]])
-                (remove (some-fn :entity/deleted-at :entity/archived?))
-                (mapv (db/pull `[~@entity.data/entity-keys
-                                 ~@member-fields])))))
+  (u/timed `members (->> (db/entity board-id)
+                         :membership/_entity
+                         (remove (some-fn :entity/deleted-at :entity/archived?))
+                         (mapv (db/pull `[~@entity.data/entity-keys
+                                          ~@member-fields])))))
 
 (q/defquery projects
-  {:prepare [(az/with-roles :board-id)]}
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `projects
            (->> (db/where [[:entity/parent board-id]])
@@ -147,11 +150,11 @@
 
 (q/defquery drafts
   {:prepare az/with-account-id}
-  [{:keys [account-id]}]
-  (into []
-        (comp (filter (comp (every-pred :entity/draft? #(= :project (:entity/kind %))) :membership/entity))
-              (map #(db/pull project-fields (:membership/entity %))))
-        (db/where [[:membership/account (dl/resolve-id account-id)]])))
+  [{:keys [account-id board-id]}]
+  (->> (member.data/membership account-id board-id)
+       :membership/_member
+       (filter :entity/draft?)
+       (map #(db/pull project-fields (:membership/entity %)))))
 
 (defn authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? account-id board)
@@ -168,9 +171,9 @@
   (let [board  (-> (dl/new-entity board :board :by account-id)
                    (validate/conform :board/as-map))
         _      (authorize-create! board account-id)
-        member (-> {:membership/entity  board
-                    :membership/account account-id
-                    :membership/roles   #{:role/admin}}
+        member (-> {:membership/entity board
+                    :membership/member account-id
+                    :membership/roles  #{:role/admin}}
                    (dl/new-entity :membership))]
     (db/transact! [member])
     board))

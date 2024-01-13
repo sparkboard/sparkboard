@@ -8,7 +8,7 @@
             [re-db.api :as db]
             [re-db.sync :as sync]
             [re-db.sync.transit :as transit]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.util :as u]
             [re-db.sync.entity-diff-2 :as entity-diff])
   #?(:cljs (:require-macros [sb.query :as q])))
@@ -136,7 +136,7 @@
 #?(:cljs
    (defn effect! [f & args]
      #_(throw (ex-info "Effect! error" {}))
-     (-> (routes/POST 'sb.server.core/effect! (into [f] args))
+     (-> (routing/POST 'sb.server.core/effect! (into [f] args))
          (p/then (fn [{:as result :keys [txs]}]
                    (when txs
                      (db/transact! txs))

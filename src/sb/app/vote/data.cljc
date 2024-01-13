@@ -7,10 +7,10 @@
    :ballot/as-map     {s- [:map {:closed true}
                            :ballot/key
                            :ballot/board
-                           :ballot/account
+                           :ballot/membership
                            :ballot/project]}
-   :ballot/key        (merge {:doc "ballot/board + ballot/account + ballot/project"}
+   :ballot/key        (merge {:doc "ballot/board + ballot/membership + ballot/project"}
                              sch/unique-id-str)
    :ballot/board      (sch/ref :one)
-   :ballot/account    (sch/ref :one)
+   :ballot/membership    (sch/ref :one)
    :ballot/project    (sch/ref :one)})

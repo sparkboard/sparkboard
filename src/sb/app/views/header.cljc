@@ -6,17 +6,16 @@
             [sb.app.chat.data :as chat.data]
             [sb.app.chat.ui :as chat.ui]
             [sb.app.entity.ui :as entity.ui]
-            [sb.app.member.data :as member.data]
-            [sb.i18n :as i :refer [t]]
-            [sb.routing :as routes]
-            [sb.app.views.ui :as ui]
-            [sb.icons :as icons]
+            [sb.app.membership.data :as member.data]
             [sb.app.views.radix :as radix]
+            [sb.app.views.ui :as ui]
+            [sb.i18n :as i :refer [t]]
+            [sb.icons :as icons]
+            [sb.query :as q]
+            [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.util :as yu]
-            [sb.routing :as routing]
-            [sb.query :as q]
             [yawn.view :as v]))
 
 #?(:cljs
@@ -49,7 +48,7 @@
             (take 6)
             (map (partial chat.ui/chat-snippet params)))
        [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
-        {:href (routes/path-for [`chat.ui/chats])}
+        {:href (routing/path-for [`chat.ui/chats])}
         (t :tr/view-all)]]
       (t :tr/no-messages))))
 
@@ -94,13 +93,13 @@
     [:<>
      (radix/menubar-menu
        {:trigger [:button {:tab-index 0}
-                  [:img.rounded-full.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
-        :items   [[{:on-click #(routes/nav! 'sb.app.account-ui/show)} (t :tr/home)]
-                  [{:on-click #(routes/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
+                  [:img.rounded.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
+        :items   [[{:on-click #(routing/nav! 'sb.app.account-ui/show)} (t :tr/home)]
+                  [{:on-click #(routing/nav! 'sb.app.account-ui/logout!)} (t :tr/logout)]
                   [{:trigger [icons/languages "w-5 h-5"]
                     :items   (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7
-     {:href (routes/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
+     {:href (routing/path-for ['sb.app.account-ui/sign-in])} (t :tr/continue-with-email)]))
 
 (def down-arrow (icons/chevron-down:mini "ml-1 -mr-1 w-4 h-4"))
 
@@ -111,7 +110,7 @@
       (radix/menubar-menu
         {:trigger [:button (t :tr/recent) down-arrow]
          :items   (mapv (fn [entity]
-                          [{:on-select #(routes/nav! (routes/entity-route entity 'ui/show) entity)}
+                          [{:on-select #(routing/nav! (routing/entity-route entity 'ui/show) entity)}
                            (:entity/title entity)])
                         entities)}))))
 
@@ -119,7 +118,7 @@
                      :keys [entity/title
                             membership/roles
                             image/avatar]} children]
-  (let [path (routes/entity-path entity 'ui/show)]
+  (let [path (routing/entity-path entity 'ui/show)]
     [:div.header
      (when avatar
        [:a {:href path}
@@ -135,7 +134,7 @@
                [(recents)
                 (radix/menubar-menu
                   {:trigger [:button (t :tr/new) down-arrow]
-                   :items   [[{:on-select #(routes/nav! 'sb.app.board.ui/new)} (t :tr/board)]
-                             [{:on-select #(routes/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
+                   :items   [[{:on-select #(routing/nav! 'sb.app.board.ui/new)} (t :tr/board)]
+                             [{:on-select #(routing/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
                 [chat]
                 [account]])]]]))

@@ -8,6 +8,7 @@
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.color :as color]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -91,33 +92,32 @@
 
 (def get-tag
   (memoize
-    (fn [membership-id tag-id]
-      (-> (db/entity membership-id) :membership/entity :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))))
+    (fn [parent-id tag-id]
+      (-> (db/entity parent-id) :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))))
+
+(defn resolve-tags [board-membership]
+  (let [parent-id (:db/id (:membership/entity board-membership))]
+    (mapv #(get-tag parent-id (:tag/id %))
+          (:entity/tags board-membership))))
 
 (ui/defview project-members [project props]
-  [:div.grid.grid-cols-2.gap-2
-   (for [[i member] (->> (take 10 (repeat (first (:membership/_entity project))))
-                         (sort-by u/compare:desc :entity/created-at)
-                         (map-indexed (fn [i x] [i x])))
-         :let [{{:as account :keys [account/display-name]} :membership/account
-                :keys                                      [entity/tags]} member
-
-               ;; a bit of a hack; a way to jump from an account to a board membership
-               ;; (:board-membership :membership [:membership/acc
-               board-membership (db/entity [:entity/id (sch/composite-uuid :membership
-                                                                           (:entity/parent project)
-                                                                           account)])]]
-     [:div.flex.items-center.gap-2.text-sm {:key      i
-                                            :on-click #(routing/nav! (routing/entity-route member 'ui/show))}
-      [:img.object-cover.rounded.w-8.h-8 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]
-      display-name
-      (ui/pprinted @(db/entity [:entity/id (sch/composite-uuid :membership
-                                                               (sch/unwrap-id (:entity/parent project))
-                                                               (sch/unwrap-id account))]))
-
-      (for [tag tags
-            :let [tag (get-tag (:db/id member) (:tag/id tag))]]
-        (str tag))])]
+  [:div.field-wrapper
+   [:div.field-label (t :tr/team)]
+   [:div.grid.grid-cols-2.gap-6
+    (for [member (->> (:membership/_entity project)
+                      (sort-by u/compare:desc :entity/created-at))
+          :let [board-membership (-> member :membership/member)
+                {:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
+      [:div.flex.items-center.gap-2
+       {:key      (:entity/id member)
+        :on-click #(routing/nav! (routing/entity-route member 'ui/show))}
+       [:img.object-cover.rounded.w-12.h-12 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]
+       [:div.flex-v.gap-1
+        display-name
+        [:div.flex.flex-wrap.gap-2
+         (for [{:as tag :tag/keys [id label color]} (resolve-tags board-membership)]
+           [:div.tag-sm {:style (color/color-pair color)}
+            label])]]])]]
   )
 
 (ui/defview show

@@ -7,7 +7,7 @@
             [sb.server.datalevin :as dl]
             [sb.validate :as vd]
             [sb.transit :as t]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.server.env :as env]
             [re-db.api :as db]
             [ring.middleware.oauth2 :as oauth2]
@@ -120,7 +120,7 @@
 
 (defn logout!
   [_ _]
-  (-> (ring.response/redirect (routes/path-for 'sb.app.account-ui/show))
+  (-> (ring.response/redirect (routing/path-for 'sb.app.account-ui/show))
       (res:logout)))
 
 (defn res:login [res account-id]
@@ -234,7 +234,7 @@
                           :body
                           (json/parse-string keyword))]
     (db/transact! (google-account-tx account-id provider-info))
-    (-> (ring.response/redirect (routes/path-for 'sb.app.account-ui/show))
+    (-> (ring.response/redirect (routing/path-for 'sb.app.account-ui/show))
         (res:login account-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

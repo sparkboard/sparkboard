@@ -1,4 +1,4 @@
-(ns sb.app.member.data
+(ns sb.app.membership.data
   (:require [sb.app.entity.data :as entity.data]
             [sb.authorize :as az]
             [sb.query :as q]
@@ -10,7 +10,7 @@
 
 (sch/register!
   {:roles/as-map                        {s- :membership/as-map}
-   :membership/entity+account           (merge {:db/tupleAttrs [:membership/entity :membership/account]}
+   :membership/entity+member            (merge {:db/tupleAttrs [:membership/entity :membership/member]}
                                                sch/unique-value)
    :membership/_entity                  {s- [:or
                                              :membership/as-map
@@ -24,7 +24,7 @@
                                                sch/many
                                                {s- [:set :membership/role]})
    :membership/entity                   (sch/ref :one)
-   :membership/account                  (sch/ref :one)
+   :membership/member                   (sch/ref :one)
 
    :entity/tags                         {s- [:sequential [:map {:closed true} :tag/id]]}
    :entity/custom-tags                  {s- [:sequential [:map {:closed true} :tag/label]]}
@@ -53,7 +53,7 @@
                                              :entity/id
                                              :entity/kind
                                              :membership/entity
-                                             :membership/account
+                                             :membership/member
 
                                              (? :membership/inactive?)
                                              (? :membership/email-frequency)
@@ -80,33 +80,46 @@
                                          :entity/kind
                                          :entity/member-tags
                                          :entity/member-fields]}
-                    {:membership/account [~@entity.data/entity-keys
-                                          :account/display-name]}]
-                  (:member-id params))))
+                    {:membership/member [~@entity.data/entity-keys
+                                         :account/display-name]}]
+                  (:membership-id params))))
+
+(defn membership-id [member-id entity-id]
+  [:entity/id (sch/composite-uuid :membership member-id entity-id)])
+
+(def membership (comp db/entity membership-id))
 
 #?(:clj
-   (defn membership-id [account-id entity-id]
-     (dl/entid [:membership/entity+account [(dl/resolve-id entity-id) (dl/resolve-id account-id)]])))
+   (defn ensure-membership! [account entity]
+     (let [entity (dl/entity entity)]
+       (case (:entity/kind entity)
+         :project (ensure-membership! account (:entity/parent entity))
+         (when-not (dl/resolve-id (membership-id account entity))
+           (throw (ex-info "Not a member" {:status 403})))))))
 
-#?(:clj
-   (defn ensure-membership! [account-id entity-id]
-     (when-not (membership-id account-id entity-id)
-       (throw (ex-info "Not a member" {:status 403})))))
-
-(defn member-active? [member]
+(defn active-member? [member]
   (and (not (:membership/inactive? member))
        (not (:entity/deleted-at member))))
 
 #?(:clj
    (defn can-view? [account-id entity]
-     (let [visibility-entity (case (:entity/kind entity)
-                               (:board :org) entity
-                               :project (:entity/parent entity)
-                               :membership (:membership/entity entity))]
-       (or (:entity/public? visibility-entity)
-           (some-> (membership-id account-id entity)
-                   db/entity
-                   member-active?)))))
+     (let [kind (:entity/kind entity)]
+       (case kind
+         (:board :org) (or (:entity/public? entity)
+                           (active-member? (membership account-id entity)))
+         :project (can-view? account-id (:entity/parent entity))
+         :membership (let [member (:membership/member entity)]
+                       (case (:entity/kind member)
+                         :account (sch/id= account-id member)
+                         :membership (can-view? account-id (:membership/entity entity))))))))
+
+#?(:clj
+   (defn assert-can-view [id-key]
+     (fn assert-can-view* [req params]
+       (let [entity (dl/entity (id-key params))]
+         (when-not (can-view? (:account-id params) entity)
+           (az/unauthorized! (str "Not authorized to view this "
+                                  (:entity/kind entity "entity."))))))))
 
 (q/defquery descriptions
   {:endpoint {:query true}
@@ -115,7 +128,7 @@
   (u/timed `descriptions
            (into []
                  (comp (map (comp db/entity sch/wrap-id))
-                       (filter member-active?)
+                       (filter active-member?)
                        (map (db/pull `[~@entity.data/entity-keys
                                        :entity/public?])))
                  ids)))
@@ -133,7 +146,7 @@
               :in $ ?entity ?search-term
               :where
               [?m :membership/entity ?entity]
-              [?m :membership/account ?account]
+              [?m :membership/member ?account]
               [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]]
             entity-id
             search-term))
@@ -143,10 +156,10 @@
                                         {:image/avatar [:entity/id]}]) ...]
             :in $ ?my-account ?search-term
             :where
-            [?me :membership/account ?my-account]
+            [?me :membership/member ?my-account]
             [?me :membership/entity ?entity]
             [?you :membership/entity ?entity]
-            [?you :membership/account ?your-account]
+            [?you :membership/member ?your-account]
             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
           account-id
           search-term)))
@@ -157,8 +170,11 @@
            :search-term "matt"}))
 
 (defn new-entity-with-membership [entity account-id roles]
-  {:entity/id          (random-uuid)
-   :entity/kind        :membership
-   :membership/account (sch/wrap-id account-id)
-   :membership/entity  entity
-   :membership/roles   roles})
+  {:entity/id         (random-uuid)
+   :entity/kind       :membership
+   :membership/member (sch/wrap-id account-id)
+   :membership/entity entity
+   :membership/roles  roles})
+
+(comment
+  @(db/entity [:entity/id #uuid "102d77ed-2b62-309c-b33b-b033cc07a008"]))

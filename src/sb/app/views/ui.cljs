@@ -49,13 +49,16 @@
 (defn filter-value [entity]
   (case (:entity/kind entity)
     :account (:account/display-name entity)
-    :membership (-> (:membership/account entity) :account/display-name)
+    :membership (-> (:membership/member entity) :account/display-name)
     (:entity/title entity)))
 
+(defn match-entity [match-text entity]
+  (if match-text
+    (some->> (filter-value entity) (re-find (re-pattern (str "(?i)" match-text))))
+    true))
+
 (defn filtered [match-text]
-  (filter (if match-text
-            #(some->> (filter-value %) (re-find (re-pattern (str "(?i)" match-text))))
-            identity)))
+  (filter (partial match-entity match-text)))
 
 (defn pprinted [x & _]
   [:pre.whitespace-pre-wrap (with-out-str (clojure.pprint/pprint x))])
@@ -249,7 +252,7 @@
                       image/avatar]}]
   (let [class (v/classes [(str "w-" size)
                           (str "h-" size)
-                          "flex-none rounded-full"])
+                          "flex-none rounded"])
         props (dissoc props :size)]
     (or
       (when-let [src (asset.ui/asset-src avatar :avatar)]
@@ -292,7 +295,7 @@
         !expanded?  (h/use-state false)
         expandable? (> item-count limit)]
     (cond (not expandable?) items
-          @!expanded? [:<> items [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
+          @!expanded? [:<> (seq items) [:div.contents {:on-click #(reset! !expanded? false)} unexpander]]
           :else [:<> (take limit items) [:div.contents {:on-click #(reset! !expanded? true)} (expander (- item-count limit))]])))
 
 (def hero (v/from-element :div.rounded-lg.bg-gray-100.p-6.width-full))

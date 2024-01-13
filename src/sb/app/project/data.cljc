@@ -2,7 +2,7 @@
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
             [sb.app.field.data :as field.data]
-            [sb.app.member.data :as member.data]
+            [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -96,10 +96,10 @@
                                                   :entity/kind
                                                   :entity/created-at
                                                   :membership/roles
-                                                  {:membership/account [:account/display-name
-                                                                        :entity/id
-                                                                        :entity/kind
-                                                                        {:image/avatar [:entity/id]}]}]}
+                                                  {:membership/member [:account/display-name
+                                                                       :entity/id
+                                                                       :entity/kind
+                                                                       {:image/avatar [:entity/id]}]}]}
                             {:entity/parent
                              [~@entity.data/entity-keys
                               {:entity/project-fields ~field.data/field-keys}]}]

@@ -14,7 +14,7 @@
             [sb.app.field.admin-ui :as field.admin-ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
-            [sb.app.member.ui]
+            [sb.app.membership.ui]
             [sb.app.notification.ui]
             [sb.app.org.admin-ui]
             [sb.app.org.ui]

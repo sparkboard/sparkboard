@@ -10,7 +10,7 @@
             [sb.app.views.header :as header]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -42,7 +42,7 @@
         [:div.flex.gap-4.items-stretch
          [field.ui/filter-field ?filter {:loading? (:loading? result)}]
          [:a.btn.btn-white.flex.items-center.px-3
-          {:href (routes/path-for ['sb.app.board-data/new
+          {:href (routing/path-for ['sb.app.board-data/new
                                    {:query-params {:org-id (:entity/id org)}}])}
           (t :tr/new-board)]]
         [ui/error-view result]
@@ -72,7 +72,7 @@
                    (.preventDefault e)
                    (ui/with-submission [result (data/new! {:org @!org})
                                         :form !org]
-                                       (routes/nav! [`show {:org-id (:entity/id result)}])))}
+                     (routing/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (t :tr/new-org)]
      [field.ui/text-field ?title {:field/label (t :tr/title)}]
      (domain.ui/domain-field ?domain nil)

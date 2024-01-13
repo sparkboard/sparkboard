@@ -1,23 +1,12 @@
 (ns sb.app.org.data
-  (:require [inside-out.forms :as forms]
-            [promesa.core :as p]
-            [re-db.api :as db]
-            [sb.app.domain-name.data :as domain.data]
+  (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
-            [sb.app.member.data :as member.data]
             [sb.authorize :as az]
-            [sb.i18n :refer [t]]
             [sb.query :as q]
-            [sb.routing :as routes]
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
-            [sb.app.views.ui :as ui]
-            [sb.app.views.header :as header]
-            [sb.icons :as icons]
             [sb.util :as u]
-            [sb.validate :as validate]
-            [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [sb.validate :as validate]))
 
 (sch/register!
   {:org/show-org-tab?          {:doc "Boards should visibly link to this parent organization"
@@ -104,9 +93,9 @@
   [{:keys [account-id org]}]
   (let [org    (-> (dl/new-entity org :org :by account-id)
                    (validate/conform :org/as-map))
-        member (-> {:membership/entity  org
-                    :membership/account account-id
-                    :membership/roles   #{:role/admin}}
+        member (-> {:membership/entity org
+                    :membership/member account-id
+                    :membership/roles  #{:role/admin}}
                    (dl/new-entity :membership))]
     (db/transact! [member])
     org))

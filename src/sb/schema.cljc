@@ -237,11 +237,13 @@
 
 (def prefix->kind* (zipmap (vals kind->prefix*) (keys kind->prefix*)))
 
-(defn kind [uuid]
+(defn kind [uuid & [check?]]
   (let [uuid   (unwrap-id uuid)
-        prefix (subs (str uuid) 0 2)]
+        prefix (subs (str uuid) 0 2)
+        check? (if (some? check?) check? true)]
     (or (prefix->kind* prefix)
-        (throw (ex-info (str "Unknown kind for uuid prefix " prefix) {:uuid uuid :prefix prefix})))))
+        (when check?
+          (throw (ex-info (str "Unknown kind for uuid prefix " prefix) {:uuid uuid :prefix prefix}))))))
 
 (defn kind->prefix [kind]
   (or (kind->prefix* kind) (throw (ex-info (str "Invalid kind: " kind) {:kind kind}))))
@@ -283,8 +285,9 @@
 
 
 (defn to-uuid [kind s]
-  (let [prefix (kind->prefix kind)]
-    (uuid-from-string (str prefix (subs (str s) 2)))))
+  (let [s (str (kind->prefix kind) (subs (str (uuid-from-string s)) 2))]
+    #?(:cljs (uuid s)
+       :clj (java.util.UUID/fromString s))))
 
 (defn composite-uuid [kind & ss]
   (to-uuid kind (->> ss

@@ -5,7 +5,7 @@
             [clojure.repl.deps :as deps]
             [re-db.api :as db]
             [sb.migrate.one-time :as one-time]
-            [sb.routing :as routes]
+            [sb.routing :as routing]
             [sb.server.core]
             [sb.transit :as t]))
 
@@ -35,10 +35,10 @@
   {:shadow.build/stages #{:compile-prepare
                           :flush}}
   [state]
-  (let [endpoints (routes/endpoints)]
+  (let [endpoints (routing/endpoints)]
     (spit-changed "resources/public/js/sparkboard.views.transit.json"
                   (t/write endpoints))
-    (routes/init-endpoints! endpoints))
+    (routing/init-endpoints! endpoints))
   state)
 
 (defn tailwind-dev!
