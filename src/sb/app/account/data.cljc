@@ -39,7 +39,7 @@
   (into []
         (comp (map :membership/entity)
               (filter (comp #{:org} :entity/kind))
-              (map (q/pull entity.data/entity-keys)))
+              (map (q/pull entity.data/listing-fields)))
         (db/where [[:membership/member account-id]])))
 
 (comment

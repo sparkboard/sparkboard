@@ -88,7 +88,7 @@
 
      [:label.relative.flex.items-center
       (when loading?
-        [:div.h-5.w-5.inline-flex.items-center.justify-center.absolute
+        [:div.h-5.w-5.inline-flex-center.absolute
          [ui/loading:spinner "h-3 w-3"]])
       [:input.h-5.w-5.rounded.border-gray-300.text-primary
        (u/dissoc-qualified props)]
@@ -245,7 +245,7 @@
   )
 
 (ui/defview show-video-url [url]
-  [:a.bg-black.w-full.aspect-video.flex.items-center.justify-center.relative
+  [:a.bg-black.w-full.aspect-video.flex-center.relative
    {:href   url
     :target "_blank"
     :style  {:background-image    (asset.ui/css-url (:video/thumbnail (parse-video-url url)))
@@ -268,10 +268,10 @@
          [show-video-url value])
        (when can-edit?
          (text-field ?field (merge props
-                                   {:field/label false
-                                    :field/wrap (fn [v] {:video/url v})
+                                   {:field/label  false
+                                    :field/wrap   (fn [v] {:video/url v})
                                     :field/unwrap :video/url
-                                    :placeholder "YouTube or Vimeo url"})))])))
+                                    :placeholder  "YouTube or Vimeo url"})))])))
 
 (defn show-select-value [{:keys [field/options]} value]
   (let [{:keys [field-option/label
@@ -481,7 +481,7 @@
                         (some-> (j/get-in e [:dataTransfer :files 0]) on-file))}
       (when loading?
         [icons/loading "w-4 h-4 absolute top-0 right-0 text-txt/40 mx-2 my-3"])
-      [:div.block.relative.rounded.cursor-pointer.flex.items-center.justify-center.rounded-lg
+      [:div.block.relative.rounded.cursor-pointer.flex-center.rounded-lg
        (v/props {:class "text-muted-txt hover:text-txt w-32 h-32"}
                 (when thumbnail
                   {:class "bg-contain bg-no-repeat bg-center"
@@ -530,7 +530,7 @@
                        (.preventDefault e)
                        (some-> (j/get-in e [:dataTransfer :files 0]) on-file))}
 
-     [:div.block.absolute.inset-0.rounded.flex.items-center.justify-center.rounded-lg
+     [:div.block.absolute.inset-0.rounded.flex-center.rounded-lg
       (v/props {:class "text-muted-txt hover:text-txt bg-contain bg-no-repeat bg-center"}
                (when thumbnail
                  {:style {:background-image (asset.ui/css-url thumbnail)}})
@@ -584,7 +584,7 @@
     [:div.field-wrapper
      (form.ui/show-label ?images label)
      (when selected-url
-       [:div.relative.flex.items-center.justify-center {:key selected-url}
+       [:div.relative.flex-center {:key selected-url}
         (when loading? [icons/loading "w-4 h-4 text-txt/60 absolute top-2 right-2"])
         [:img.max-h-80 {:src selected-url}]])
      ;; thumbnails
@@ -751,3 +751,12 @@
   ;;  - show an "x" for removing each tag,
   ;;  - show unused tags, click-to-add
   )
+
+(ui/defview show-entries [member-fields field-entries]
+  (when-let [entries (seq (into []
+                                (keep
+                                  (fn [field]
+                                    (some-> (get field-entries (:field/id field))
+                                            (assoc :field-entry/field field))))
+                                member-fields))]
+    (map show-entry:card entries)))

@@ -144,7 +144,7 @@
             [:div.flex-v.gap-2
              (for [{:as ?child :syms [?title ?detail ?complete]} ?items]
                [:div.flex.w-full.gap-2.items-start {:key (goog/getUid ?child)}
-                [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
+                [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex-center.rounded-full.w-7.h-7
                                                 [icons/ellipsis-horizontal "w-4 h-4"]]
                                       :items   [[{:on-select #(swap! ?complete not)} (if @?complete "Activate" "Done")]
                                                 [{:on-select #(forms/remove-many! ?child)} "Remove"]]}]
@@ -191,7 +191,7 @@
              (for [{:as ?child :syms [?title ?detail ?complete]} ?items]
                [:div.flex.w-full.gap-2.items-start.group.cursor-pointer {:key (goog/getUid ?child)}
                 (if editor?
-                  [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex.items-center.justify-center.rounded-full.w-7.h-7
+                  [radix/dropdown-menu {:trigger [:div.hover:bg-gray-300.flex-center.rounded-full.w-7.h-7
                                                   [icons/ellipsis-horizontal "w-4 h-4"]]
                                         :items   [[{:on-select #(swap! ?complete not)} (if @?complete "Activate" "Done")]
                                                   [{:on-select #(forms/remove-many! ?child)} "Remove"]]}]

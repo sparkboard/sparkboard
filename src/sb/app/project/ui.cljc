@@ -90,15 +90,13 @@
 
        ])))
 
-(def get-tag
-  (memoize
-    (fn [parent-id tag-id]
-      (-> (db/entity parent-id) :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))))
 
-(defn resolve-tags [board-membership]
-  (let [parent-id (:db/id (:membership/entity board-membership))]
-    (mapv #(get-tag parent-id (:tag/id %))
-          (:entity/tags board-membership))))
+(defn resolve-tag [parent tag-id]
+  (-> parent :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))
+
+(defn resolved-tags [board-membership]
+  (mapv #(resolve-tag (:membership/entity board-membership) (:tag/id %))
+        (:entity/tags board-membership)))
 
 (ui/defview project-members [project props]
   ;; todo
@@ -121,7 +119,7 @@
        [:div.flex-v.gap-1
         display-name
         [:div.flex.flex-wrap.gap-2
-         (for [{:as tag :tag/keys [id label color]} (resolve-tags board-membership)]
+         (for [{:as tag :tag/keys [id label color]} (resolved-tags board-membership)]
            [:div.tag-sm {:style (color/color-pair color)}
             label])]]])]]
   )
@@ -141,7 +139,7 @@
      ;; title row
      [:div.flex-v
       (when (:entity/draft? project)
-        [:div.border-b-2.border-dashed.px-body.py-3.flex.items-center.justify-center.gap-3
+        [:div.border-b-2.border-dashed.px-body.py-3.flex-center.gap-3
          [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
          [field.ui/action-btn {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
                                :classes  {:btn          "btn-primary px-4 py-2"
@@ -194,13 +192,39 @@
       [:section.flex-v.gap-2.items-start
        [manage-community-actions project (:project/community-actions project)]]]]))
 
+(defn membership-colors [membership]
+  (into []
+        (map #(->> (:tag/id %) (resolve-tag (:membership/entity membership)) (:tag/color)))
+        (:entity/tags membership)))
 
-(ui/defview row
+(ui/defview card
   {:key :entity/id}
-  [{:as   entity
-    :keys [entity/title membership/roles]}]
-  [:div.flex.hover:bg-gray-100.rounded-lg
-   [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
-    {:href (routing/entity-path entity 'ui/show)}
-    [ui/avatar {:size 10} entity]
-    [:div.line-clamp-2.leading-snug.flex-grow.flex title]]])
+  [{:keys [entity/project-fields]}
+   {:as   entity
+    :keys [entity/parent
+           entity/title
+           entity/field-entries
+           membership/roles]}]
+  (let [board-members (->> (:membership/_entity entity) (mapv :membership/member))]
+    [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
+     {:href (routing/entity-path entity 'ui/show)}
+
+
+     [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
+      [:div.flex-grow.flex-v.gap-1
+       [:div.leading-snug.line-clamp-2.font-semibold.text-lg title]
+       [:div.text-gray-500.contents (field.ui/show-entries project-fields field-entries)]]]
+
+     ;; TEAM
+     [:div.flex.flex-wrap.gap-2.px-3
+      (u/for! [board-member (take 6 board-members)
+               :let [account (:membership/member board-member)]]
+        [:div.w-10.flex-v.gap-1
+         [ui/avatar {:size 10} account]
+         [:div.flex.h-2.items-stretch.rounded-sm.overflow-hidden
+          (for [color (membership-colors board-member)]
+            [:div.flex-auto {:style {:background-color color}}])]])
+      (when-let [more (-> (- (count board-members) 6)
+                          (u/guard pos-int?))]
+        [:div.w-10.h-10.flex-center.text-gray-400.text-lg.tracking-wider
+         [:div.flex  "+" more]])]]))

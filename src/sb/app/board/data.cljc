@@ -106,28 +106,34 @@
              (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `show
-           (if-let [board (db/pull `[~@entity.data/entity-keys
+           (if-let [board (db/pull `[~@entity.data/listing-fields
+                                     ~@entity.data/site-fields
                                      :entity/member-tags
                                      :entity/member-fields
                                      :entity/project-fields
                                      :board/registration-open?
-                                     {:entity/parent [~@entity.data/entity-keys :org/show-org-tab?]}]
+                                     {:entity/parent [~@entity.data/listing-fields :org/show-org-tab?]}]
                                    board-id)]
              (merge board {:membership/roles roles})
              (throw (ex-info "Board not found!" {:status 400})))))
 
-(def project-fields `[~@entity.data/entity-keys])
-(def member-fields [{:membership/member [:entity/id
-                                         :entity/kind
-                                         {:image/avatar [:entity/id]}
-                                         :account/display-name]}
-                    {:entity/tags [:entity/id
-                                   :tag/label
-                                   :tag/color]}
-                    :entity/field-entries
-                    {:membership/entity [:entity/id]}
-                    {:entity/custom-tags [:tag/label]}
-                    :membership/roles])
+
+(def board-membership-fields `[{:membership/member [~@entity.data/id-fields
+                                                   {:image/avatar [:entity/id]}
+                                                   :account/display-name]}
+                              {:entity/tags [:entity/id
+                                             :tag/label
+                                             :tag/color]}
+                              :entity/field-entries
+                              {:membership/entity [:entity/id]}
+                              {:entity/custom-tags [:tag/label]}
+                              :membership/roles])
+
+(def project-fields `[~@entity.data/listing-fields
+                      {:entity/video [:video/url]}
+                      {:entity/parent [:entity/id]}
+                      {:membership/_entity [~@entity.data/id-fields
+                                            ~@board-membership-fields]}])
 
 (q/defquery members
   {:prepare [(az/with-roles :board-id)
@@ -136,8 +142,8 @@
   (u/timed `members (->> (db/entity board-id)
                          :membership/_entity
                          (remove (some-fn :entity/deleted-at :entity/archived?))
-                         (mapv (db/pull `[~@entity.data/entity-keys
-                                          ~@member-fields])))))
+                         (mapv (db/pull `[~@entity.data/id-fields
+                                          ~@board-membership-fields])))))
 
 (q/defquery projects
   {:prepare [(az/with-roles :board-id)
@@ -187,7 +193,9 @@
   [{:keys [board-id membership/roles]}]
   (u/timed `settings
            (some->
-             (q/pull `[~@entity.data/entity-keys
+             (q/pull `[~@entity.data/listing-fields
+                       {:image/background [:entity/id]}
+                       {:entity/domain-name [:domain-name/name]}
                        :entity/member-tags
                        {:entity/member-fields ~field.data/field-keys}
                        {:entity/project-fields ~field.data/field-keys}] board-id)

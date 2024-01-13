@@ -101,7 +101,7 @@
                                                                        :entity/kind
                                                                        {:image/avatar [:entity/id]}]}]}
                             {:entity/parent
-                             [~@entity.data/entity-keys
+                             [~@entity.data/listing-fields
                               {:entity/project-fields ~field.data/field-keys}]}]
                           project-id)
                   {:membership/roles roles})))

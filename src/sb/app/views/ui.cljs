@@ -258,7 +258,7 @@
       (when-let [src (asset.ui/asset-src avatar :avatar)]
         [:img.object-cover (v/merge-props {:class class :src src} props)])
       (when-let [txt (or display-name title)]
-        [:div.bg-gray-200.text-gray-600.inline-flex.items-center.justify-center
+        [:div.bg-gray-200.text-gray-600.inline-flex-center
          (v/merge-props {:class class} props)
          (initials txt)]))))
 

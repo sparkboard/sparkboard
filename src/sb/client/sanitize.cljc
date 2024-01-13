@@ -1,5 +1,6 @@
 (ns sb.client.sanitize
-  (:require [yawn.hooks :as hooks]
+  (:require [applied-science.js-interop :as j]
+            [yawn.hooks :as hooks]
             [yawn.view :as v]
 #?(:cljs ["linkify-element" :as linkify-element]))
   #?(:cljs (:import (goog.html SafeHtml SafeUrl)
@@ -18,8 +19,9 @@
     (hooks/use-effect
       (fn []
         (when-let [^js el @!el]
+          (some-> (.-firstChild el)
+                  (j/call :remove))
           (doto el
-            (.. -firstChild remove)
             (.appendChild (or (some->> html
                                        (.sanitizeToDomNode ^js @!Sanitizer)
                                        linkify-element)

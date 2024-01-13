@@ -108,7 +108,7 @@
                                           :confirm-fn   (fn []
                                                           (io/remove-many! ?field)
                                                           (entity.data/maybe-save-field ?field))})}
-        [:div.w-5.h-5.rounded.flex.items-center.justify-center.text-destructive [icons/trash "w-4 h-4"]]
+        [:div.w-5.h-5.rounded.flex-center.text-destructive [icons/trash "w-4 h-4"]]
         (t :tr/remove)]]]]))
 
 (ui/defview field-row
@@ -133,7 +133,7 @@
       ;; expandable label group
       [:div.relative.flex.-ml-3.-my-3.hover:cursor-grab.active:cursor-grabbing
        drag-handle-props
-       [:div.w-5.-ml-5.mr-3.flex.items-center.justify-center.opacity-0.group-hover:opacity-50.flex-none
+       [:div.w-5.-ml-5.mr-3.flex-center.opacity-0.group-hover:opacity-50.flex-none
         [icons/drag-dots "icon-sm"]]
        [icon "cursor-drag icon-lg text-gray-700 self-center flex-none"]]
       [:div.flex-auto.flex-v.gap-2
@@ -214,7 +214,7 @@
                                              :field/classes {:wrapper "flex-auto"}})]
          [:button.btn.btn-white.h-10 {:type "submit"}
           (t :tr/add)]
-         [:div.flex.items-center.justify-center.icon-light-gray.h-10.w-7
+         [:div.flex-center.icon-light-gray.h-10.w-7
           {:on-mouse-down #(reset! !new-field nil)}
           [icons/close "w-4 h-4 "]]]
         [:div.pl-12.py-2 (form.ui/show-field-messages ?new-field)]])]))

@@ -52,7 +52,7 @@
       [:img.mx-auto {:class "w-1/2" :src "/images/error-2023.svg"}]
       [:h1.text-3xl.md:text-5xl title]
       [:p.text-muted-txt description]
-      [:div.flex.items-center.justify-center.gap-x-6
+      [:div.flex-center.gap-x-6
        [:a.btn.btn-primary.p-4.text-lg {:href "/"} "← Home"]]
       (when detail
         [:pre.code.bg-secondary.p-4.text-sm.whitespace-pre-wrap.mx-4 detail])

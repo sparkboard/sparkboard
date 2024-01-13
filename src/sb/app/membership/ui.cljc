@@ -58,13 +58,13 @@
                                      :field/can-edit?  can-edit?})]]))
 
 (defn show-tag [{:keys [tag/label tag/color] :or {color "#dddddd"}}]
-  [:div.tag-sm
+  [:div.tag-md
    {:key   label
     :style {:background-color color
             :color            (color/contrasting-text-color color)}}
    label])
 
-(ui/defview row
+(ui/defview card
   {:key (fn [_ member] (str (:entity/id member)))}
   [{:keys [entity/member-fields
            entity/member-tags]} board-member]
@@ -72,22 +72,17 @@
                 entity/tags
                 entity/custom-tags]} board-member
         {:as account :keys [account/display-name]} (:membership/member board-member)]
-    [:a.flex-v.hover:bg-gray-100.rounded-lg #_.rounded-xl.border.shadow
+    [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100 #_.rounded-xl.border.shadow
      {:href (routing/entity-path board-member 'ui/show)}
-     [:div.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
+     [:div.flex.relative.gap-3.items-start.p-3.cursor-default.flex-auto
       [ui/avatar {:size 10} account]
-      [:div.line-clamp-2.leading-snug.flex-grow.flex-v.gap-1 display-name
+
+      [:div.flex-grow.flex-v.gap-1
+       [:div.leading-snug.line-clamp-2.font-semibold display-name]
        [:div.flex.flex-wrap.gap-1
         (->> member-tags
              (filter (comp (into #{} (map :tag/id) tags) :tag/id))
              (map show-tag))
-        [:div.flex.flex-wrap.gap-1 (map show-tag custom-tags)]]]]
-     ;; show card entries on hover?
-     #_(when-let [entries (seq
-                            (for [{:as field :keys [field/id
-                                                    field/label]} member-fields
-                                  :let [entry (get field-entries id)]
-                                  :when entry]
-                              (assoc entry :field-entry/field field)))]
-         [:div.text-gray-500.ml-14.pl-1
-          (map field.ui/show-entry:card entries)])]))
+        [:div.flex.flex-wrap.gap-1 (map show-tag custom-tags)]]
+       ;; show card entries on hover?
+       [:div.text-gray-500.contents (field.ui/show-entries member-fields field-entries)]]]]))

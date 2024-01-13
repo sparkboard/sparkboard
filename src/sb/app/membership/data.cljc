@@ -73,14 +73,14 @@
 (q/defquery show
   {:prepare az/require-account!}
   [params]
-  (dissoc (q/pull `[~@entity.data/entity-keys
+  (dissoc (q/pull `[~@entity.data/listing-fields
                     :entity/tags
                     :entity/field-entries
                     {:membership/entity [:entity/id
                                          :entity/kind
                                          :entity/member-tags
                                          :entity/member-fields]}
-                    {:membership/member [~@entity.data/entity-keys
+                    {:membership/member [~@entity.data/listing-fields
                                          :account/display-name]}]
                   (:membership-id params))))
 
@@ -129,7 +129,7 @@
            (into []
                  (comp (map (comp db/entity sch/wrap-id))
                        (filter active-member?)
-                       (map (db/pull `[~@entity.data/entity-keys
+                       (map (db/pull `[~@entity.data/listing-fields
                                        :entity/public?])))
                  ids)))
 

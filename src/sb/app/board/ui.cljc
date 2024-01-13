@@ -102,7 +102,8 @@
   [{:as params :keys [board-id]}]
   (let [{:as board :keys [membership/roles]} (data/show {:board-id board-id})
         !current-tab (h/use-state (t :tr/members #_:tr/projects))
-        ?filter      (h/use-memo #(io/field))]
+        ?filter      (h/use-memo #(io/field))
+        card-grid    (v/from-element :div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3)]
     [:<>
      [header/entity board nil]
      [:div.p-body.flex-v.gap-6
@@ -136,17 +137,19 @@
        [radix/tab-content {:value (t :tr/projects)}
         (some->> (seq (data/drafts {:board-id board-id}))
                  (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
-                       (map entity.ui/row)))
-        (into [:div.grid]
+                       (map project.ui/card)))
+        (into [card-grid]
               (comp (ui/filtered @?filter)
-                    (map entity.ui/row))
+                    (map (partial project.ui/card
+                                  {:entity/project-fields (filter :field/show-on-card? (:entity/project-fields board))})))
               (data/projects {:board-id board-id}))]
 
        [radix/tab-content {:value (t :tr/members)}
-        (into [:div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3]
+        (into [card-grid]
               (comp (ui/filtered @?filter)
-                    (map (partial member.ui/row {:entity/member-tags   (:entity/member-tags board)
-                                                 :entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))})))
+                    (map (partial member.ui/card
+                                  {:entity/member-tags   (:entity/member-tags board)
+                                   :entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))})))
               (data/members {:board-id board-id}))
         ]]]]))
 
