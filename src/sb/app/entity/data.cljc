@@ -60,7 +60,7 @@
      :entity/field-entries      {s- [:map-of :uuid :field-entry/as-map]}
      :entity/fields             {s- [:sequential :field/as-map]}
      :entity/video              {:doc "Primary video for project (distinct from fields)"
-                                 s-   :video/url}
+                                 s-   [:map {:closed true} :video/url]}
      :entity/public?            {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
                                  s-   :boolean}
      :entity/website            {:doc "External website for entity"
@@ -94,7 +94,7 @@
                    :entity/description
                    :entity/created-at
                    :entity/deleted-at
-                   :entity/video
+                   {:entity/video [:video/url]}
                    {:image/avatar [:entity/id]}
                    {:image/background [:entity/id]}
                    {:entity/domain-name [:domain-name/name]}])

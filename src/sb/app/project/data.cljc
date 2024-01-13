@@ -87,7 +87,7 @@
                             :entity/kind
                             :entity/title
                             :entity/description
-                            :entity/video
+                            {:entity/video [:video/url]}
                             {:project/badges [:badge/label
                                               :badge/color]}
                             :entity/field-entries

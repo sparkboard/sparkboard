@@ -444,7 +444,7 @@
                      :prose.format/markdown)
      :prose/string s}))
 
-(defn video-value [v]
+(defn video-url [v]
   (when (and v (not (str/blank? v)))
     (cond (re-find #"vimeo" v) v
           (re-find #"youtube" v) v
@@ -478,7 +478,7 @@
                                                                                         :url   :link/url}) v)}
                                           :field.type/select {:select/value v}
                                           :field.type/prose (prose v)
-                                          :field.type/video (video-value v)
+                                          :field.type/video {:video/url (video-url v)}
                                           (throw (Exception. (str "Field type not found "
                                                                   {:field/type    field-type
                                                                    :field-spec/id field-id
@@ -1022,7 +1022,7 @@
                                        :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                                        (rename :project/open-requests))
                                        :sticky (rename :project/sticky?)
-                                       :demoVideo (& (xf video-value)
+                                       :demoVideo (& (xf #(hash-map :video/url (video-url %)))
                                                      (rename :entity/video))
                                        :discussion rm       ;; unused
                                        ]

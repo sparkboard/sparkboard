@@ -269,6 +269,8 @@
        (when can-edit?
          (text-field ?field (merge props
                                    {:field/label false
+                                    :field/wrap (fn [v] {:video/url v})
+                                    :field/unwrap :video/url
                                     :placeholder "YouTube or Vimeo url"})))])))
 
 (defn show-select-value [{:keys [field/options]} value]
@@ -656,6 +658,7 @@
     (str "no match" field)))
 
 (defn make-entries-?field [init {:keys [entity/fields]}]
+  (prn fields)
   (let [init (for [field fields]
                (merge #:field-entry{:field field} (get init (:field/id field))))]
     (io/form

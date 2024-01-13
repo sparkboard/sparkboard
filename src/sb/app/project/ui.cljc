@@ -175,6 +175,7 @@
                                                                        {:field/label false
                                                                         :placeholder "Description"}))
       (entity.ui/use-persisted-attr project :entity/video field-params)
+
       (entity.ui/use-persisted-attr project
                                     :entity/field-entries
                                     {:entity/fields    (->> project :entity/parent :entity/project-fields)
