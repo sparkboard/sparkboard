@@ -72,6 +72,9 @@
 (defn resolve-id [id]
   (entid (sch/wrap-id id)))
 
+(defn id= [a b]
+  (= (resolve-id a) (resolve-id b)))
+
 (defn entity [id]
   #?(:clj  (dl/entity @conn (resolve-id id))
      :cljs (db/entity (resolve-id id))))

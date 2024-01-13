@@ -101,6 +101,12 @@
           (:entity/tags board-membership))))
 
 (ui/defview project-members [project props]
+  ;; todo
+  ;; 1. pass in all-roles to know if we are an a board-admin
+  ;; 2. add colors for tags
+  ;; 3. button for adding a new member via searching this board
+  ;; 4. hover to see member details
+  ;; 5. fix chat
   [:div.field-wrapper
    [:div.field-label (t :tr/team)]
    [:div.grid.grid-cols-2.gap-6
@@ -110,7 +116,7 @@
                 {:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
       [:div.flex.items-center.gap-2
        {:key      (:entity/id member)
-        :on-click #(routing/nav! (routing/entity-route member 'ui/show))}
+        :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
        [:img.object-cover.rounded.w-12.h-12 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]
        [:div.flex-v.gap-1
         display-name
@@ -187,3 +193,14 @@
 
       [:section.flex-v.gap-2.items-start
        [manage-community-actions project (:project/community-actions project)]]]]))
+
+
+(ui/defview row
+  {:key :entity/id}
+  [{:as   entity
+    :keys [entity/title membership/roles]}]
+  [:div.flex.hover:bg-gray-100.rounded-lg
+   [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
+    {:href (routing/entity-path entity 'ui/show)}
+    [ui/avatar {:size 10} entity]
+    [:div.line-clamp-2.leading-snug.flex-grow.flex title]]])

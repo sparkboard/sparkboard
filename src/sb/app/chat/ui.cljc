@@ -39,28 +39,29 @@
           (:account/display-name account)]))]))
 
 (defn other-participant [account-id chat]
-  (first (remove #(sch/id= account-id %) (:chat/participants chat))))
+  (let [membership-id (:db/id (member.data/membership account-id (:chat/entity chat)))]
+    (u/find-first (:chat/participants chat)
+                  #(not= membership-id (:db/id %)))))
 
 (ui/defview chat-snippet
   {:key (fn [_ {:keys [entity/id]}] id)}
-  [{:keys [current-chat-id
+  [{:as   params
+    :keys [current-chat-id
            account-id]} chat]
   (let [{:as   chat
          :keys [entity/id
                 chat/last-message]} chat
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
-    [:a.flex.gap-2.py-2.cursor-default.mx-1.px-1.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
+    [:a.flex.gap-2.py-2.cursor-default.px-1.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
      {:href  (routing/path-for [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
-     [ui/avatar {:size 12 :class "flex-none"} other]
+     [ui/avatar {:size 12 :class "flex-none"} (:membership/member other)]
      [:div.flex-v.w-full.overflow-hidden
       [:div.flex.items-center
-       [:div.font-bold.flex-auto (:account/display-name other)]
-       [:div.w-2.h-2.rounded-full.flex-none
-        {:class (when (data/unread? account-id chat)
-                  "bg-blue-500")}]]
+       [:div.font-bold.flex-auto (:account/display-name other)]]
       [:div.text-gray-700.hidden.md:line-clamp-2.text-sm
+       {:class (when (data/unread? params chat) "font-semibold")}
        (field.ui/show-prose
          (cond-> (:chat.message/content last-message)
                  (sch/id= account-id (:entity/created-by last-message))
@@ -77,22 +78,25 @@
 
 (ui/defview chat-message
   {:key (fn [_ {:keys [entity/id]}] id)}
-  [{:keys [account-id]} {:keys [chat.message/content
-                                entity/created-by
-                                entity/id]}]
+  [{:keys [membership-id]} {:keys [chat.message/content
+                                   entity/created-by
+                                   entity/id]}]
   [:div.p-2.flex-v
    {:class ["max-w-[600px] rounded-[12px]"
-            (if (sch/id= account-id created-by)
+            (if (sch/id= membership-id created-by)
               "bg-blue-500 text-white place-self-end"
               "bg-gray-100 text-gray-900 place-self-start")]
     :key   id}
    (field.ui/show-prose content)])
 
 (ui/defview chat-header [{:keys [account-id chat]}]
-  (let [close-icon [icons/close "w-6 h-6 hover:opacity-50"]]
-    [:div.p-2.text-lg.flex.items-center.h-10
-     (when (and account-id chat) (:account/display-name (other-participant account-id chat)))
-     [:div.flex-auto]
+  (let [close-icon [icons/close "w-4 h-4 ml-2 hover:opacity-50 flex-none"]]
+    [:div.p-2.text-lg.flex.items-center.h-14.w-full.flex-none
+     [:div.truncate.flex-auto
+      (when (and account-id chat)
+        (-> (other-participant account-id chat)
+            :membership/member
+            :account/display-name))]
      [radix/dialog-close close-icon]]))
 
 (ui/defview chat-messages [{:as params :keys [other-id chat-id account-id]}]
@@ -101,6 +105,7 @@
           !response          (h/use-state nil)
           !scrollable-window (h/use-ref)
           message            (u/guard @!message (complement str/blank?))
+          params             (assoc params :membership-id (member.data/membership-id account-id (:chat/entity chat)))
           keydown-handler    (fn [e]
                                (when ((ui/keydown-handler
                                         {:Enter
@@ -122,9 +127,9 @@
         [(count messages) @!scrollable-window])
       (h/use-effect
         (fn []
-          (when (data/unread? account-id chat)
-            (data/mark-read! {:chat-id  (sch/wrap-id chat)
-                            :message-id (sch/wrap-id (last messages))})))
+          (when (data/unread? params chat)
+            (data/mark-read! {:chat-id    (sch/wrap-id chat)
+                              :message-id (sch/wrap-id (last messages))})))
         [(:entity/id (last messages))])
       [:<>
        [chat-header {:account-id account-id
@@ -155,18 +160,18 @@
                    "height-100p flex divide-x bg-gray-100"]}
      [:div.flex.flex-none.overflow-y-auto.w-48.md:w-64
       [chats-sidebar params]]
-     [:div.flex.flex-auto.flex-col.relative.m-2
+     [:div.flex-v.overflow-hidden.flex-auto.relative.m-2
       {:class (when chat-selected? "rounded bg-white shadow")}
       (if chat-selected?
         [chat-messages params]
         [chat-header params])]]))
 
 (routing/register-route chat
-                        {:alias-of chats
-                        :route    "/chats/:chat-id"
-                        :view/router   :router/modal})
+                        {:alias-of    chats
+                         :route       "/chats/:chat-id"
+                         :view/router :router/modal})
 
 (routing/register-route new-chat
-                        {:alias-of chats
-                        :route    "/chats/:entity-id/new/:other-id"
-                        :view/router   :router/modal})
+                        {:alias-of    chats
+                         :route       "/chats/new/:other-id"
+                         :view/router :router/modal})

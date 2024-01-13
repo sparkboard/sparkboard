@@ -1,6 +1,7 @@
 (ns sb.app.chat.data
   (:require [clojure.string :as str]
             [re-db.api :as db]
+            [sb.app.membership.data :as m.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [s-]]
@@ -43,16 +44,16 @@
                               :entity/created-at
                               :chat.message/content]}})
 
-(defn make-key [entity-id & participant-ids]
-  (str/join "+" (sort (map sch/unwrap-id (cons entity-id participant-ids)))))
+(defn make-key [& participant-ids]
+  (str/join "+" (sort (map sch/unwrap-id participant-ids))))
 
 (q/defx new-message!
   "Create a new chat message."
   {:prepare [az/with-account-id!]}
-  [{:keys [account-id
+  [{:as params
+    :keys [membership-id
            other-id
-           chat-id
-           entity-id]} message-content]
+           chat-id]} message-content]
   ;; 1. check if chat entity exists
   ;; 2. add chat message to chat entity, creating one if it doesn't exist
   (let [existing-chat (if chat-id
@@ -69,16 +70,18 @@
                                 account-id
                                 other-id
                                 entity-id)
-                          (db/entity [:chat/key (make-key entity-id account-id other-id)])))
+                          (db/entity [:chat/key (make-key account-id other-id)])))
         new-message   (-> (dl/new-entity {:chat.message/content message-content}
                                          :chat.message
-                                         :by account-id)
+                                         :by membership-id)
                           (assoc :db/id "new-message"))
         new-chat      (or existing-chat
                           (dl/new-entity {:db/id             "new-chat"
-                                          :chat/participants [account-id other-id]
-                                          :chat/entity       entity-id
-                                          :chat/key          (make-key entity-id account-id other-id)
+                                          :chat/participants [membership-id other-id]
+                                          :chat/entity       (-> (db/entity membership-id)
+                                                                 :membership/entity
+                                                                 :db/id)
+                                          :chat/key          (make-key membership-id other-id)
                                           :chat/messages     [new-message]}
                                          :chat))
         tx-report     (db/transact! (if existing-chat
@@ -95,8 +98,12 @@
    {:chat/entity [:entity/id
                   :entity/title
                   {:image/avatar [:entity/id]}]}
-   {:chat/participants [:account/display-name
-                        {:image/avatar [:entity/id]}
+   {:chat/participants [{:membership/member [:entity/id
+                                             :entity/kind
+                                             :account/display-name
+                                             {:image/avatar [:entity/id]}]}
+                        {:membership/entity [:entity/id]}
+                        :entity/kind
                         :entity/id]}])
 
 (def message-fields
@@ -110,14 +117,12 @@
   "Throw if account-id is not a participant in chat."
   [account-id chat]
   #?(:clj
-     (do
-       (when-not (contains?
-                   (into #{}
-                         (map :entity/id)
-                         (:chat/participants chat))
-                   (sch/unwrap-id account-id))
-         (az/unauthorized! "You are not a participant in this chat."))
-       chat)))
+     (do (when-not (contains? (into #{}
+                                    (map :db/id)
+                                    (:chat/participants chat))
+                              (:db/id (m.data/membership account-id (:chat/entity chat))))
+           (az/unauthorized! "You are not a participant in this chat."))
+         chat)))
 
 (def chat-fields-full
   (conj chat-fields-meta {:chat/messages message-fields}))
@@ -126,14 +131,15 @@
   "Get a chat by chat-id"
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id chat-id]}]
-  (some->> (q/pull chat-fields-full chat-id)
-           (ensure-participant! account-id)))
+  (ensure-participant! account-id (dl/entity chat-id))
+  (q/pull chat-fields-full chat-id))
 
 (q/defquery chats-list
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id]}]
   (->> (db/entity account-id)
-       :chat/_participants
+       :membership/_member
+       (mapcat :chat/_participants)
        (sort-by :entity/updated-at u/compare:desc)
        (mapv (fn [e]
                (-> (q/pull chat-fields-meta e)
@@ -141,11 +147,11 @@
                           (q/pull message-fields
                                   (last (:chat/messages e)))))))))
 
-(defn read? [account-id {:chat/keys [last-message messages read-last]}]
-  (let [last-message-id (:entity/id (or last-message (last messages)))
-        account-id      (sch/unwrap-id account-id)]
-    (or (= (get read-last account-id) last-message-id)
-        (= account-id (:entity/id (:entity/created-by last-message))))))
+(defn read? [{:keys [account-id]} {:chat/keys [entity last-message messages read-last]}]
+  (let [membership-id   (:entity/id (m.data/membership account-id entity))
+        last-message-id (:entity/id (or last-message (last messages)))]
+    (or (= (get read-last membership-id) last-message-id)
+        (= membership-id (:entity/id (:entity/created-by last-message))))))
 
 (def unread? (complement read?))
 
@@ -155,15 +161,17 @@
   (let [chats @(q/$ chats-list params)]
     {:total  (count chats)
      :unread (->> chats
-                  (filter (partial unread? (:account-id params)))
+                  (filter (partial unread? params))
                   count)}))
 
 (q/defx mark-read!
   "Mark messages as read by account-id."
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id chat-id message-id]}]
-  (ensure-participant! account-id (dl/entity chat-id))
-  (db/transact! [[:db/add chat-id
-                  :chat/read-last (merge (:chat/read-last (db/entity chat-id))
-                                         {(sch/unwrap-id account-id) (sch/unwrap-id message-id)})]])
+  (let [chat (dl/entity chat-id)
+        _ (ensure-participant! account-id chat)
+        membership (m.data/membership account-id (:chat/entity chat))]
+    (db/transact! [[:db/add chat-id
+                    :chat/read-last (merge (:chat/read-last chat)
+                                           {(:entity/id membership) (sch/unwrap-id message-id)})]]))
   nil)
