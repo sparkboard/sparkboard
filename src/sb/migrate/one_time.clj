@@ -450,8 +450,6 @@
           (re-find #"youtube" v) v
           :else (str "https://www.youtube.com/watch?v=" v))))
 
-(def ^:dynamic *assets* nil)
-
 (defn parse-fields [managed-by-k to-k]
   (fn [m]
     (if-some [field-ks (->> (keys m)
@@ -460,30 +458,32 @@
       (let [managed-by (managed-by-k m)]
         (try
           (reduce (fn [m k]
-                    (let [field-id    (composite-uuid :field
-                                                      (to-uuid :board managed-by)
-                                                      (to-uuid :field (subs (name k) 6)))
-                          v           (m k)
-                          field-type  (:field/type (@!all-fields field-id))
+                    (let [field-id          (composite-uuid :field
+                                                            (to-uuid :board managed-by)
+                                                            (to-uuid :field (subs (name k) 6)))
+                          v                 (m k)
+                          field-type        (:field/type (@!all-fields field-id))
+                          image-list-assets (when (= field-type :field.type/image-list)
+                                              (mapv assets/link-asset (cond-> v (string? v) vector)))
                           ;; NOTE - we ignore fields that do not have a spec
-                          entry-value (when field-type
-                                        (case field-type
-                                          :field.type/image-list (let [v (cond-> v (string? v) vector)]
-                                                                   (when (seq v)
-                                                                     (let [assets (mapv assets/link-asset v)]
-                                                                       (some-> *assets* (swap! into assets))
-                                                                       {:image-list/images (mapv #(select-keys % [:entity/id]) assets)})))
-                                          :field.type/link-list {:link-list/links
-                                                                 (mapv #(rename-keys % {:label :link/label
-                                                                                        :url   :link/url}) v)}
-                                          :field.type/select {:select/value v}
-                                          :field.type/prose (prose v)
-                                          :field.type/video {:video/url (video-url v)}
-                                          (throw (Exception. (str "Field type not found "
-                                                                  {:field/type    field-type
-                                                                   :field-spec/id field-id
-                                                                   })))))]
+                          entry-value       (when field-type
+                                              (case field-type
+                                                :field.type/image-list (when (seq image-list-assets)
+                                                                         {:image-list/images (mapv #(select-keys % [:entity/id])
+                                                                                                   image-list-assets)})
+                                                :field.type/link-list {:link-list/links
+                                                                       (mapv #(rename-keys % {:label :link/label
+                                                                                              :url   :link/url}) v)}
+                                                :field.type/select {:select/value v}
+                                                :field.type/prose (prose v)
+                                                :field.type/video {:video/url (video-url v)}
+                                                (throw (Exception. (str "Field type not found "
+                                                                        {:field/type    field-type
+                                                                         :field-spec/id field-id
+                                                                         })))))]
                       (-> (dissoc m k)
+                          (cond-> (seq image-list-assets)
+                                  (update :entity/uploads (fnil into [])  image-list-assets))
                           (cond-> entry-value
                                   (assoc-in [to-k field-id] entry-value)))))
                   m
@@ -1268,11 +1268,9 @@
 
 (defn all-entities
   "Flat list of all entities (no inline nesting)" []
-  (binding [*assets* (atom [])]
-    (let [entities (into []
-                         (flatten-entities-xf)
-                         (root-entities))]
-      (into entities @*assets*))))
+  (into []
+        (flatten-entities-xf)
+        (root-entities)))
 
 (defn contains-somewhere?
   "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"

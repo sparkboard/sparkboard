@@ -46,6 +46,7 @@
                                      :entity/parent
                                      :entity/title
                                      :entity/created-at
+                                     (? :entity/uploads)
                                      (? :entity/updated-at)
                                      (? :entity/draft?)
                                      (? :entity/archived?)

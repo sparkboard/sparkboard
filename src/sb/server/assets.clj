@@ -2,15 +2,13 @@
   (:require [amazonica.aws.s3 :as s3]
             [clj-http.client :as http]
             [clojure.java.io :as io]
-            [ring.util.response :as resp]
-            [sb.authorize :as az]
+            [re-db.api :as db]
             [sb.server.datalevin :as dl]
             [sb.server.env :as env]
             [sb.server.images :as images]
             [sb.util :as u]
             [sb.validate :as sv]
-            [sb.validate :as validate]
-            [re-db.api :as db]))
+            [sb.validate :as validate]))
 
 (defn init-db!
   "Ensure current bucket is in the db"
@@ -117,8 +115,7 @@
     (or (dl/entity lookup-ref)
         (do (dl/transact! [(-> #:asset.variant{:provider (:db/id provider)
                                                :params   param-string}
-                               (validate/assert :asset.variant/as-map)
-                               (assoc :db/id -1))])
+                               (validate/assert :asset.variant/as-map))])
             (dl/entity lookup-ref)))))
 
 (defn ensure-content-type!
@@ -144,7 +141,8 @@
   (case (:asset.provider/type provider)
     :asset.provider/s3 (str (:s3/bucket-host provider)
                             "/"
-                            (:entity/id asset))))
+                            (:entity/id asset))
+    (throw (ex-info "Unknown provider" {:provider provider :asset (datalevin.core/touch asset)}))))
 
 (defn asset-link [asset]
   (or (:asset/link asset)
@@ -185,6 +183,9 @@
         (variant-link asset variant)))))
 
 (comment
-  (variant-link! (datalevin.core/entity @(re-db.api/conn) [:entity/id #uuid "b3665e87-4be8-301d-94e3-4417038ed016"])
-                 {:op "bound" :width 200 :height 200}
-                 ))
+  (let [entity-id   [:entity/id #uuid"b30e4733-0c90-3491-be07-99af22250f92"]
+        profile-pic [:entity/id #uuid "b3665e87-4be8-301d-94e3-4417038ed016"]]
+    #_(variant-link! (datalevin.core/entity @(re-db.api/conn) entitiy-id)
+                     {:op "bound" :width 200 :height 200}
+                     )
+    (datalevin.core/touch (datalevin.core/entity @(re-db.api/conn) entity-id))))

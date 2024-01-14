@@ -19,6 +19,7 @@
                                     :entity/title
                                     :entity/kind
                                     :entity/created-by
+                                    (? :entity/uploads)
                                     (? :image/avatar)
                                     (? :image/background)
                                     (? :image/sub-header)

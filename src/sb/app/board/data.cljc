@@ -70,7 +70,7 @@
                                               (? :entity/social-feed)
                                               (? :entity/deleted-at)
                                               (? :entity/created-by)
-
+                                              (? :entity/uploads)
                                               (? :board/custom-css)
                                               (? :board/custom-js)
                                               (? :board/home-page-message)
@@ -130,6 +130,7 @@
                               :membership/roles])
 
 (def project-fields `[~@entity.data/listing-fields
+                      :entity/field-entries
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
                       {:membership/_entity [~@entity.data/id-fields

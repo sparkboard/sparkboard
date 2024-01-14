@@ -624,9 +624,13 @@
       :field.type/prose [prose-field ?entry props]
       (str "no match" field))))
 
-(defn show-image-list:card [{:keys [image-list/images]}]
-  (when-let [{:keys [entity/id]} (first images)]
-    [:img.max-h-80 {:src (asset.ui/asset-src id :card)}]))
+(defn show-image-list:card [field {:keys [image-list/images]}]
+  (when-let [image (first images)]
+    [:img.max-h-80 {:src (asset.ui/asset-src image :card)}]))
+
+(comment
+  (sb.server.datalevin/entity [:entity/id #uuid "b30e4733-0c90-3491-be07-99af22250f92"])
+  (sch/kind #uuid "b30e4733-0c90-3491-be07-99af22250f92"))
 
 (ui/defview show-prose:card [field {:as m :prose/keys [format string]}]
   (when-not (str/blank? string)

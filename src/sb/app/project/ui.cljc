@@ -203,17 +203,19 @@
    {:as   entity
     :keys [entity/parent
            entity/title
+           entity/description
            entity/field-entries
            membership/roles]}]
   (let [board-members (->> (:membership/_entity entity) (mapv :membership/member))]
     [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
      {:href (routing/entity-path entity 'ui/show)}
 
-
      [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
       [:div.flex-grow.flex-v.gap-1
        [:div.leading-snug.line-clamp-2.font-semibold.text-lg title]
-       [:div.text-gray-500.contents (field.ui/show-entries project-fields field-entries)]]]
+       [:div.text-gray-500 description]
+       [:div.text-gray-500.contents
+        (field.ui/show-entries project-fields field-entries)]]]
 
      ;; TEAM
      [:div.flex.flex-wrap.gap-2.px-3

@@ -66,6 +66,7 @@
      :entity/website            {:doc "External website for entity"
                                  s-   :http/url}
      :entity/social-feed        {s- :social/feed}
+     :entity/uploads            (sch/ref :many)
      :entity/images             {s- [:map-of
                                      [:qualified-keyword {:namespace :image}]
                                      :http/url]}

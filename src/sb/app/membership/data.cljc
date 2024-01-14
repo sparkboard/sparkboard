@@ -54,7 +54,7 @@
                                              :entity/kind
                                              :membership/entity
                                              :membership/member
-
+                                             (? :entity/uploads)
                                              (? :membership/inactive?)
                                              (? :membership/email-frequency)
                                              (? :entity/custom-tags)

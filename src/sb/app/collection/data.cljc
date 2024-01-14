@@ -8,6 +8,7 @@
                            :entity/kind
                            :collection/boards
                            :entity/title
+                           (? :entity/uploads)
                            (? :entity/domain-name)
                            (? :image/avatar)
                            (? :image/background)]}})
