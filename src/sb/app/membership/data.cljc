@@ -20,9 +20,7 @@
                                              :role/admin
                                              :role/editor
                                              :role/member]}
-   :membership/roles                    (merge sch/keyword
-                                               sch/many
-                                               {s- [:set :membership/role]})
+   :membership/roles                    {s- [:set :membership/role]}
    :membership/entity                   (sch/ref :one)
    :membership/member                   (sch/ref :one)
 
@@ -76,25 +74,19 @@
   (dissoc (q/pull `[~@entity.data/listing-fields
                     :entity/tags
                     :entity/field-entries
-                    {:membership/entity [:entity/id
-                                         :entity/kind
+                    {:membership/entity [~@entity.data/id-fields
                                          :entity/member-tags
                                          :entity/member-fields]}
                     {:membership/member [~@entity.data/listing-fields
                                          :account/display-name]}]
                   (:membership-id params))))
 
-(defn membership-id [member-id entity-id]
-  [:entity/id (sch/composite-uuid :membership member-id entity-id)])
-
-(def membership (comp db/entity membership-id))
-
 #?(:clj
    (defn ensure-membership! [account entity]
      (let [entity (dl/entity entity)]
        (case (:entity/kind entity)
          :project (ensure-membership! account (:entity/parent entity))
-         (when-not (dl/resolve-id (membership-id account entity))
+         (when-not (dl/resolve-id (az/membership-id account entity))
            (throw (ex-info "Not a member" {:status 403})))))))
 
 (defn active-member? [member]
@@ -106,7 +98,7 @@
      (let [kind (:entity/kind entity)]
        (case kind
          (:board :org) (or (:entity/public? entity)
-                           (active-member? (membership account-id entity)))
+                           (active-member? (az/membership account-id entity)))
          :project (can-view? account-id (:entity/parent entity))
          :membership (let [member (:membership/member entity)]
                        (case (:entity/kind member)

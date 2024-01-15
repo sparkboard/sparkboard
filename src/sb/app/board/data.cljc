@@ -1,15 +1,15 @@
 (ns sb.app.board.data
   (:require [re-db.api :as db]
-            [sb.app.field.data :as field.data]
             [sb.app.entity.data :as entity.data]
+            [sb.app.field.data :as field.data]
+            [sb.app.field.data :as field.data]
             [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
-            [sb.validate :as validate]
             [sb.util :as u]
-            [sb.app.field.data :as field.data]))
+            [sb.validate :as validate]))
 
 (sch/register!
   {:board/project-numbers?               {s-    :boolean
@@ -104,7 +104,7 @@
 (q/defquery show
   {:prepare [(az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
-  [{:keys [board-id membership/roles]}]
+  [{:as params :keys [board-id membership/roles]}]
   (u/timed `show
            (if-let [board (db/pull `[~@entity.data/listing-fields
                                      ~@entity.data/site-fields
@@ -139,7 +139,7 @@
 (q/defquery members
   {:prepare [(az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
-  [{:keys [board-id membership/roles]}]
+  [{:keys [board-id]}]
   (u/timed `members (->> (db/entity board-id)
                          :membership/_entity
                          (remove (some-fn :entity/deleted-at :entity/archived?))
@@ -158,7 +158,7 @@
 (q/defquery drafts
   {:prepare az/with-account-id}
   [{:keys [account-id board-id]}]
-  (->> (member.data/membership account-id board-id)
+  (->> (az/membership account-id board-id)
        :membership/_member
        (filter :entity/draft?)
        (map #(db/pull project-fields (:membership/entity %)))))

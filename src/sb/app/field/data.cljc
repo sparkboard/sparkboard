@@ -246,7 +246,7 @@
 (defmethod entry-value :field.type/prose [entry]
   (when-let [value (u/guard (:prose/string entry) (complement str/blank?))]
     {:prose/string value
-     :prose/format (:prose/format entry)}))
+     :prose/format (or (:prose/format entry) :prose.format/markdown)}))
 
 (q/defx save-entry! [{:keys [account-id]} parent-id field-id entry]
   (let [field   (db/entity (sch/wrap-id field-id))

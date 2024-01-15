@@ -116,7 +116,6 @@
 
 (ui/defview entity [{:as   entity
                      :keys [entity/title
-                            membership/roles
                             image/avatar]} children]
   (let [path (routing/entity-path entity 'ui/show)]
     [:div.header

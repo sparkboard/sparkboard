@@ -8,6 +8,7 @@
             [sb.app.asset.data :as asset.data]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as entity.data]
+            [sb.app.field.data :as field.data]
             [sb.app.field.data :as data]
             [sb.app.form.ui :as form.ui]
             [sb.app.views.radix :as radix]
@@ -662,7 +663,6 @@
     (str "no match" field)))
 
 (defn make-entries-?field [init {:keys [entity/fields]}]
-  (prn fields)
   (let [init (for [field fields]
                (merge #:field-entry{:field field} (get init (:field/id field))))]
     (io/form
@@ -677,20 +677,9 @@
                       :prose/string      prose/?string}
                      :init init)
            (into {}
-                 (map (fn [{:as entry :keys [field-entry/field]}]
-                        [(:field/id field) (dissoc entry :field-entry/field)])))
+                 (map (juxt (comp :field/id :field-entry/field)
+                            field.data/entry-value)))
            u/prune))))
-
-(ui/defview entries-field
-  {:make-?field make-entries-?field}
-  [{:syms [?entries]}
-   {:as   props
-    :keys [field/can-edit?]}]
-
-  (doall (for [?entry (seq ?entries)
-               :when (or can-edit?
-                         (data/entry-value @?entry))]
-           (show-entry-field ?entry props))))
 
 (ui/defview tags-field
   {:make-?field (fn [init _props]
@@ -764,3 +753,13 @@
                                             (assoc :field-entry/field field))))
                                 member-fields))]
     (map show-entry:card entries)))
+
+(ui/defview entries-field
+  {:make-?field make-entries-?field}
+  [{:syms [?entries]}
+   {:as   props
+    :keys [field/can-edit?]}]
+  (doall (for [?entry (seq ?entries)
+               :when (or can-edit?
+                         (data/entry-value @?entry))]
+           (show-entry-field ?entry props))))

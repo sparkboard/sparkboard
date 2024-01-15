@@ -7,6 +7,7 @@
             [sb.app.membership.data :as member.data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -39,7 +40,7 @@
           (:account/display-name account)]))]))
 
 (defn other-participant [account-id chat]
-  (let [membership-id (:db/id (member.data/membership account-id (:chat/entity chat)))]
+  (let [membership-id (:db/id (az/membership account-id (:chat/entity chat)))]
     (u/find-first (:chat/participants chat)
                   #(not= membership-id (:db/id %)))))
 
@@ -105,7 +106,7 @@
           !response          (h/use-state nil)
           !scrollable-window (h/use-ref)
           message            (u/guard @!message (complement str/blank?))
-          params             (assoc params :membership-id (member.data/membership-id account-id (:chat/entity chat)))
+          params             (assoc params :membership-id (az/membership-id account-id (:chat/entity chat)))
           keydown-handler    (fn [e]
                                (when ((ui/keydown-handler
                                         {:Enter

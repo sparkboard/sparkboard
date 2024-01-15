@@ -14,7 +14,8 @@
             [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [sb.authorize :as az]))
 
 (defn account:sign-in-with-google []
   (v/x
@@ -103,7 +104,7 @@
                (u/for! [org org
                         :let [projects-by-board (into {}
                                                       (keep (fn [board]
-                                                              (when-let [projects (->> (member.data/membership account-id board)
+                                                              (when-let [projects (->> (az/membership account-id board)
                                                                                        :membership/_member
                                                                                        (into []
                                                                                              (comp (map :membership/entity)

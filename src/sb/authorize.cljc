@@ -1,10 +1,13 @@
 (ns sb.authorize
-  (:require [clojure.set :as set]
-            [re-db.api :as db]
+  (:require [re-db.api :as db]
             [sb.server.datalevin :as dl]
-            [sb.schema :as sch]
-            [sb.util :as u])
+            [sb.schema :as sch])
   #?(:clj (:import [re_db.read Entity])))
+
+(defn membership-id [member-id entity-id]
+  [:entity/id (sch/composite-uuid :membership member-id entity-id)])
+
+(def membership (comp db/entity membership-id))
 
 (defn editor-role? [roles]
   (or (:role/self roles)
@@ -39,12 +42,18 @@
     x
     (db/entity (dl/resolve-id x))))
 
+(defn membership-account [membership]
+  (let [member (:membership/member membership)]
+    (if (= :account (:entity/kind member))
+      member
+      (:membership/member membership))))
+
 (defn get-roles [account-id entity]
   (or (case (:entity/kind entity)
-        :account (when (sch/id= account-id (:entity/id entity)) #{:role/self})
-        :membership (when (sch/id= account-id (-> entity :membership/member :entity/id)) #{:role/self})
+        :account (when (sch/id= account-id entity) #{:role/self})
+        :membership (when (sch/id= account-id (membership-account entity)) #{:role/self})
         (:membership/roles #?(:cljs entity
-                              :clj  (db/entity (dl/entid [:membership/entity+member [(:db/id entity) (dl/resolve-id account-id)]])))))
+                              :clj  (membership account-id entity))))
       #{}))
 
 (defn scoped-roles [account-id {:as entity :keys [entity/kind]}]
@@ -71,9 +80,12 @@
     (all-roles account-id entity-id)
     (db/touch (db/entity entity-id))))
 
+(defn with-roles* [entity-key req params]
+  (if-let [account-id (-> req :account :entity/id)]
+    (assoc params :membership/roles (all-roles account-id (get-entity (entity-key params))))
+    params))
+
 #?(:clj
    (defn with-roles [entity-key]
      (fn [req params]
-       (if-let [account-id (some-> (-> req :account :entity/id) sch/wrap-id)]
-         (assoc params :membership/roles (get-roles account-id (get-entity (entity-key params))))
-         params))))
+       (#'with-roles* entity-key req params))))

@@ -1,7 +1,6 @@
 (ns sb.app.chat.data
   (:require [clojure.string :as str]
             [re-db.api :as db]
-            [sb.app.membership.data :as m.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [s-]]
@@ -120,7 +119,7 @@
      (do (when-not (contains? (into #{}
                                     (map :db/id)
                                     (:chat/participants chat))
-                              (:db/id (m.data/membership account-id (:chat/entity chat))))
+                              (:db/id (az/membership account-id (:chat/entity chat))))
            (az/unauthorized! "You are not a participant in this chat."))
          chat)))
 
@@ -148,7 +147,7 @@
                                   (last (:chat/messages e)))))))))
 
 (defn read? [{:keys [account-id]} {:chat/keys [entity last-message messages read-last]}]
-  (let [membership-id   (:entity/id (m.data/membership account-id entity))
+  (let [membership-id   (:entity/id (az/membership account-id entity))
         last-message-id (:entity/id (or last-message (last messages)))]
     (or (= (get read-last membership-id) last-message-id)
         (= membership-id (:entity/id (:entity/created-by last-message))))))
@@ -170,7 +169,7 @@
   [{:as params :keys [account-id chat-id message-id]}]
   (let [chat (dl/entity chat-id)
         _ (ensure-participant! account-id chat)
-        membership (m.data/membership account-id (:chat/entity chat))]
+        membership (az/membership account-id (:chat/entity chat))]
     (db/transact! [[:db/add chat-id
                     :chat/read-last (merge (:chat/read-last chat)
                                            {(:entity/id membership) (sch/unwrap-id message-id)})]]))

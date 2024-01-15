@@ -9,7 +9,8 @@
             [sb.authorize :as az]
             [sb.color :as color]
             [sb.icons :as icons]
-            [sb.routing :as routing]))
+            [sb.routing :as routing]
+            [sb.schema :as sch]))
 
 (ui/defview show
   {:route       "/m/:membership-id"
@@ -84,5 +85,4 @@
              (filter (comp (into #{} (map :tag/id) tags) :tag/id))
              (map show-tag))
         [:div.flex.flex-wrap.gap-1 (map show-tag custom-tags)]]
-       ;; show card entries on hover?
        [:div.text-gray-500.contents (field.ui/show-entries member-fields field-entries)]]]]))

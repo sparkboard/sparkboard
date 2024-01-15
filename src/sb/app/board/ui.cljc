@@ -150,8 +150,7 @@
                     (map (partial member.ui/card
                                   {:entity/member-tags   (:entity/member-tags board)
                                    :entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))})))
-              (data/members {:board-id board-id}))
-        ]]]]))
+              (data/members {:board-id board-id}))]]]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

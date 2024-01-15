@@ -34,7 +34,7 @@
             [sb.i18n :as i18n]
             [sb.log]
             [sb.routing :as routing]
-            [sb.app]                                ;; includes all endpoints
+            [sb.app]                                        ;; includes all endpoints
             [sb.server.account :as accounts]
             [sb.server.env :as env]
             [sb.server.html :as server.html]
@@ -126,12 +126,13 @@
 (defn prepare! [fs req params]
   (cond (nil? fs) params
         (sequential? fs) (reduce (fn [params f]
-                                   (f req params)) params fs)
+                                   (or (f req params)
+                                       params)) params fs)
         :else (fs req params)))
 
 (defn authorize! [f req params]
 
-  (let [m (meta f)
+  (let [m           (meta f)
         authorized? (or (:endpoint/public? m)
                         (:account req))]
     (when-not authorized?
@@ -255,6 +256,8 @@
   (sch/install-malli-schemas!)
   (db/merge-schema! @sch/!schema)
   (routing/init-endpoints! (routing/endpoints))
+  #_(doseq [channel (keys @re-db.sync/!watches)]
+      (re-db.sync/unwatch-all channel))
   (stop-server!)
   (reset! the-server (httpkit/run-server (fn [req] (@app-handler req))
                                          {:port                 port
