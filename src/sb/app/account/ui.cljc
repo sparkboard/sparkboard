@@ -6,7 +6,6 @@
             [sb.app.account.data :as data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
-            [sb.app.membership.data :as member.data]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -121,7 +120,7 @@
                                   (seq projects-by-board)
                                   (ui/match-entity match-text org))]
                  [:div.contents {:key (:entity/id org)}
-                  [:div.text-lg.font-semibold (:entity/title org)]
+                  [:a.text-lg.font-semibold.flex.items-center.hover:underline {:href (routing/entity-path org 'ui/show)} (:entity/title org)]
                   (limit
                     (u/for! [board boards
                              :let [projects (get projects-by-board board)]]

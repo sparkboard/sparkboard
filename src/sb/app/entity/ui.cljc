@@ -1,5 +1,6 @@
 (ns sb.app.entity.ui
   (:require [inside-out.forms :as io]
+            [re-db.api :as db]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as data]
             [sb.app.views.ui :as ui]
@@ -82,7 +83,7 @@
     [:div.line-clamp-2 title]]])
 
 (ui/defview settings-button [entity]
-  (let [roles (az/all-roles nil entity)]
+  (let [roles (az/all-roles (db/get :env/config :account-id) entity)]
     (when-let [path (and (or (:role/admin roles)
                              (:role/org-admin roles))
                          (some-> (routing/entity-route entity 'admin-ui/settings)

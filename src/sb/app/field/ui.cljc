@@ -169,7 +169,11 @@
                           classes)
         data-props {:data-touched (:touched ?field)
                     :data-invalid (not (io/valid? ?field))
-                    :data-focused (:focused ?field)}]
+                    :data-focused (:focused ?field)}
+        !input-ref     (h/use-ref)
+        focused? (some-> @!input-ref (= (j/get js/window.document :activeElement)))]
+    ;; TODO ... shouldn't ?field retain :focused/:touched metadata when its persisted value changes?
+    ;; currently we create a new ?field when the persisted value changes, which is a bit of a hack
     (when (or can-edit? (u/some-str (:value props)))
       [:div.field-wrapper
        (merge data-props {:class (:wrapper classes)})
@@ -179,7 +183,8 @@
           [auto-size (-> (u/dissoc-qualified props)
                          (v/merge-props
                            data-props
-                           {:disabled    (not can-edit?)
+                           {:ref !input-ref
+                            :disabled    (not can-edit?)
                             :class       ["w-full" (:input classes)]
                             :placeholder (:placeholder props)
                             :on-key-down (let [save (fn [^js e]
@@ -195,11 +200,11 @@
                                                                         {:Enter save})
                                                                       keybindings)))}))])
         ;; show pencil when value is modified
-        (when (and (or (:focused ?field) (:touched ?field))
+        (when (and (or focused? (:touched ?field))
                    (io/closest ?field :field/persisted?)
                    (not= (u/some-str (entity.data/persisted-value ?field))
                          (u/some-str (:value props))))
-          [:div.pointer-events-none.absolute.inset-y-0.right-0.top-0.bottom-0.flex.items-center.p-2 [icons/pencil-outline "w-4 h-4 text-txt/40"]])
+          [:div.pointer-events-none.absolute.right-0.top-0.flex.items-center.p-2 [icons/pencil-outline "w-4 h-4 text-txt/40"]])
 
         (when (:loading? ?field)
           [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])]
@@ -252,7 +257,9 @@
     :style  {:background-image    (asset.ui/css-url (:video/thumbnail (parse-video-url url)))
              :background-size     "cover"
              :background-position "center"}}
-   [:div.rounded.p-1.absolute.top-1.right-1.text-white {:class "hover:bg-black/20"} [icons/external-link " icon-lg drop-shadow"]]
+   [:div.rounded.p-1.absolute.top-1.right-1.text-white {:class "hover:bg-black/20"}
+    [icons/external-link " icon-lg drop-shadow"]]
+
    [icons/play-circle "icon-xl w-20 h-20 text-white drop-shadow-2xl transition-all hover:scale-110 "]])
 
 (ui/defview video-field
@@ -265,8 +272,8 @@
        [:div.flex.items-center
         (when (and can-edit? (not value))
           [:div.flex-auto (form.ui/show-label ?field (:field/label props))])]
-       (when value
-         [show-video-url value])
+       (when-let [url (:video/url value)]
+         [show-video-url url])
        (when can-edit?
          (text-field ?field (merge props
                                    {:field/label  false
@@ -579,9 +586,9 @@
       img)))
 
 (ui/defview images-field [?images {:as props :field/keys [label can-edit?]}]
-  (let [!?current (h/use-state (first ?images))
+  (let [!?current (h/use-state-with-deps (first ?images) [?images])
         use-order (ui/use-orderable-parent ?images {:axis :x})
-        [selected-url loading?] (some-> @!?current ('?id) deref (asset.ui/asset-src :card) ui/use-last-loaded)]
+        [selected-url loading?] (ui/use-last-loaded (some-> @!?current ('?id) deref (asset.ui/asset-src :card)) [?images])]
     [:div.field-wrapper
      (form.ui/show-label ?images label)
      (when selected-url

@@ -157,6 +157,13 @@
           search-term)))
 
 (comment
+  ;; does not work
+  (q/defquery my-membership
+    {:prepare az/with-account-id!}
+    [{:keys [account-id entity-id]}]
+    {:entity/id        (sch/unwrap-id entity-id)
+     :membership/roles (az/all-roles account-id entity-id)}))
+(comment
   (search {:account-id  [:entity/id #uuid "b08f39bf-4f31-3d0b-87a6-ef6a2f702d30"]
            ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
            :search-term "matt"}))

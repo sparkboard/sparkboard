@@ -123,8 +123,8 @@
       url
       fallback)))
 
-(defn use-last-loaded [image-url]
-  (let [!last-loaded (h/use-state image-url)
+(defn use-last-loaded [image-url deps]
+  (let [!last-loaded (h/use-state-with-deps image-url deps)
         !loaded      (h/use-state #{})]
     (h/use-effect
       (fn []

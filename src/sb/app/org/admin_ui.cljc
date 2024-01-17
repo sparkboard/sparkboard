@@ -9,13 +9,15 @@
 (ui/defview settings
   {:route "/o/:org-id/settings"}
   [{:as params :keys [org-id]}]
-  (let [org (data/settings params)]
+  (let [org (data/settings params)
+        use-attr (fn [attr & [props]]
+                   (entity.ui/use-persisted-attr org attr (merge {:field/can-edit? true} props)))]
     [:<>
      (header/entity org nil)
      [:div {:class form.ui/form-classes}
-      (entity.ui/use-persisted-attr org :entity/title)
-      (entity.ui/use-persisted-attr org :entity/description)
-      (entity.ui/use-persisted-attr org :entity/domain-name)
-      (entity.ui/use-persisted-attr org :image/avatar {:field/label (i/t :tr/logo)})
+      (use-attr :entity/title)
+      (use-attr :entity/description)
+      (use-attr :entity/domain-name)
+      (use-attr :image/avatar {:field/label (i/t :tr/logo)})
 
       ]]))

@@ -123,7 +123,7 @@
        [:a {:href path}
         [:img.h-10
          {:src (asset.ui/asset-src avatar :avatar)}]])
-     [:a.hover:underline.text-xl.font-semibold.text-ellipsis.truncate.self-center {:href path} title]
+     [:a.hover:underline.text-xl.font-medium.text-ellipsis.truncate.self-center {:href path} title]
 
      [:div.flex-grow]
      [:div.flex.gap-1

@@ -7,10 +7,9 @@
             [sb.app.asset.ui :as asset.ui]
             [sb.app.board.data :as data]
             [sb.app.domain-name.ui :as domain.ui]
-            [sb.app.entity.ui :as entity.ui]
-            [sb.app.membership.ui :as member.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.membership.ui :as member.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
             [sb.app.views.header :as header]
@@ -100,8 +99,8 @@
 (ui/defview show
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
-  (let [{:as board :keys [membership/roles]} (data/show {:board-id board-id})
-        !current-tab (h/use-state (t :tr/members #_:tr/projects))
+  (let [board        (data/show {:board-id board-id})
+        !current-tab (h/use-state (t :tr/projects))
         ?filter      (h/use-memo #(io/field))
         card-grid    (v/from-element :div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3)]
     [:<>

@@ -50,12 +50,14 @@
           org-id))
 
 (q/defquery show
-  {:prepare [az/with-account-id!]}
-  [{:keys [org-id]}]
-  (q/pull `[~@entity.data/listing-fields
-            ~@entity.data/site-fields
-            {:entity/_parent ~entity.data/listing-fields}]
-          (dl/resolve-id org-id)))
+  {:prepare [az/require-account!
+             (az/with-roles :org-id)]}
+  [{:keys [org-id membership/roles]}]
+  (->> (dl/resolve-id org-id)
+       (q/pull `[~@entity.data/listing-fields
+                 ~@entity.data/site-fields
+                 {:entity/_parent ~entity.data/listing-fields}])
+       (merge {:membership/roles roles})))
 
 (q/defx search-once
   [{:as   params
@@ -63,7 +65,7 @@
   (when q
     {:q        q
      :boards   (dl/q (u/template
-                       `[:find [(pull ?board ~entity.data/entity-keys) ...]
+                       `[:find [(pull ?board [~@entity.data/listing-fields]) ...]
                          :in $ ?terms ?org
                          :where
                          [?board :entity/parent ?org]

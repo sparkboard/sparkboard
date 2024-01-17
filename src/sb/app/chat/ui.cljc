@@ -54,13 +54,13 @@
                 chat/last-message]} chat
         other    (other-participant account-id chat)
         current? (sch/id= current-chat-id id)]
-    [:a.flex.gap-2.py-2.cursor-default.px-1.rounded.items-center.text-sm.w-full.text-left.focus-bg-gray-100
+    [:a.flex.gap-2.py-2.cursor-default.px-1.rounded.items-start.text-sm.w-full.text-left.focus-bg-gray-100
      {:href  (routing/path-for [`chat {:chat-id id}])
       :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
      [ui/avatar {:size 12 :class "flex-none"} (:membership/member other)]
      [:div.flex-v.w-full.overflow-hidden
       [:div.flex.items-center
-       [:div.font-bold.flex-auto (:account/display-name other)]]
+       [:div.font-bold.flex-auto (:account/display-name (:membership/member other))]]
       [:div.text-gray-700.hidden.md:line-clamp-2.text-sm
        {:class (when (data/unread? params chat) "font-semibold")}
        (field.ui/show-prose

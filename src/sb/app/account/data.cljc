@@ -59,31 +59,27 @@
                   :membership/_member
                   (mapcat #(cons % (:membership/_member %)))
                   (map #(assoc (:membership/entity %) :membership/roles (:membership/roles %)))))))
+
 (q/defquery all
   {:endpoint {:query true}
    :prepare  az/with-account-id!}
   [{:keys [account-id]}]
-  (prn account-id)
   (u/timed `all
            (->> (q/pull `[{:membership/_member
                            [:membership/roles
                             :entity/id
                             :entity/kind
-                            {:membership/member [:entity/id
-                                                 :entity/kind
+                            {:membership/member [~@entity.data/id-fields
                                                  :account/display-name
                                                  {:image/avatar [:entity/id]}]}
-                            {:membership/entity [:entity/id
-                                                 :entity/kind
-                                                 :entity/title
-                                                 :entity/created-at
+                            {:membership/entity [~@entity.data/listing-fields
                                                  {:entity/parent [:entity/id]}
-                                                 {:image/avatar [:entity/id]}
                                                  {:image/background [:entity/id]}]}
-                            {:membership/_member :...}]}] account-id)
+                            {:membership/_member :...}]}]
+                        account-id)
                 :membership/_member
                 #_(mapcat #(cons % (:membership/_member %)))
-                #_(map #(assoc-in % [:membership/entity :membership/roles] (:membership/roles %)))
+                (map #(assoc-in % [:membership/entity :membership/roles] (:membership/roles %)))
                 #_clojure.pprint/pprint)))
 
 #?(:clj
