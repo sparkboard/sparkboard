@@ -29,24 +29,31 @@
    (def client-endpoints (t/read (shadow.resource/inline "public/js/sparkboard.views.transit.json"))))
 
 (def global-field-meta
-  {:string               {:view field.ui/text-field}
-   :http/url             {:view field.ui/text-field}
-   :boolean              {:view field.ui/checkbox-field}
-   :project/badges       {:view field.ui/badges-field}
-   :prose/as-map         {:view field.ui/prose-field}
-   :entity/tags          {:view field.ui/tags-field}
-   :account/email        {:props      {:type        "email"
-                                       :placeholder (t :tr/email)}
-                          :validators [form.ui/email-validator]}
-   :account/password     {:view       field.ui/text-field
-                          :props      {:type        "password"
-                                       :placeholder (t :tr/password)}
-                          :validators [(io/min-length 8)]}
-   :entity/title         {:validators [(io/min-length 3)]}
-   :field/options        {:view field.admin-ui/options-editor}
-   :entity/domain-name   {:view domain.ui/domain-field}
-   :entity/video         {:view field.ui/video-field}
-   :entity/fields        {:view field.admin-ui/fields-editor}
-   :entity/member-tags   {:view field.admin-ui/tags-editor}
-   :entity/field-entries {:view field.ui/entries-field}
-   :asset/as-map         {:view field.ui/image-field}})
+  {:string                  {:view field.ui/text-field}
+   :http/url                {:view field.ui/text-field}
+   :boolean                 {:view field.ui/checkbox-field}
+   :project/badges          {:view field.ui/badges-field}
+   :prose/as-map            {:view field.ui/prose-field}
+   :entity/tags             {:view field.ui/tags-field}
+   :account/email           {:props      {:type        "email"
+                                          :placeholder (t :tr/email)}
+                             :validators [form.ui/email-validator]}
+   :account/password        {:view       field.ui/text-field
+                             :props      {:type        "password"
+                                          :placeholder (t :tr/password)}
+                             :validators [(io/min-length 8)]}
+   :entity/title            {:validators [(io/min-length 3)]}
+   :field/options           {:view field.admin-ui/options-editor}
+   :entity/domain-name      {:view domain.ui/domain-field}
+   :entity/video            {:view field.ui/video-field}
+   :entity/fields           {:view field.admin-ui/fields-editor}
+   :entity/member-tags      {:view field.admin-ui/tags-editor}
+   :entity/field-entries    {:view field.ui/entries-field}
+   :entity/admission-policy {:view  field.ui/select-field
+                             :props {:field/wrap    keyword
+                                     :field/unwrap  #(subs (str %) 1)
+                                     :field/options [{:field-option/value :admission-policy/open
+                                                      :field-option/label (t :tr/anyone-may-join)}
+                                                     {:field-option/value :admission-policy/invite-only
+                                                      :field-option/label (t :tr/invite-only)}]}}
+   :asset/as-map            {:view field.ui/image-field}})

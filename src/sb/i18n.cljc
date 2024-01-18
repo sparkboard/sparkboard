@@ -417,9 +417,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/registration-newsletter-field?  {:en "Registration newsletter field"
                                           :fr "Champ d'inscription à la newsletter"
                                           :es "Campo de registro de boletín"}
-     :tr/registration-open?              {:en "Registration is open"
-                                          :fr "L'inscription est ouverte"
-                                          :es "El registro está abierto"}
+     :tr/anyone-may-join                 {:en "Anyone may join"
+                                          :fr "Tout le monde peut rejoindre"
+                                          :es "Cualquiera puede unirse"}
+     :tr/invite-only                     {:en "Invite only"
+                                          :fr "Invitation seulement"
+                                          :es "Solo por invitación"}
      :tr/registration-page-message       {:en "Registration page message"
                                           :fr "Message de la page d'inscription"
                                           :es "Mensaje de la página de registro"}

@@ -23,7 +23,8 @@
 (def menu-content-classes (v/classes ["rounded-sm bg-popover text-popover-txt  "
                                       "shadow-md ring-1 ring-txt/10"
                                       "focus:outline-none z-50"
-                                      "gap-1 py-1 px-0"]))
+                                      "gap-1 py-1 px-0"
+                                      "overflow-hidden"]))
 (def menu-content (v/from-element :el dm/Content {:sideOffset        4
                                                   :collision-padding 16
                                                   :align             "start"
@@ -138,12 +139,11 @@
         [:div.flex-grow]
         (when can-edit?
           [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down)])]
-       [:el sel/Portal {:container (yawn.util/find-or-create-element id)}
-        [:el sel/Content {:class (:content classes)}
-         [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
-         (into [:el sel/Viewport {}] (map select-item) options)
-         [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
-         [:el sel/Arrow]]]])))
+       [:el sel/Content {:class (:content classes)}
+        [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
+        (into [:el.p-1 sel/Viewport {}] (map select-item) options)
+        [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
+        [:el sel/Arrow]]])))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))

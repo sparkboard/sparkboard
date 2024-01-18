@@ -289,25 +289,31 @@
      {:style (color/color-pair color)}
      label]))
 
-(ui/defview select-field [?field {:as props :field/keys [label
+(ui/defview select-field [?field {:as props :field/keys [wrap
+                                                         unwrap
+                                                         label
                                                          options
-                                                         can-edit?]}]
+                                                         can-edit?]
+                                  :or {unwrap identity
+                                       wrap identity}}]
   [:div.field-wrapper
    (form.ui/show-label ?field label)
    (if can-edit?
-     [radix/select-menu (-> (form.ui/?field-props ?field (merge {:field/event->value identity}
-                                                                props))
-                            (set/rename-keys {:on-change :on-value-change})
-                            (assoc :on-value-change (fn [v]
-                                                      (reset! ?field v)
-                                                      (entity.data/maybe-save-field ?field))
-                                   :field/can-edit? (:field/can-edit? props)
-                                   :field/options (->> options
-                                                       (map (fn [{:field-option/keys [label value color]}]
-                                                              {:text  label
-                                                               :value value}))
-                                                       doall)))]
+     (with-messages-popover ?field
+       [radix/select-menu (-> (form.ui/?field-props ?field (merge {:field/event->value identity}
+                                                                  props))
+                              (set/rename-keys {:on-change :on-value-change})
+                              (assoc :on-value-change (fn [v]
+                                                        (reset! ?field (wrap v))
+                                                        (entity.data/maybe-save-field ?field))
+                                     :field/can-edit? (:field/can-edit? props)
+                                     :field/options (->> options
+                                                         (map (fn [{:as opt :field-option/keys [label value color]}]
+                                                                {:text  label
+                                                                 :value (unwrap value)}))
+                                                         doall)))])
      [show-select-value props @?field])
+
    (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
@@ -586,9 +592,10 @@
       img)))
 
 (ui/defview images-field [?images {:as props :field/keys [label can-edit?]}]
-  (let [!?current (h/use-state-with-deps (first ?images) [?images])
+  (let [hook-deps (h/use-deps (:init ?images))
+        !?current (h/use-state-with-deps (first ?images) hook-deps)
         use-order (ui/use-orderable-parent ?images {:axis :x})
-        [selected-url loading?] (ui/use-last-loaded (some-> @!?current ('?id) deref (asset.ui/asset-src :card)) [?images])]
+        [selected-url loading?] (ui/use-last-loaded (some-> @!?current ('?id) deref (asset.ui/asset-src :card)) hook-deps)]
     [:div.field-wrapper
      (form.ui/show-label ?images label)
      (when selected-url

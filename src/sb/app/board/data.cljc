@@ -33,9 +33,7 @@
    :board/invite-email-text              {:hint "Text of email sent when inviting a user to a board."
                                           s-    :string},
    :board/registration-newsletter-field? {:hint "During registration, request permission to send the user an email newsletter"
-                                          s-    :boolean},
-   :board/registration-open?             {:hint "Allows new registrations via the registration page. Does not affect invitations."
-                                          s-    :boolean},
+                                          s-    :boolean},,
    :board/registration-page-message      {:hint "Content displayed on registration screen (before user chooses provider / enters email)"
                                           s-    :prose/as-map},
    :board/registration-url-override      {:hint "URL to redirect user for registration (replaces the Sparkboard registration page, admins are expected to invite users)",
@@ -52,7 +50,7 @@
                                               :entity/kind
                                               :entity/parent
 
-                                              :board/registration-open?
+                                              :entity/admission-policy
 
                                               (? :image/avatar)
                                               (? :image/logo-large)
@@ -111,7 +109,7 @@
                                      :entity/member-tags
                                      :entity/member-fields
                                      :entity/project-fields
-                                     :board/registration-open?
+                                     :entity/admission-policy
                                      {:entity/parent [~@entity.data/listing-fields :org/show-org-tab?]}]
                                    board-id)]
              (merge board {:membership/roles roles})
@@ -195,6 +193,7 @@
   (u/timed `settings
            (some->
              (q/pull `[~@entity.data/listing-fields
+                       :entity/admission-policy
                        {:image/background [:entity/id]}
                        {:entity/domain-name [:domain-name/name]}
                        :entity/member-tags

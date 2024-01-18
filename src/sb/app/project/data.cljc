@@ -24,8 +24,6 @@
 
     {:project/open-requests     {:doc "Currently active requests for help"
                                  s-   [:sequential :request/map]},
-     :project/team-complete?    {:doc "Project team marked sufficient"
-                                 s-   :boolean}
      :project/community-actions {s- [:sequential :community-action/as-map]}
      :project/approved?         {:doc "Set by an admin when :board/new-projects-require-approval? is enabled. Unapproved projects are hidden."
                                  s-   :boolean}
@@ -34,6 +32,10 @@
      :project/number            {:doc  "Number assigned to a project by its board (stored as text because may contain annotations)",
                                  :todo "This could be stored in the board entity, a map of {project, number}, so that projects may participate in multiple boards"
                                  s-    :string}
+     :entity/admission-policy   {:doc "A policy for who may join a team."
+                                 s-   [:enum
+                                       :admission-policy/open
+                                       :admission-policy/invite-only]}
      :project/admin-description {:doc "A description field only writable by an admin"
                                  s-   :prose/as-map}
      :entity/archived?          {:doc "Marks a project inactive, hidden."
@@ -46,6 +48,7 @@
                                      :entity/parent
                                      :entity/title
                                      :entity/created-at
+                                     :entity/admission-policy
                                      (? :entity/uploads)
                                      (? :entity/updated-at)
                                      (? :entity/draft?)
@@ -65,8 +68,7 @@
                                      (? :project/admin-description)
                                      (? :project/sticky?)
                                      (? :project/open-requests)
-                                     (? :entity/description)
-                                     (? :project/team-complete?)]
+                                     (? :entity/description)]
                                  }
      :community-action/as-map   {s- [:map-of
                                      :community-action/label
@@ -88,6 +90,7 @@
                             :entity/kind
                             :entity/title
                             :entity/description
+                            :entity/admission-policy
                             {:entity/video [:video/url]}
                             {:project/badges [:badge/label
                                               :badge/color]}

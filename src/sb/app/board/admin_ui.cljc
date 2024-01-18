@@ -1,7 +1,7 @@
 (ns sb.app.board.admin-ui
   (:require [inside-out.forms :as io]
             [sb.app.board.data :as data]
-            [sb.app.entity.ui :as entity.ui :refer [use-persisted-attr]]
+            [sb.app.entity.ui :as entity.ui :refer [persisted-attr]]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -24,8 +24,8 @@
                              (apply concat)
                              (into #{}))
           use-persisted (fn [attr & [props]]
-                          (use-persisted-attr board attr (merge {:field/can-edit?  true
-                                                                 :field/color-list colors} props)))]
+                          (persisted-attr board attr (merge {:field/can-edit?  true
+                                                             :field/color-list colors} props)))]
 
       [:<>
        (header/entity board nil)
@@ -54,7 +54,7 @@
 
         [:div.field-label (t :tr/registration)]
         [:div.flex-v.gap-4
-         (use-persisted :board/registration-open?)
+         (use-persisted :entity/admission-policy)
          (use-persisted :board/registration-url-override)
          (use-persisted :board/registration-page-message)
          (use-persisted :board/invite-email-text)]
@@ -69,7 +69,6 @@
        ;; Registration
        ;; - :board/registration-invitation-email-text
        ;; - :board/registration-newsletter-field?
-       ;; - :board/registration-open?
        ;; - :board/registration-message
        ;; - :board/registration-url-override
        ;; - :board/registration-codes

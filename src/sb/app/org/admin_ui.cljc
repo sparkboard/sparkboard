@@ -11,7 +11,7 @@
   [{:as params :keys [org-id]}]
   (let [org (data/settings params)
         use-attr (fn [attr & [props]]
-                   (entity.ui/use-persisted-attr org attr (merge {:field/can-edit? true} props)))]
+                   (entity.ui/persisted-attr org attr (merge {:field/can-edit? true} props)))]
     [:<>
      (header/entity org nil)
      [:div {:class form.ui/form-classes}

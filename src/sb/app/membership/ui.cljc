@@ -32,7 +32,7 @@
        (when (:image/avatar account) [ui/avatar {:size 20} account])
        [:div.flex-v.gap-2
         [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (-> membership :membership/member :account/display-name)]
-        (entity.ui/use-persisted-attr membership :entity/tags field-params)]
+        [entity.ui/persisted-attr membership :entity/tags field-params]]
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
         dev-panel
@@ -52,11 +52,11 @@
         [radix/dialog-close
          [:div.modal-title-icon [icons/close]]]]]]
      [:div.px-body.flex-v.gap-6
-      (entity.ui/use-persisted-attr membership
-                                    :entity/field-entries
-                                    {:entity/fields    (->> membership :membership/entity :entity/member-fields)
-                                     :membership/roles roles
-                                     :field/can-edit?  can-edit?})]]))
+      [entity.ui/persisted-attr membership
+       :entity/field-entries
+       {:entity/fields    (->> membership :membership/entity :entity/member-fields)
+        :membership/roles roles
+        :field/can-edit?  can-edit?}]]]))
 
 (defn show-tag [{:keys [tag/label tag/color] :or {color "#dddddd"}}]
   [:div.tag-md

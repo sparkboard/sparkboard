@@ -483,7 +483,7 @@
                                                                          })))))]
                       (-> (dissoc m k)
                           (cond-> (seq image-list-assets)
-                                  (update :entity/uploads (fnil into [])  image-list-assets))
+                                  (update :entity/uploads (fnil into []) image-list-assets))
                           (cond-> entry-value
                                   (assoc-in [to-k field-id] entry-value)))))
                   m
@@ -547,7 +547,7 @@
 (def changes {:board/as-map
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
                ::always lookup-domain
-               ::defaults {:board/registration-open? true
+               ::defaults {:entity/admission-policy :open
                            :entity/public?           true
                            :entity/parent            (uuid-ref :org "base")}
                "createdAt" (& (xf #(Date. %)) (rename :entity/created-at))
@@ -698,7 +698,11 @@
                "slack" (& (xf
                             (fn [{:strs [team-id]}] [:slack.team/id team-id]))
                           (rename :board/slack.team))
-               "registrationOpen" (rename :board/registration-open?)
+               "registrationOpen" (& (xf (fn [open?]
+                                           (if open?
+                                             :admission-policy/open
+                                             :admission-policy/invite-only)))
+                                     (rename :entity/admission-policy))
                "registrationCode" (& (xf (fn [code]
                                            (when-not (str/blank? code)
                                              {code {:registration-code/active? true}})))
@@ -973,7 +977,8 @@
                                                  (rename :discussion/posts))
                                        :boardId rm
                                        ::always (remove-when (comp empty? :discussion/posts))]
-              :project/as-map         [::defaults {:entity/archived? false}
+              :project/as-map         [::defaults {:entity/archived? false
+                                                   :entity/admission-policy :open}
 
                                        ::always (remove-when :entity/deleted-at)
                                        ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
@@ -996,7 +1001,10 @@
                                                   (rename :project/badges)) ;; should be ref
                                        :active (& (xf not) (rename :entity/archived?))
                                        :approved (rename :project/approved?)
-                                       :ready (rename :project/team-complete?)
+                                       :ready (& (xf (fn [ready?]
+                                                       (if ready? :admission-policy/invite-only
+                                                                  :admission-policy/open)))
+                                                 (rename :entity/admission-policy))
                                        :members (&
                                                   (fn [project a v]
                                                     (let [project-id (:entity/id project)]

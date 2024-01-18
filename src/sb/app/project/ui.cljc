@@ -121,7 +121,9 @@
         [:div.flex.flex-wrap.gap-2
          (for [{:as tag :tag/keys [id label color]} (resolved-tags board-membership)]
            [:div.tag-sm {:style (color/color-pair color)}
-            label])]]])]]
+            label])]]])]
+   (when ((some-fn :role/admin :role/board-admin) (:membership/roles props))
+     [entity.ui/persisted-attr project :entity/admission-policy props])]
   )
 
 (ui/defview show
@@ -147,11 +149,11 @@
           (t :tr/publish)]])
       [:div.flex
        [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
-        (entity.ui/use-persisted-attr project :entity/title (merge field-params
-                                                                   {:field/label       false
-                                                                    :field/multi-line? false
-                                                                    :field/unstyled?   (some-> (:entity/title project)
-                                                                                               (not= "Untitled"))}))]
+        [entity.ui/persisted-attr project :entity/title (merge field-params
+                                                               {:field/label       false
+                                                                :field/multi-line? false
+                                                                :field/unstyled?   (some-> (:entity/title project)
+                                                                                           (not= "Untitled"))})]]
 
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
@@ -174,20 +176,19 @@
          [:div.modal-title-icon [icons/close]]]]]]
 
      [:div.px-body.flex-v.gap-6
-      (entity.ui/use-persisted-attr project :project/badges field-params)
-      (entity.ui/use-persisted-attr project :entity/description (merge field-params
-                                                                       {:field/label false
-                                                                        :placeholder "Description"}))
-      (entity.ui/use-persisted-attr project :entity/video field-params)
+      [entity.ui/persisted-attr project :project/badges field-params]
+      [entity.ui/persisted-attr project :entity/description (merge field-params
+                                                                   {:field/label false
+                                                                    :placeholder "Description"})]
+      [entity.ui/persisted-attr project :entity/video field-params]
 
-      (entity.ui/use-persisted-attr project
-                                    :entity/field-entries
-                                    {:entity/fields    (->> project :entity/parent :entity/project-fields)
-                                     :membership/roles roles
-                                     :field/can-edit?  can-edit?})
+      [entity.ui/persisted-attr project
+       :entity/field-entries
+       {:entity/fields    (->> project :entity/parent :entity/project-fields)
+        :membership/roles roles
+        :field/can-edit?  can-edit?}]
 
       [project-members project field-params]
-
 
       [:section.flex-v.gap-2.items-start
        [manage-community-actions project (:project/community-actions project)]]]]))
