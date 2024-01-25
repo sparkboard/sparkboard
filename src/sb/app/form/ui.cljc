@@ -36,8 +36,8 @@
                     {:keys [field/event->value
                             field/wrap
                             field/unwrap
-                            on-change
-                            save-on-change?]
+                            field/save-on-change?
+                            on-change]
                      :or   {wrap   identity
                             unwrap identity}}]
   {:id        (field-id ?field)

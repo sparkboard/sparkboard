@@ -129,6 +129,7 @@
 
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
+                      :project/sticky?
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
                       {:membership/_entity [~@entity.data/id-fields
@@ -197,6 +198,7 @@
                        {:image/background [:entity/id]}
                        {:entity/domain-name [:domain-name/name]}
                        :entity/member-tags
+                       :board/sticky-color
                        {:entity/member-fields ~field.data/field-keys}
                        {:entity/project-fields ~field.data/field-keys}] board-id)
              (merge {:membership/roles roles}))))

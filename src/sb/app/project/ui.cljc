@@ -137,7 +137,11 @@
                                                                     "Visitor"        #{}} "Current User")
         field-params {:membership/roles roles
                       :field/can-edit?  can-edit?}]
-    [:div.flex-v.gap-6.pb-6
+    [:div.flex-v.gap-6.pb-6.rounded-lg.relative
+     (when (:project/sticky? project)
+       {:class "outline outline-4"
+        :style {:outline-color (-> project :entity/parent :board/sticky-color)
+                :margin        4}})
      ;; title row
      [:div.flex-v
       (when (:entity/draft? project)
@@ -158,12 +162,12 @@
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
         dev-panel
-        (comment
-          (when (:role/board-admin roles)
-            ;; - archive
-            [radix/dropdown-menu
-             {:trigger [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
-              :items   []}]))
+
+        (when (:role/board-admin roles)
+          ;; - archive
+          [radix/dropdown-menu
+           {:trigger [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
+            :items   [[{} [entity.ui/persisted-attr project :project/sticky? (assoc field-params :field/label "Sticky?")]]]}])
 
         [radix/tooltip "Back to board"
          [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}
@@ -176,6 +180,7 @@
          [:div.modal-title-icon [icons/close]]]]]]
 
      [:div.px-body.flex-v.gap-6
+
       [entity.ui/persisted-attr project :project/badges field-params]
       [entity.ui/persisted-attr project :entity/description (merge field-params
                                                                    {:field/label false
@@ -206,10 +211,14 @@
            entity/title
            entity/description
            entity/field-entries
+           project/sticky?
            membership/roles]}]
   (let [board-members (->> (:membership/_entity entity) (mapv :membership/member))]
     [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
-     {:href (routing/entity-path entity 'ui/show)}
+     (v/merge-props {:href (routing/entity-path entity 'ui/show)}
+                    (when sticky?
+                      {:class "outline outline-4"
+                       :style {:outline-color (-> entity :entity/parent :board/sticky-color)}}))
 
      [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
       [:div.flex-grow.flex-v.gap-1

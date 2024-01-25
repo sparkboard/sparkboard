@@ -35,6 +35,7 @@
                          :multiple true}
 
         [:div.field-label (t :tr/basic-settings)]
+
         [:div.flex-v.gap-4
 
          (use-persisted :entity/title)
@@ -47,9 +48,10 @@
 
         [:div.field-label (t :tr/projects-and-members)]
         [:div.flex-v.gap-4
-
+         (use-persisted :board/sticky-color)
          (use-persisted :entity/member-fields)
-         (use-persisted :entity/project-fields)]
+         (use-persisted :entity/project-fields)
+         ]
 
 
         [:div.field-label (t :tr/registration)]

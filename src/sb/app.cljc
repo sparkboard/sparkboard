@@ -35,6 +35,8 @@
    :project/badges          {:view field.ui/badges-field}
    :prose/as-map            {:view field.ui/prose-field}
    :entity/tags             {:view field.ui/tags-field}
+   :board/sticky-color      {:view field.ui/color-field-with-label
+                             :props {:field/label "Sticky color"}}
    :account/email           {:props      {:type        "email"
                                           :placeholder (t :tr/email)}
                              :validators [form.ui/email-validator]}

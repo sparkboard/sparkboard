@@ -170,8 +170,8 @@
         data-props {:data-touched (:touched ?field)
                     :data-invalid (not (io/valid? ?field))
                     :data-focused (:focused ?field)}
-        !input-ref     (h/use-ref)
-        focused? (some-> @!input-ref (= (j/get js/window.document :activeElement)))]
+        !input-ref (h/use-ref)
+        focused?   (some-> @!input-ref (= (j/get js/window.document :activeElement)))]
     ;; TODO ... shouldn't ?field retain :focused/:touched metadata when its persisted value changes?
     ;; currently we create a new ?field when the persisted value changes, which is a bit of a hack
     (when (or can-edit? (u/some-str (:value props)))
@@ -183,7 +183,7 @@
           [auto-size (-> (u/dissoc-qualified props)
                          (v/merge-props
                            data-props
-                           {:ref !input-ref
+                           {:ref         !input-ref
                             :disabled    (not can-edit?)
                             :class       ["w-full" (:input classes)]
                             :placeholder (:placeholder props)
@@ -295,7 +295,7 @@
                                                          options
                                                          can-edit?]
                                   :or {unwrap identity
-                                       wrap identity}}]
+                                       wrap   identity}}]
   [:div.field-wrapper
    (form.ui/show-label ?field label)
    (if can-edit?
@@ -317,7 +317,7 @@
    (when (:loading? ?field)
      [:div.loading-bar.absolute.bottom-0.left-0.right-0 {:class "h-[3px]"}])])
 
-(ui/defview color-field
+(ui/defview color-field*
   ;; color field must be contained within a relative.overflow-hidden element, which it expands to fill.
   [?field {:as props :keys [field/color-list]}]
   (let [list-id (str (goog/getUid ?field) "-colors")]
@@ -330,8 +330,8 @@
      [:input.default-ring.default-ring-hover.rounded
       (-> (form.ui/?field-props ?field
                                 (merge props
-                                       {:field/event->value (j/get-in [:target :value])
-                                        :save-on-change?    true}))
+                                       {:field/event->value    (j/get-in [:target :value])
+                                        :field/save-on-change? true}))
           (v/merge-props {:list  (when (seq color-list) list-id)
                           :style {:top      -10
                                   :left     -10
@@ -341,6 +341,12 @@
           (assoc :type "color")
           (update :value #(or % "#ffffff"))
           (u/dissoc-qualified))]]))
+
+(ui/defview color-field-with-label [?field {:as props :keys [field/label]}]
+  [:div.flex.gap-3.items-center
+   (form.ui/show-label ?field label)
+   (with-messages-popover ?field
+     [:div.relative.w-5.h-5.overflow-hidden.outline.outline-black.outline-1.rounded [color-field* ?field props]])])
 
 (ui/defview plural-item-form [{:as   props
                                :keys [?items
@@ -450,7 +456,7 @@
                                                                    :field/multi-line? false
                                                                    :field/can-edit?   true
                                                                    :field/label       false}]
-                                               [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field ?color {:field/can-edit? true}]]
+                                               [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1 [color-field* ?color {:field/can-edit? true}]]
                                                [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]])
                            :show-?item      (fn [{:as   ?badge
                                                   :syms [?label ?color]} {:keys [membership/roles]}]

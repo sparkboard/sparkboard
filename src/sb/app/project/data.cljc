@@ -96,6 +96,7 @@
                                               :badge/color]}
                             :entity/field-entries
                             :entity/draft?
+                            :project/sticky?
                             {:membership/_entity [:entity/id
                                                   :entity/kind
                                                   :entity/created-at
@@ -106,6 +107,7 @@
                                                                        {:image/avatar [:entity/id]}]}]}
                             {:entity/parent
                              [~@entity.data/listing-fields
+                              :board/sticky-color
                               {:entity/project-fields ~field.data/field-keys}]}]
                           project-id)
                   {:membership/roles roles})))

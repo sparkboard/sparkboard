@@ -38,7 +38,7 @@
                                   :style           {:background-color @?color
                                                     :color            (color/contrasting-text-color @?color)}}]
      [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-      [field.ui/color-field ?color props]]
+      [field.ui/color-field* ?color props]]
      [radix/dropdown-menu {:id      :field-option
                            :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
                                      [icons/ellipsis-horizontal "w-4 h-4"]]
@@ -250,7 +250,7 @@
                                                               :field/multi-line? false
                                                               :field/label       false})]
                           [:div.relative.w-10.h-10.overflow-hidden.rounded.outline.outline-black.outline-1
-                           [field.ui/color-field ?color field-props]]
+                           [field.ui/color-field* ?color field-props]]
                           [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]
                          [field.ui/checkbox-field ?restricted? (merge field-props
                                                                       {:field/classes {:wrapper "pl-3"}})]])

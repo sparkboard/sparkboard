@@ -137,11 +137,13 @@
         (some->> (seq (data/drafts {:board-id board-id}))
                  (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
                        (map project.ui/card)))
-        (into [card-grid]
-              (comp (ui/filtered @?filter)
-                    (map (partial project.ui/card
-                                  {:entity/project-fields (filter :field/show-on-card? (:entity/project-fields board))})))
-              (data/projects {:board-id board-id}))]
+        ;; TODO add sorting to filter-bar
+        (->> (data/projects {:board-id board-id})
+             (sort-by (complement :project/sticky?))
+             (into [card-grid]
+                   (comp (ui/filtered @?filter)
+                         (map (partial project.ui/card
+                                       {:entity/project-fields (filter :field/show-on-card? (:entity/project-fields board))})))))]
 
        [radix/tab-content {:value (t :tr/members)}
         (into [card-grid]
