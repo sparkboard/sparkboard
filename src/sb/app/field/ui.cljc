@@ -198,7 +198,9 @@
                                                                       (if multi-line?
                                                                         {:Meta-Enter save}
                                                                         {:Enter save})
-                                                                      keybindings)))}))])
+                                                                      keybindings)))})
+                         (cond-> (not can-edit?)
+                                 (update :value #(some-> % str/trim))))])
         ;; show pencil when value is modified
         (when (and (or focused? (:touched ?field))
                    (io/closest ?field :field/persisted?)
@@ -277,7 +279,7 @@
        (when can-edit?
          (text-field ?field (merge props
                                    {:field/label  false
-                                    :field/wrap   (fn [v] {:video/url v})
+                                    :field/wrap   (fn [v] (when-not (str/blank? v) {:video/url v}))
                                     :field/unwrap :video/url
                                     :placeholder  "YouTube or Vimeo url"})))])))
 

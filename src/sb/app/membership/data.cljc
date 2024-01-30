@@ -168,10 +168,10 @@
            ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
            :search-term "matt"}))
 
-(defn new-entity-with-membership [entity account-id roles]
+(defn new-entity-with-membership [entity member-id roles]
   {:entity/id         (random-uuid)
    :entity/kind       :membership
-   :membership/member (sch/wrap-id account-id)
+   :membership/member (sch/wrap-id member-id)
    :membership/entity entity
    :membership/roles  roles})
 

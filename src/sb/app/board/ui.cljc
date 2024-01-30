@@ -115,6 +115,7 @@
                               :keys [entity/id]} (project.data/new! nil
                                                                     {:entity/parent board-id
                                                                      :entity/title  (t :tr/untitled)
+                                                                     :entity/admission-policy :admission-policy/open
                                                                      :entity/draft? true})]
                        (when id
                          (routing/nav! `project.ui/show {:project-id id}))
