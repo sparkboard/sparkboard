@@ -21,7 +21,7 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(ui/defview new
+(ui/defview new-in-org
   {:route       "/new/b/:parent"
    :view/router :router/modal}
   [{:as params :keys [route parent]}]
@@ -63,8 +63,8 @@
                                     :field/can-edit? true}]
        [form.ui/submit-form !board (t :tr/create)]])))
 
-(routing/register-route new*
-                        {:alias-of    new
+(routing/register-route new
+                        {:alias-of    new-in-org
                          :route       "/new/b"
                          :view/router :router/modal})
 
