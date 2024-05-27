@@ -5,9 +5,13 @@
   #?(:clj (:import [re_db.read Entity])))
 
 (defn membership-id [member-id entity-id]
+  ;; TODO, use malli for validations like these
+  (when-not (and member-id entity-id)
+    (throw (ex-info "Missing member-id or entity-id" {:member-id member-id :entity-id entity-id})))
   [:entity/id (sch/composite-uuid :membership member-id entity-id)])
 
-(def membership (comp db/entity membership-id))
+(defn membership [member-id entity-id]
+  (db/entity (membership-id member-id entity-id)))
 
 (defn editor-role? [roles]
   (or (:role/self roles)
@@ -56,25 +60,27 @@
                               :clj  (membership account-id entity))))
       #{}))
 
-(defn scoped-roles [account-id {:as entity :keys [entity/kind]}]
-  (->> (get-roles account-id entity)
-       (into #{}
-             (map (fn [role]
-                    (keyword "role"
-                             (str (name kind) "-" (name role))))))))
-
-(defn inherited-roles [account-id entity]
+(defn ancestor-roles [account-id entity]
   (->> (:entity/parent entity)
        (iterate :entity/parent)
        (take-while identity)
-       (mapcat (partial scoped-roles account-id))
+       (mapcat (partial get-roles account-id))
        (into #{})))
 
 (defn all-roles [account-id entity]
   (into (get-roles account-id entity)
-        (inherited-roles account-id entity)))
+        (ancestor-roles account-id entity)))
 
 (comment
+
+  (let [me (first (db/where [[:account/email "mhuebert@gmail.com"]]))
+        memberships (:membership/_member me)]
+    (-> memberships first :membership/entity :entity/kind)
+    ;; => :board
+    (all-roles me (-> memberships first :membership/entity))
+    ; #=> #{:role/board-admin :role/org-admin}
+    )
+
   (let [account-id [:entity/id #uuid"b03a4669-a7ef-3e8e-bddc-8413e004c338"]
         entity-id  [:entity/id #uuid"a4ede6c0-22c2-3902-86ef-c1b8149d0a75"]]
     (all-roles account-id entity-id)

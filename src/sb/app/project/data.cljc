@@ -125,7 +125,7 @@
   (let [project    (dl/new-entity project :project :by account-id)
         membership (member.data/new-entity-with-membership project
                                                            (az/membership-id account-id (:entity/parent project))
-                                                           #{:role/admin})]
+                                                           #{:role/project-admin})]
     (validate/assert project :project/as-map)
     (db/transact! [membership])
     {:entity/id (:entity/id project)}))

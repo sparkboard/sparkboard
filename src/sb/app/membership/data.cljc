@@ -17,9 +17,11 @@
                                              [:sequential
                                               :membership/as-map]]}
    :membership/role                     {s- [:enum
-                                             :role/admin
-                                             :role/editor
-                                             :role/member]}
+                                             :role/board-admin
+                                             :role/org-admin
+                                             :role/project-admin
+                                             :role/project-editor
+                                             :role/project-member]}
    :membership/roles                    {s- [:set :membership/role]}
    :membership/entity                   (sch/ref :one)
    :membership/member                   (sch/ref :one)
@@ -108,8 +110,9 @@
 #?(:clj
    (defn assert-can-view [id-key]
      (fn assert-can-view* [req params]
-       (let [entity (dl/entity (id-key params))]
-         (when-not (can-view? (:account-id params) entity)
+       (let [entity (dl/entity (id-key params))
+             account-id (-> req :account :entity/id)]
+         (when-not (can-view? account-id entity)
            (az/unauthorized! (str "Not authorized to view this "
                                   (:entity/kind entity "entity."))))))))
 

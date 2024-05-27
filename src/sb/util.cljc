@@ -49,18 +49,19 @@
 (defn prune
   "Removes nil values from a map recursively"
   [x]
-  (if (sequential? x)
-    (map prune x)
-    (reduce-kv (fn [m k v]
-                 (if (nil? v)
-                   m
-                   (if (map? v)
-                     (assoc-seq m k (prune v))
-                     (if (sequential? v)
-                       (assoc-seq m k (map prune v))
-                       (assoc m k v)))))
-               {}
-               x)))
+  (cond (vector? x) (mapv prune x)
+        (sequential? x) (map prune x)
+        (map? x) (reduce-kv (fn [m k v]
+                              (if (nil? v)
+                                m
+                                (if (map? v)
+                                  (assoc-seq m k (prune v))
+                                  (if (sequential? v)
+                                    (assoc-seq m k (prune v))
+                                    (assoc m k v)))))
+                            {}
+                            x)
+        :else x))
 
 (defn keep-changes
   "Removes nil values from a map, not recursive"

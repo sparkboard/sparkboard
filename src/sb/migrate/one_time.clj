@@ -25,12 +25,15 @@
 ;; MacOS: brew tap mongodb/brew && brew install mongodb-community
 ;; Alpine: apk add --update-cache mongodb-tools
 
-(defn role-kw [role-name]
+(defn role-kw [entity-kind role-name]
   (case role-name
-    "editor" :role/editor
-    "admin" :role/admin
-    "owner" :role/admin
-    "member" nil))
+
+    ("editor"
+      "member"
+      "admin") (keyword "role" (str (name entity-kind) "-" role-name))
+
+    ;; deprecating separate 'owner' role (this was only used in projects)
+    "owner" (keyword "role" (str (name entity-kind) "-" "admin"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
@@ -548,8 +551,8 @@
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
                ::always lookup-domain
                ::defaults {:entity/admission-policy :open
-                           :entity/public?           true
-                           :entity/parent            (uuid-ref :org "base")}
+                           :entity/public?          true
+                           :entity/parent           (uuid-ref :org "base")}
                "createdAt" (& (xf #(Date. %)) (rename :entity/created-at))
                "socialFeed" (rename :entity/social-feed)
                "localeSupport" (rename :entity/locale-suggestions)
@@ -820,17 +823,17 @@
                                          (into [] (mapcat
                                                     (fn [[ent user-map]]
                                                       (for [[user role-map] user-map
-                                                            :let [account (parse-sparkboard-id user)
-                                                                  ent     (parse-sparkboard-id ent)
-                                                                  _       (assert (= (:kind account) :account))]]
-                                                        {:entity/id         (composite-uuid :membership (:uuid ent) (:uuid account))
+                                                            :let [account    (parse-sparkboard-id user)
+                                                                  the-entity (parse-sparkboard-id ent)
+                                                                  _          (assert (= (:kind account) :account))]]
+                                                        {:entity/id         (composite-uuid :membership (:uuid the-entity) (:uuid account))
                                                          :entity/kind       :membership
                                                          :membership/member (uuid-ref :account (:uuid account))
-                                                         :membership/entity (:ref ent)
+                                                         :membership/entity (:ref the-entity)
                                                          :membership/roles  (into #{}
                                                                                   (comp (filter val)
                                                                                         (map key)
-                                                                                        (map role-kw))
+                                                                                        (map (partial role-kw (:kind the-entity))))
                                                                                   role-map)})))
                                                e-u-r))]
               ::firebase              ["socialFeed" (xf (partial change-keys
@@ -877,6 +880,8 @@
                                        ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
                                                                   (missing-entity? :board/as-map (:ballot/board %))
                                                                   (not (:ballot/membership %))))]
+
+              ;; board memberships
               :membership/as-map      [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                        ::always (remove-when (comp nil? :firebaseAccount))
                                        ::always (remove-when :entity/deleted-at)
@@ -919,7 +924,7 @@
 
 
                                        :name rm
-                                       :roles (& (xf #(into #{} (keep role-kw) %))
+                                       :roles (& (xf #(into #{} (keep (partial role-kw :board)) %))
                                                  (rename :membership/roles))
                                        :tags (& (fn [m a v]
                                                   (let [tags (keep (partial resolve-tag (:membership/entity m)) v)
@@ -977,7 +982,7 @@
                                                  (rename :discussion/posts))
                                        :boardId rm
                                        ::always (remove-when (comp empty? :discussion/posts))]
-              :project/as-map         [::defaults {:entity/archived? false
+              :project/as-map         [::defaults {:entity/archived?        false
                                                    :entity/admission-policy :open}
 
                                        ::always (remove-when :entity/deleted-at)
@@ -1014,8 +1019,8 @@
                                                                            (when-let [member-id (member->board-membership-id user_id)]
                                                                              (let [role (if (and (not (:role member))
                                                                                                  (sch/id= member-id (:entity/created-by project)))
-                                                                                          :role/admin
-                                                                                          (some-> (:role member) role-kw))]
+                                                                                          :role/project-admin
+                                                                                          (some->> (:role member) (role-kw :project)))]
                                                                                (merge {:entity/id         (composite-uuid :membership project-id member-id)
                                                                                        :entity/kind       :membership
                                                                                        :membership/entity (uuid-ref :project project-id)

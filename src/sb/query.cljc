@@ -156,10 +156,23 @@
             ~argv
             ~@body)))))
 #?(:clj
-   (defmacro defquery [name & args]
+   (defmacro defquery
+     "Defines a query function. Accepts an options map containing:
+
+     :prepare - a list of functions, (req, params) => params, to run before the query
+                and prepare the params. Queries are memoized by the params.
+
+                Typically used for:
+                - Rejecting unauthorized or invalid requests
+                - Pulling only the necessary data out of the request and into params
+                  (since queries are memoized by params, unnecessary params would cause
+                   unnecessary duplication of queries in the cache)"
+     [name & args]
      (op-impl &env :query name args)))
 #?(:clj
-   (defmacro defx [name & args]
+   (defmacro defx
+     "Defines an effect function (implemented via POST request)"
+     [name & args]
      (op-impl &env :effect name args)))
 #?(:clj
    (defmacro server [& body]

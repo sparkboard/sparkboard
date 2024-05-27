@@ -31,13 +31,12 @@
                          (cons (account.data/account-as-entity account)))]
     (forms/with-form [!board (u/prune
                                {:entity/title       ?title
-                                :entity/domain-name ?domain
                                 :entity/parent      [:entity/id (uuid (?owner
                                                                         :init
                                                                         (or (-> params :query-params :org)
                                                                             (str (-> (db/get :env/config :account)
                                                                                      :entity/id)))))]})
-                      :required [?title ?domain]]
+                      :required [?title]]
       [:form
        {:class     form.ui/form-classes
         :on-submit (fn [^js e]
@@ -47,12 +46,12 @@
                        (routing/nav! `show {:board-id (:entity/id result)})))
         :ref       (ui/use-autofocus-ref)}
        [:h2.text-2xl (t :tr/new-board)]
-
        (when owners
          [:div.flex-v.gap-2
           [:label.field-label (t :tr/owner)]
           (radix/select-menu {:value           @?owner
                               :on-value-change (partial reset! ?owner)
+                              :field/can-edit? true
                               :field/options
                               (->> owners
                                    (map (fn [{:keys [entity/id entity/title image/avatar]}]
@@ -60,8 +59,8 @@
                                            :text  title
                                            :icon  [:img.w-5.h-5.rounded-sm {:src (asset.ui/asset-src avatar :avatar)}]})))})])
 
-       [field.ui/text-field ?title {:field/label (t :tr/title)}]
-       (domain.ui/domain-field ?domain nil)
+       [field.ui/text-field ?title {:field/label (t :tr/title)
+                                    :field/can-edit? true}]
        [form.ui/submit-form !board (t :tr/create)]])))
 
 (ui/defview register
@@ -122,7 +121,7 @@
                        result))}
         (t :tr/new-project)]]
 
-      [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
+       [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
                        :value           @!current-tab
                        :on-value-change #(do (reset! !current-tab %)
                                              (reset! ?filter nil))}

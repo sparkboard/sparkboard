@@ -86,7 +86,7 @@
 
 (ui/defview settings-button [entity]
   (let [roles (az/all-roles (db/get :env/config :account-id) entity)]
-    (when-let [path (and (or (:role/admin roles)
+    (when-let [path (and (or (:role/board-admin roles)
                              (:role/org-admin roles))
                          (some-> (routing/entity-route entity 'admin-ui/settings)
                                  routing/path-for))]

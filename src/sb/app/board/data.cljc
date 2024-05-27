@@ -179,7 +179,7 @@
         _      (authorize-create! board account-id)
         member (-> {:membership/entity board
                     :membership/member account-id
-                    :membership/roles  #{:role/admin}}
+                    :membership/roles  #{:role/board-admin}}
                    (dl/new-entity :membership))]
     (db/transact! [member])
     board))

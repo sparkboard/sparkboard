@@ -33,8 +33,7 @@
                                                 (? :account.provider.google/sub)]}})
 
 (q/defquery account-orgs
-  {:endpoint {:query true}
-   :prepare  az/with-account-id!}
+  {:prepare  az/with-account-id!}
   [{:keys [account-id]}]
   (into []
         (comp (map :membership/entity)

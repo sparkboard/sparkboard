@@ -122,7 +122,7 @@
          (for [{:as tag :tag/keys [id label color]} (resolved-tags board-membership)]
            [:div.tag-sm {:style (color/color-pair color)}
             label])]]])]
-   (when ((some-fn :role/admin :role/board-admin) (:membership/roles props))
+   (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])]
   )
 

@@ -100,7 +100,7 @@
                    (validate/conform :org/as-map))
         member (-> {:membership/entity org
                     :membership/member account-id
-                    :membership/roles  #{:role/admin}}
+                    :membership/roles  #{:role/org-admin}}
                    (dl/new-entity :membership))]
     (db/transact! [member])
     org))

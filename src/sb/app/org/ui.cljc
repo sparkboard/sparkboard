@@ -63,9 +63,8 @@
    :view/router :router/modal}
   [params]
   (forms/with-form [!org (u/prune
-                           {:entity/title       ?title
-                            :entity/domain-name ?domain})
-                    :required [?title ?domain]]
+                           {:entity/title ?title})
+                    :required [?title]]
     [:form
      {:class     form.ui/form-classes
       :on-submit (fn [e]
@@ -74,6 +73,6 @@
                                         :form !org]
                      (routing/nav! [`show {:org-id (:entity/id result)}])))}
      [:h2.text-2xl (t :tr/new-org)]
-     [field.ui/text-field ?title {:field/label (t :tr/title)}]
-     (domain.ui/domain-field ?domain nil)
+     [field.ui/text-field ?title {:field/label (t :tr/title)
+                                  :field/can-edit? true}]
      [form.ui/submit-form !org (t :tr/create)]]))
