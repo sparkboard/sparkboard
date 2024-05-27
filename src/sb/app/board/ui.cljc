@@ -96,7 +96,7 @@
       (-> props
           (v/merge-props {:class (when error "ring-destructive ring-2")})
           (assoc :on-click (when-not loading? on-click)))
-      (t :tr/new-project)
+      child
       (when (:loading? @!async-state)
         [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))
 
