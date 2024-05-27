@@ -42,8 +42,8 @@
         [:div.flex.gap-4.items-stretch
          [field.ui/filter-field ?filter {:loading? (:loading? result)}]
          [:a.btn.btn-white.flex.items-center.px-3
-          {:href (routing/path-for ['sb.app.board-data/new
-                                   {:query-params {:org-id (:entity/id org)}}])}
+          {:href (routing/path-for ['sb.app.board.ui/new
+                                   {:parent (:entity/id org)}])}
           (t :tr/new-board)]]
         [ui/error-view result]
         (if (seq q)

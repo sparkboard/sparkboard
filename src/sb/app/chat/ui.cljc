@@ -101,12 +101,18 @@
      [radix/dialog-close close-icon]]))
 
 (ui/defview chat-messages [{:as params :keys [other-id chat-id account-id]}]
-  (let [{:as chat :chat/keys [messages]} (when chat-id (data/chat params))]
+  (let [{:as chat :chat/keys [messages]} (when chat-id (data/chat params))
+        current-membership (->> (:chat/participants chat)
+                                (filter (comp #{(sch/unwrap-id account-id)}
+                                              :entity/id
+                                              :membership/member))
+                                first
+                                (sch/wrap-id))]
     (let [!message           (h/use-state nil)
           !response          (h/use-state nil)
           !scrollable-window (h/use-ref)
           message            (u/guard @!message (complement str/blank?))
-          params             (assoc params :membership-id (az/membership-id account-id (:chat/entity chat)))
+          params             (assoc params :membership-id current-membership)
           keydown-handler    (fn [e]
                                (when ((ui/keydown-handler
                                         {:Enter

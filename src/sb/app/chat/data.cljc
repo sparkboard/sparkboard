@@ -97,13 +97,13 @@
    {:chat/entity [:entity/id
                   :entity/title
                   {:image/avatar [:entity/id]}]}
-   {:chat/participants [{:membership/member [:entity/id
+   {:chat/participants [:entity/kind
+                        :entity/id
+                        {:membership/member [:entity/id
                                              :entity/kind
                                              :account/display-name
                                              {:image/avatar [:entity/id]}]}
-                        {:membership/entity [:entity/id]}
-                        :entity/kind
-                        :entity/id]}])
+                        {:membership/entity [:entity/id]}]}])
 
 (def message-fields
   [:entity/id

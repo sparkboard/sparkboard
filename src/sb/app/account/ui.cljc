@@ -137,6 +137,6 @@
            (ui/show-markdown
              (t :tr/start-board-new))
            [:a.btn.btn-primary.btn-base {:class "mt-6"
-                                         :href  (routing/path-for ['sb.app.board-data/new])}
+                                         :href  (routing/path-for ['sb.app.board.ui/new])}
             (t :tr/create-first-board)]])]])
     (ui/redirect `sign-in)))

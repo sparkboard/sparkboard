@@ -67,7 +67,7 @@
                        (ui/with-submission [result (new! {:project @!project})
                                             :form !project]
                          (prn result)
-                         (routing/nav! 'sb.app.board-data/show {:board-id board-id})))}
+                         (routing/nav! 'sb.app.board.ui/show {:board-id board-id})))}
          [form
 
 

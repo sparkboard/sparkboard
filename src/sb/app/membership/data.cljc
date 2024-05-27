@@ -88,7 +88,7 @@
      (let [entity (dl/entity entity)]
        (case (:entity/kind entity)
          :project (ensure-membership! account (:entity/parent entity))
-         (when-not (dl/resolve-id (az/membership-id account entity))
+         (when-not (az/membership-id account entity)
            (throw (ex-info "Not a member" {:status 403})))))))
 
 (defn active-member? [member]
@@ -177,6 +177,3 @@
    :membership/member (sch/wrap-id member-id)
    :membership/entity entity
    :membership/roles  roles})
-
-(comment
-  @(db/entity [:entity/id #uuid "102d77ed-2b62-309c-b33b-b033cc07a008"]))

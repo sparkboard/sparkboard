@@ -22,20 +22,20 @@
             [yawn.view :as v]))
 
 (ui/defview new
-  {:route       "/new/b"
+  {:route       "/new/b/:parent"
    :view/router :router/modal}
-  [{:as params :keys [route]}]
+  [{:as params :keys [route parent]}]
   (let [account (db/get :env/config :account)
         owners  (some->> (account.data/account-orgs {})
                          seq
                          (cons (account.data/account-as-entity account)))]
     (forms/with-form [!board (u/prune
-                               {:entity/title       ?title
-                                :entity/parent      [:entity/id (uuid (?owner
-                                                                        :init
-                                                                        (or (-> params :query-params :org)
-                                                                            (str (-> (db/get :env/config :account)
-                                                                                     :entity/id)))))]})
+                               {:entity/title  ?title
+                                :entity/parent [:entity/id (uuid (?owner
+                                                                   :init
+                                                                   (or parent
+                                                                       (str (-> (db/get :env/config :account)
+                                                                                :entity/id)))))]})
                       :required [?title]]
       [:form
        {:class     form.ui/form-classes
@@ -62,6 +62,11 @@
        [field.ui/text-field ?title {:field/label (t :tr/title)
                                     :field/can-edit? true}]
        [form.ui/submit-form !board (t :tr/create)]])))
+
+(routing/register-route new*
+                        {:alias-of    new
+                         :route       "/new/b"
+                         :view/router :router/modal})
 
 (ui/defview register
   {:route "/b/:board-id/register"}

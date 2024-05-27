@@ -4,11 +4,22 @@
             [sb.schema :as sch])
   #?(:clj (:import [re_db.read Entity])))
 
-(defn membership-id [member-id entity-id]
+
+(defn membership-id
+  "Returns membership id for the given member and entity, or nil if not found."
+  [member-id entity-id]
   ;; TODO, use malli for validations like these
   (when-not (and member-id entity-id)
     (throw (ex-info "Missing member-id or entity-id" {:member-id member-id :entity-id entity-id})))
-  [:entity/id (sch/composite-uuid :membership member-id entity-id)])
+  #_[:entity/id (sch/composite-uuid :membership member-id entity-id)]
+  #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
+                                          [:membership/member (sch/wrap-id member-id)]])))
+     :clj  (first (dl/q '[:find [?e]
+                          :in $ ?member-id ?entity-id
+                          :where [?e :membership/member ?member-id]
+                          [?e :membership/entity ?entity-id]]
+                        (sch/wrap-id member-id)
+                        (sch/wrap-id entity-id)))))
 
 (defn membership [member-id entity-id]
   (db/entity (membership-id member-id entity-id)))

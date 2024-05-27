@@ -1,7 +1,6 @@
 (ns sb.app.views.ui
   (:require-macros [sb.app.views.ui :as ui])
-  (:require ["@radix-ui/react-dropdown-menu" :as dm]
-            ["prosemirror-keymap" :refer [keydownHandler]]
+  (:require ["prosemirror-keymap" :refer [keydownHandler]]
             ["markdown-it" :as md]
             ["linkify-element" :as linkify-element]
             ["react" :as react]
@@ -20,9 +19,11 @@
             [sb.i18n]
             [sb.icons :as icons]
             [sb.routing :as routing]
+            [sb.util :as u]
             [shadow.cljs.modern :refer [defclass]]
             [yawn.hooks :as h]
-            [yawn.view :as v]))
+            [yawn.view :as v]
+            [net.cgrand.xforms :as xf]))
 
 (defn dev? [] (= "dev" (db/get :env/config :env)))
 
@@ -59,6 +60,15 @@
 
 (defn filtered [match-text]
   (filter (partial match-entity match-text)))
+
+;; TODO / WIP
+;; - add sorting widgets to filter views for orgs (boards) and boards (projects, members, community-actions)
+;; - some sorting widgets are dynamic (fields that have the "filter by this field" flag)
+(defn sorted [sort-key & {:keys [direction] :or {direction :asc}}]
+  (case sort-key
+    :entity/created-at (xf/sort-by :entity/created-at (case direction :asc compare :desc u/compare:desc))
+    :random (xf/sort #(rand-nth [-1 1]))
+    ))
 
 (defn pprinted [x & _]
   [:pre.whitespace-pre-wrap (with-out-str (clojure.pprint/pprint x))])
