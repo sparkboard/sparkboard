@@ -10,13 +10,17 @@
         options (cond-> options
                         (:route options)
                         (assoc-in [:endpoint :view] (:route options)))]
-    (if (:ns &env)
-      `(do ~(v/defview:impl
-              {:wrap-expr (fn [expr] `(~'re-db.react/use-derefs ~expr))}
-              name
-              args)
-           ~(when (:route options)
-              `(sb.routing/register-route ~name ~options)))
+    (if (:ns &env)                                          ;; we are compiling for clojurescript
+      (do
+        (when-let [the-var (resolve (symbol (str *ns*) (str name)))]
+          (alter-meta! the-var merge options))
+
+        `(do ~(v/defview:impl
+                {:wrap-expr (fn [expr] `(~'re-db.react/use-derefs ~expr))}
+                name
+                args)
+             ~(when (:route options)
+                `(sb.routing/register-route ~name ~options))))
       `(defn ~name ~@(when options [options])
          ~argv))))
 
