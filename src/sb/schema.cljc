@@ -208,7 +208,7 @@
      :i18n/locale-dicts       {:doc "Extra/override translations, eg. {'fr' {'hello' 'bonjour'}}",
                                s-   [:map-of :i18n/locale :i18n/dict]}}
     ;; util
-    {:http/url       {s- [:re #"(?:[a-z]+?://)?.+\..+"]}
+    {:http/url       {s- [:re {:error/message "should be a valid url (eg. https://example.com)"} #"(?:[a-z]+?://)?.+\..+"]}
      ;; TODO - fix these in the db, remove "file" below
      :http/image-url {s- [:re #"(?i)https?://.+\..+\.(?:jpg|png|jpeg|gif|webp)$"]}
      :html/color     {s- :string}
