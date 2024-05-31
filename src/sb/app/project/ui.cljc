@@ -1,5 +1,6 @@
 (ns sb.app.project.ui
   (:require [inside-out.forms :as forms]
+            [promesa.core :as p]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
@@ -122,6 +123,23 @@
      [entity.ui/persisted-attr project :entity/admission-policy props])]
   )
 
+;; TODO: taken from board.ui, merge into common component if sensible
+(ui/defview action-button [{:as props :keys [on-click]} child]
+  (let [!async-state (h/use-state nil)
+        on-click     (fn [e]
+                       (reset! !async-state {:loading? true})
+                       (p/let [result (on-click e)]
+                         (reset! !async-state (when (:error result) result))))
+        {:keys [loading? error]} @!async-state]
+    [radix/tooltip {:delay-duration 0} error
+     [:div.btn.btn-white.overflow-hidden.relative
+      (-> props
+          (v/merge-props {:class (when error "ring-destructive ring-2")})
+          (assoc :on-click (when-not loading? on-click)))
+      child
+      (when (:loading? @!async-state)
+        [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))
+
 (ui/defview show
   {:route       "/p/:project-id"
    :view/router :router/modal}
@@ -193,7 +211,14 @@
        [project-members project field-params]
 
        #_[:section.flex-v.gap-2.items-start
-          [manage-community-actions project (:project/community-actions project)]]]]]))
+          [manage-community-actions project (:project/community-actions project)]]
+
+       (when can-edit?
+         [action-button {:on-click (fn [_]
+                                     (p/let [result (data/delete! nil {:project-id (sch/unwrap-id (:project-id params))})]
+                                       (routing/dissoc-router! :router/modal)
+                                       result))}
+          "delete"])]]]))
 
 (defn membership-colors [membership]
   (into []

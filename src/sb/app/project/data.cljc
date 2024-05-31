@@ -129,3 +129,10 @@
     (validate/assert project :project/as-map)
     (db/transact! [membership])
     {:entity/id (:entity/id project)}))
+
+(q/defx delete!
+  "Mutation fn. Marks project as deleted by given project-id."
+  [_req {:keys [project-id]}]
+  ;; TODO: auth
+  (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
+  {:body ""})
