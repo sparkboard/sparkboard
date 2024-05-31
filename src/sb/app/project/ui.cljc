@@ -175,7 +175,7 @@
            [icons/arrow-left]]]
          (when (:entity/id project)
            [radix/tooltip "Link to project"
-            [:a.modal-title-icon {:href (routing/entity-path project :show)}
+            [:a.modal-title-icon {:href (routing/entity-path project 'ui/show)}
              [icons/link-2]]])
          [radix/dialog-close
           [:div.modal-title-icon [icons/close]]]]]]
