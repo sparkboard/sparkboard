@@ -205,7 +205,7 @@
         (:entity/tags membership)))
 
 (ui/defview card
-  {:key :entity/id}
+  {:key #(:entity/id %2)}
   [{:keys [entity/project-fields]}
    {:as   entity
     :keys [entity/parent
