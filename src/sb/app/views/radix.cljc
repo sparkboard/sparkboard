@@ -139,11 +139,11 @@
         [:div.flex-grow]
         (when can-edit?
           [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down)])]
-       [:el sel/Content {:class (:content classes)}
-        [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
-        (into [:el.p-1 sel/Viewport {}] (map select-item) options)
-        [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
-        [:el sel/Arrow]]])))
+       [:el sel/Portal
+        [:el sel/Content {:class (:content classes)}
+         [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
+         (into [:el.p-1 sel/Viewport {}] (map select-item) options)
+         [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]]]])))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))
