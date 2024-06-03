@@ -18,10 +18,6 @@
             [yawn.view :as v]
             [re-db.api :as db]))
 
-(def btn (v/from-element :div.btn.btn-transp.border-2.py-2.px-3))
-(def hint (v/from-element :div.flex.items-center.text-sm {:class "text-primary/70"}))
-(def chiclet (v/from-element :div.rounded.px-2.py-1 {:class "bg-primary/5 text-primary/90"}))
-
 (ui/defview manage-community-actions [project actions]
   (forms/with-form [!actions (?actions :many {:community-action/label  ?label
                                               :community-action/action ?action
