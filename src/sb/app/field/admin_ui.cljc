@@ -72,7 +72,7 @@
         [field.ui/text-field ?new {:placeholder     "Option label"
                                    :field/can-edit? true
                                    :field/classes   {:wrapper "flex-auto"}}]
-        [:div.btn.bg-white.px-3.py-1.shadow "Add Option"]])
+        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} "Add Option"]])
      #_[ui/pprinted @?options]]))
 
 (ui/defview field-row-detail [{:as ?field :syms [?label
