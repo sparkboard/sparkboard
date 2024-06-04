@@ -195,6 +195,9 @@
            (some->
              (q/pull `[~@entity.data/listing-fields
                        :entity/admission-policy
+                       :board/registration-url-override
+                       :board/registration-page-message
+                       :board/invite-email-text
                        {:image/background [:entity/id]}
                        {:entity/domain-name [:domain-name/name]}
                        :entity/member-tags
@@ -202,6 +205,7 @@
                        {:entity/member-fields ~field.data/field-keys}
                        {:entity/project-fields ~field.data/field-keys}] board-id)
              (merge {:membership/roles roles}))))
+
 (comment
   [:ul                                                      ;; i18n stuff
    [:li "suggested locales:" (str (:entity/locale-suggestions board))]

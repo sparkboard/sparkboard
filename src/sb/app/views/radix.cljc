@@ -139,11 +139,11 @@
         [:div.flex-grow]
         (when can-edit?
           [:el.group-disabled:text-gray-400 sel/Icon (icons/chevron-down)])]
-       [:el sel/Content {:class (:content classes)}
-        [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
-        (into [:el.p-1 sel/Viewport {}] (map select-item) options)
-        [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]
-        [:el sel/Arrow]]])))
+       [:el sel/Portal
+        [:el sel/Content {:class (:content classes)}
+         [:el.p-1 sel/ScrollUpButton (icons/chevron-up "mx-auto")]
+         (into [:el.p-1 sel/Viewport {}] (map select-item) options)
+         [:el.p-1 sel/ScrollDownButton (icons/chevron-down "mx-auto")]]]])))
 
 (def select-separator (v/from-element :el sel/Separator))
 (def select-label (v/from-element :el sel/Label {:class "text-txt/70"}))
@@ -269,10 +269,16 @@
 
 (v/defview persistent-popover [{:keys [content classes props]} anchor]
   (v/x [:el popover/Root (v/props (merge (:root props)
-                                         {:open  (boolean content)
+                                         {;; changing `:open` depending on whether there is `content` or not
+                                          ;; causes any nested input to lose focus, so we always keep the
+                                          ;; popover open and hide it when there is no `content`
+                                          :open  true
+
                                           :style {:z-index 1}}))
         [:el.hidden popover/Trigger]
         [:el popover/Anchor anchor]
-        [:el.outline-none popover/Content {:class (:content classes)}
-         [:el popover/Arrow {:class (:arrow classes)}]
-         content]]))
+        [:div {:class (when-not content
+                        "hidden")}
+         [:el.outline-none popover/Content {:class (:content classes)}
+          [:el popover/Arrow {:class (:arrow classes)}]
+          content]]]))

@@ -739,25 +739,25 @@
                   [icons/lock:micro "w-3 h-3 -mr-1"])
                 (when editing?
                   [icons/x-mark "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"])]))]
-     (when to-add
+     (when can-edit?
        [:div.flex-v.gap-2
-        (when-not editing?
+        (if-not editing?
           [:div.tag-md.px-1.hover:bg-gray-100.text-gray-400.hover:text-gray-700.cursor-default.mr-auto {:on-click #(edit! not)}
-           (t :tr/edit-tags)])
-        (when editing?
+           (t :tr/edit-tags)]
           [:div.bg-gray-100.rounded-lg.border-gray-400.flex.items-stretch.mt-2.mr-auto
-           [:div.flex.flex-wrap.gap-2.p-3.
-            (for [{:tag/keys [id label color restricted?]} to-add]
-              [:div.tag-md.cursor-default.group
-               {:key      id
-                :style    (color/color-pair color)
-                :on-click #(do (io/add-many! ?tags {:tag/id id})
-                               (entity.data/maybe-save-field ?tags))}
-               label
-               (when restricted?
-                 [icons/lock:micro "w-3 h-3 -mr-1"])
-               [icons/plus-thick "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"]])]
-           [:div.hover:bg-gray-200.p-2.rounded.flex.items-center.m-1.-ml-2 {:on-click #(edit! not)} [icons/checkmark "flex-none"]]])
+           (when to-add
+             [:div.flex.flex-wrap.gap-2.p-3.-mr-3
+              (for [{:tag/keys [id label color restricted?]} to-add]
+                [:div.tag-md.cursor-default.group
+                 {:key      id
+                  :style    (color/color-pair color)
+                  :on-click #(do (io/add-many! ?tags {:tag/id id})
+                                 (entity.data/maybe-save-field ?tags))}
+                 label
+                 (when restricted?
+                   [icons/lock:micro "w-3 h-3 -mr-1"])
+                 [icons/plus-thick "w-4 h-4 -mr-1 opacity-50 group-hover:opacity-100"]])])
+           [:div.hover:bg-gray-200.p-2.rounded.flex.items-center.m-1 {:on-click #(edit! not)} [icons/checkmark "flex-none"]]])
         [form.ui/show-field-messages ?tags]])]
     )
   ;; pass in a list of tags (from parent) to show. group-by (set @?tags).
