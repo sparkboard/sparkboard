@@ -55,34 +55,22 @@
            chat-id]} message-content]
   ;; 1. check if chat entity exists
   ;; 2. add chat message to chat entity, creating one if it doesn't exist
-  (let [existing-chat (if chat-id
-                        (db/entity chat-id)
-                        ;; TODO handle new chat creation
-                        (comment
-                          (dl/q '[:find (pull ?e [* {:chat/participants [:entity/id]}
-                                                  {:chat/entity [:entity/id]}]) .
-                                  :in $ ?account-id ?other-id ?entity-id
-                                  :where
-                                  [?e :chat/participants ?account-id]
-                                  [?e :chat/participants ?other-id]
-                                  [?e :chat/entity ?entity-id]]
-                                account-id
-                                other-id
-                                entity-id)
-                          (db/entity [:chat/key (make-key account-id other-id)])))
+  (let [existing-chat (when chat-id (db/entity chat-id))
         new-message   (-> (dl/new-entity {:chat.message/content message-content}
                                          :chat.message
                                          :by membership-id)
                           (assoc :db/id "new-message"))
         new-chat      (or existing-chat
-                          (dl/new-entity {:db/id             "new-chat"
-                                          :chat/participants [membership-id other-id]
-                                          :chat/entity       (-> (db/entity membership-id)
-                                                                 :membership/entity
-                                                                 :db/id)
-                                          :chat/key          (make-key membership-id other-id)
-                                          :chat/messages     [new-message]}
-                                         :chat))
+                          (do (assert membership-id)
+                              (assert other-id)
+                              (dl/new-entity {:db/id             "new-chat"
+                                              :chat/participants [membership-id other-id]
+                                              :chat/entity       (-> (db/entity membership-id)
+                                                                     :membership/entity
+                                                                     :db/id)
+                                              :chat/key          (make-key membership-id other-id)
+                                              :chat/messages     [new-message]}
+                                             :chat)))
         tx-report     (db/transact! (if existing-chat
                                       [[:db/add (:db/id existing-chat) :chat/messages "new-message"]
                                        new-message]
@@ -126,12 +114,47 @@
 (def chat-fields-full
   (conj chat-fields-meta {:chat/messages message-fields}))
 
+(defn get-chat-id [{:as params :keys [account-id chat-id other-id]}]
+  (or chat-id
+      (-> (db/where [[:chat/participants other-id]
+                     #(some (comp #{(sch/unwrap-id account-id)}
+                                  :entity/id
+                                  :membership/member)
+                            (:chat/participants %))])
+          first
+          sch/wrap-id)))
+
 (q/defquery chat
   "Get a chat by chat-id"
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id chat-id]}]
   (ensure-participant! account-id (dl/entity chat-id))
   (q/pull chat-fields-full chat-id))
+
+(q/defquery proto-chat
+  "get a synthetic chat entity with only `:chat/participants` and `:chat/entity` populated by account-id and other-id"
+  [{:as params :keys [account-id other-id]}]
+  (let [other (q/pull [:entity/kind
+                       :entity/id
+                       {:membership/member [:entity/id
+                                            :entity/kind
+                                            :account/display-name
+                                            {:image/avatar [:entity/id]}]}
+                       {:membership/entity [:entity/id]}]
+                      other-id)
+        me (q/pull [:entity/kind
+                    :entity/id
+                    {:membership/member [:entity/id
+                                         :entity/kind
+                                         :account/display-name
+                                         {:image/avatar [:entity/id]}]}
+                    {:membership/entity [:entity/id]}]
+                   (az/membership-id account-id (-> other :membership/entity)))]
+    {:chat/participants [me other]
+     :chat/entity (q/pull [:entity/id
+                           :entity/title
+                           {:image/avatar [:entity/id]}]
+                          (sch/wrap-id (sch/unwrap-id (-> other :membership/entity))))}))
 
 (q/defquery chats-list
   {:prepare [az/with-account-id!]}

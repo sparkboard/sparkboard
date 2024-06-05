@@ -2,6 +2,7 @@
   (:require [applied-science.js-interop :as j]
             [clojure.string :as str]
             [promesa.core :as p]
+            [re-db.api :as db]
             [sb.app.chat.data :as data]
             [sb.app.field.ui :as field.ui]
             [sb.app.membership.data :as member.data]
@@ -22,6 +23,53 @@
   (v/classes ["rounded-lg p-2 bg-gray-50 border-gray-300 border"
               "disabled:bg-gray-200 disabled:text-gray-500"]))
 
+(defn other-participant [{:keys [other-id account-id chat]}]
+  (cond other-id
+        (db/entity other-id)
+        (and account-id chat)
+        (let [membership-id (:db/id (az/membership account-id (:chat/entity chat)))]
+          (u/find-first (:chat/participants chat)
+                        #(not= membership-id (:db/id %))))))
+
+(ui/defview chat-snippet
+  {:key (fn [_ {:keys [entity/id]}] id)}
+  [{:as   params
+    :keys [current-chat-id
+           account-id]}
+   chat]
+  (let [{:as   chat
+         :keys [entity/id
+                chat/last-message]} chat
+        other    (other-participant {:account-id account-id :chat chat})
+        current? (sch/id= current-chat-id id)]
+    [:a.flex.gap-2.py-2.cursor-default.px-1.rounded.items-start.text-sm.w-full.text-left.focus-bg-gray-100
+     {:href  (routing/path-for [`chat {:chat-id id}])
+      :class (if current? "bg-blue-100 rounded" "hover:bg-gray-200")}
+     [:div.flex.flex-row-reverse.flex-none.items-end
+      ;; using `.flex-row-reverse` to have the icon of the :chat/entity on the left but on top of user avatar
+      ;; BUG this does not work in chrome because of this bug: https://issues.chromium.org/issues/40250603
+      [ui/avatar {:size 12 :class "flex-none"} (:membership/member other)]
+      [ui/avatar {:size 6 :class "flex-none -mr-3"} (:chat/entity chat)]]
+     [:div.flex-v.w-full.overflow-hidden
+      [:div.flex.items-center
+       [:div.font-bold.flex-auto (:account/display-name (:membership/member other))]]
+      [:div.text-gray-700.hidden.md:line-clamp-2.text-sm
+       {:class (when (data/unread? params chat) "font-semibold")}
+       (field.ui/show-prose
+        (cond-> (:chat.message/content last-message)
+          (sch/id= (member.data/corresponding-membership account-id other)
+                   (:entity/created-by last-message))
+          (update :prose/string (partial str (t :tr/you) " "))))]]]))
+
+(ui/defview new-chat-snippet [params {:as membership account :membership/member}]
+  (let [current? (sch/id= membership (:other-id params))]
+    [:a.flex.items-center.gap-2.font-bold
+     {:href (routing/path-for [`new-chat {:other-id (:entity/id membership)}] )
+      :class (if current? "bg-blue-100 rounded" "hover:bg-gray-200")}
+     [ui/avatar {:size 6} (:membership/entity membership)]
+     [ui/avatar {:size 8} account]
+     (:account/display-name account)]))
+
 (ui/defview member-search [params]
   (let [!search-term (h/use-state "")]
     [:<>
@@ -34,45 +82,18 @@
       [:div.absolute.right-2.top-0.bottom-0.flex.items-center
        [icons/search "w-5 h-5 absolute right-2"]]]
      (doall
-       (for [account (member.data/search {:search-term (h/use-deferred-value @!search-term)})]
-         [:div.flex.items-center.gap-2.font-bold
-          [ui/avatar {:size 8} account]
-          (:account/display-name account)]))]))
+      (for [membership
+            (member.data/search-membership {:search-term (h/use-deferred-value @!search-term)})]
+        (if-let [chat-id (data/get-chat-id {:account-id (:account-id params)
+                                            :other-id (sch/wrap-id membership)})]
+          [chat-snippet params (data/chat {:chat-id chat-id})]
+          [new-chat-snippet params membership])))]))
 
-(defn other-participant [account-id chat]
-  (let [membership-id (:db/id (az/membership account-id (:chat/entity chat)))]
-    (u/find-first (:chat/participants chat)
-                  #(not= membership-id (:db/id %)))))
-
-(ui/defview chat-snippet
-  {:key (fn [_ {:keys [entity/id]}] id)}
-  [{:as   params
-    :keys [current-chat-id
-           account-id]} chat]
-  (let [{:as   chat
-         :keys [entity/id
-                chat/last-message]} chat
-        other    (other-participant account-id chat)
-        current? (sch/id= current-chat-id id)]
-    [:a.flex.gap-2.py-2.cursor-default.px-1.rounded.items-start.text-sm.w-full.text-left.focus-bg-gray-100
-     {:href  (routing/path-for [`chat {:chat-id id}])
-      :class (if current? "bg-blue-100 rounded" "hover:bg-gray-100")}
-     [ui/avatar {:size 12 :class "flex-none"} (:membership/member other)]
-     [:div.flex-v.w-full.overflow-hidden
-      [:div.flex.items-center
-       [:div.font-bold.flex-auto (:account/display-name (:membership/member other))]]
-      [:div.text-gray-700.hidden.md:line-clamp-2.text-sm
-       {:class (when (data/unread? params chat) "font-semibold")}
-       (field.ui/show-prose
-         (cond-> (:chat.message/content last-message)
-                 (sch/id= account-id (:entity/created-by last-message))
-                 (update :prose/string (partial str (t :tr/you) " "))))]]]))
-
-(ui/defview chats-sidebar [{:as             chat
+(ui/defview chats-sidebar [{:as             params
                             :keys           [account-id]
                             current-chat-id :chat-id}]
   [:div.flex-v.px-1.py-2.w-full
-   #_[member-search nil]
+   [member-search (assoc params :current-chat-id (data/get-chat-id params))]
    (->> (data/chats-list nil)
         (map (partial chat-snippet {:current-chat-id current-chat-id
                                     :account-id      account-id})))])
@@ -90,18 +111,19 @@
     :key   id}
    (field.ui/show-prose content)])
 
-(ui/defview chat-header [{:keys [account-id chat]}]
+(ui/defview chat-header [params]
   (let [close-icon [icons/close "w-4 h-4 ml-2 hover:opacity-50 flex-none"]]
     [:div.p-2.text-lg.flex.items-center.h-14.w-full.flex-none
      [:div.truncate.flex-auto
-      (when (and account-id chat)
-        (-> (other-participant account-id chat)
-            :membership/member
-            :account/display-name))]
+      (-> (other-participant params)
+          :membership/member
+          :account/display-name)]
      [radix/dialog-close close-icon]]))
 
-(ui/defview chat-messages [{:as params :keys [other-id chat-id account-id]}]
-  (let [{:as chat :chat/keys [messages]} (when chat-id (data/chat params))
+(ui/defview chat-messages [{:as params :keys [other-id account-id]}]
+  (let [{:as chat :chat/keys [messages]} (if-let [chat-id (data/get-chat-id params)]
+                                           (data/chat {:chat-id chat-id})
+                                           (data/proto-chat params))
         current-membership (->> (:chat/participants chat)
                                 (filter (comp #{(sch/unwrap-id account-id)}
                                               :entity/id
@@ -115,32 +137,33 @@
           params             (assoc params :membership-id current-membership)
           keydown-handler    (fn [e]
                                (when ((ui/keydown-handler
-                                        {:Enter
-                                         (fn [e]
-                                           (reset! !response {:pending true})
-                                           (p/let [response (data/new-message!
-                                                              params
-                                                              {:prose/format :prose.format/markdown
-                                                               :prose/string message})]
-                                             (reset! !response response)
-                                             (when-not (:error response)
-                                               (reset! !message nil))
-                                             (js/setTimeout #(.focus (.-target e)) 10)))}) e)
+                                       {:Enter
+                                        (fn [e]
+                                          (reset! !response {:pending true})
+                                          (p/let [response (data/new-message!
+                                                            params
+                                                            {:prose/format :prose.format/markdown
+                                                             :prose/string message})]
+                                            (reset! !response response)
+                                            (when-not (:error response)
+                                              (reset! !message nil))
+                                            (js/setTimeout #(.focus (.-target e)) 10)))}) e)
                                  (.preventDefault e)))]
       (h/use-effect
-        (fn []
-          (when-let [el @!scrollable-window]
-            (set! (.-scrollTop el) (.-scrollHeight el))))
-        [(count messages) @!scrollable-window])
+       (fn []
+         (when-let [el @!scrollable-window]
+           (set! (.-scrollTop el) (.-scrollHeight el))))
+       [(count messages) @!scrollable-window])
       (h/use-effect
-        (fn []
-          (when (data/unread? params chat)
-            (data/mark-read! {:chat-id    (sch/wrap-id chat)
-                              :message-id (sch/wrap-id (last messages))})))
-        [(:entity/id (last messages))])
+       (fn []
+         (when (and (seq messages) (data/unread? params chat))
+           (data/mark-read! {:chat-id    (sch/wrap-id chat)
+                             :message-id (sch/wrap-id (last messages))})))
+       [(:entity/id (last messages))])
       [:<>
        [chat-header {:account-id account-id
-                     :chat       chat}]
+                     :chat       chat
+                     :other-id   other-id}]
        [:div.flex-auto.overflow-y-scroll.flex-v.gap-3.p-2.border-t
         {:ref !scrollable-window}
         (->> messages
@@ -153,7 +176,7 @@
          :type        "text"
          :placeholder "Aa"
          :disabled    (:pending @!response)
-         ;:style       {:max-height 200}
+                                        ;:style       {:max-height 200}
          :on-key-down keydown-handler
          :on-change   #(reset! !message (j/get-in % [:target :value]))
          :value       (or message "")}]])))

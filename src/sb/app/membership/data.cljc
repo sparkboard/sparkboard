@@ -128,6 +128,45 @@
                                        :entity/public?])))
                  ids)))
 
+(q/defquery search-membership
+  {:prepare [az/with-account-id!]}
+  [{:as params :keys [account-id entity-id search-term]}]
+  (if entity-id
+    ;; scoped to entity
+    (assert false "not implemented yet")
+    ;; all entities I'm also a member of
+    (dl/q '[:find [(pull ?you [:entity/id
+                               {:membership/entity [:entity/id {:image/avatar [:entity/id]}]
+                                :membership/member
+                                [:account/display-name
+                                 :entity/id
+                                 {:image/avatar [:entity/id]}]}])
+                   ...]
+            :in $ ?my-account ?search-term
+            :where
+            [?me :membership/member ?my-account]
+            [?me :membership/entity ?entity]
+            [?you :membership/entity ?entity]
+            [?you :membership/member ?your-account]
+            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+          account-id
+          search-term)))
+
+(defn corresponding-membership
+  "Returns for the given `account-id` the membership that is member of the same entity as `other-id`"
+  [account-id other-id]
+  {:pre [account-id other-id]}
+  (some->> (-> (db/entity other-id)
+               :membership/entity
+               :entity/id)
+           (az/membership account-id)))
+
+(comment
+  (corresponding-membership [:entity/id #uuid "b03a4669-a7ef-3e8e-bddc-8413e004c338"]
+                            [:entity/id #uuid "a32cdd50-dcc8-34d3-a023-0f432a2e162c"])
+
+  )
+
 (q/defquery search
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id entity-id search-term]}]
