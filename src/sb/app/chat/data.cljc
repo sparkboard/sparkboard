@@ -46,16 +46,35 @@
 (defn make-key [& participant-ids]
   (str/join "+" (sort (map sch/unwrap-id participant-ids))))
 
+(defn get-chat-id* [{:as params :keys [membership-id chat-id other-id]}]
+  (or chat-id
+      (-> (db/where [[:chat/participants membership-id]
+                     #(some (comp #{(sch/unwrap-id other-id)}
+                                  :entity/id)
+                            (:chat/participants %))])
+          first
+          sch/wrap-id)))
+
+(defn get-chat-id [{:as params :keys [account-id chat-id other-id]}]
+  (or chat-id
+      (when-let [entity-id (:membership/entity (db/entity other-id))]
+        (get-chat-id* {:membership-id (az/membership-id (sch/unwrap-id account-id)
+                                                        (sch/unwrap-id entity-id))
+                       :other-id other-id}))))
+
 (q/defx new-message!
   "Create a new chat message."
   {:prepare [az/with-account-id!]}
   [{:as params
     :keys [membership-id
-           other-id
-           chat-id]} message-content]
+           other-id]}
+   message-content]
   ;; 1. check if chat entity exists
   ;; 2. add chat message to chat entity, creating one if it doesn't exist
-  (let [existing-chat (when chat-id (db/entity chat-id))
+  (let [;; There is the possibilty of a race condition here, between when we
+        ;; try to find an existing chat and when we transact
+        chat-id (get-chat-id* params)
+        existing-chat (when chat-id (db/entity chat-id))
         new-message   (-> (dl/new-entity {:chat.message/content message-content}
                                          :chat.message
                                          :by membership-id)
@@ -113,16 +132,6 @@
 
 (def chat-fields-full
   (conj chat-fields-meta {:chat/messages message-fields}))
-
-(defn get-chat-id [{:as params :keys [account-id chat-id other-id]}]
-  (or chat-id
-      (-> (db/where [[:chat/participants other-id]
-                     #(some (comp #{(sch/unwrap-id account-id)}
-                                  :entity/id
-                                  :membership/member)
-                            (:chat/participants %))])
-          first
-          sch/wrap-id)))
 
 (q/defquery chat
   "Get a chat by chat-id"
