@@ -1,6 +1,7 @@
 (ns sb.app.chat.data
   (:require [clojure.string :as str]
             [re-db.api :as db]
+            [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [s-]]
@@ -46,35 +47,46 @@
 (defn make-key [& participant-ids]
   (str/join "+" (sort (map sch/unwrap-id participant-ids))))
 
-(defn get-chat-id* [{:as params :keys [membership-id chat-id other-id]}]
-  (or chat-id
-      (-> (db/where [[:chat/participants membership-id]
-                     #(some (comp #{(sch/unwrap-id other-id)}
-                                  :entity/id)
-                            (:chat/participants %))])
-          first
-          sch/wrap-id)))
-
 (defn get-chat-id [{:as params :keys [account-id chat-id other-id]}]
   (or chat-id
       (when-let [entity-id (:membership/entity (db/entity other-id))]
-        (get-chat-id* {:membership-id (az/membership-id (sch/unwrap-id account-id)
-                                                        (sch/unwrap-id entity-id))
-                       :other-id other-id}))))
+        (let [membership-id (az/membership-id (sch/unwrap-id account-id)
+                                              (sch/unwrap-id entity-id))]
+          (-> (db/where [[:chat/participants membership-id]
+                         #(some (comp #{(sch/unwrap-id other-id)}
+                                      :entity/id)
+                                (:chat/participants %))])
+              first
+              sch/wrap-id)))))
+
+(defn ensure-and-get-participant!
+  "returns the membership for `account-id` that is a participant in `chat`. Throws if `account-id` is not a participant in `chat`."
+  [account-id chat]
+  #?(:clj
+     (let [member (az/membership account-id (:chat/entity chat))]
+       (if (contains? (into #{}
+                            (map :db/id)
+                            (:chat/participants chat))
+                      (:db/id member))
+         member
+         (az/unauthorized! "You are not a participant in this chat.")))))
 
 (q/defx new-message!
   "Create a new chat message."
   {:prepare [az/with-account-id!]}
   [{:as params
-    :keys [membership-id
+    :keys [account-id
            other-id]}
    message-content]
   ;; 1. check if chat entity exists
   ;; 2. add chat message to chat entity, creating one if it doesn't exist
   (let [;; There is the possibilty of a race condition here, between when we
         ;; try to find an existing chat and when we transact
-        chat-id (get-chat-id* params)
+        chat-id (get-chat-id params)
         existing-chat (when chat-id (db/entity chat-id))
+        membership-id (if chat-id
+                        (sch/wrap-id (ensure-and-get-participant! account-id existing-chat))
+                        (sch/wrap-id (member.data/corresponding-membership account-id other-id)))
         new-message   (-> (dl/new-entity {:chat.message/content message-content}
                                          :chat.message
                                          :by membership-id)
@@ -137,7 +149,10 @@
   "Get a chat by chat-id"
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id chat-id]}]
-  (ensure-participant! account-id (dl/entity chat-id))
+  (assert chat-id)
+  (let [chat (dl/entity chat-id)]
+    (assert chat chat-id)
+    (ensure-participant! account-id chat))
   (q/pull chat-fields-full chat-id))
 
 (q/defquery proto-chat

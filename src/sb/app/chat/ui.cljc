@@ -123,18 +123,11 @@
 (ui/defview chat-messages [{:as params :keys [other-id account-id]}]
   (let [{:as chat :chat/keys [messages]} (if-let [chat-id (data/get-chat-id params)]
                                            (data/chat {:chat-id chat-id})
-                                           (data/proto-chat params))
-        current-membership (->> (:chat/participants chat)
-                                (filter (comp #{(sch/unwrap-id account-id)}
-                                              :entity/id
-                                              :membership/member))
-                                first
-                                (sch/wrap-id))]
+                                           (data/proto-chat params))]
     (let [!message           (h/use-state nil)
           !response          (h/use-state nil)
           !scrollable-window (h/use-ref)
           message            (u/guard @!message (complement str/blank?))
-          params             (assoc params :membership-id current-membership)
           keydown-handler    (fn [e]
                                (when ((ui/keydown-handler
                                        {:Enter
@@ -168,7 +161,13 @@
         {:ref !scrollable-window}
         (->> messages
              (sort-by :entity/created-at)
-             (map (partial chat-message params))
+             (map (partial chat-message (->> (:chat/participants chat)
+                                             (filter (comp #{(sch/unwrap-id account-id)}
+                                                           :entity/id
+                                                           :membership/member))
+                                             first
+                                             (sch/wrap-id)
+                                             (assoc params :membership-id))))
              doall)]
        [field.ui/auto-size
         {:class       [search-classes
