@@ -76,6 +76,11 @@
   :local {:extra-deps {io.github.mhuebert/re-db {:local/root "../re-db"}
                        io.github.mhuebert/yawn {:local/root "../yawn"}
                        io.github.mhuebert/inside-out {:local/root "../inside-out"}}}
+  :test {:extra-paths ["test"]
+         :extra-deps {io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+         :main-opts ["-m" "cognitect.test-runner"]
+         :exec-fn cognitect.test-runner.api/test}
   ;; needed for datalevin
   :nio {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
                    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}}

@@ -17,6 +17,7 @@
                                (shell "clojure -T:compile-java compile-java")))
          dev             (do (run 'compile-scrypt)
                              (shell "yarn shadow-cljs -A:dev:nio:local clj-run sb.build/start 3000"))
+         test            (shell "clj -X:test:nio")
          cljs            (do (shell "yarn install")
                              (shell "yarn shadow-cljs release web"))
          clj             (do (shell "clojure -A:nio -X:aot")
