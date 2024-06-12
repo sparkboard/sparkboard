@@ -86,31 +86,33 @@
   {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id membership/roles]}]
   (u/timed `show
-           (merge (q/pull `[:entity/id
-                            :entity/kind
-                            :entity/title
-                            :entity/description
-                            :entity/admission-policy
-                            {:entity/video [:video/url]}
-                            {:project/badges [:badge/label
-                                              :badge/color]}
-                            :entity/field-entries
-                            :entity/draft?
-                            :project/sticky?
-                            {:membership/_entity [:entity/id
-                                                  :entity/kind
-                                                  :entity/created-at
-                                                  :membership/roles
-                                                  {:membership/member [:account/display-name
-                                                                       :entity/id
-                                                                       :entity/kind
-                                                                       {:image/avatar [:entity/id]}]}]}
-                            {:entity/parent
-                             [~@entity.data/listing-fields
-                              :board/sticky-color
-                              {:entity/project-fields ~field.data/field-keys}]}]
-                          project-id)
-                  {:membership/roles roles})))
+           (let [project (q/pull `[:entity/id
+                                   :entity/kind
+                                   :entity/title
+                                   :entity/description
+                                   :entity/admission-policy
+                                   {:entity/video [:video/url]}
+                                   {:project/badges [:badge/label
+                                                     :badge/color]}
+                                   :entity/field-entries
+                                   :entity/draft?
+                                   :entity/deleted-at
+                                   :project/sticky?
+                                   {:membership/_entity [:entity/id
+                                                         :entity/kind
+                                                         :entity/created-at
+                                                         :membership/roles
+                                                         {:membership/member [:account/display-name
+                                                                              :entity/id
+                                                                              :entity/kind
+                                                                              {:image/avatar [:entity/id]}]}]}
+                                   {:entity/parent
+                                    [~@entity.data/listing-fields
+                                     :board/sticky-color
+                                     {:entity/project-fields ~field.data/field-keys}]}]
+                                 project-id)]
+             (when (and project (not (:entity/deleted-at project)))
+               (merge project {:membership/roles roles})))))
 
 (q/defquery fields [{:keys [board-id]}]
   (-> (q/pull `[~@entity.data/id-fields

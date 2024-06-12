@@ -134,74 +134,78 @@
                                                                     "Visitor"        #{}} "Current User")
         field-params {:membership/roles roles
                       :field/can-edit?  can-edit?}]
-    [:<>
-     (when (:entity/draft? project)
-       [:div.border-b-2.border-dashed.px-body.py-2.flex-center.gap-3.bg-gray-100
-        [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
-        [field.ui/action-btn {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
-                              :classes  {:btn          "btn-primary px-4 py-1"
-                                         :progress-bar "text-[rgba(255,255,255,0.5)]"}}
-         (t :tr/publish)]])
-     [:div.flex-v.gap-6.pb-6.rounded-lg.relative
-      (when (:project/sticky? project)
-        {:class "outline outline-4"
-         :style {:outline-color (-> project :entity/parent :board/sticky-color)
-                 :margin        4}})
-      ;; title row
-      [:div.flex-v.mt-6
-       [:div.flex
-        [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
-         [entity.ui/persisted-attr project :entity/title (merge field-params
-                                                                {:field/label       false
-                                                                 :field/multi-line? false
-                                                                 :field/unstyled?   (some-> (:entity/title project)
-                                                                                            (not= "Untitled"))})]]
+    ;; We cannot hoist this `if` above the call to `use-dev-panel` as that makes react mad about hooks
+    (if project
+      [:<>
+       (when (:entity/draft? project)
+         [:div.border-b-2.border-dashed.px-body.py-2.flex-center.gap-3.bg-gray-100
+          [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
+          [field.ui/action-btn {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
+                                :classes  {:btn          "btn-primary px-4 py-1"
+                                           :progress-bar "text-[rgba(255,255,255,0.5)]"}}
+           (t :tr/publish)]])
+       [:div.flex-v.gap-6.pb-6.rounded-lg.relative
+        (when (:project/sticky? project)
+          {:class "outline outline-4"
+           :style {:outline-color (-> project :entity/parent :board/sticky-color)
+                   :margin        4}})
+        ;; title row
+        [:div.flex-v.mt-6
+         [:div.flex
+          [:h1.font-medium.text-2xl.flex-auto.px-body.flex.items-center.pt-6
+           [entity.ui/persisted-attr project :entity/title (merge field-params
+                                                                  {:field/label       false
+                                                                   :field/multi-line? false
+                                                                   :field/unstyled?   (some-> (:entity/title project)
+                                                                                              (not= "Untitled"))})]]
 
 
-        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
-         dev-panel
+          [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
+           dev-panel
 
-         (when (:role/board-admin roles)
-           ;; - archive
-           [radix/dropdown-menu
-            {:trigger [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
-             :items   [[{} [entity.ui/persisted-attr project :project/sticky? (assoc field-params :field/label "Sticky?")]]]}])
+           (when (:role/board-admin roles)
+             ;; - archive
+             [radix/dropdown-menu
+              {:trigger [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
+               :items   [[{} [entity.ui/persisted-attr project :project/sticky? (assoc field-params :field/label "Sticky?")]]]}])
 
-         [radix/tooltip "Back to board"
-          [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}
-           [icons/arrow-left]]]
-         (when (:entity/id project)
-           [radix/tooltip "Link to project"
-            [:a.modal-title-icon {:href (routing/entity-path project 'ui/show)}
-             [icons/link-2]]])
-         [radix/dialog-close
-          [:div.modal-title-icon [icons/close]]]]]]
+           [radix/tooltip "Back to board"
+            [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}
+             [icons/arrow-left]]]
+           (when (:entity/id project)
+             [radix/tooltip "Link to project"
+              [:a.modal-title-icon {:href (routing/entity-path project 'ui/show)}
+               [icons/link-2]]])
+           [radix/dialog-close
+            [:div.modal-title-icon [icons/close]]]]]]
 
-      [:div.px-body.flex-v.gap-6
+        [:div.px-body.flex-v.gap-6
 
-       [entity.ui/persisted-attr project :project/badges field-params]
-       [entity.ui/persisted-attr project :entity/description (merge field-params
-                                                                    {:field/label false
-                                                                     :placeholder "Description"})]
-       [entity.ui/persisted-attr project :entity/video field-params]
+         [entity.ui/persisted-attr project :project/badges field-params]
+         [entity.ui/persisted-attr project :entity/description (merge field-params
+                                                                      {:field/label false
+                                                                       :placeholder "Description"})]
+         [entity.ui/persisted-attr project :entity/video field-params]
 
-       [entity.ui/persisted-attr project
-        :entity/field-entries
-        {:entity/fields    (->> project :entity/parent :entity/project-fields)
-         :membership/roles roles
-         :field/can-edit?  can-edit?}]
+         [entity.ui/persisted-attr project
+          :entity/field-entries
+          {:entity/fields    (->> project :entity/parent :entity/project-fields)
+           :membership/roles roles
+           :field/can-edit?  can-edit?}]
 
-       [project-members project field-params]
+         [project-members project field-params]
 
-       #_[:section.flex-v.gap-2.items-start
-          [manage-community-actions project (:project/community-actions project)]]
+         #_[:section.flex-v.gap-2.items-start
+            [manage-community-actions project (:project/community-actions project)]]
 
-       (when can-edit?
-         [ui/action-button {:on-click (fn [_]
-                                        (p/let [result (data/delete! nil {:project-id (sch/unwrap-id (:project-id params))})]
-                                          (routing/dissoc-router! :router/modal)
-                                          result))}
-          "delete"])]]]))
+         (when can-edit?
+           [ui/action-button {:on-click (fn [_]
+                                          (p/let [result (data/delete! nil {:project-id (sch/unwrap-id (:project-id params))})]
+                                            (routing/dissoc-router! :router/modal)
+                                            result))}
+            "delete"])]]]
+      [ui/error-view
+       {:error "Project not found"}])))
 
 (defn membership-colors [membership]
   (into []
