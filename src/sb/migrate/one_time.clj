@@ -848,6 +848,7 @@
                                                                   (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
                                                                     (assoc-some-value {}
                                                                                       :entity/id account-id
+                                                                                      :entity/kind :account
                                                                                       :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
                                                                                       :image/avatar (when-let [src (or (some-> (:picture most-recent-member-doc)
                                                                                                                                (u/guard #(not (str/starts-with? % "/images"))))
