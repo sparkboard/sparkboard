@@ -20,6 +20,7 @@
             [sb.app.org.ui]
             [sb.app.project.ui]
             [sb.app.social-feed.ui]
+            [sb.app.stats.ui]
             [sb.app.vote.ui]
             [sb.i18n :refer [t]]
             [sb.transit :as t]
