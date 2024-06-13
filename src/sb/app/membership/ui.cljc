@@ -5,7 +5,6 @@
             [sb.app.membership.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
-            [sb.app.views.ui :as ui]
             [sb.authorize :as az]
             [sb.color :as color]
             [sb.icons :as icons]
