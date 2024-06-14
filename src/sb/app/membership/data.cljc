@@ -117,8 +117,7 @@
                                   (:entity/kind entity "entity."))))))))
 
 (q/defquery descriptions
-  {:endpoint {:query true}
-   :prepare  az/with-account-id!}
+  {:prepare  az/with-account-id!}
   [{:as params :keys [account-id ids]}]
   (u/timed `descriptions
            (into []
