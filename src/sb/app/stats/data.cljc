@@ -47,16 +47,28 @@
   ;; TODO proper authorization
   {:prepare az/require-account!}
   [params]
-  {#_#_#_#_#_#_#_#_#_#_
+  {:orgs (count-of-kind :org)
+   :boards (count-of-kind :board)
+   :projects (count-of-kind :project)
+   :participants (count-of-partipicants)
+
+   :boards-created-per-year (count-of-kind-per-year :board)
+   :projects-created-per-year (count-of-kind-per-year :project)
+   :participants-per-year (count-of-partipicants-per-year)
+   })
+
+(comment
    :entities-per-kind
    (dl/q '[:find (count ?e) ?kind
            :where [?e :entity/kind ?kind]])
+
    :boards-per-org
    (->> (dl/q '[:find ?title (count ?board)
                 :where [?e :entity/kind :org]
                 [?e :entity/title ?title]
                 [?board :entity/parent ?e]])
         (sort-by second >))
+
    :memberships-per-account
    (->>  (dl/q '[:find ?acc (count ?memb)
                  :where
@@ -65,6 +77,7 @@
          (map second)
          frequencies
          (sort-by first))
+
    :created-by-year
    (->> (dl/q '[:find [ ?date ...]
                 :where
@@ -73,6 +86,7 @@
         (map #(+ 1900 (.getYear %)))
         frequencies
         (sort-by first))
+
    :boards-created-by-year
    (->> (dl/q '[:find [ ?date ...]
                 :where
@@ -82,12 +96,4 @@
         (map #(+ 1900 (.getYear %)))
         frequencies
         (sort-by first))
-   :orgs (count-of-kind :org)
-   :boards (count-of-kind :board)
-   :projects (count-of-kind :project)
-   :participants (count-of-partipicants)
-
-   :boards-created-per-year (count-of-kind-per-year :board)
-   :projects-created-per-year (count-of-kind-per-year :project)
-   :participants-per-year (count-of-partipicants-per-year)
-   })
+  )
