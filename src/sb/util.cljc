@@ -178,6 +178,12 @@
   ([coll keyfn valfn]
    (reduce (fn [out x] (assoc out (keyfn x) (valfn x))) {} coll)))
 
+(defn from-keys [ks f]
+  (into {} (map #(vector % (f %))) ks))
+
+(defn map-transpose [mss]
+  (from-keys (distinct (mapcat keys (vals mss)))
+             #(update-vals mss (fn [x] (x %)))))
 
 (defmacro timed [label & body]
   `(let [start# (System/currentTimeMillis)]

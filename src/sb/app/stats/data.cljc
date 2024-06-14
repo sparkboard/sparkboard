@@ -8,19 +8,103 @@
 
 #?(:clj
    (do
+
+     (def rules
+       '[[(created-in-year ?e ?year)
+          [?e :entity/created-at ?created-at]
+          [(.getYear ^Date ?created-at) ?year*]
+          [(+ ?year* 1900) ?year]]])
+
      (defn count-of-kind [kind]
        (dl/q `[:find (count ?e) .
                :where
                [?e :entity/kind ~kind]]))
 
-     (defn count-of-kind-per-year [kind]
-       (->> (dl/q `[:find ?year (count ?e)
+     (defn count-boards-by-org []
+       (->> (dl/q '[:find ?org-name (count ?b)
                     :where
-                    [?e :entity/kind ~kind]
-                    [?e :entity/created-at ?created-at]
-                    [(.getYear ^Date ?created-at) ?year*]
-                    [(+ ?year* 1900) ?year]])
-            (sort-by first)))
+                    [?b :entity/kind :board]
+                    [?b :entity/parent ?org]
+                    [?org :entity/kind :org]
+                    [?org :entity/title ?org-name]])
+            (into {})))
+
+     (defn count-boards-by-org-by-year []
+       (-> (dl/q '[:find ?org-name ?year (count ?b)
+                    :in $ %
+                    :where
+                    [?b :entity/kind :board]
+                    [?b :entity/parent ?org]
+                    [?org :entity/kind :org]
+                    [?org :entity/title ?org-name]
+                    (created-in-year ?b ?year)]
+                  rules)
+           (->> (group-by first))
+           (update-vals (partial into {} (map #(subvec % 1))))))
+
+     (defn count-projects-by-org []
+       (->> (dl/q '[:find ?org-name (count ?p)
+                    :where
+                    [?p :entity/kind :project]
+                    [?p :entity/parent ?b]
+                    [?b :entity/kind :board]
+                    [?b :entity/parent ?org]
+                    [?org :entity/kind :org]
+                    [?org :entity/title ?org-name]])
+            (into {})))
+
+     (defn count-projects-by-org-by-year []
+       (-> (dl/q '[:find ?org-name ?year (count ?p)
+                   :in $ %
+                   :where
+                   [?p :entity/kind :project]
+                   [?p :entity/parent ?b]
+                   [?b :entity/kind :board]
+                   [?b :entity/parent ?org]
+                   [?org :entity/kind :org]
+                   [?org :entity/title ?org-name]
+                   (created-in-year ?p ?year)]
+                 rules)
+           (->> (group-by first))
+           (update-vals (partial into {} (map #(subvec % 1))))))
+
+     (defn count-participants-by-org []
+       (->> (dl/q `[:find ?org-name (count ?acc)
+                    :where
+                    [?acc :entity/kind :account]
+                    [?m :membership/member ?acc]
+                    [?m :membership/entity ?b]
+                    [?b :entity/kind :board]
+                    [?b :entity/parent ?org]
+                    [?org :entity/kind :org]
+                    [?org :entity/title ?org-name]])
+            (into {})))
+
+     (defn count-partipicants-by-org-by-year []
+       (-> (dl/q '[:find ?org-name ?year (count ?acc)
+                   :in $ %
+                   :where
+                   [?acc :entity/kind :account]
+                   [?m :membership/member ?acc]
+                   [?m :membership/entity ?b]
+                   [?b :entity/kind :board]
+                   [?b :entity/parent ?org]
+                   [?org :entity/kind :org]
+                   [?org :entity/title ?org-name]
+                   (created-in-year ?m ?year)]
+                 rules)
+           (->> (group-by first))
+           (update-vals (partial into {} (map #(subvec % 1))))))
+
+     (defn count-of-kind-per-year [kind]
+       (->> (dl/q '[:find ?year (count ?e)
+                    :in $ % ?kind
+                    :where
+                    [?e :entity/kind ?kind]
+                    (created-in-year ?e ?year)]
+                  rules
+                  kind)
+            (into {})))
 
      (defn count-of-partipicants []
        (dl/q `[:find (count ?acc) .
@@ -31,16 +115,16 @@
                [?board :entity/kind :board]]))
 
      (defn count-of-partipicants-per-year []
-       (->> (dl/q `[:find ?year (count ?acc)
+       (->> (dl/q '[:find ?year (count ?acc)
+                    :in $ %
                     :where
                     [?acc :entity/kind :account]
                     [?m :membership/member ?acc]
                     [?m :membership/entity ?board]
                     [?board :entity/kind :board]
-                    [?m :entity/created-at ?created-at]
-                    [(.getYear ^Date ?created-at) ?year*]
-                    [(+ ?year* 1900) ?year]])
-            (sort-by first)))
+                    (created-in-year ?m ?year)]
+                  rules)
+            (into {})))
      ))
 
 (q/defquery show
@@ -48,13 +132,21 @@
   {:prepare az/require-account!}
   [params]
   {:orgs (count-of-kind :org)
-   :boards (count-of-kind :board)
-   :projects (count-of-kind :project)
-   :participants (count-of-partipicants)
 
-   :boards-created-per-year (count-of-kind-per-year :board)
-   :projects-created-per-year (count-of-kind-per-year :project)
-   :participants-per-year (count-of-partipicants-per-year)
+   :all {:board (count-of-kind :board)
+         :board-year (count-of-kind-per-year :board)
+         :project (count-of-kind :project)
+         :project-year (count-of-kind-per-year :project)
+         :participant (count-of-partipicants)
+         :participant-year (count-of-partipicants-per-year)}
+
+   :by-org (u/map-transpose
+            {:board (count-boards-by-org)
+             :board-year (count-boards-by-org-by-year)
+             :project (count-projects-by-org)
+             :project-year (count-projects-by-org-by-year)
+             :participant (count-participants-by-org)
+             :participant-year (count-partipicants-by-org-by-year)})
    })
 
 (comment
