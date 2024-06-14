@@ -63,12 +63,30 @@
                                              (? :membership/roles)
 
                                              ;; TODO, backfill?
+                                             ;; only missing for memberships of projects, orgs and collections
+                                             ;; not for board memberships
                                              (? :entity/created-at)
                                              (? :entity/updated-at)
 
                                              (? :entity/field-entries)
                                              (? :entity/deleted-at)
                                              (? :entity/modified-by)]}})
+
+(comment
+  ;; Stats for memberships which do and do not have `:entity/created-at`
+  [(dl/q '[:find ?kind (count ?e)
+           :where
+           [?e :entity/kind :membership]
+           [?e :entity/created-at]
+           [?e :membership/entity ?p]
+           [?p :entity/kind ?kind]])
+   (dl/q '[:find ?kind (count ?e)
+           :where
+           [?e :entity/kind :membership]
+           (not [?e :entity/created-at])
+           [?e :membership/entity ?p]
+           [?p :entity/kind ?kind]])]
+  )
 
 (q/defquery show
   {:prepare az/require-account!}
