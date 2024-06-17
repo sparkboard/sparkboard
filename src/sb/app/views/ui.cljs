@@ -62,7 +62,6 @@
   (filter (partial match-entity match-text)))
 
 ;; TODO / WIP
-;; - add sorting widgets to filter views for orgs (boards) and boards (projects, members, community-actions)
 ;; - some sorting widgets are dynamic (fields that have the "filter by this field" flag)
 (defn sorted [sort-key & {:keys [direction] :or {direction :asc}}]
   (case sort-key

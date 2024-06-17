@@ -1,5 +1,6 @@
 (ns sb.app.org.ui
-  (:require [inside-out.forms :as forms]
+  (:require [clojure.edn :refer [read-string]]
+            [inside-out.forms :as forms]
             [promesa.core :as p]
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as entity.data]
@@ -18,7 +19,7 @@
 (ui/defview show
   {:route "/o/:org-id"}
   [params]
-  (forms/with-form [_ ?filter]
+  (forms/with-form [_ [?filter (?sort :init [:default])]]
     (let [{:as   org
            :keys [entity.data/description]} (data/show params)
           q     (ui/use-debounced-value (u/guard @?filter #(> (count %) 2)) 500)
@@ -40,7 +41,22 @@
        [:div.p-body (field.ui/show-prose description)]
        [:div.p-body
         [:div.flex.gap-4.items-stretch
+         ;; TODO filter field is not as tall as sort selection and new-project button, looks ugly
          [field.ui/filter-field ?filter {:loading? (:loading? result)}]
+         [field.ui/select-field ?sort
+          {:field/classes {:wrapper "flex-row items-center"}
+           :field/label (t :tr/sort-order)
+           :field/can-edit? true
+           :field/wrap read-string
+           :field/unwrap str
+           :field/options [{:field-option/value [:default]
+                            :field-option/label (t :tr/sort-default)}
+                           {:field-option/value [:entity/created-at :direction :asc]
+                            :field-option/label (t :tr/sort-entity-created-at-asc)}
+                           {:field-option/value [:entity/created-at :direction :desc]
+                            :field-option/label (t :tr/sort-entity-created-at-desc)}
+                           {:field-option/value [:random]
+                            :field-option/label (t :tr/sort-random)}]}]
          [:a.btn.btn-white.flex.items-center.px-3
           {:href (routing/path-for ['sb.app.board.ui/new-in-org
                                     {:parent (:entity/id org)}])}
@@ -51,12 +67,16 @@
                 :when (seq results)]
             [:<>
              [title (t (keyword "tr" (name kind)))]
-             [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
-              (map entity.ui/row results)]])
+             (into  [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
+                    (comp (apply ui/sorted @?sort)
+                          (map entity.ui/row))
+                    results)])
           [:div.flex-v.gap-2
            [title (t :tr/boards)]
-           [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2
-            (map entity.ui/row (:entity/_parent org))]])]])))
+           (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
+                 (comp (apply ui/sorted @?sort)
+                       (map entity.ui/row))
+                 (:entity/_parent org))])]])))
 
 (ui/defview new
   {:route       "/new/o"
