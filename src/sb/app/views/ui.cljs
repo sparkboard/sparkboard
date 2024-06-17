@@ -68,7 +68,8 @@
   (case sort-key
     :entity/created-at (xf/sort-by :entity/created-at (case direction :asc compare :desc u/compare:desc))
     :random (xf/sort #(rand-nth [-1 1]))
-    ))
+    (do (js/console.warn (str "no sort defined for " (pr-str sort-key)))
+        (map identity))))
 
 (defn pprinted [x & _]
   [:pre.whitespace-pre-wrap (with-out-str (clojure.pprint/pprint x))])
