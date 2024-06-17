@@ -295,10 +295,11 @@
                                                          unwrap
                                                          label
                                                          options
-                                                         can-edit?]
+                                                         can-edit?
+                                                         classes]
                                   :or {unwrap identity
                                        wrap   identity}}]
-  [:div.field-wrapper
+  [:div.field-wrapper {:class (:wrapper classes)}
    (form.ui/show-label ?field label)
    (if can-edit?
      (with-messages-popover ?field
