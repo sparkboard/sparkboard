@@ -62,21 +62,16 @@
                                     {:parent (:entity/id org)}])}
           (t :tr/new-board)]]
         [ui/error-view result]
-        (if (seq q)
-          (for [[kind results] (dissoc (:value result) :q)
-                :when (seq results)]
-            [:<>
-             [title (t (keyword "tr" (name kind)))]
-             (into  [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
-                    (comp (apply ui/sorted @?sort)
-                          (map entity.ui/row))
-                    results)])
+        (for [[kind results] (if (seq q)
+                               (dissoc (:value result) :q)
+                               [[:boards (:entity/_parent org)]])
+              :when (seq results)]
           [:div.flex-v.gap-2
-           [title (t :tr/boards)]
-           (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
-                 (comp (apply ui/sorted @?sort)
-                       (map entity.ui/row))
-                 (:entity/_parent org))])]])))
+           [title (t (keyword "tr" (name kind)))]
+           (into  [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
+                  (comp (apply ui/sorted @?sort)
+                        (map entity.ui/row))
+                  results)])]])))
 
 (ui/defview new
   {:route       "/new/o"
