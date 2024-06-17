@@ -108,7 +108,11 @@
         !current-tab (h/use-state (t :tr/projects))
         ?filter      (h/use-memo #(io/field))
         ?sort        (h/use-memo #(io/field :init [:default]))
-        card-grid    (v/from-element :div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3)]
+        card-grid    (v/from-element :div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3)
+        filter-fields (->> (:entity/project-fields board)
+                           (filter :field/show-as-filter?))
+        ;; TODO extend to all field types? In current dataset only `:field.type/select` is used.
+        filter-fields-select (filter (comp #{:field.type/select} :field/type) filter-fields)]
     [:<>
      [header/entity board nil]
      [:div.p-body.flex-v.gap-6
@@ -122,14 +126,23 @@
          :field/can-edit? true
          :field/wrap read-string
          :field/unwrap str
-         :field/options [{:field-option/value [:default]
-                          :field-option/label (t :tr/sort-default)}
-                         {:field-option/value [:entity/created-at :direction :asc]
-                          :field-option/label (t :tr/sort-entity-created-at-asc)}
-                         {:field-option/value [:entity/created-at :direction :desc]
-                          :field-option/label (t :tr/sort-entity-created-at-desc)}
-                         {:field-option/value [:random]
-                          :field-option/label (t :tr/sort-random)}]}]
+         :field/options (concat [{:field-option/value [:default]
+                                  :field-option/label (t :tr/sort-default)}
+                                 {:field-option/value [:entity/created-at :direction :asc]
+                                  :field-option/label (t :tr/sort-entity-created-at-asc)}
+                                 {:field-option/value [:entity/created-at :direction :desc]
+                                  :field-option/label (t :tr/sort-entity-created-at-desc)}
+                                 {:field-option/value [:random]
+                                  :field-option/label (t :tr/sort-random)}]
+                                (for [{:field/keys [id label options]} filter-fields-select]
+                                  {:field-option/value [:field.type/select
+                                                        :field-id id
+                                                        :field-positions
+                                                        (into {}
+                                                              (map-indexed (fn [i opt]
+                                                                             [(:field-option/value opt) i])
+                                                                           options))]
+                                   :field-option/label label}))}]
        [action-button
         {:on-click (fn [_]
                      (p/let [{:as   result

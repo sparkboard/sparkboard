@@ -63,12 +63,13 @@
 
 ;; TODO / WIP
 ;; - some sorting widgets are dynamic (fields that have the "filter by this field" flag)
-(defn sorted [sort-key & {:keys [direction] :or {direction :asc}}]
+(defn sorted [sort-key & {:keys [direction field-id field-positions] :or {direction :asc}}]
   (case sort-key
     ;; TODO define default-sort for all entity kinds that are sorted
     :default (xf/sort-by (complement :project/sticky?))
     :entity/created-at (xf/sort-by :entity/created-at (case direction :asc compare :desc u/compare:desc))
     :random (xf/sort #(rand-nth [-1 1]))
+    :field.type/select (xf/sort-by (comp field-positions :select/value #(get % field-id) :entity/field-entries))
     (do (js/console.warn (str "no sort defined for " (pr-str sort-key)))
         (map identity))))
 
