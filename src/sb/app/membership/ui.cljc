@@ -9,7 +9,8 @@
             [sb.color :as color]
             [sb.icons :as icons]
             [sb.routing :as routing]
-            [sb.schema :as sch]))
+            [sb.schema :as sch]
+            [sb.util :as u]))
 
 (ui/defview show
   {:route       "/m/:membership-id"
@@ -88,3 +89,20 @@
              (map show-tag))
         [:div.flex.flex-wrap.gap-1 (map show-tag custom-tags)]]
        [:div.text-gray-500.contents (field.ui/show-entries member-fields field-entries)]]]]))
+
+;; TODO review membership pointing at membership
+(ui/defview members-for-card [entity]
+  (let [members (->> (:membership/_entity entity)
+                     (mapv :membership/member))]
+    [:div.flex.flex-wrap.gap-2.px-3
+     (u/for! [member (take 6 members)
+              :let [account (:membership/member member)]]
+       [:div.w-10.flex-v.gap-1
+        [ui/avatar {:size 10} account]
+        [:div.flex.h-2.items-stretch.rounded-sm.overflow-hidden
+         (for [color (data/membership-colors member)]
+           [:div.flex-auto {:style {:background-color color}}])]])
+     (when-let [more (-> (- (count members) 6)
+                         (u/guard pos-int?))]
+       [:div.w-10.h-10.flex-center.text-gray-400.text-lg.tracking-wider
+        [:div.flex  "+" more]])]))

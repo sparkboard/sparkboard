@@ -40,8 +40,6 @@
                                  s-   :prose/as-map}
      :entity/archived?          {:doc "Marks a project inactive, hidden."
                                  s-   :boolean}
-     :project/sticky?           {:doc "Show project with border at top of project list"
-                                 s-   :boolean}
      :project/as-map            {s- [:map {:closed true}
                                      :entity/id
                                      :entity/kind
@@ -66,7 +64,6 @@
                                      (? :project/badges)
                                      (? :project/number)
                                      (? :project/admin-description)
-                                     (? :project/sticky?)
                                      (? :project/open-requests)
                                      (? :entity/description)]
                                  }
@@ -97,7 +94,6 @@
                                    :entity/field-entries
                                    :entity/draft?
                                    :entity/deleted-at
-                                   :project/sticky?
                                    {:membership/_entity [:entity/id
                                                          :entity/kind
                                                          :entity/created-at
@@ -108,7 +104,6 @@
                                                                               {:image/avatar [:entity/id]}]}]}
                                    {:entity/parent
                                     [~@entity.data/listing-fields
-                                     :board/sticky-color
                                      {:entity/project-fields ~field.data/field-keys}]}]
                                  project-id)]
              (when (and project (not (:entity/deleted-at project)))

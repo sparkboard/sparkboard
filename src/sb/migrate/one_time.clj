@@ -64,6 +64,7 @@
                   :ballot/as-map       "users"
                   :notification/as-map "notificationschemas"
                   :project/as-map      "projectschemas"
+                  :note/as-map         "projectschemas"
                   :discussion/as-map   "discussionschemas"
                   :chat/as-map         "threadschemas"
                   })
@@ -540,6 +541,22 @@
   (try (do (bson-id-timestamp x) true)
        (catch Exception e false)))
 
+(def details-field
+  {:field/id (sch/uuid-from-string "details-field")
+   :field/type :field.type/prose
+   :field/show-on-card? false
+   :field/label "Details"})
+
+(def !board-sticky-colors
+  (delay (-> (read-coll :board/as-map)
+             (update-keys (partial to-uuid :board))
+             (update-vals #(get % "stickyColor")))))
+
+(declare coll-entities)
+
+(def !boards (delay (-> (coll-entities :board/as-map)
+                        (u/index-by :entity/id))))
+
 (defn add-kind [kind]
   #(assoc % :entity/kind kind))
 
@@ -666,7 +683,9 @@
                "groupNumbers" (rename :board/project-numbers?)
                "projectNumbers" (rename :board/project-numbers?)
                "userMaxGroups" (& (xf #(Integer. %)) (rename :board/max-projects-per-member))
-               "stickyColor" (rename :board/sticky-color)
+               "stickyColor" (& (fn [m a v]
+                                  (vary-meta m assoc :board/sticky-color v))
+                                rm)
                "tags" (& (fn [m a v]
                            (let [board-ref (uuid-ref :board (:entity/id m))]
                              (assoc m a (->> v
@@ -984,6 +1003,7 @@
               :project/as-map         [::defaults {:entity/archived?        false
                                                    :entity/admission-policy :open}
 
+                                       ::always (remove-when :sticky)
                                        ::always (remove-when :entity/deleted-at)
                                        ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                        ::always (add-kind :project)
@@ -1032,10 +1052,80 @@
 
                                        :looking_for (& (xf (fn [ss] (mapv (partial hash-map :request/text) ss)))
                                                        (rename :project/open-requests))
-                                       :sticky (rename :project/sticky?)
+                                       :sticky rm
                                        :demoVideo (& (xf #(hash-map :video/url (video-url %)))
                                                      (rename :entity/video))
                                        :discussion rm       ;; unused
+                                       ]
+              :note/as-map            [::defaults {:entity/archived?        false}
+
+                                       ::always (remove-when (complement :sticky))
+                                       ::always (remove-when :entity/deleted-at)
+                                       ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+                                       ::always (add-kind :note)
+                                       :_id (partial id-with-timestamp :note)
+
+
+                                       :title (rename :entity/title)
+                                       ::always (remove-when (comp str/blank? :entity/title))
+
+                                       :boardId (uuid-ref-as :board :entity/parent)
+                                       ::always (fn [note]
+                                                  (let [board-id (sch/unwrap-id (:entity/parent note))
+                                                        board (@!boards board-id)]
+                                                    (-> {:note/outline-color (@!board-sticky-colors board-id)
+                                                         :entity/fields (->> (:entity/project-fields board)
+                                                                             (into [] (filter (comp (:entity/field-entries note {})
+                                                                                                    :field/id))))}
+                                                        u/prune
+                                                        (merge note))))
+
+                                       :field_description (& (xf prose)
+                                                             (fn [note _ details-field-entry]
+                                                               (-> note
+                                                                   (update :entity/fields (comp vec (partial cons details-field)))
+                                                                   (update :entity/field-entries assoc (:field/id details-field)
+                                                                           details-field-entry)))
+                                                             rm)
+                                       ::always (parse-fields :entity/parent :entity/field-entries)
+                                       :lastModifiedBy (& (xf member->account-ref)
+                                                          (rename :entity/modified-by))
+                                       :tags rm             ;; no longer used - fields instead
+                                       :number rm
+                                       :badges (& (xf (partial mapv (partial hash-map :badge/label)))
+                                                  (xf (partial change-keys
+                                                               [::defaults {:badge/color "#aaaaaa"}]))
+                                                  (rename :note/badges)) ;; should be ref
+                                       :active (& (xf not) (rename :entity/archived?))
+                                       :approved (rename :project/approved?)
+                                       :ready rm
+                                       :members (&
+                                                  (fn [note a v]
+                                                    (let [note-id (:entity/id note)]
+                                                      (assoc note a (keep
+                                                                      (fn [{:as   member
+                                                                            :keys [user_id]}]
+                                                                        (when-let [member-id (member->board-membership-id user_id)]
+                                                                          (let [role (if (and (not (:role member))
+                                                                                              (sch/id= (member->account-uuid user_id) (:entity/created-by note)))
+                                                                                       :role/project-admin
+                                                                                       (some->> (:role member) (role-kw :project)))]
+                                                                            (merge {:entity/id         (composite-uuid :membership note-id member-id)
+                                                                                    :entity/kind       :membership
+                                                                                    :membership/member (uuid-ref :membership member-id)}
+                                                                                   (when role {:membership/roles #{role}})))))
+                                                                     v))))
+                                                  (rename :membership/_entity))
+
+                                       ::always (remove-when #(and (not (:entity/created-by %))
+                                                                   (empty? (:members/_entity %))))
+
+                                       :looking_for rm
+                                       :sticky rm
+                                       :demoVideo (& (xf #(hash-map :video/url (video-url %)))
+                                                     (rename :entity/video))
+                                       :discussion rm       ;; unused
+                                       :project/card-classes (rename :note/card-classes)
                                        ]
               :notification/as-map    [::defaults {:notification/emailed? false}
                                        ::always (fn [m]
@@ -1154,7 +1244,7 @@
                                                                                                         vec))
                                                             (cond->
                                                               (some #{"sticky"} classes)
-                                                              (assoc :project/sticky? true)))))
+                                                              (assoc :sticky true)))))
 
 
                                        #_#_:_id (& (xf #(:$oid % %))

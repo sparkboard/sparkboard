@@ -78,7 +78,7 @@
            (fn [ids]
              (->> (concat (->> @!location vals
                                (mapcat :match/params)
-                               (filter (comp #{:org-id :board-id :project-id} key))
+                               (filter (comp #{:org-id :board-id :project-id :note-id} key))
                                (map (comp sch/unwrap-id val)))
                           ids)
                   distinct

@@ -67,7 +67,7 @@
 (defn sorted [sort-key & {:keys [direction field-id field-positions] :or {direction :asc}}]
   (case sort-key
     ;; TODO define default-sort for all entity kinds that are sorted
-    :default (xf/sort-by (complement :project/sticky?))
+    :default (xf/sort-by (constantly nil))
     :entity/created-at (xf/sort-by :entity/created-at (case direction :asc compare :desc u/compare:desc))
     :random (xf/sort #(rand-nth [-1 1]))
     :field.type/select (xf/sort-by (comp field-positions :select/value #(get % field-id) :entity/field-entries))
