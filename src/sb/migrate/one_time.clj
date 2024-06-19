@@ -870,7 +870,8 @@
                                                                                           board-id      (to-uuid :board boardId)
                                                                                           membership-id (member->board-membership-id _id)]
                                                                                     :when membership-id]
-                                                                                {:ballot/key        (str/join "+" [board-id membership-id project-id])
+                                                                                {:entity/kind       :ballot
+                                                                                 :ballot/key        (str/join "+" [board-id membership-id project-id])
                                                                                  :ballot/membership (uuid-ref :membership membership-id)
                                                                                  :ballot/board      (uuid-ref :board board-id)
                                                                                  :ballot/project    (uuid-ref :project project-id)}))
@@ -949,6 +950,7 @@
                                                          m))
                                        :_id (partial id-with-timestamp :discussion)
                                        :type rm
+                                       ::always (add-kind :discussion)
 
                                        :followers (&
                                                     (xf member->board-membership-id)
@@ -1094,6 +1096,7 @@
 
                                        ]
               :chat/as-map            [:_id (partial id-with-timestamp :chat)
+                                       ::always (add-kind :chat)
                                        ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                        ::always (fn [m]
                                                   (assoc m :chat/entity (uuid-ref :board (@!member-id->board-id
@@ -1294,6 +1297,15 @@
     @!found))
 
 (comment
+
+  (->> (all-entities)
+       (filter (complement :entity/kind))
+       (mapcat keys)
+       distinct
+       (map namespace)
+       distinct)
+
+  ;; TODO what about entities with :slack.*/* keys?
 
   (->> colls
        (mapcat read-coll)
