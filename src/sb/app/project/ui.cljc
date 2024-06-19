@@ -232,7 +232,8 @@
      [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
       [:div.flex-grow.flex-v.gap-1
        [:div.leading-snug.line-clamp-2.font-semibold.text-lg title]
-       [:div.text-gray-500 description]
+       [:div.text-gray-500
+        (field.ui/show-prose description)]
        [:div.text-gray-500.contents
         (field.ui/show-entries project-fields field-entries)]]]
 
