@@ -8,6 +8,8 @@
             [sb.app.discussion.ui :as discussion.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.membership.data :as member.data]
+            [sb.app.membership.ui :as member.ui]
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -91,17 +93,9 @@
        ])))
 
 
-(defn resolve-tag [parent tag-id]
-  (-> parent :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))
-
-(defn resolved-tags [board-membership]
-  (mapv #(resolve-tag (:membership/entity board-membership) (:tag/id %))
-        (:entity/tags board-membership)))
-
 (ui/defview project-members [project props]
   ;; todo
   ;; 1. pass in all-roles to know if we are an a board-admin
-  ;; 2. add colors for tags
   ;; 3. button for adding a new member via searching this board
   ;; 4. hover to see member details
   ;; 5. fix chat
@@ -119,7 +113,7 @@
        [:div.flex-v.gap-1
         display-name
         [:div.flex.flex-wrap.gap-2
-         (for [{:as tag :tag/keys [id label color]} (resolved-tags board-membership)]
+         (for [{:as tag :tag/keys [id label color]} (member.data/resolved-tags board-membership)]
            [:div.tag-sm {:style (color/color-pair color)}
             label])]]])]
    (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
@@ -148,10 +142,6 @@
                                            :progress-bar "text-[rgba(255,255,255,0.5)]"}}
            (t :tr/publish)]])
        [:div.flex-v.gap-6.pb-6.rounded-lg.relative
-        (when (:project/sticky? project)
-          {:class "outline outline-4"
-           :style {:outline-color (-> project :entity/parent :board/sticky-color)
-                   :margin        4}})
         ;; title row
         [:div.flex-v.mt-6
          [:div.flex
@@ -170,7 +160,7 @@
              ;; - archive
              [radix/dropdown-menu
               {:trigger [:div.flex.items-center [icons/ellipsis-horizontal "rotate-90 icon-gray"]]
-               :items   [[{} [entity.ui/persisted-attr project :project/sticky? (assoc field-params :field/label "Sticky?")]]]}])
+               :items   []}])
 
            [radix/tooltip "Back to board"
             [:a.modal-title-icon {:href (routing/entity-path (:entity/parent project) 'ui/show)}
@@ -215,11 +205,6 @@
       [ui/error-view
        {:error "Project not found"}])))
 
-(defn membership-colors [membership]
-  (into []
-        (map #(->> (:tag/id %) (resolve-tag (:membership/entity membership)) (:tag/color)))
-        (:entity/tags membership)))
-
 (ui/defview card
   {:key #(:entity/id %2)}
   [{:keys [entity/project-fields]}
@@ -228,40 +213,24 @@
            entity/title
            entity/description
            entity/field-entries
-           project/sticky?
            project/open-requests
            membership/roles]}]
-  (let [board-members (->> (:membership/_entity entity) (mapv :membership/member))]
-    [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
-     (v/merge-props {:href (routing/entity-path entity 'ui/show)}
-                    (when sticky?
-                      {:class "outline outline-4"
-                       :style {:outline-color (-> entity :entity/parent :board/sticky-color)}}))
+  [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
+   {:href (routing/entity-path entity 'ui/show)}
 
-     [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
-      [:div.flex-grow.flex-v.gap-1
-       [:div.leading-snug.line-clamp-2.font-semibold.text-lg title]
-       [:div.text-gray-500
-        (field.ui/show-prose description)]
-       [:div.text-gray-500.contents
-        (field.ui/show-entries project-fields field-entries)]]]
+   [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
+    [:div.flex-grow.flex-v.gap-1
+     [:div.leading-snug.line-clamp-2.font-semibold.text-lg title]
+     [:div.text-gray-500
+      (field.ui/show-prose description)]
+     [:div.text-gray-500.contents
+      (field.ui/show-entries project-fields field-entries)]]]
 
-     [:div.ml-4
-      [field.ui/show-requests open-requests]]
+   [:div.ml-4
+    [field.ui/show-requests open-requests]]
 
-     ;; TEAM
-     [:div.flex.flex-wrap.gap-2.px-3
-      (u/for! [board-member (take 6 board-members)
-               :let [account (:membership/member board-member)]]
-        [:div.w-10.flex-v.gap-1
-         [ui/avatar {:size 10} account]
-         [:div.flex.h-2.items-stretch.rounded-sm.overflow-hidden
-          (for [color (membership-colors board-member)]
-            [:div.flex-auto {:style {:background-color color}}])]])
-      (when-let [more (-> (- (count board-members) 6)
-                          (u/guard pos-int?))]
-        [:div.w-10.h-10.flex-center.text-gray-400.text-lg.tracking-wider
-         [:div.flex  "+" more]])]]))
+   ;; TEAM
+   [member.ui/members-for-card entity]])
 
 (ui/defview vote-card
   {:key :entity/id}

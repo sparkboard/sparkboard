@@ -12,6 +12,8 @@
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.membership.ui :as member.ui]
+            [sb.app.note.data :as note.data]
+            [sb.app.note.ui :as note.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
             [sb.app.views.header :as header]
@@ -177,7 +179,8 @@
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
   (let [board        (data/show {:board-id board-id})
-        !current-tab (h/use-state (t :tr/projects))]
+        !current-tab (h/use-state (t :tr/projects))
+        board-editor? (az/editor-role? (az/all-roles (:account-id params) board))]
     [:div.flex-v.gap-6
      {:style (ui/background-image-style board)}
      [header/entity board nil]
@@ -217,6 +220,19 @@
                                                   {:field-option/label (t :tr/looking-for-help)
                                                    :field-option/value :looking-for-help}]}]]
             [query-ui tags fields !xform]
+            (when board-editor?
+              [ui/action-button
+               {:on-click (fn [_]
+                            (p/let [{:as   result
+                                     :keys [entity/id]} (note.data/new! nil
+                                                                        {:entity/parent board-id
+                                                                         :entity/title  (t :tr/untitled)
+                                                                         :entity/admission-policy :admission-policy/open
+                                                                         :entity/draft? true})]
+                              (when id
+                                (routing/nav! `note.ui/show {:note-id id}))
+                              result))}
+               (t :tr/new-note)])
             [ui/action-button
              {:on-click (fn [_]
                           (p/let [{:as   result
@@ -229,7 +245,12 @@
                               (routing/nav! `project.ui/show {:project-id id}))
                             result))}
              (t :tr/new-project)]]
-           (some->> (seq (data/drafts {:board-id board-id}))
+           (when board-editor?
+             (some->> (data/note-drafts {:board-id board-id})
+                      (grouped-card-grid note.ui/card)))
+           (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))
+
+           (some->> (seq (data/project-drafts {:board-id board-id}))
                     (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
                           (map card)))
            (->> (data/projects {:board-id board-id})

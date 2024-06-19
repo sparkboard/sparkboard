@@ -29,8 +29,6 @@
    :board/home-page-message              {:hint "Additional instructions for a board, displayed when a member has signed in."
                                           s-    :prose/as-map},
    :board/max-projects-per-member        {s- :int}
-   :board/sticky-color                   {:doc "Deprecate - sticky notes can pick their own colors"
-                                          s-   :html/color}
    :board/invite-email-text              {:hint "Text of email sent when inviting a user to a board."
                                           s-    :string},
    :board/registration-newsletter-field? {:hint "During registration, request permission to send the user an email newsletter"
@@ -89,7 +87,6 @@
                                               (? :board/registration-url-override)
                                               (? :board/project-numbers?)
                                               (? :board/slack.team)
-                                              (? :board/sticky-color)
 
                                               (? :member-vote/open?)
                                               (? :webhook/subscriptions)]}})
@@ -132,9 +129,17 @@
                               {:entity/custom-tags [:tag/label]}
                               :membership/roles])
 
+(def note-fields `[~@entity.data/listing-fields
+                   :note/outline-color
+                   :entity/fields
+                   :entity/field-entries
+                   {:entity/video [:video/url]}
+                   {:entity/parent [:entity/id]}
+                   {:membership/_entity [~@entity.data/id-fields
+                                         ~@board-membership-fields]}])
+
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
-                      :project/sticky?
                       :project/open-requests
                       :project/number
                       {:entity/video [:video/url]}
@@ -152,16 +157,37 @@
                          (mapv (db/pull `[~@entity.data/id-fields
                                           ~@board-membership-fields])))))
 
+(q/defquery notes
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
+  [{:keys [board-id membership/roles]}]
+  (u/timed `notes
+           (->> (db/where [[:entity/parent board-id]
+                           [:entity/kind :note]])
+                (remove (some-fn :entity/draft? :entity/deleted-at :entity/archived?))
+                (mapv (db/pull note-fields)))))
+
+(q/defquery note-drafts
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-edit :board-id)]}
+  [{:keys [board-id membership/roles]}]
+  (u/timed `note-drafts
+           (->> (db/where [[:entity/parent board-id]
+                           [:entity/kind :note]
+                           [:entity/draft? true]])
+                (mapv (db/pull note-fields)))))
+
 (q/defquery projects
   {:prepare [(az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `projects
-           (->> (db/where [[:entity/parent board-id]])
+           (->> (db/where [[:entity/parent board-id]
+                           [:entity/kind :project]])
                 (remove (some-fn :entity/draft? :entity/deleted-at :entity/archived?))
                 (mapv (db/pull project-fields)))))
 
-(q/defquery drafts
+(q/defquery project-drafts
   {:prepare az/with-account-id}
   [{:keys [account-id board-id]}]
   (->> (az/membership account-id board-id)
@@ -235,7 +261,6 @@
                        {:image/background [:entity/id]}
                        {:entity/domain-name [:domain-name/name]}
                        :entity/member-tags
-                       :board/sticky-color
                        {:entity/member-fields ~field.data/field-keys}
                        {:entity/project-fields ~field.data/field-keys}
                        :member-vote/open?]

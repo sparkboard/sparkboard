@@ -515,6 +515,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/vote-open                       {:en "Vote open"
                                           :fr "vote ouvert"
                                           :es "Votación abierta"}
+     :tr/new-note                        {:en "New note"
+                                          :fr "Nouvelle note"
+                                          :es "Nueva nota"}
      }))
 
 (defn tr*

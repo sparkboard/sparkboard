@@ -72,18 +72,16 @@
                          [(fulltext $ ?terms {:top 100}) [[?board _ _]]]])
                      q
                      org-id)
-     :projects (->> (dl/q (u/template
-                            `[:find [(pull ?project [~@entity.data/listing-fields
-                                                     :project/sticky?
-                                                     {:entity/parent [:entity/id]}]) ...]
-                              :in $ ?terms ?org
-                              :where
-                              [?board :entity/parent ?org]
-                              [?project :entity/parent ?board]
-                              [(fulltext $ ?terms {:top 100}) [[?project _ _]]]])
-                          q
-                          org-id)
-                    (remove :project/sticky?))}))
+     :projects (dl/q (u/template
+                      `[:find [(pull ?project [~@entity.data/listing-fields
+                                               {:entity/parent [:entity/id]}]) ...]
+                        :in $ ?terms ?org
+                        :where
+                        [?board :entity/parent ?org]
+                        [?project :entity/parent ?board]
+                        [(fulltext $ ?terms {:top 100}) [[?project _ _]]]])
+                     q
+                     org-id)}))
 
 (q/defx settings!
   {:prepare [az/with-account-id!]}
