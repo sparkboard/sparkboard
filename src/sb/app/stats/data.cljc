@@ -189,3 +189,26 @@
         frequencies
         (sort-by first))
   )
+
+(defn truncate-frequencies [n freqs]
+  (let [[head tail] (split-at n (sort-by val > freqs))
+        other (apply + (map val tail))]
+    (cond-> head
+      (< 0 other)
+      (concat [ [::other other]]))))
+
+(defn frequencies-by-key [ms]
+  (->> ms
+       (map #(update-vals % (fn [v] {v 1})))
+       (apply merge-with (partial merge-with +))))
+
+(q/defquery entity-stats
+  ;; TODO proper authorization
+  {:prepare az/require-account!}
+  [params]
+  (-> (dl/q '[:find [ (pull ?e [*]) ...]
+              :where [?e]])
+      (->> (map #(dissoc % :db/id :entity/id))
+           (group-by :entity/kind))
+      (update-vals (comp #(update-vals % (partial truncate-frequencies 5))
+                         frequencies-by-key))))

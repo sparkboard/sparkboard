@@ -1,6 +1,8 @@
 (ns sb.app.stats.ui
   (:require [sb.app.stats.data :as data]
-            [sb.app.views.ui :as ui]))
+            [sb.app.views.radix :as radix]
+            [sb.app.views.ui :as ui]
+            [yawn.hooks :as h]))
 
 (def participants-note
   "the number of total participans is lower than the sum of participants of all years as some people participated in multiple years")
@@ -60,3 +62,35 @@
      (str "*" participants-note)
      #_
      [ui/pprinted data]]))
+
+(ui/defview dev
+  {:route "/dev-stats"}
+  [params]
+  (let [stats (sort-by key (update-keys  (data/entity-stats nil) pr-str))
+        !current-tab (h/use-state (key (first stats)))]
+    (into [radix/tab-root {:class "m-4"
+                           :value @!current-tab
+                           :on-value-change (partial reset! !current-tab)}
+           ;; tabs
+           [:div.flex.items-stretch.h-10.gap-3
+            [radix/show-tab-list
+             (for [x (map key stats)]
+               {:title x :value x})]]]
+
+          (for [[kind kind-stats] stats]
+            [radix/tab-content {:value kind}
+             [:table.border-separate.border-spacing-4
+              (into [:tbody]
+                    (for [[key key-stats] (sort-by key kind-stats)]
+                      [:tr
+                       [:td.align-top (str key)]
+                       [:td
+                        [:table.border-separate.border-spacing-x-1
+                         (into [:tbody]
+                               (for [[v c] key-stats]
+                                 [:tr
+                                  [:td.align-top.text-right.font-bold.text-gray-500.font-mono (str c)]
+                                  [:td
+                                   (if (= ::data/other v)
+                                     [:span.text-gray-500 "other"]
+                                     [ui/pprinted v])]]))]]]))]]))))
