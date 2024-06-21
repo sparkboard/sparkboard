@@ -960,6 +960,7 @@
                                        :posts (& (xf
                                                    (partial change-keys
                                                             [:_id (partial id-with-timestamp :post)
+                                                             ::always (add-kind :post)
                                                              :parent rm
                                                              :user (&
                                                                      (xf member->board-membership-id)
@@ -975,6 +976,7 @@
                                                                            (uuid-ref-as :membership :post/followers))
                                                              :comments (& (xf (partial change-keys
                                                                                        [:_id (partial id-with-timestamp :comment)
+                                                                                        ::always (add-kind :comment)
                                                                                         :user (& (xf member->board-membership-id)
                                                                                                  (uuid-ref-as :membership :entity/created-by))
                                                                                         ::always (remove-when (complement :entity/created-by))
