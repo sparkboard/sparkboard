@@ -491,6 +491,21 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/looking-for-help                {:en "Looking for help"
                                           :fr "Cherchent de l'aide"
                                           :es "En busca de ayuda"}
+     :tr/vote                            {:en "Vote"
+                                          :fr "Vote"
+                                          :es "Votar"}
+     :tr/votes                           {:en "Votes"
+                                          :fr "Votes"
+                                          :es "Votos"}
+     :tr/community-vote                  {:en "Community vote"
+                                          :fr "vote communautaire "
+                                          :es "voto comunitario"}
+     :tr/vote-blurb                      {:en "Cast a vote for your favorite project! You get one vote. Change your vote by clicking 'vote' on another project. Only your most recent vote will be counted."
+                                          :fr "Votez pour votre projet préféré ! Vous obtenez une voix. Modifiez votre vote en cliquant sur « voter » sur un autre projet. Seul votre vote le plus récent sera pris en compte."
+                                          :es "¡Vota por tu proyecto favorito! Obtienes un voto. Cambie su voto haciendo clic en 'votar' en otro proyecto. Sólo se contará su voto más reciente."}
+     :tr/vote-open                       {:en "Vote open"
+                                          :fr "vote ouvert"
+                                          :es "Votación abierta"}
      }))
 
 (defn tr*
