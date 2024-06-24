@@ -1,5 +1,6 @@
 (ns sb.app.board.data
-  (:require [re-db.api :as db]
+  (:require [clojure.string :as str]
+            [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
             [sb.app.field.data :as field.data]
             [sb.app.field.data :as field.data]
@@ -110,6 +111,7 @@
                                      :entity/member-fields
                                      :entity/project-fields
                                      :entity/admission-policy
+                                     :member-vote/open?
                                      {:entity/parent [~@entity.data/listing-fields :org/show-org-tab?]}]
                                    board-id)]
              (merge board {:membership/roles roles})
@@ -130,6 +132,7 @@
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
                       :project/sticky?
+                      :project/number
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
                       {:membership/_entity [~@entity.data/id-fields
@@ -161,6 +164,29 @@
        :membership/_member
        (filter :entity/draft?)
        (map #(db/pull project-fields (:membership/entity %)))))
+
+(q/defquery ballots
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
+  [{:as params :keys [board-id membership/roles]}]
+  (u/timed `ballots
+           (->> (db/where [[:ballot/board board-id]])
+                (mapv (db/pull [:entity/id
+                                {:ballot/board [:entity/id]}
+                                {:ballot/project [:entity/id]}
+                                {:entity/created-by [:entity/id]}])))))
+
+(q/defquery user-ballot
+  {:prepare [az/with-account-id
+             (az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
+  [{:as params :keys [board-id account-id membership/roles]}]
+  (u/timed `user-ballot
+    (db/pull [:entity/id
+              {:ballot/board [:entity/id]}
+              {:ballot/project [:entity/id]}
+              {:entity/created-by [:entity/id]}]
+             [:ballot/board+account (str/join "+" (map sch/unwrap-id [board-id account-id]))])))
 
 (defn authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? account-id board)

@@ -97,7 +97,9 @@
         filter-fields (->> (:entity/project-fields board)
                            (filter :field/show-as-filter?))
         ;; TODO extend to all field types? In current dataset only `:field.type/select` is used.
-        filter-fields-select (filter (comp #{:field.type/select} :field/type) filter-fields)]
+        filter-fields-select (filter (comp #{:field.type/select} :field/type) filter-fields)
+        ballots (data/ballots {:board-id board-id})
+        show-votes-tab? (or (:member-vote/open? board) (seq ballots))]
     [:<>
      [header/entity board nil]
      [:div.p-body.flex-v.gap-6
@@ -148,7 +150,9 @@
        ;; tabs
        [:div.flex.items-stretch.h-10.gap-3
         [radix/show-tab-list
-         (for [x [:tr/projects :tr/members]
+         (for [x (cond-> [:tr/projects :tr/members]
+                   show-votes-tab?
+                   (conj :tr/votes))
                :let [x (t x)]]
            {:title x :value x})]]
 
@@ -170,7 +174,30 @@
                     (map (partial member.ui/card
                                   {:entity/member-tags   (:entity/member-tags board)
                                    :entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))})))
-              (data/members {:board-id board-id}))]]]]))
+              (data/members {:board-id board-id}))]
+        (when show-votes-tab?
+          [radix/tab-content {:value (t :tr/votes)}
+           [:h2.text-2xl (t :tr/community-vote)]
+           [:div.mb-4 (t :tr/vote-blurb)]
+           (->> (data/projects {:board-id board-id})
+                (into [card-grid]
+                      (comp (ui/filtered @?filter)
+                            (apply ui/sorted @?sort)
+                            (map project.ui/vote-card))))
+           [:table.border-separate.border-spacing-4
+            (into [:tbody
+                   [:tr
+                    [:td.font-bold.text-gray-500 (t :tr/votes)]
+                    [:td.font-bold.text-gray-500 (t :tr/project)]]]
+                  (for [[project ballots] (->> ballots
+                                               (group-by :ballot/project)
+                                               (sort-by (comp count val) >))]
+                    [:tr
+                     [:td.text-right.font-mono
+                      (str (count ballots))]
+                     [:td
+                      [:a {:href (routing/entity-path project 'ui/show)}
+                       (:entity/title project)]]]))]])]]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

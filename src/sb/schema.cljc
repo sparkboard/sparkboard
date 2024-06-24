@@ -149,6 +149,10 @@
   (reset! !malli-registry (merge (m/default-schemas) (update-vals @!schema s-)))
   (mr/set-default-registry! (mr/mutable-registry !malli-registry)))
 
+(comment
+  (install-malli-schemas!)
+  )
+
 (def !id-keys
   (delay
     (into #{}

@@ -2,6 +2,7 @@
   (:require [inside-out.forms :as forms]
             [promesa.core :as p]
             [sb.app.asset.ui :as asset.ui]
+            [sb.app.board.data :as board.data]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
@@ -9,6 +10,7 @@
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.app.vote.data :as vote.data]
             [sb.color :as color]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
@@ -249,3 +251,23 @@
                           (u/guard pos-int?))]
         [:div.w-10.h-10.flex-center.text-gray-400.text-lg.tracking-wider
          [:div.flex  "+" more]])]]))
+
+(ui/defview vote-card
+  {:key :entity/id}
+  [{:as   entity
+    :keys [entity/title
+           project/number]}]
+  [:div.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
+   {:class (when (sch/id= entity
+                          (-> (board.data/user-ballot {:board-id (sch/wrap-id (:entity/parent entity))})
+                              :ballot/project))
+             "outline outline-green-500")}
+   [:div.flex.relative.gap-3.items-start.px-3.cursor-default.flex-auto
+    [:div.flex-grow.flex-v.gap-1
+     [:a.flex
+      {:href (routing/entity-path entity 'ui/show)}
+      [:div.leading-snug.line-clamp-2.font-semibold.text-lg.flex-grow.text-center title]
+      [:div.text-gray-500.font-bold (some->> number (str "#"))]]
+     [:button.btn.btn-white.h-10
+      {:on-click #(vote.data/new! {:project-id (sch/wrap-id entity)})}
+      (t :tr/vote)]]]])
