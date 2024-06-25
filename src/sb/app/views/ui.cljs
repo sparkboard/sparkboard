@@ -15,6 +15,7 @@
             [re-db.react]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as entity.data]
+            [sb.app.views.radix :as radix]
             [sb.client.sanitize :as sanitize]
             [sb.i18n]
             [sb.icons :as icons]
@@ -430,3 +431,19 @@
                                                    (case drop-type
                                                      :before "left-[-2px]"
                                                      :after "right-[-2px]" nil)]}])))}))))
+
+(ui/defview action-button [{:as props :keys [on-click]} child]
+  (let [!async-state (h/use-state nil)
+        on-click     (fn [e]
+                       (reset! !async-state {:loading? true})
+                       (p/let [result (on-click e)]
+                         (reset! !async-state (when (:error result) result))))
+        {:keys [loading? error]} @!async-state]
+    [radix/tooltip {:delay-duration 0} error
+     [:div.btn.btn-white.overflow-hidden.relative
+      (-> props
+          (v/merge-props {:class (when error "ring-destructive ring-2")})
+          (assoc :on-click (when-not loading? on-click)))
+      child
+      (when (:loading? @!async-state)
+        [:div.loading-bar.absolute.top-0.left-0.right-0.h-1])]]))
