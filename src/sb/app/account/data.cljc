@@ -60,8 +60,7 @@
                   (map #(assoc (:membership/entity %) :membership/roles (:membership/roles %)))))))
 
 (q/defquery all
-  {:endpoint {:query true}
-   :prepare  az/with-account-id!}
+  {:prepare  az/with-account-id!}
   [{:keys [account-id]}]
   (u/timed `all
            (->> (q/pull `[{:membership/_member
