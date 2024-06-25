@@ -5,7 +5,7 @@
             [yawn.hooks :as h]))
 
 (def participants-note
-  "the number of total participans is lower than the sum of participants of all years as some people participated in multiple years")
+  "the number of total participants is lower than the sum of participants of all years as some people participated in multiple years")
 
 (ui/defview table [{:keys [board board-year project project-year participant participant-year]}]
   (let [years (->> (concat (keys board-year)
@@ -21,26 +21,31 @@
        (for [year years]
          ^{:key year}
          [:td (str year)])]
-      [:tr
-       [:td "boards"]
-       [:td.text-right (str board)]
-       (for [year years]
-         ^{:key year}
-         [:td.text-right (str (board-year year "-"))])]
-      [:tr
-       [:td "projects"]
-       [:td.text-right (str project)]
-       (for [year years]
-         ^{:key year}
-         [:td.text-right (str (project-year year "-"))])]
-      [:tr
-       [:td "participants"]
-       [:td.text-right {:title participants-note}
-        (str participant)
-        [:span.absolute "*"]]
-       (for [year years]
-         ^{:key year}
-         [:td.text-right (str (participant-year year "-"))])]]]))
+      (when board
+        [:tr
+         [:td "boards"]
+         [:td.text-right (str board)]
+         (for [year years]
+           ^{:key year}
+           [:td.text-right (str (board-year year "-"))])])
+      (when project
+        [:tr
+         [:td "projects"]
+         [:td.text-right (str project)]
+         (for [year years]
+           ^{:key year}
+           [:td.text-right (str (project-year year "-"))])])
+      (when participant
+        (let [discrepancy (not= participant (apply + (vals participant-year)))]
+          [:tr
+           [:td "participants"]
+           [:td.text-right {:title (when discrepancy participants-note)}
+            (str participant)
+            (when discrepancy
+              [:span.absolute "*"])]
+           (for [year years]
+             ^{:key year}
+             [:td.text-right (str (participant-year year "-"))])]))]]))
 
 (ui/defview show
   {:route "/stats"}
