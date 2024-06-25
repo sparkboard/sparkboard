@@ -16,7 +16,8 @@
                                    {:tokenizer
                                     (sut/create-regexp-tokenizer
                                       #"[\s:/\.;,!=?\"'()\[\]{}|<>&@#^*\\~`]+")
-                                    :token-filters [(sut/create-ngram-token-filter 2)]})]
+                                    :token-filters [sut/lower-case-token-filter
+                                                    (sut/create-ngram-token-filter 2)]})]
                     {:search-opts
                      {:query-analyzer analyzer
                       :analyzer       analyzer}}))

@@ -1,5 +1,6 @@
 (ns sb.app.board.ui
-  (:require [inside-out.forms :as forms]
+  (:require [clojure.edn :refer [read-string]]
+            [inside-out.forms :as forms]
             [inside-out.forms :as io]
             [promesa.core :as p]
             [re-db.api :as db]
@@ -106,13 +107,42 @@
   (let [board        (data/show {:board-id board-id})
         !current-tab (h/use-state (t :tr/projects))
         ?filter      (h/use-memo #(io/field))
-        card-grid    (v/from-element :div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3)]
+        ?sort        (h/use-memo #(io/field :init [:default]))
+        card-grid    (v/from-element :div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3)
+        filter-fields (->> (:entity/project-fields board)
+                           (filter :field/show-as-filter?))
+        ;; TODO extend to all field types? In current dataset only `:field.type/select` is used.
+        filter-fields-select (filter (comp #{:field.type/select} :field/type) filter-fields)]
     [:<>
      [header/entity board nil]
      [:div.p-body.flex-v.gap-6
 
-      [:div.flex.gap-4.items-stretch
+      [:div.flex.gap-4.items-stretch.content-center
+       ;; TODO filter field is not as tall as sort selection and new-project button, looks ugly
        [field.ui/filter-field ?filter nil]
+       [field.ui/select-field ?sort
+        {:field/classes {:wrapper "flex-row items-center"}
+         :field/label (t :tr/sort-order)
+         :field/can-edit? true
+         :field/wrap read-string
+         :field/unwrap str
+         :field/options (concat [{:field-option/value [:default]
+                                  :field-option/label (t :tr/sort-default)}
+                                 {:field-option/value [:entity/created-at :direction :asc]
+                                  :field-option/label (t :tr/sort-entity-created-at-asc)}
+                                 {:field-option/value [:entity/created-at :direction :desc]
+                                  :field-option/label (t :tr/sort-entity-created-at-desc)}
+                                 {:field-option/value [:random]
+                                  :field-option/label (t :tr/sort-random)}]
+                                (for [{:field/keys [id label options]} filter-fields-select]
+                                  {:field-option/value [:field.type/select
+                                                        :field-id id
+                                                        :field-positions
+                                                        (into {}
+                                                              (map-indexed (fn [i opt]
+                                                                             [(:field-option/value opt) i])
+                                                                           options))]
+                                   :field-option/label label}))}]
        [action-button
         {:on-click (fn [_]
                      (p/let [{:as   result
@@ -137,22 +167,21 @@
                :let [x (t x)]]
            {:title x :value x})]]
 
-
        [radix/tab-content {:value (t :tr/projects)}
         (some->> (seq (data/drafts {:board-id board-id}))
                  (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
                        (map project.ui/card)))
-        ;; TODO add sorting to filter-bar
         (->> (data/projects {:board-id board-id})
-             (sort-by (complement :project/sticky?))
              (into [card-grid]
                    (comp (ui/filtered @?filter)
+                         (apply ui/sorted @?sort)
                          (map (partial project.ui/card
                                        {:entity/project-fields (filter :field/show-on-card? (:entity/project-fields board))})))))]
 
        [radix/tab-content {:value (t :tr/members)}
         (into [card-grid]
               (comp (ui/filtered @?filter)
+                    (apply ui/sorted @?sort)
                     (map (partial member.ui/card
                                   {:entity/member-tags   (:entity/member-tags board)
                                    :entity/member-fields (filter :field/show-on-card? (:entity/member-fields board))})))

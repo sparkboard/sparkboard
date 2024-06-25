@@ -441,6 +441,21 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/registration                    {:en "Registration"
                                           :fr "Inscription"
                                           :es "Registro"}
+     :tr/sort-order                      {:en "Sort order"
+                                          :fr "Ordre de tri"
+                                          :es "Orden de clasificación"}
+     :tr/sort-default                    {:en "Default"
+                                          :fr "Défaut"
+                                          :es "Por defecto"}
+     :tr/sort-random                     {:en "Random"
+                                          :fr "Aléatoire"
+                                          :es "Aleatorio"}
+     :tr/sort-entity-created-at-asc      {:en "Creation time ascending"
+                                          :fr "Temps de creation ascendant"
+                                          :es "Tiempo de creación ascendente"}
+     :tr/sort-entity-created-at-desc     {:en "Creation time descending"
+                                          :fr "Temps de creation descendant"
+                                          :es "Tiempo de creación descendente"}
 
      }))
 

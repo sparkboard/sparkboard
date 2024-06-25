@@ -118,10 +118,14 @@
 
 (defn select-menu [{:as props :keys [id
                                      placeholder
+                                     value
                                      field/options
                                      field/can-edit?
                                      field/classes]
                     :or {id :radix-select}}]
+  #?(:cljs
+     (when-not (string? value)
+       (js/console.warn (str `select-menu " only works with string `:value`s got " (pr-str value)))))
   (let [classes (merge {:trigger select-trigger-classes
                         :content menu-content-classes}
                        classes)]
