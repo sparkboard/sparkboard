@@ -848,6 +848,7 @@
                                                                   (when-let [most-recent-member-doc (last (@!account->member-docs account-id))]
                                                                     (assoc-some-value {}
                                                                                       :entity/id account-id
+                                                                                      :entity/kind :account
                                                                                       :entity/created-at (-> account :createdAt Long/parseLong time/instant Date/from)
                                                                                       :image/avatar (when-let [src (or (some-> (:picture most-recent-member-doc)
                                                                                                                                (u/guard #(not (str/starts-with? % "/images"))))
@@ -869,7 +870,8 @@
                                                                                           board-id      (to-uuid :board boardId)
                                                                                           membership-id (member->board-membership-id _id)]
                                                                                     :when membership-id]
-                                                                                {:ballot/key        (str/join "+" [board-id membership-id project-id])
+                                                                                {:entity/kind       :ballot
+                                                                                 :ballot/key        (str/join "+" [board-id membership-id project-id])
                                                                                  :ballot/membership (uuid-ref :membership membership-id)
                                                                                  :ballot/board      (uuid-ref :board board-id)
                                                                                  :ballot/project    (uuid-ref :project project-id)}))
@@ -948,6 +950,7 @@
                                                          m))
                                        :_id (partial id-with-timestamp :discussion)
                                        :type rm
+                                       ::always (add-kind :discussion)
 
                                        :followers (&
                                                     (xf member->board-membership-id)
@@ -957,6 +960,7 @@
                                        :posts (& (xf
                                                    (partial change-keys
                                                             [:_id (partial id-with-timestamp :post)
+                                                             ::always (add-kind :post)
                                                              :parent rm
                                                              :user (&
                                                                      (xf member->board-membership-id)
@@ -972,6 +976,7 @@
                                                                            (uuid-ref-as :membership :post/followers))
                                                              :comments (& (xf (partial change-keys
                                                                                        [:_id (partial id-with-timestamp :comment)
+                                                                                        ::always (add-kind :comment)
                                                                                         :user (& (xf member->board-membership-id)
                                                                                                  (uuid-ref-as :membership :entity/created-by))
                                                                                         ::always (remove-when (complement :entity/created-by))
@@ -1093,6 +1098,7 @@
 
                                        ]
               :chat/as-map            [:_id (partial id-with-timestamp :chat)
+                                       ::always (add-kind :chat)
                                        ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
                                        ::always (fn [m]
                                                   (assoc m :chat/entity (uuid-ref :board (@!member-id->board-id
@@ -1293,6 +1299,15 @@
     @!found))
 
 (comment
+
+  (->> (all-entities)
+       (filter (complement :entity/kind))
+       (mapcat keys)
+       distinct
+       (map namespace)
+       distinct)
+
+  ;; TODO what about entities with :slack.*/* keys?
 
   (->> colls
        (mapcat read-coll)
