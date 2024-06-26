@@ -29,9 +29,12 @@
      [:div.flex-v
       [:div.flex.px-6.gap-3
        (when (:image/avatar account) [ui/avatar {:size 20} account])
-       [:div.flex-v.gap-2
+       [:div.flex-v.gap-2.grow
         [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (-> membership :membership/member :account/display-name)]
         [entity.ui/persisted-attr membership :entity/tags field-params]]
+       [:a.btn.btn-white.flex.items-center.px-3.my-auto
+        {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (:membership-id params)}])}
+        "message"]
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
         dev-panel
