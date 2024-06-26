@@ -453,6 +453,11 @@
           (re-find #"youtube" v) v
           :else (str "https://www.youtube.com/watch?v=" v))))
 
+(defn replace-empty-str [v]
+  (if (empty? v)
+    "Radix-does-not-like-empty-values"
+    v))
+
 (defn parse-fields [managed-by-k to-k]
   (fn [m]
     (if-some [field-ks (->> (keys m)
@@ -477,7 +482,7 @@
                                                 :field.type/link-list {:link-list/links
                                                                        (mapv #(rename-keys % {:label :link/label
                                                                                               :url   :link/url}) v)}
-                                                :field.type/select {:select/value v}
+                                                :field.type/select {:select/value (replace-empty-str v)}
                                                 :field.type/prose (prose v)
                                                 :field.type/video {:video/url (video-url v)}
                                                 (throw (Exception. (str "Field type not found "
@@ -653,11 +658,13 @@
                                                                                                (update-keys (fn [k]
                                                                                                               (case k "label" :field-option/label
                                                                                                                       "value" :field-option/value
-                                                                                                                      "color" :field-option/color)))))})
-                                                                 (u/assoc-some :field/default-value (->> (m "options")
-                                                                                                         (filter #(get % "default"))
-                                                                                                         first
-                                                                                                         (get "value")))
+                                                                                                                      "color" :field-option/color)))
+                                                                                               (update :field-option/value replace-empty-str)))})
+                                                                 (u/assoc-some :field/default-value (-> (m "options")
+                                                                                                        (->> (filter #(get % "default")))
+                                                                                                        first
+                                                                                                        (get "value")
+                                                                                                        (some-> replace-empty-str)))
                                                                  (update :field/type parse-field-type)
                                                                  (as-> m
                                                                        (if (show-on-card-labels (:field/label m))
