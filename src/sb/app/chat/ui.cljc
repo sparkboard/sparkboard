@@ -107,56 +107,56 @@
                                               :entity/id
                                               :membership/member))
                                 first
-                                (sch/wrap-id))]
-    (let [!message           (h/use-state nil)
-          !response          (h/use-state nil)
-          !scrollable-window (h/use-ref)
-          message            (u/guard @!message (complement str/blank?))
-          params             (assoc params :membership-id current-membership)
-          keydown-handler    (fn [e]
-                               (when ((ui/keydown-handler
-                                        {:Enter
-                                         (fn [e]
-                                           (reset! !response {:pending true})
-                                           (p/let [response (data/new-message!
-                                                              params
-                                                              {:prose/format :prose.format/markdown
-                                                               :prose/string message})]
-                                             (reset! !response response)
-                                             (when-not (:error response)
-                                               (reset! !message nil))
-                                             (js/setTimeout #(.focus (.-target e)) 10)))}) e)
-                                 (.preventDefault e)))]
-      (h/use-effect
-        (fn []
-          (when-let [el @!scrollable-window]
-            (set! (.-scrollTop el) (.-scrollHeight el))))
-        [(count messages) @!scrollable-window])
-      (h/use-effect
-        (fn []
-          (when (data/unread? params chat)
-            (data/mark-read! {:chat-id    (sch/wrap-id chat)
-                              :message-id (sch/wrap-id (last messages))})))
-        [(:entity/id (last messages))])
-      [:<>
-       [chat-header {:account-id account-id
-                     :chat       chat}]
-       [:div.flex-auto.overflow-y-scroll.flex-v.gap-3.p-2.border-t
-        {:ref !scrollable-window}
-        (->> messages
-             (sort-by :entity/created-at)
-             (map (partial chat-message params))
-             doall)]
-       [field.ui/auto-size
-        {:class       [search-classes
-                       "m-1 whitespace-pre-wrap min-h-[38px] flex-none"]
-         :type        "text"
-         :placeholder "Aa"
-         :disabled    (:pending @!response)
-         ;:style       {:max-height 200}
-         :on-key-down keydown-handler
-         :on-change   #(reset! !message (j/get-in % [:target :value]))
-         :value       (or message "")}]])))
+                                (sch/wrap-id))
+        !message           (h/use-state nil)
+        !response          (h/use-state nil)
+        !scrollable-window (h/use-ref)
+        message            (u/guard @!message (complement str/blank?))
+        params             (assoc params :membership-id current-membership)
+        keydown-handler    (fn [e]
+                             (when ((ui/keydown-handler
+                                     {:Enter
+                                      (fn [e]
+                                        (reset! !response {:pending true})
+                                        (p/let [response (data/new-message!
+                                                          params
+                                                          {:prose/format :prose.format/markdown
+                                                           :prose/string message})]
+                                          (reset! !response response)
+                                          (when-not (:error response)
+                                            (reset! !message nil))
+                                          (js/setTimeout #(.focus (.-target e)) 10)))}) e)
+                               (.preventDefault e)))]
+    (h/use-effect
+     (fn []
+       (when-let [el @!scrollable-window]
+         (set! (.-scrollTop el) (.-scrollHeight el))))
+     [(count messages) @!scrollable-window])
+    (h/use-effect
+     (fn []
+       (when (data/unread? params chat)
+         (data/mark-read! {:chat-id    (sch/wrap-id chat)
+                           :message-id (sch/wrap-id (last messages))})))
+     [(:entity/id (last messages))])
+    [:<>
+     [chat-header {:account-id account-id
+                   :chat       chat}]
+     [:div.flex-auto.overflow-y-scroll.flex-v.gap-3.p-2.border-t
+      {:ref !scrollable-window}
+      (->> messages
+           (sort-by :entity/created-at)
+           (map (partial chat-message params))
+           doall)]
+     [field.ui/auto-size
+      {:class       [search-classes
+                     "m-1 whitespace-pre-wrap min-h-[38px] flex-none"]
+       :type        "text"
+       :placeholder "Aa"
+       :disabled    (:pending @!response)
+                                        ;:style       {:max-height 200}
+       :on-key-down keydown-handler
+       :on-change   #(reset! !message (j/get-in % [:target :value]))
+       :value       (or message "")}]]))
 
 (ui/defview chats
   {:view/router :router/modal
