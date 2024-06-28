@@ -19,7 +19,9 @@
   (cond (uuid? id) id
         (vector? id) (second id)
         (:entity/id id) (:entity/id id)
-        :else id))
+        (nil? id) id
+        :else (do #?(:cljs (js/console.warn (str "can't unwrap id of " (pr-str id))))
+                  id)))
 
 (defn id= [a b]
   (= (unwrap-id a) (unwrap-id b)))
