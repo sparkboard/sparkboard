@@ -11,7 +11,8 @@
 
 (defn wrap-id [id]
   (cond (uuid? id) [:entity/id id]
-        (or (map? id) (satisfies? read/IEntity id)) [:entity/id (:entity/id id)]
+        (or (map? id) (satisfies? read/IEntity id)) (some->> (:entity/id id)
+                                                             (vector :entity/id))
         :else id))
 
 (defn unwrap-id [id]
