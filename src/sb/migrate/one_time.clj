@@ -214,11 +214,7 @@
           @!members-raw)))
 
 (defn member->board-membership-id [member-id]
-  (if (sequential? member-id)
-    (into (empty member-id)
-          (keep #(-> % get-oid (@!member-id->board-membership-id*)))
-          member-id)
-    (@!member-id->board-membership-id* (get-oid member-id))))
+  (@!member-id->board-membership-id* (get-oid member-id)))
 
 #_(defn member->account-uuid [member-id]
     ;; member-id (mongo userId) to account-uuid,
@@ -236,6 +232,12 @@
 
 (defn uuid-ref [kind s]
   [:entity/id (to-uuid kind s)])
+
+(defn members->member-refs [member-ids]
+  (into []
+        (comp (keep member->board-membership-id)
+              (map (partial uuid-ref :membership)))
+        member-ids))
 
 (comment
   (coll-entities :ballot/as-map)
@@ -266,13 +268,7 @@
   (fn [m k v]
     (-> m
         (dissoc k)
-        (u/assoc-some as
-                      (if (sequential? v)
-                        (into []
-                              (comp (keep identity)
-                                    (map (partial uuid-ref kind)))
-                              v)
-                        (some->> v (uuid-ref kind)))))))
+        (u/assoc-some as (some->> v (uuid-ref kind))))))
 
 (def unique-ids-from
   (memoize
@@ -952,9 +948,8 @@
                                        :type rm
                                        ::always (add-kind :discussion)
 
-                                       :followers (&
-                                                    (xf member->board-membership-id)
-                                                    (uuid-ref-as :membership :discussion/followers))
+                                       :followers (& (xf members->member-refs)
+                                                     (rename :discussion/followers))
                                        :parent (uuid-ref-as :project :discussion/project)
                                        ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
                                        :posts (& (xf
@@ -970,10 +965,10 @@
 
                                                              :text (& (xf prose) (rename :post/text))
 
-                                                             :doNotFollow (& (xf member->board-membership-id)
-                                                                             (uuid-ref-as :membership :post/do-not-follow))
-                                                             :followers (& (xf member->board-membership-id)
-                                                                           (uuid-ref-as :membership :post/followers))
+                                                             :doNotFollow (& (xf members->member-refs)
+                                                                             (rename :post/do-not-follow))
+                                                             :followers (& (xf members->member-refs)
+                                                                           (rename :post/followers))
                                                              :comments (& (xf (partial change-keys
                                                                                        [:_id (partial id-with-timestamp :comment)
                                                                                         ::always (add-kind :comment)
@@ -1103,10 +1098,9 @@
                                        ::always (fn [m]
                                                   (assoc m :chat/entity (uuid-ref :board (@!member-id->board-id
                                                                                            (get-oid (first (:participantIds m)))))))
-                                       :participantIds (& (xf #(let [out (member->board-membership-id %)]
-                                                                 (when (= (count out) (count %))
-                                                                   out)))
-                                                          (uuid-ref-as :membership :chat/participants))
+                                       :participantIds (& (xf #(-> (members->member-refs %)
+                                                                   (u/guard (comp #{(count %)} count))))
+                                                          (rename :chat/participants))
                                        ::always (remove-when (complement :chat/participants))
                                        :createdAt (& (xf parse-mongo-date)
                                                      (rename :entity/created-at))
