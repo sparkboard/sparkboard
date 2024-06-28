@@ -1280,10 +1280,17 @@
 
 (defn flatten-entities-xf []
   "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
-  (let [reverse-ks (into #{} (filter #(str/starts-with? (name %) "_")) (keys @sch/!schema))]
+  (let [reverse-ks (into {} (comp (filter #(str/starts-with? (name %) "_"))
+                                  (map (juxt identity #(keyword (namespace %) (subs (name %) 1)))))
+                         (keys @sch/!schema))]
     (mapcat (fn [doc]
-              (cons (apply dissoc doc reverse-ks)
-                    (mapcat doc reverse-ks))))))
+              (let [doc-id (sch/wrap-id doc)]
+                (into [(apply dissoc doc (keys reverse-ks))]
+                      (flatten-entities-xf)
+                      (mapcat (fn [[reverse-k k]]
+                                (map #(assoc % k doc-id)
+                                     (reverse-k doc)))
+                              reverse-ks)))))))
 
 (defn all-entities
   "Flat list of all entities (no inline nesting)" []
