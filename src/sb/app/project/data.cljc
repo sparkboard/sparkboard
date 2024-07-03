@@ -1,6 +1,7 @@
 (ns sb.app.project.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
+            [sb.app.discussion.data :as discussion.data]
             [sb.app.field.data :as field.data]
             [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
@@ -68,7 +69,8 @@
                                      (? :project/admin-description)
                                      (? :project/sticky?)
                                      (? :project/open-requests)
-                                     (? :entity/description)]
+                                     (? :entity/description)
+                                     (? :discussion/followers)]
                                  }
      :community-action/as-map   {s- [:map-of
                                      :community-action/label
@@ -106,6 +108,7 @@
                                                                  :entity/id
                                                                  :entity/kind
                                                                  {:image/avatar [:entity/id]}]}]}
+                      ~discussion.data/posts-with-comments-field
                       {:entity/parent
                        [~@entity.data/listing-fields
                         :board/sticky-color

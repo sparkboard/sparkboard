@@ -36,9 +36,7 @@
                                      :membership
                                      :project
                                      :field
-                                     :discussion
                                      :post
-                                     :comment
                                      :notification
                                      :tag
                                      :chat

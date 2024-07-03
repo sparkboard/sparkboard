@@ -941,17 +941,14 @@
 
                                        ]
 
-              :discussion/as-map      [#_#_::prepare (fn [m]
-                                                       (when-not (empty? (:posts m))
-                                                         m))
-                                       :_id (partial id-with-timestamp :discussion)
+              :discussion/as-map      [:_id rm
                                        :type rm
-                                       ::always (add-kind :discussion)
 
                                        :followers (& (xf members->member-refs)
                                                      (rename :discussion/followers))
-                                       :parent (uuid-ref-as :project :discussion/project)
-                                       ::always (remove-when (comp (partial missing-entity? :project/as-map) :discussion/project)) ;; prune discussions from deleted projects
+                                       :parent (& (xf (partial to-uuid :project))
+                                                  (rename :entity/id))
+                                       ::always (remove-when (comp (partial missing-entity? :project/as-map) :entity/id)) ;; prune discussions from deleted projects
                                        :posts (& (xf
                                                    (partial change-keys
                                                             [:_id (partial id-with-timestamp :post)
@@ -969,18 +966,18 @@
                                                              :followers (& (xf members->member-refs)
                                                                            (rename :post/followers))
                                                              :comments (& (xf (partial change-keys
-                                                                                       [:_id (partial id-with-timestamp :comment)
-                                                                                        ::always (add-kind :comment)
+                                                                                       [:_id (partial id-with-timestamp :post)
+                                                                                        ::always (add-kind :post)
                                                                                         :user (& (xf member->account-ref)
                                                                                                  (rename :entity/created-by))
                                                                                         ::always (remove-when (complement :entity/created-by))
-                                                                                        :text (rename :comment/text)
-                                                                                        ::always (remove-when (comp str/blank? :comment/text))
+                                                                                        ::always (remove-when (comp str/blank? :text))
+                                                                                        :text (& (xf prose) (rename :post/text))
                                                                                         :parent rm]))
-                                                                          (rename :post/comments))]))
-                                                 (rename :discussion/posts))
+                                                                          (rename :post/_parent))]))
+                                                 (rename :post/_parent))
                                        :boardId rm
-                                       ::always (remove-when (comp empty? :discussion/posts))]
+                                       ::always (remove-when (comp empty? :post/_parent))]
               :project/as-map         [::defaults {:entity/archived?        false
                                                    :entity/admission-policy :open}
 
