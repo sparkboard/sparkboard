@@ -1,5 +1,6 @@
 (ns sb.i18n
   (:require [sb.authorize :as az]
+            [sb.util :as u]
             [re-db.api :as db]
             [taoensso.tempura :as tempura]
             [sb.query :as q])
@@ -21,13 +22,8 @@
      :clj  ["en"]))
 
 (defmacro ungroup-dict [dict]
-  (->> dict
-       (map (fn [[key-id lang-map]]
-              (->> lang-map
-                   (map (fn [[lang-id value]]
-                          [(name lang-id) {key-id value}]))
-                   (into {}))))
-       (apply merge-with merge)))
+  (-> (u/map-transpose dict)
+      (update-keys name)))
 
 (def dict
   "Tempura-style dictionary of internationalizations, keyed by ISO-639-2.
