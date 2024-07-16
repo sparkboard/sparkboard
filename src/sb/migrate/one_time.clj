@@ -1022,7 +1022,6 @@
                                                                                           (some->> (:role member) (role-kw :project)))]
                                                                                (merge {:entity/id         (composite-uuid :membership project-id member-id)
                                                                                        :entity/kind       :membership
-                                                                                       :membership/entity (uuid-ref :project project-id)
                                                                                        :membership/member (uuid-ref :membership member-id)}
                                                                                       (when role {:membership/roles #{role}})))))
                                                                          v))))
