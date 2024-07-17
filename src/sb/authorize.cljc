@@ -1,4 +1,5 @@
 (ns sb.authorize
+  #?(:cljs (:require-macros [sb.authorize :refer [auth-guard!]]))
   (:require [re-db.api :as db]
             [sb.server.datalevin :as dl]
             [sb.schema :as sch])
@@ -45,11 +46,17 @@
 (defn unauthorized! [message & [data]]
   (throw (ex-info message (merge {:code 400} data))))
 
+#?(:clj
+   (defmacro auth-guard! [test message & body]
+     `(if ~test
+        (do ~@body)
+        (unauthorized! ~message))))
+
 (defn with-account-id! [req params]
   (let [params (with-account-id req params)]
-    (when-not (:account-id params)
-      (unauthorized! "User not signed in"))
-    params))
+    (auth-guard! (:account-id params)
+        "User not signed in"
+      params)))
 
 (defn entity? [x]
   (instance? #?(:cljs re-db.read/Entity :clj Entity) x))
