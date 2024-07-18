@@ -1,13 +1,16 @@
 (ns sb.app.discussion.data
-  (:require [sb.schema :as sch :refer [s- ?]]
+  (:require [re-db.api :as db]
+            [sb.authorize :as az]
+            [sb.schema :as sch :refer [s- ?]]
+            [sb.query :as q]
+            [sb.server.datalevin :as dl]
+            [sb.validate :as validate]
             [re-db.schema :as rs]))
 
 (sch/register!
   (merge
-
-    {:post/_discussion   {s- [:sequential :post/as-map]}
-     :post/comments      (merge (sch/ref :many :comment/as-map)
-                                sch/component)
+    {:post/_parent       {s- [:sequential :post/as-map]}
+     :post/parent        (sch/ref :one)
      :post/text          {s-           :prose/as-map
                           :db/fulltext false}
      :post/do-not-follow (merge
@@ -15,28 +18,35 @@
                            (sch/ref :many))
      :post/followers     (merge {:doc "Members who should be notified upon new replies to this post"}
                                 (sch/ref :many))
-     :comment/text       {s- :string}
      :post/as-map        {s- [:map {:closed true}
                               :entity/id
+                              :entity/kind
+                              :post/parent
                               :post/text
                               :entity/created-by
                               :entity/created-at
-                              (? :post/comments)
                               (? :post/do-not-follow)
-                              (? :post/followers)]}
-     :comment/as-map     {s- [:map {:closed true}
-                              :entity/id
-                              :entity/created-at
-                              :entity/created-by
-                              :comment/text]}}
+                              (? :post/followers)]}}
+    {:discussion/followers (sch/ref :many)}))
 
-    {:discussion/followers (sch/ref :many),
-     :discussion/posts     (merge (sch/ref :many :post/as-map)
-                                  rs/component)
-     :discussion/project   (sch/ref :one)
-     :discussion/as-map    {s- [:map {:closed true}
-                                :entity/id
-                                :discussion/project
-                                :entity/created-at
-                                (? :discussion/followers)
-                                (? :discussion/posts)]}}))
+(def posts-field
+  {:post/_parent
+   [:entity/id
+    :entity/kind
+    :post/text
+    {:entity/created-by [:entity/id
+                         :entity/kind
+                         :account/display-name
+                         {:image/avatar [:entity/id]}]}
+    :entity/created-at]})
+
+(def posts-with-comments-field
+  (update posts-field :post/_parent conj posts-field))
+
+(q/defx new-post!
+  {:prepare [az/with-account-id!]}
+  [{:keys [post account-id]}]
+  (let [post (-> (dl/new-entity post :post :by account-id)
+                 (validate/assert :post/as-map))]
+    (db/transact! [post])
+    {:entity/id (:entity/id post)}))

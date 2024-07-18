@@ -4,6 +4,7 @@
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
+            [sb.app.discussion.ui :as discussion.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.project.data :as data]
@@ -197,6 +198,9 @@
 
          #_[:section.flex-v.gap-2.items-start
             [manage-community-actions project (:project/community-actions project)]]
+
+         [:div.field-label (t :tr/questions-and-comments)]
+         [discussion.ui/show-posts project]
 
          (when can-edit?
            [ui/action-button {:on-click (fn [_]

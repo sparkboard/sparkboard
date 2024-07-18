@@ -452,7 +452,18 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/sort-entity-created-at-desc     {:en "Creation time descending"
                                           :fr "Temps de creation descendant"
                                           :es "Tiempo de creación descendente"}
-
+     :tr/post                            {:en "Post"
+                                          :fr "Publier"
+                                          :es "Publicar"}
+     :tr/questions-and-comments          {:en "Questions and comments"
+                                          :fr "Questions et commentaires"
+                                          :es "Preguntas y comentarios"}
+     :tr/reply                           {:en "Reply"
+                                          :fr "Répondre"
+                                          :es "Responder"}
+     :tr/replies                         {:en "replies"
+                                          :fr "réponses"
+                                          :es "respuestas"}
      }))
 
 (defn tr*
