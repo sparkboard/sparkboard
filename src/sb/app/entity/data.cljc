@@ -79,12 +79,12 @@
      :entity/created-at         {s-   'inst?
                                  :doc "Date the entity was created"},
      :entity/created-by         (merge (sch/ref :one)
-                                       {:doc "Member or account who created this entity"}),
+                                       {:doc "Account who created this entity"}),
      :entity/deleted-at         {:doc  "Date when entity was marked deleted"
                                  :todo "Excise deleted data after a grace period"
                                  s-    'inst?}
      :entity/modified-by        (merge (sch/ref :one)
-                                       {:doc "Member who last modified this entity"}),
+                                       {:doc "Account who last modified this entity"}),
      :entity/updated-at         {s-   'inst?
                                  :doc "Date the entity was last modified"}}))
 
