@@ -52,6 +52,11 @@ jobs:
       - name: Install yarn deps
         run: yarn
 
+      ########################################
+      ## Test
+
+      - name: Test
+        run: bb test
 
       ########################################
       ## Build
