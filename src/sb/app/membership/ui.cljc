@@ -1,5 +1,6 @@
 (ns sb.app.membership.ui
-  (:require [sb.app.entity.ui :as entity.ui]
+  (:require [re-db.api :as db]
+            [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.membership.data :as data]
@@ -7,6 +8,7 @@
             [sb.app.views.ui :as ui]
             [sb.authorize :as az]
             [sb.color :as color]
+            [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]))
@@ -58,7 +60,15 @@
        :entity/field-entries
        {:entity/fields    (->> membership :membership/entity :entity/member-fields)
         :membership/roles roles
-        :field/can-edit?  can-edit?}]]]))
+        :field/can-edit?  can-edit?}]]
+     [:div.px-body
+      [:div.field-label (t :tr/project)]
+      [:div.mt-3.flex.flex-wrap.gap-6
+       (for [project (->> (db/where [[:membership/member (sch/wrap-id membership)]])
+                          (map :membership/entity))]
+         ^{:key (:entity/id project)}
+         [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
+          (:entity/title project)])]]]))
 
 (defn show-tag [{:keys [tag/label tag/color] :or {color "#dddddd"}}]
   [:div.tag-md
