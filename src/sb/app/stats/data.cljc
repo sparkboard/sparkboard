@@ -215,12 +215,24 @@
         (sort-by first))
   )
 
+(defn stat-type [x]
+  (cond (:db/id x)   (:entity/kind (dl/entity (:db/id x)))
+        (string? x)  'string
+        (map? x)     'map
+        (vector? x)  'vector
+        (set? x)     'set
+        (integer? x) 'integer
+        #?@(:clj [(instance? Date x) 'date])
+        :else        (str (type x))))
+
 (defn truncate-frequencies [n freqs]
   (let [[head tail] (split-at n (sort-by val > freqs))
         other (apply + (map val tail))]
     (cond-> head
       (< 0 other)
-      (concat [ [::other other]]))))
+      (concat [[::other other]]
+              (apply merge-with + (for [[k v] freqs]
+                                    {(stat-type k) v}))))))
 
 (defn frequencies-by-key [ms]
   (->> ms
@@ -231,7 +243,7 @@
   ;; TODO proper authorization
   {:prepare az/require-account!}
   [params]
-  (-> (dl/q '[:find [ (pull ?e [*]) ...]
+  (-> (dl/q '[:find [(pull ?e [*]) ...]
               :where [?e]])
       (->> (map #(dissoc % :db/id :entity/id))
            (group-by :entity/kind))
