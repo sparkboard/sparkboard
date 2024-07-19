@@ -19,7 +19,7 @@
                              (shell "yarn shadow-cljs -A:dev:nio:local clj-run sb.build/start 3000"))
          test            (shell "clj -X:test:nio")
          cljs            (do (shell "yarn install")
-                             (shell "yarn shadow-cljs release web"))
+                             (shell "yarn shadow-cljs release browser"))
          clj             (do (shell "clojure -A:nio -X:aot")
                              (shell "clojure -A:nio -X:uberjar"))
          build           (do (run 'compile-scrypt)
@@ -36,7 +36,7 @@
          fly:deploy-ci   (shell (str "flyctl deploy -a " app " --remote-only"))
          fly             (shell (str "fly -a " app " " (str/join " " *command-line-args*)))
 
-         build-report    (shell "yarn shadow-cljs run shadow.cljs.build-report web report.html")
+         build-report    (shell "yarn shadow-cljs run shadow.cljs.build-report browser report.html")
          run             (shell "java -jar target/sparkboard.jar")
 
          migrate:fetch   (yarn shadow-cljs clj-run sb.migrate.core/tx!)
