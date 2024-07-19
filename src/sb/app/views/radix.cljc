@@ -172,7 +172,7 @@
 (def tab-root (v/from-element :el tabs/Root))
 (def tab-list (v/from-element :el.contents tabs/List))
 (def tab-content (v/from-element :el.outline-none tabs/Content))
-(def tab-trigger (v/from-element :el tabs/Trigger {:class ["px-1 border-b-2 border-transparent text-txt/50"
+(def tab-trigger (v/from-element :el tabs/Trigger {:class ["px-1 border-b-2 border-transparent text-txt/60"
                                                            "data-[state=active]:border-primary"
                                                            "data-[state=active]:text-txt"
                                                            "data-[state=inactive]:hover:border-primary/10"
@@ -300,5 +300,5 @@
                                                                                      (wrap %)))}]
          (for [{:field-option/keys [label value]} options]
            [:el.btn.btn-white.py-2 toggle-group/Item {:value (unwrap value)
-                                                      :class "data-[state=on]:bg-gray-400"}
+                                                      :class "bg-white/40 data-[state=on]:bg-gray-400"}
             label]))))

@@ -102,6 +102,7 @@
                    {:entity/domain-name [:domain-name/name]}])
 
 (def site-fields [{:image/background [:entity/id]}
+                  {:image/sub-header [:entity/id]}
                   {:entity/domain-name [:domain-name/name]}])
 
 (defn required? [parent-schema child-attr]

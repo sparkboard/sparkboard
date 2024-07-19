@@ -98,7 +98,7 @@
   {:key :entity/id}
   [{:as   entity
     :keys [entity/title membership/roles]}]
-  [:div.flex.hover:bg-gray-100.rounded-lg
+  [:div.flex.hover:bg-gray-100.rounded-md
    [:a.flex.relative.gap-3.items-center.p-2.cursor-default.flex-auto
     {:href (routing/entity-path entity 'ui/show)}
     [ui/avatar {:size 10} entity]
