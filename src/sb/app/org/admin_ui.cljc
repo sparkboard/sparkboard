@@ -4,7 +4,7 @@
             [sb.app.org.data :as data]
             [sb.app.views.header :as header]
             [sb.app.views.ui :as ui]
-            [sb.i18n :as i]))
+            [sb.i18n :refer [t]]))
 
 (ui/defview settings
   {:route "/o/:org-id/settings"}
@@ -18,6 +18,8 @@
       (use-attr :entity/title)
       (use-attr :entity/description)
       (use-attr :entity/domain-name)
-      (use-attr :image/avatar {:field/label (i/t :tr/logo)})
+      (use-attr :image/avatar {:field/label (t :tr/logo)})
+      (use-attr :image/sub-header {:field/label (t :tr/image.sub-header)})
+      (use-attr :image/background {:field/label (t :tr/image.background)})
 
       ]]))

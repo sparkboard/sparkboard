@@ -167,14 +167,17 @@
         !current-tab (h/use-state (t :tr/projects))
         ballots (data/ballots {:board-id board-id})
         show-votes-tab? (or (:member-vote/open? board) (seq ballots))]
-    [:<>
+    [:div.flex-v.gap-6
+     {:style (ui/background-image-style board)}
      [header/entity board nil]
-     [:div.p-body.flex-v.gap-6
-      [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
+     (ui/sub-header board)
+     [:div.m-body.p-4.flex-v.gap-6.backdrop-blur-md.rounded-lg
+      {:class "bg-white/20"}
+      [radix/tab-root {:class           "flex flex-col gap-6 mt-2"
                        :value           @!current-tab
                        :on-value-change #(reset! !current-tab %)}
        ;; tabs
-       [:div.flex.items-stretch.h-10.gap-3
+       [:div.flex.items-stretch.gap-3
         [radix/show-tab-list
          (for [x (cond-> [:tr/projects :tr/members]
                    show-votes-tab?
@@ -269,7 +272,8 @@
                        (str (count ballots))]
                       [:td
                        [:a {:href (routing/entity-path project 'ui/show)}
-                        (:entity/title project)]]]))])])]]]))
+                        (:entity/title project)]]]))])])]]
+      [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
 (comment
   [:ul                                                      ;; i18n stuff
