@@ -159,8 +159,9 @@
   [{:keys [account-id board-id]}]
   (->> (az/membership account-id board-id)
        :membership/_member
-       (filter :entity/draft?)
-       (map #(db/pull project-fields (:membership/entity %)))))
+       (map :membership/entity)
+       (filter (every-pred :entity/draft? (complement :entity/deleted-at)))
+       (mapv (db/pull project-fields))))
 
 (defn authorize-edit! [board account-id]
   (when-not (or (validate/can-edit? account-id board)

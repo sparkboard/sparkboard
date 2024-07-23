@@ -152,9 +152,14 @@
            {:title x :value x})]]
 
        [radix/tab-content {:value (t :tr/projects)}
-        (some->> (seq (data/drafts {:board-id board-id}))
-                 (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
-                       (map project.ui/card)))
+        (when-let [drafts (seq (data/drafts {:board-id board-id}))]
+          [:div.border-b-2.border-gray-300.border-dashed.py-3.mb-3
+           (->> drafts
+                (into [card-grid]
+                      (comp (ui/filtered @?filter)
+                            (apply ui/sorted @?sort)
+                            (map (partial project.ui/card
+                                          {:entity/project-fields (filter :field/show-on-card? (:entity/project-fields board))})))))])
         (->> (data/projects {:board-id board-id})
              (into [card-grid]
                    (comp (ui/filtered @?filter)
