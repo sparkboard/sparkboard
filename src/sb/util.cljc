@@ -181,6 +181,9 @@
 (defn from-keys [ks f]
   (into {} (map #(vector % (f %))) ks))
 
+(defn entry-indexes [xs]
+  (into {} (map-indexed (fn [i x] [x i])) xs))
+
 (defn map-transpose [mss]
   (from-keys (distinct (mapcat keys (vals mss)))
              #(update-vals mss (fn [x] (x %)))))
@@ -194,3 +197,7 @@
 
 (defmacro for! [& body]
   `(doall (for ~@body)))
+
+(defn every-pred*
+  ([] (constantly true))
+  ([& xs] (apply every-pred xs)))
