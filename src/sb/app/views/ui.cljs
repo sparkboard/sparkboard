@@ -62,17 +62,30 @@
 (defn filtered [match-text]
   (filter (partial match-entity match-text)))
 
+(defn match-pred [match-text]
+  #(some->> (filter-value %) (re-find (re-pattern (str "(?i)" match-text)))))
+
+(defn tag-pred [tag-id]
+  #(some (comp #{tag-id} :tag/id) (:entity/tags %)))
+
 ;; TODO / WIP
 ;; - some sorting widgets are dynamic (fields that have the "filter by this field" flag)
-(defn sorted [sort-key & {:keys [direction field-id field-positions] :or {direction :asc}}]
+(defn sorted [sort-key & {:keys [direction field-id field-options] :or {direction :asc}}]
   (case sort-key
     ;; TODO define default-sort for all entity kinds that are sorted
     :default (xf/sort-by (complement :project/sticky?))
     :entity/created-at (xf/sort-by :entity/created-at (case direction :asc compare :desc u/compare:desc))
     :random (xf/sort #(rand-nth [-1 1]))
-    :field.type/select (xf/sort-by (comp field-positions :select/value #(get % field-id) :entity/field-entries))
+    :field.type/select (let [field-positions (u/entry-indexes (map :field-option/value field-options))
+                             field-labels (u/index-by field-options :field-option/value :field-option/label)]
+                         (comp (xf/sort-by (comp field-positions :select/value #(get % field-id) :entity/field-entries))
+                               (map #(-> (:entity/field-entries %)
+                                         (get field-id)
+                                         :select/value
+                                         field-labels
+                                         (->> (vary-meta % assoc :group/label))))))
     (do (js/console.warn (str "no sort defined for " (pr-str sort-key)))
-        (map identity))))
+        identity)))
 
 (defn pprinted [x & _]
   [:pre.whitespace-pre-wrap (with-out-str (clojure.pprint/pprint x))])
