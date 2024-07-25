@@ -130,6 +130,7 @@
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
                       :project/sticky?
+                      :project/open-requests
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
                       {:membership/_entity [~@entity.data/id-fields

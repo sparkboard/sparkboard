@@ -201,7 +201,7 @@
                                     {:open (some? props)}))
      [:el alert/Portal
       [:el.overlay.z-9 alert/Overlay]
-      [:el.overlay-content.z-4.rounded-lg.p-7.flex-v.gap-4.relative.z-10.bg-white alert/Content
+      [:el.overlay-content.z-30.rounded-lg.p-7.flex-v.gap-4.relative.z-10.bg-white alert/Content
        (when title [:el.font-bold alert/Title title])
        (when description [:el alert/Description description])
        body

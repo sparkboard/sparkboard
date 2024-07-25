@@ -59,4 +59,5 @@
                                                       :field-option/label (t :tr/anyone-may-join)}
                                                      {:field-option/value :admission-policy/invite-only
                                                       :field-option/label (t :tr/invite-only)}]}}
+   :project/open-requests   {:view field.ui/requests-field}
    :asset/as-map            {:view field.ui/image-field}})

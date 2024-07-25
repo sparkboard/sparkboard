@@ -461,6 +461,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/sort-entity-created-at-desc     {:en "Creation time descending"
                                           :fr "Temps de creation descendant"
                                           :es "Tiempo de creación descendente"}
+     :tr/requests                        {:en "Looking for"
+                                          :fr "À la recherche de"
+                                          :es "Buscando"}
+     :tr/add-request                     {:en "Add request"
+                                          :fr "ajouter une demande"
+                                          :es "Añadir solicitud"}
+     :tr/request-text                    {:en "Request text"
+                                          :fr "texte de la demande"
+                                          :es "texto de solicitud"}
 
      }))
 
