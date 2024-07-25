@@ -199,6 +199,8 @@
          #_[:section.flex-v.gap-2.items-start
             [manage-community-actions project (:project/community-actions project)]]
 
+         [entity.ui/persisted-attr project :project/open-requests field-params]
+
          [:div.field-label (t :tr/questions-and-comments)]
          [discussion.ui/show-posts project]
 
@@ -225,6 +227,7 @@
            entity/description
            entity/field-entries
            project/sticky?
+           project/open-requests
            membership/roles]}]
   (let [board-members (->> (:membership/_entity entity) (mapv :membership/member))]
     [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100.py-3.gap-3.
@@ -240,6 +243,9 @@
         (field.ui/show-prose description)]
        [:div.text-gray-500.contents
         (field.ui/show-entries project-fields field-entries)]]]
+
+     [:div.ml-4
+      [field.ui/show-requests open-requests]]
 
      ;; TEAM
      [:div.flex.flex-wrap.gap-2.px-3

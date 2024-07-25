@@ -96,6 +96,7 @@
                       {:entity/video [:video/url]}
                       {:project/badges [:badge/label
                                         :badge/color]}
+                      :project/open-requests
                       :entity/field-entries
                       :entity/draft?
                       :entity/deleted-at
