@@ -106,16 +106,16 @@
                                  (apply ui/sorted @?sort)))
                   (h/use-deps [@?match-filter @!tag-filter @!select-filter @?sort]))
     [:<>
-     (into [:<>
-            (when (seq tags)
-              [:div.field-wrapper
-               [:label.field-label (t :tr/tag)]
-               ;; TODO color tags here?
-               [radix/toggle-group {:value @!tag-filter
-                                    :on-change #(reset! !tag-filter %)
-                                    :field/options (for [{:tag/keys [id label]} tags]
-                                                     {:field-option/value (str id)
-                                                      :field-option/label label})}]])]
+     (when (seq tags)
+       [:div.field-wrapper
+        [:label.field-label (t :tr/tag)]
+        ;; TODO color tags here?
+        [radix/toggle-group {:value @!tag-filter
+                             :on-change #(reset! !tag-filter %)
+                             :field/options (for [{:tag/keys [id label]} tags]
+                                              {:field-option/value (str id)
+                                               :field-option/label label})}]])
+     (into [:<>]
            (comp (filter :field/show-as-filter?)
                  (map (fn [{:field/keys [id label options]}]
                         [:div.field-wrapper
