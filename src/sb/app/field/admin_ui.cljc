@@ -43,7 +43,7 @@
                            :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
                                      [icons/ellipsis-horizontal "w-4 h-4"]]
                            :items   [[{:on-select (fn [_]
-                                                    (radix/simple-alert! {:message      "Are you sure you want to remove this?"
+                                                    (radix/simple-alert! {:message      (t :tr/remove?)
                                                                           :confirm-text (t :tr/remove)
                                                                           :confirm-fn   (fn []
                                                                                           (io/remove-many! ?option)
@@ -69,10 +69,10 @@
                                          (p/let [result (entity.data/maybe-save-field ?options)]
                                            (reset! ?new (:init ?new))
                                            result)))}
-        [field.ui/text-field ?new {:placeholder     "Option label"
+        [field.ui/text-field ?new {:placeholder     (t :tr/option-label)
                                    :field/can-edit? true
                                    :field/classes   {:wrapper "flex-auto"}}]
-        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} "Add Option"]])
+        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} (t :tr/add-option)]])
      #_[ui/pprinted @?options]]))
 
 (ui/defview field-row-detail [{:as ?field :syms [?label
@@ -103,7 +103,7 @@
       (view-field ?show-on-card?)
       [:div
        [:a.p-1.-ml-1.-mt-1.text-sm.cursor-pointer.inline-flex.gap-2.rounded.hover:bg-gray-200
-        {:on-click #(radix/simple-alert! {:message      "Are you sure you want to remove this?"
+        {:on-click #(radix/simple-alert! {:message      (t :tr/remove?)
                                           :confirm-text (t :tr/remove)
                                           :confirm-fn   (fn []
                                                           (io/remove-many! ?field)

@@ -386,6 +386,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/options                         {:en "Options"
                                           :fr "Options"
                                           :es "Opciones"}
+     :tr/add-option                      {:en "Add option"
+                                          :fr "ajouter une option"
+                                          :es "añadir opción"}
+     :tr/option-label                    {:en "Option label"
+                                          :fr "étiquette d'option"
+                                          :es "etiqueta de opción"}
      :tr/find-a-member                   {:en "Find a member"
                                           :fr "Trouver un membre"
                                           :es "Encontrar un miembro"}
@@ -428,6 +434,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/remove                          {:en "Remove"
                                           :fr "Supprimer"
                                           :es "Eliminar"}
+     :tr/remove?                         {:en "Are you sure you want to remove this?"
+                                          :fr "Etes-vous sûr de vouloir supprimer ceci ?"
+                                          :es "¿Estás segura de que quieres eliminar esto?"}
      :tr/basic-settings                  {:en "Basic settings"
                                           :fr "Paramètres de base"
                                           :es "Configuración básica"}
