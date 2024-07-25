@@ -482,6 +482,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/request-text                    {:en "Request text"
                                           :fr "texte de la demande"
                                           :es "texto de solicitud"}
+     :tr/filters                         {:en "Filters"
+                                          :fr "Filtres"
+                                          :es "Filtros"}
+     :tr/my-projects                     {:en "My projects"
+                                          :fr "Mes projets"
+                                          :es "Mis proyectos "}
+     :tr/looking-for-help                {:en "Looking for help"
+                                          :fr "Cherchent de l'aide"
+                                          :es "En busca de ayuda"}
      }))
 
 (defn tr*

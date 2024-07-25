@@ -10,6 +10,7 @@
             #?(:cljs ["@radix-ui/react-toggle-group" :as toggle-group])
             #?(:cljs ["@radix-ui/react-tooltip" :as tooltip])
             #?(:cljs ["@radix-ui/react-menubar" :as menubar])
+            [clojure.string :as str]
             [sb.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
@@ -289,12 +290,15 @@
           content]]]))
 
 
-(v/defview toggle-group [{:keys [value on-change field/options]}]
+(v/defview toggle-group [{:keys [value on-change field/options field/wrap field/unwrap]
+                            :or {unwrap identity
+                                 wrap   identity}}]
   (v/x
    (into [:el.flex.flex-wrap.gap-2 toggle-group/Root {:type "single"
-                                                      :value value
-                                                      :on-value-change (comp on-change not-empty)}]
+                                                      :value (unwrap value)
+                                                      :on-value-change #(on-change (when-not (str/blank? %)
+                                                                                     (wrap %)))}]
          (for [{:field-option/keys [label value]} options]
-           [:el.btn.btn-white.py-2 toggle-group/Item {:value value
-                                                 :class "data-[state=on]:bg-gray-400"}
+           [:el.btn.btn-white.py-2 toggle-group/Item {:value (unwrap value)
+                                                      :class "data-[state=on]:bg-gray-400"}
             label]))))
