@@ -7,6 +7,7 @@
             #?(:cljs ["@radix-ui/react-popover" :as popover])
             #?(:cljs ["@radix-ui/react-select" :as sel])
             #?(:cljs ["@radix-ui/react-tabs" :as tabs])
+            #?(:cljs ["@radix-ui/react-toggle-group" :as toggle-group])
             #?(:cljs ["@radix-ui/react-tooltip" :as tooltip])
             #?(:cljs ["@radix-ui/react-menubar" :as menubar])
             [sb.icons :as icons]
@@ -286,3 +287,14 @@
          [:el.outline-none popover/Content {:class (:content classes)}
           [:el popover/Arrow {:class (:arrow classes)}]
           content]]]))
+
+
+(v/defview toggle-group [{:keys [value on-change field/options]}]
+  (v/x
+   (into [:el.flex.flex-wrap.gap-2 toggle-group/Root {:type "single"
+                                                      :value value
+                                                      :on-value-change (comp on-change not-empty)}]
+         (for [{:field-option/keys [label value]} options]
+           [:el.btn.btn-white toggle-group/Item {:value value
+                                                 :class "data-[state=on]:bg-gray-400"}
+            label]))))
