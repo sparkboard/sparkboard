@@ -386,6 +386,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/options                         {:en "Options"
                                           :fr "Options"
                                           :es "Opciones"}
+     :tr/add-option                      {:en "Add option"
+                                          :fr "ajouter une option"
+                                          :es "añadir opción"}
+     :tr/option-label                    {:en "Option label"
+                                          :fr "étiquette d'option"
+                                          :es "etiqueta de opción"}
      :tr/find-a-member                   {:en "Find a member"
                                           :fr "Trouver un membre"
                                           :es "Encontrar un miembro"}
@@ -428,6 +434,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/remove                          {:en "Remove"
                                           :fr "Supprimer"
                                           :es "Eliminar"}
+     :tr/remove?                         {:en "Are you sure you want to remove this?"
+                                          :fr "Etes-vous sûr de vouloir supprimer ceci ?"
+                                          :es "¿Estás segura de que quieres eliminar esto?"}
      :tr/basic-settings                  {:en "Basic settings"
                                           :fr "Paramètres de base"
                                           :es "Configuración básica"}
@@ -452,6 +461,24 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/sort-entity-created-at-desc     {:en "Creation time descending"
                                           :fr "Temps de creation descendant"
                                           :es "Tiempo de creación descendente"}
+     :tr/requests                        {:en "Looking for"
+                                          :fr "À la recherche de"
+                                          :es "Buscando"}
+     :tr/add-request                     {:en "Add request"
+                                          :fr "ajouter une demande"
+                                          :es "Añadir solicitud"}
+     :tr/request-text                    {:en "Request text"
+                                          :fr "texte de la demande"
+                                          :es "texto de solicitud"}
+     :tr/filters                         {:en "Filters"
+                                          :fr "Filtres"
+                                          :es "Filtros"}
+     :tr/my-projects                     {:en "My projects"
+                                          :fr "Mes projets"
+                                          :es "Mis proyectos "}
+     :tr/looking-for-help                {:en "Looking for help"
+                                          :fr "Cherchent de l'aide"
+                                          :es "En busca de ayuda"}
 
      }))
 

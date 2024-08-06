@@ -10,6 +10,7 @@
             #?(:cljs ["@radix-ui/react-toggle-group" :as toggle-group])
             #?(:cljs ["@radix-ui/react-tooltip" :as tooltip])
             #?(:cljs ["@radix-ui/react-menubar" :as menubar])
+            [clojure.string :as str]
             [sb.icons :as icons]
             [yawn.view :as v]
             [yawn.util]
@@ -201,7 +202,7 @@
                                     {:open (some? props)}))
      [:el alert/Portal
       [:el.overlay.z-9 alert/Overlay]
-      [:el.overlay-content.z-4.rounded-lg.p-7.flex-v.gap-4.relative.z-10.bg-white alert/Content
+      [:el.overlay-content.z-30.rounded-lg.p-7.flex-v.gap-4.relative.z-10.bg-white alert/Content
        (when title [:el.font-bold alert/Title title])
        (when description [:el alert/Description description])
        body
@@ -289,12 +290,15 @@
           content]]]))
 
 
-(v/defview toggle-group [{:keys [value on-change field/options]}]
+(v/defview toggle-group [{:keys [value on-change field/options field/wrap field/unwrap]
+                            :or {unwrap identity
+                                 wrap   identity}}]
   (v/x
    (into [:el.flex.flex-wrap.gap-2 toggle-group/Root {:type "single"
-                                                      :value value
-                                                      :on-value-change (comp on-change not-empty)}]
+                                                      :value (unwrap value)
+                                                      :on-value-change #(on-change (when-not (str/blank? %)
+                                                                                     (wrap %)))}]
          (for [{:field-option/keys [label value]} options]
-           [:el.btn.btn-white.py-2 toggle-group/Item {:value value
-                                                 :class "data-[state=on]:bg-gray-400"}
+           [:el.btn.btn-white.py-2 toggle-group/Item {:value (unwrap value)
+                                                      :class "data-[state=on]:bg-gray-400"}
             label]))))

@@ -788,3 +788,74 @@
                :when (or can-edit?
                          (data/entry-value @?entry))]
            (show-entry-field ?entry props))))
+
+;; TODO adapted from admin_ui/show-option merge?
+(ui/defview show-request [{:as props :keys [request/use-order]}
+                         {:as ?request :syms [?text]}]
+  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (use-order ?request)]
+    [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
+     drag-subject-props
+     [:div
+      drop-indicator
+      [:div.flex.flex-none.items-center.justify-center.icon-gray
+       (merge drag-handle-props
+              {:class ["w-6 -mr-2"
+                       "opacity-0 group-hover:opacity-100"
+                       "cursor-drag"]})
+       [icons/drag-dots]]]
+     [text-field ?text {:field/label     false
+                        :field/can-edit? true
+                        :field/classes   {:wrapper "flex-auto"}
+                        :class           "rounded-sm relative focus:z-2"}]
+     [radix/dropdown-menu {:id      :field-request
+                           :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
+                                     [icons/ellipsis-horizontal "w-4 h-4"]]
+                           :items   [[{:on-select (fn [_]
+                                                    (radix/simple-alert! {:message      (t :tr/remove?)
+                                                                          :confirm-text (t :tr/remove)
+                                                                          :confirm-fn   (fn []
+                                                                                          (io/remove-many! ?request)
+                                                                                          (p/do (entity.data/maybe-save-field ?request)
+                                                                                                (radix/close-alert!)))}))}
+                                      (t :tr/remove)]]}]]))
+
+;; TODO adapted from admin_ui/options-editor, merge?
+(ui/defview requests-editor
+  [?requests props]
+  (let [use-order (ui/use-orderable-parent ?requests {:axis :y})]
+    [:div.col-span-2.flex-v.gap-3
+     [:label.field-label (t :tr/requests)]
+     (when (:loading? ?requests)
+       [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
+     (into [:div.flex-v]
+           (map (partial show-request (assoc props :request/use-order use-order)) ?requests))
+     (let [?new (h/use-memo #(io/field :init ""))]
+       [:form.flex.gap-2 {:on-submit (fn [^js e]
+                                       (.preventDefault e)
+                                       (io/add-many! ?requests {'?text @?new})
+                                       (io/try-submit+ ?new
+                                                       (p/let [result (entity.data/maybe-save-field ?requests)]
+                                                         (reset! ?new (:init ?new))
+                                                         result)))}
+        [text-field ?new {:placeholder     (t :tr/request-text)
+                          :field/can-edit? true
+                          :field/classes   {:wrapper "flex-auto"}}]
+        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} (t :tr/add-request)]])]))
+
+(ui/defview show-requests [requests]
+  (when (seq requests)
+    [:div.field-wrapper
+     [:div.field-label (t :tr/requests)]
+     (into [:ul.list-disc.ml-4]
+           (map (fn [{:keys [request/text]}]
+                  [:li text]))
+           requests)]))
+
+(ui/defview requests-field
+  {:make-?field (fn [init props]
+                  (io/field :many {:request/text ?text}
+                            :init init))}
+  [?requests props]
+  (if (:field/can-edit? props)
+    [requests-editor ?requests props]
+    [show-requests @?requests]))

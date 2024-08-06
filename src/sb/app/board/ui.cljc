@@ -17,8 +17,10 @@
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.i18n :refer [t]]
             [sb.routing :as routing]
+            [sb.schema :as sch]
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
@@ -106,16 +108,16 @@
                                  (apply ui/sorted @?sort)))
                   (h/use-deps [@?match-filter @!tag-filter @!select-filter @?sort]))
     [:<>
-     (into [:<>
-            (when (seq tags)
-              [:div.field-wrapper
-               [:label.field-label (t :tr/tag)]
-               ;; TODO color tags here?
-               [radix/toggle-group {:value @!tag-filter
-                                    :on-change #(reset! !tag-filter %)
-                                    :field/options (for [{:tag/keys [id label]} tags]
-                                                     {:field-option/value (str id)
-                                                      :field-option/label label})}]])]
+     (when (seq tags)
+       [:div.field-wrapper
+        [:label.field-label (t :tr/tag)]
+        ;; TODO color tags here?
+        [radix/toggle-group {:value @!tag-filter
+                             :on-change #(reset! !tag-filter %)
+                             :field/options (for [{:tag/keys [id label]} tags]
+                                              {:field-option/value (str id)
+                                               :field-option/label label})}]])
+     (into [:<>]
            (comp (filter :field/show-as-filter?)
                  (map (fn [{:field/keys [id label options]}]
                         [:div.field-wrapper
@@ -182,9 +184,20 @@
               card (partial project.ui/card
                             {:entity/project-tags tags
                              :entity/project-fields (filter :field/show-on-card? fields)})
+              !project-filter (h/use-state nil)
               !xform (h/use-state (constantly identity))]
           [:<>
            [:div.flex.flex-wrap.gap-4.items-end.mb-6
+            [:div.field-wrapper
+             [:label.field-label (t :tr/filters)]
+             [radix/toggle-group {:value @!project-filter
+                                  :on-change #(reset! !project-filter %)
+                                  :field/wrap read-string
+                                  :field/unwrap str
+                                  :field/options [{:field-option/label (t :tr/my-projects)
+                                                   :field-option/value :my-projects}
+                                                  {:field-option/label (t :tr/looking-for-help)
+                                                   :field-option/value :looking-for-help}]}]]
             [query-ui tags fields !xform]
             [ui/action-button
              {:on-click (fn [_]
@@ -202,7 +215,15 @@
                     (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
                           (map card)))
            (->> (data/projects {:board-id board-id})
-                (into [] @!xform )
+                (into [] (comp (case @!project-filter
+                                 :my-projects
+                                 (filter #(seq (db/where [[:membership/member (-> (db/get :env/config :account)
+                                                                                  (az/membership board-id)
+                                                                                  sch/wrap-id)]
+                                                          [:membership/entity (sch/wrap-id %)]])))
+                                 :looking-for-help (filter (comp seq :project/open-requests))
+                                 nil identity)
+                               @!xform))
                 (grouped-card-grid card))])]
 
        [radix/tab-content {:value (t :tr/members)}
