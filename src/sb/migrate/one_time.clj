@@ -864,11 +864,12 @@
                                                                   (try (doall (for [[domain project-id] votesByDomain
                                                                                     :let [project-id    (to-uuid :project project-id)
                                                                                           board-id      (to-uuid :board boardId)
-                                                                                          membership-id (member->board-membership-id _id)]
-                                                                                    :when membership-id]
+                                                                                          account-id (member->account-uuid _id)]
+                                                                                    :when account-id]
                                                                                 {:entity/kind       :ballot
-                                                                                 :ballot/key        (str/join "+" [board-id membership-id project-id])
-                                                                                 :ballot/membership (uuid-ref :membership membership-id)
+                                                                                 :entity/created-by (sch/wrap-id account-id)
+                                                                                 :ballot/key        (str/join "+" [board-id account-id project-id])
+                                                                                 :ballot/board+account (str/join "+" [board-id account-id])
                                                                                  :ballot/board      (uuid-ref :board board-id)
                                                                                  :ballot/project    (uuid-ref :project project-id)}))
                                                                        (catch Exception e
@@ -876,8 +877,7 @@
                                                                          (prn e)
                                                                          (throw e)))))))
                                        ::always (remove-when #(or (missing-entity? :project/as-map (:ballot/project %))
-                                                                  (missing-entity? :board/as-map (:ballot/board %))
-                                                                  (not (:ballot/membership %))))]
+                                                                  (missing-entity? :board/as-map (:ballot/board %))))]
 
               ;; board memberships
               :membership/as-map      [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
@@ -1299,6 +1299,10 @@
     @!found))
 
 (comment
+
+  (->> (all-entities)
+       (map :entity/kind)
+       frequencies)
 
   (->> (all-entities)
        (filter (complement :entity/kind))

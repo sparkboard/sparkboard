@@ -60,6 +60,10 @@
          (use-persisted :board/registration-url-override)
          (use-persisted :board/registration-page-message)
          (use-persisted :board/invite-email-text)]
+
+        [:div.field-label (t :tr/community-vote)]
+        [:div.flex-v.gap-4
+         (use-persisted :member-vote/open? {:field/label (t :tr/vote-open)})]
         ]
 
 
