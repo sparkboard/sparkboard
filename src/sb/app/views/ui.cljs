@@ -453,7 +453,7 @@
                          (reset! !async-state (when (:error result) result))))
         {:keys [loading? error]} @!async-state]
     [radix/tooltip {:delay-duration 0} error
-     [:div.btn.btn-white.overflow-hidden.relative
+     [:div.btn.btn-white.overflow-hidden.relative.py-2
       (-> props
           (v/merge-props {:class (when error "ring-destructive ring-2")})
           (assoc :on-click (when-not loading? on-click)))

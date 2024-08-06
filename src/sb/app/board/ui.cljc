@@ -106,7 +106,6 @@
                                  (apply ui/sorted @?sort)))
                   (h/use-deps [@?match-filter @!tag-filter @!select-filter @?sort]))
     [:<>
-     ;; TODO content has inconsistent height
      (into [:<>
             (when (seq tags)
               [:div.field-wrapper
