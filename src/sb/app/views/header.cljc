@@ -120,6 +120,9 @@
   (let [path (routing/entity-path entity 'ui/show)]
     [:div.header
      (when avatar
+       (h/use-effect #(set! (.-href (.querySelector js/document "link[rel~='icon']"))
+                            (asset.ui/asset-src avatar :avatar))
+                     (h/use-deps avatar))
        [:a {:href path}
         [:img.h-10
          {:src (asset.ui/asset-src avatar :avatar)}]])

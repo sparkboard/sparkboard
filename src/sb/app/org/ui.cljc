@@ -1,4 +1,5 @@
 (ns sb.app.org.ui
+  (:refer-clojure :exclude [read-string])
   (:require [clojure.edn :refer [read-string]]
             [inside-out.forms :as forms]
             [promesa.core :as p]

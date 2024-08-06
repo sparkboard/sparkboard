@@ -62,6 +62,7 @@
 (defn app-page [{:as options :keys [tx schema content]}]
   (-> {:body (str (html/html-page {:title "Sparkboard"
                                    :styles [{:href (static-path "public" "/sparkboard.css")}]
+                                   :head [[:link {:rel "icon"}]]
                                    :scripts/body [{:src (static-path "public" "/js/app.js")}]
                                    :body [[:script {:type "application/re-db"}
                                            (->> (select-keys options [:tx :schema])

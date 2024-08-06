@@ -11,14 +11,17 @@
 
 (defn wrap-id [id]
   (cond (uuid? id) [:entity/id id]
-        (or (map? id) (satisfies? read/IEntity id)) [:entity/id (:entity/id id)]
+        (or (map? id) (satisfies? read/IEntity id)) (some->> (:entity/id id)
+                                                             (vector :entity/id))
         :else id))
 
 (defn unwrap-id [id]
   (cond (uuid? id) id
         (vector? id) (second id)
         (:entity/id id) (:entity/id id)
-        :else id))
+        (nil? id) id
+        :else (do #?(:cljs (js/console.warn (str "can't unwrap id of " (pr-str id))))
+                  id)))
 
 (defn id= [a b]
   (= (unwrap-id a) (unwrap-id b)))

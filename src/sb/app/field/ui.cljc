@@ -623,12 +623,14 @@
                                          :?images   ?images}))))])]))
 
 (ui/defview link-list-field
+  ;; TODO make this editable
   {:make-?field (fn [init _props]
                   (io/field :many {}))}
   [?links {:field/keys [label]}]
   [:div.field-wrapper
    (form.ui/show-label ?links label)
    (for [{:syms [link/?text link/?url]} ?links]
+     ^{:key @?url}
      [:a {:href @?url} (or @?text @?url)])
 
    ])

@@ -2,22 +2,23 @@
   (:require [sb.migrate.one-time :as one-time]
             [re-db.api :as db]
             [sb.schema :as sch]
-            [sb.app]))
+            [sb.app]
+            [sb.util :as u]))
 
 (defn fetch! []
-  (one-time/fetch-mongodb)
-  (one-time/fetch-firebase)
-  (one-time/fetch-accounts))
+  (u/timed `mongo (one-time/fetch-mongodb))
+  (u/timed `firebase (one-time/fetch-firebase))
+  (u/timed `accounts (one-time/fetch-accounts)))
 
 (defn tx! []
-  (let [entities (one-time/all-entities)]
+  (let [entities (u/timed `entities (one-time/all-entities))]
 
     ;; transact schema
-    (db/merge-schema! @sch/!schema)
+    (u/timed `schema (db/merge-schema! @sch/!schema))
     ;; upsert lookup refs
-    (db/transact! (mapcat sch/unique-keys entities))
+    (u/timed `transact1 (db/transact! (mapcat sch/unique-keys entities)))
     ;; transact entities
-    (-> (db/transact! (one-time/all-entities))
+    (-> (u/timed `transact2 (db/transact! (one-time/all-entities)))
         :tx-data
         count
         (str " datoms"))))
