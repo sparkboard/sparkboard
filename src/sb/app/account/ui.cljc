@@ -6,6 +6,7 @@
             [sb.app.account.data :as data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
+            [sb.app.membership.data :as member.data]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
@@ -85,7 +86,7 @@
     (let [?filter       (h/use-callback (forms/field))
           all           (data/all {})
           account       (db/get :env/config :account)
-          {:as entities :keys [board org]} (-> (->> all (map :membership/entity) (group-by :entity/kind))
+          {:as entities :keys [board org]} (-> (->> all (group-by :entity/kind))
                                                (update-vals #(sort-by :entity/created-at u/compare:desc %))
                                                (u/guard seq))
           boards-by-org (group-by :entity/parent board)
@@ -108,10 +109,8 @@
                         :let [projects-by-board (into {}
                                                       (keep (fn [board]
                                                               (when-let [projects (->> (az/membership account-id board)
-                                                                                       :membership/_member
-                                                                                       (into []
-                                                                                             (comp (map :membership/entity)
-                                                                                                   (ui/filtered @?filter)))
+                                                                                       member.data/member-of
+                                                                                       (into [] (ui/filtered @?filter))
                                                                                        seq)]
                                                                 [board projects])))
                                                       (get boards-by-org org))

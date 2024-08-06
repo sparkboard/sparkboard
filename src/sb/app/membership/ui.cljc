@@ -99,8 +99,7 @@
 
 ;; TODO review membership pointing at membership
 (ui/defview members-for-card [entity]
-  (let [members (->> (:membership/_entity entity)
-                     (mapv :membership/member))]
+  (let [members (data/members entity)]
     [:div.flex.flex-wrap.gap-2.px-3
      (u/for! [member (take 6 members)
               :let [account (:membership/member member)]]

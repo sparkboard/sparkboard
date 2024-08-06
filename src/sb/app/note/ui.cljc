@@ -13,10 +13,11 @@
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]
-            [sb.util :as u]))
+            [sb.util :as u]
+            [net.cgrand.xforms :as xf]))
 
 ;; TODO taken from project.ui/project-members check if can be merged
-(ui/defview note-members [project props]
+(ui/defview note-members [note props]
   ;; todo
   ;; 3. button for adding a new member via searching this board
   ;; 4. hover to see member details
@@ -24,12 +25,10 @@
   [:div.field-wrapper
    [:div.field-label (t :tr/members)]
    [:div.grid.grid-cols-2.gap-6
-    (for [member (->> (:membership/_entity project)
-                      (sort-by u/compare:desc :entity/created-at))
-          :let [board-membership (-> member :membership/member)
-                {:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
+    (for [board-membership (member.data/members note (xf/sort-by :entity/created-at u/compare:desc))
+          :let [{:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
       [:div.flex.items-center.gap-2
-       {:key      (:entity/id member)
+       {:key      (:entity/id board-membership)
         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
        [ui/avatar {:size 12} account]
        [:div.flex-v.gap-1

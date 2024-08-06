@@ -110,7 +110,7 @@
 
 (defn active-member? [member]
   (and (not (:membership/inactive? member))
-       (not (:entity/deleted-at member))))
+       (not (sch/deleted? member))))
 
 #?(:clj
    (defn can-view? [account-id entity]
@@ -235,3 +235,20 @@
 
 (defn membership-colors [membership]
   (mapv :tag/color (resolved-tags membership)))
+
+(defn members
+  ([entity] (members entity identity))
+  ([entity xform]
+   (->> (:membership/_entity entity)
+        (into [] (comp (remove sch/deleted?)
+                       xform
+                       (map :membership/member))))))
+
+(defn member-of
+  ([entity] (member-of entity identity))
+  ([entity xform]
+   (->> (:membership/_member entity)
+        ;; TODO `eduction` instead of `into []`?
+        (into [] (comp (remove sch/deleted?)
+                       xform
+                       (map :membership/entity))))))

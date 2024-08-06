@@ -54,7 +54,7 @@
                                 :entity/deleted-at
                                 :note/badges]
                               note-id)]
-             (when (and note (not (:entity/deleted-at note)))
+             (when (and note (not (sch/deleted? note)))
                (merge note {:membership/roles roles})))))
 
 (q/defx new!

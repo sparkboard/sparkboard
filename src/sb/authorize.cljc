@@ -6,6 +6,10 @@
             [sb.util :as u])
   #?(:clj (:import [re_db.read Entity])))
 
+(def rules
+  `[[~'(deleted? ?e)
+     ~'[?e :entity/deleted-at ?deleted-at]
+     [(~'not= ~'?deleted-at ~sch/DELETED_SENTINEL)]]])
 
 (defn membership-id
   "Returns membership id for the given member and entity, or nil if not found."
@@ -17,11 +21,37 @@
     (throw (ex-info "Missing entity-id" {:member-id member-id})))
   #_[:entity/id (sch/composite-uuid :membership member-id entity-id)]
   #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
-                                          [:membership/member (sch/wrap-id member-id)]])))
+                                          [:membership/member (sch/wrap-id member-id)]
+                                          (complement sch/deleted?)])))
      :clj  (first (dl/q '[:find [?e]
-                          :in $ ?member-id ?entity-id
-                          :where [?e :membership/member ?member-id]
-                          [?e :membership/entity ?entity-id]]
+                          :in $ % ?member-id ?entity-id
+                          :where
+                          [?e :membership/member ?member-id]
+                          [?e :membership/entity ?entity-id]
+                          (not (deleted? ?e))]
+                        rules
+                        (sch/wrap-id member-id)
+                        (sch/wrap-id entity-id)))))
+
+(defn deleted-membership-id
+  "Returns deleted membership id for the given member and entity, or nil if not found."
+  [member-id entity-id]
+  ;; TODO, use malli for validations like these
+  (when-not member-id
+    (throw (ex-info "Missing member-id" {:entity-id entity-id})))
+  (when-not entity-id
+    (throw (ex-info "Missing entity-id" {:member-id member-id})))
+  #_[:entity/id (sch/composite-uuid :membership member-id entity-id)]
+  #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
+                                          [:membership/member (sch/wrap-id member-id)]
+                                          sch/deleted?])))
+     :clj  (first (dl/q '[:find [?e]
+                          :in $ % ?member-id ?entity-id
+                          :where
+                          [?e :membership/member ?member-id]
+                          [?e :membership/entity ?entity-id]
+                          (deleted? ?e)]
+                        rules
                         (sch/wrap-id member-id)
                         (sch/wrap-id entity-id)))))
 
