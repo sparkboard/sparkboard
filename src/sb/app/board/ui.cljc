@@ -178,26 +178,28 @@
         (when show-votes-tab?
           [radix/tab-content {:value (t :tr/votes)}
            [:h2.text-2xl (t :tr/community-vote)]
-           [:div.mb-4 (t :tr/vote-blurb)]
-           (->> (data/projects {:board-id board-id})
-                (into [card-grid]
-                      (comp (ui/filtered @?filter)
-                            (apply ui/sorted @?sort)
-                            (map project.ui/vote-card))))
-           [:table.border-separate.border-spacing-4
-            (into [:tbody
-                   [:tr
-                    [:td.font-bold.text-gray-500 (t :tr/votes)]
-                    [:td.font-bold.text-gray-500 (t :tr/project)]]]
-                  (for [[project ballots] (->> ballots
-                                               (group-by :ballot/project)
-                                               (sort-by (comp count val) >))]
-                    [:tr
-                     [:td.text-right.font-mono
-                      (str (count ballots))]
-                     [:td
-                      [:a {:href (routing/entity-path project 'ui/show)}
-                       (:entity/title project)]]]))]])]]]))
+           (if (:member-vote/open? board)
+             [:<>
+              [:div.mb-4 (t :tr/vote-blurb)]
+              (->> (data/projects {:board-id board-id})
+                   (into [card-grid]
+                         (comp (ui/filtered @?filter)
+                               (apply ui/sorted @?sort)
+                               (map project.ui/vote-card))))]
+             [:table.border-separate.border-spacing-4
+              (into [:tbody
+                     [:tr
+                      [:td.font-bold.text-gray-500 (t :tr/votes)]
+                      [:td.font-bold.text-gray-500 (t :tr/project)]]]
+                    (for [[project ballots] (->> ballots
+                                                 (group-by :ballot/project)
+                                                 (sort-by (comp count val) >))]
+                      [:tr
+                       [:td.text-right.font-mono
+                        (str (count ballots))]
+                       [:td
+                        [:a {:href (routing/entity-path project 'ui/show)}
+                         (:entity/title project)]]]))])])]]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

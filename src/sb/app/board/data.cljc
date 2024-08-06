@@ -229,7 +229,9 @@
                        :entity/member-tags
                        :board/sticky-color
                        {:entity/member-fields ~field.data/field-keys}
-                       {:entity/project-fields ~field.data/field-keys}] board-id)
+                       {:entity/project-fields ~field.data/field-keys}
+                       :member-vote/open?]
+                     board-id)
              (merge {:membership/roles roles}))))
 
 (comment
