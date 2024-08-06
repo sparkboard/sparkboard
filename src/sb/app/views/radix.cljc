@@ -112,7 +112,7 @@
     [:el sel/Item {:class      (menu-item-classes false)
                    :value      value
                    :text-value text}
-     [:el sel/ItemText [:div.flex.gap-2.py-2 icon text]]
+     [:el sel/ItemText [:div.flex.gap-2.py-1 icon text]]
      [:el sel/ItemIndicator]]))
 
 (def select-trigger-classes "bg-white inline-flex items-center justify-start rounded whitespace-nowrap gap-1 group default-ring default-ring-hover py-1 px-3")
@@ -295,6 +295,6 @@
                                                       :value value
                                                       :on-value-change (comp on-change not-empty)}]
          (for [{:field-option/keys [label value]} options]
-           [:el.btn.btn-white toggle-group/Item {:value value
+           [:el.btn.btn-white.py-2 toggle-group/Item {:value value
                                                  :class "data-[state=on]:bg-gray-400"}
             label]))))
