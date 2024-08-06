@@ -264,11 +264,9 @@
                     drafts)
            (->> (data/projects {:board-id board-id})
                 (into [] (comp (case @!project-filter
-                                 :my-projects
-                                 (filter #(seq (db/where [[:membership/member (-> (db/get :env/config :account)
-                                                                                  (az/membership board-id)
-                                                                                  sch/wrap-id)]
-                                                          [:membership/entity (sch/wrap-id %)]])))
+                                 :my-projects (filter #(some-> (db/get :env/config :account)
+                                                               (az/membership-id board-id)
+                                                               (az/membership-id %)))
                                  :looking-for-help (filter (comp seq :project/open-requests))
                                  nil identity)
                                @!xform))

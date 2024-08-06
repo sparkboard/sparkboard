@@ -14,6 +14,7 @@
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.app.vote.data :as vote.data]
+            [sb.authorize :as az]
             [sb.color :as color]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
@@ -22,7 +23,8 @@
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [re-db.api :as db]))
+            [re-db.api :as db]
+            [net.cgrand.xforms :as xf]))
 
 (ui/defview manage-community-actions [project actions]
   (forms/with-form [!actions (?actions :many {:community-action/label  ?label
@@ -102,12 +104,10 @@
   [:div.field-wrapper
    [:div.field-label (t :tr/team)]
    [:div.grid.grid-cols-2.gap-6
-    (for [member (->> (:membership/_entity project)
-                      (sort-by u/compare:desc :entity/created-at))
-          :let [board-membership (-> member :membership/member)
-                {:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
+    (for [board-membership (member.data/members project (xf/sort-by :entity/created-at u/compare:desc))
+          :let [{:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
       [:div.flex.items-center.gap-2
-       {:key      (:entity/id member)
+       {:key      (:entity/id board-membership)
         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
        [:img.object-cover.rounded.w-12.h-12 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]
        [:div.flex-v.gap-1
@@ -117,8 +117,17 @@
            [:div.tag-sm {:style (color/color-pair color)}
             label])]]])]
    (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
-     [entity.ui/persisted-attr project :entity/admission-policy props])]
-  )
+     [entity.ui/persisted-attr project :entity/admission-policy props])
+   (if (some-> (db/get :env/config :account)
+               (az/membership-id (:entity/parent project))
+               (az/membership-id project))
+     [ui/action-button
+      {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
+      "leave"]
+     (when (= :admission-policy/open (:entity/admission-policy project))
+       [ui/action-button
+        {:on-click (fn [_] (data/join! {:project-id (sch/unwrap-id project)}))}
+        "join"]))])
 
 (ui/defview show
   {:route       "/p/:project-id"

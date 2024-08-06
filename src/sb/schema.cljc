@@ -314,3 +314,9 @@
 
   (dotimes [n 1000]
     (to-uuid :project "something is here, here we go")))
+
+(def DELETED_SENTINEL #inst "2999-12-31T23:59:59.999-00:00")
+
+(defn deleted? [entity]
+  (when-let [deleted-at (:entity/deleted-at entity)]
+    (not= deleted-at DELETED_SENTINEL)))

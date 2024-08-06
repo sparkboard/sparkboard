@@ -3,6 +3,7 @@
     #?(:clj [sb.server.account :as server.account])
     [re-db.api :as db]
     [sb.app.entity.data :as entity.data]
+    [sb.app.membership.data :as member.data]
     [sb.authorize :as az]
     [sb.query :as q]
     [sb.schema :as sch :refer [?]]
@@ -63,22 +64,20 @@
   {:prepare  az/with-account-id!}
   [{:keys [account-id]}]
   (u/timed `all
-           (->> (q/pull `[{:membership/_member
-                           [:membership/roles
-                            :entity/id
-                            :entity/kind
-                            {:membership/member [~@entity.data/id-fields
-                                                 :account/display-name
-                                                 {:image/avatar [:entity/id]}]}
-                            {:membership/entity [~@entity.data/listing-fields
-                                                 {:entity/parent [:entity/id]}
-                                                 {:image/background [:entity/id]}]}
-                            {:membership/_member :...}]}]
-                        account-id)
-                :membership/_member
-                #_(mapcat #(cons % (:membership/_member %)))
-                (map #(assoc-in % [:membership/entity :membership/roles] (:membership/roles %)))
-                #_clojure.pprint/pprint)))
+    (-> (q/pull `[{:membership/_member
+                   [:membership/roles
+                    :entity/id
+                    :entity/kind
+                    {:membership/member [~@entity.data/id-fields
+                                         :account/display-name
+                                         {:image/avatar [:entity/id]}]}
+                    {:membership/entity [~@entity.data/listing-fields
+                                         {:entity/parent [:entity/id]}
+                                         {:image/background [:entity/id]}]}
+                    {:membership/_member :...}]}]
+                account-id)
+        (member.data/member-of
+         (map #(assoc-in % [:membership/entity :membership/roles] (:membership/roles %)))))))
 
 #?(:clj
    (defn login!

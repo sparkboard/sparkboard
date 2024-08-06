@@ -135,7 +135,8 @@
                    :entity/field-entries
                    {:entity/video [:video/url]}
                    {:entity/parent [:entity/id]}
-                   {:membership/_entity [~@entity.data/id-fields
+                   {:membership/_entity [:entity/deleted-at
+                                         ~@entity.data/id-fields
                                          ~@board-membership-fields]}])
 
 (def project-fields `[~@entity.data/listing-fields
@@ -144,7 +145,8 @@
                       :project/number
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
-                      {:membership/_entity [~@entity.data/id-fields
+                      {:membership/_entity [:entity/deleted-at
+                                            ~@entity.data/id-fields
                                             ~@board-membership-fields]}])
 
 (q/defquery members
@@ -153,7 +155,7 @@
   [{:keys [board-id]}]
   (u/timed `members (->> (db/entity board-id)
                          :membership/_entity
-                         (remove (some-fn :entity/deleted-at :entity/archived?))
+                         (remove (some-fn sch/deleted? :entity/archived?))
                          (mapv (db/pull `[~@entity.data/id-fields
                                           ~@board-membership-fields])))))
 
@@ -164,7 +166,7 @@
   (u/timed `notes
            (->> (db/where [[:entity/parent board-id]
                            [:entity/kind :note]])
-                (remove (some-fn :entity/draft? :entity/deleted-at :entity/archived?))
+                (remove (some-fn :entity/draft? sch/deleted? :entity/archived?))
                 (mapv (db/pull note-fields)))))
 
 (q/defquery note-drafts
@@ -175,7 +177,7 @@
            (->> (db/where [[:entity/parent board-id]
                            [:entity/kind :note]
                            [:entity/draft? true]])
-                (remove :entity/deleted-at)
+                (remove sch/deleted?)
                 (mapv (db/pull note-fields)))))
 
 (q/defquery projects
@@ -185,16 +187,15 @@
   (u/timed `projects
            (->> (db/where [[:entity/parent board-id]
                            [:entity/kind :project]])
-                (remove (some-fn :entity/draft? :entity/deleted-at :entity/archived?))
+                (remove (some-fn :entity/draft? sch/deleted? :entity/archived?))
                 (mapv (db/pull project-fields)))))
 
 (q/defquery project-drafts
   {:prepare az/with-account-id}
   [{:keys [account-id board-id]}]
   (->> (az/membership account-id board-id)
-       :membership/_member
-       (map :membership/entity)
-       (filter (every-pred :entity/draft? (complement :entity/deleted-at)))
+       member.data/member-of
+       (filter (every-pred :entity/draft? (complement sch/deleted?)))
        (mapv (db/pull project-fields))))
 
 (q/defquery ballots

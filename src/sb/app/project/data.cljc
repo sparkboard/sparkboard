@@ -100,6 +100,7 @@
                       {:membership/_entity [:entity/id
                                             :entity/kind
                                             :entity/created-at
+                                            :entity/deleted-at
                                             :membership/roles
                                             {:membership/member [:account/display-name
                                                                  :entity/id
@@ -111,7 +112,7 @@
                         :board/sticky-color
                         {:entity/project-fields ~field.data/field-keys}]}]
                     project-id)
-            (u/guard (complement :entity/deleted-at))
+            (u/guard (complement sch/deleted?))
             (merge {:membership/roles roles}))))
 
 (q/defquery fields [{:keys [board-id]}]
@@ -132,6 +133,7 @@
                                                                 (some (partial az/membership-id account-id)))
                                                            #{:role/project-admin})]
     (validate/assert project :project/as-map)
+    (validate/assert (update membership :membership/entity sch/wrap-id) :membership/as-map)
     (db/transact! [membership])
     {:entity/id (:entity/id project)}))
 
@@ -140,4 +142,32 @@
   [_req {:keys [project-id]}]
   ;; TODO: auth
   (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
+  {:body ""})
+
+
+(q/defx join!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id project-id]}]
+  (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity project-id)))
+      "Project is invite only"
+    (if-let [member-id (-> account-id
+                           (az/membership-id (:entity/parent (dl/entity (sch/wrap-id project-id))))
+                           (az/deleted-membership-id project-id))]
+      (db/transact! [{:db/id member-id
+                      :entity/deleted-at sch/DELETED_SENTINEL}])
+      (let [membership (member.data/new-entity-with-membership (sch/wrap-id project-id)
+                                                               (az/membership-id account-id (:entity/parent (dl/entity project-id)))
+                                                               #{})]
+        (validate/assert membership :membership/as-map)
+        (db/transact! [membership])))
+    {:body ""}))
+
+(q/defx leave!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id project-id]}]
+  (when-let [member-id (-> account-id
+                           (az/membership-id (:entity/parent (dl/entity (sch/wrap-id project-id))))
+                           (az/membership-id project-id))]
+    (db/transact! [{:db/id member-id
+                    :entity/deleted-at (java.util.Date.)}]))
   {:body ""})
