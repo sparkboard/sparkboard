@@ -63,8 +63,6 @@
                                  s-   [:map {:closed true} :video/url]}
      :entity/public?            {:doc "Contents of this entity can be accessed without authentication (eg. and indexed by search engines)"
                                  s-   :boolean}
-     :entity/website            {:doc "External website for entity"
-                                 s-   :http/url}
      :entity/social-feed        {s- :social/feed}
      :entity/uploads            (sch/ref :many)
      :entity/images             {s- [:map-of
