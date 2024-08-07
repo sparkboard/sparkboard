@@ -58,7 +58,6 @@
                                               (? :image/background)
                                               (? :image/sub-header)
 
-                                              (? :entity/website)
                                               (? :entity/meta-description)
                                               (? :entity/description)
                                               (? :entity/domain-name)
