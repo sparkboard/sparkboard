@@ -764,7 +764,7 @@
                "headerJs" (rename :board/custom-js)
                "projectTags" rm
                "registrationEmailBody" (rename :board/invite-email-text)
-               "learnMoreLink" (rename :entity/website)
+               "learnMoreLink" rm ;; all three uses are dead URLs
                "metaDesc" (rename :entity/meta-description)
                "registrationMessage" (& (xf prose)
                                         (rename :board/registration-page-message))
