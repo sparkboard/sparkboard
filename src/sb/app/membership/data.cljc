@@ -134,6 +134,14 @@
            (az/unauthorized! (str "Not authorized to view this "
                                   (:entity/kind entity "entity."))))))))
 
+#?(:clj
+   (defn assert-can-edit [id-key]
+     (fn assert-can-edit* [req params]
+       (let [entity (dl/entity (id-key params))
+             account-id (-> req :account :entity/id)]
+         (az/auth-guard! (az/editor-role? (az/all-roles account-id entity))
+             "Not authorized to edit this")))))
+
 (q/defquery descriptions
   {:prepare  az/with-account-id!}
   [{:as params :keys [account-id ids]}]
@@ -218,3 +226,16 @@
    :membership/member (sch/wrap-id member-id)
    :membership/entity entity
    :membership/roles  roles})
+
+
+(defn resolve-tag [parent tag-id]
+  (-> parent :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))
+
+(defn resolved-tags [board-membership]
+  (mapv #(resolve-tag (:membership/entity board-membership) (:tag/id %))
+        (:entity/tags board-membership)))
+
+(defn membership-colors [membership]
+  (into []
+        (map #(->> (:tag/id %) (resolve-tag (:membership/entity membership)) (:tag/color)))
+        (:entity/tags membership)))

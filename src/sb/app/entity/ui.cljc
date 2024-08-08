@@ -56,7 +56,7 @@
                                     ;; TODO - instead of creating a new field, reset :init if possible.
                                     ;; this will break one place where we currently rely on recognizing a new field
                                     ;; (image-field)
-                                    (h/use-deps persisted-value))]
+                                    (h/use-deps [persisted-value props]))]
     (view-field ?field (assoc props :view view))))
 
 #?(:cljs

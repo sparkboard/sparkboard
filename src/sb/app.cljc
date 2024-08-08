@@ -15,6 +15,7 @@
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.membership.ui]
+            [sb.app.note.ui]
             [sb.app.notification.ui]
             [sb.app.org.admin-ui]
             [sb.app.org.ui]
@@ -33,11 +34,12 @@
   {:string                  {:view field.ui/text-field}
    :http/url                {:view field.ui/text-field}
    :boolean                 {:view field.ui/checkbox-field}
+   :note/badges             {:view field.ui/badges-field}
    :project/badges          {:view field.ui/badges-field}
    :prose/as-map            {:view field.ui/prose-field}
    :entity/tags             {:view field.ui/tags-field}
-   :board/sticky-color      {:view field.ui/color-field-with-label
-                             :props {:field/label "Sticky color"}}
+   :note/outline-color      {:view field.ui/color-field-with-label
+                             :props {:field/label "Outline color"}}
    :account/email           {:props      {:type        "email"
                                           :placeholder (t :tr/email)}
                              :validators [form.ui/email-validator]}

@@ -48,7 +48,6 @@
 
         [:div.field-label (t :tr/projects-and-members)]
         [:div.flex-v.gap-4
-         (use-persisted :board/sticky-color)
          (use-persisted :entity/member-fields)
          (use-persisted :entity/project-fields)
          ]
@@ -84,9 +83,6 @@
        ;; - logo area with tiered sizes/visibility
 
        ;; Sticky Notes
-       ;; - schema: a new entity type (not a special kind of project)
-       ;; - modify migration based on ^new schema
-       ;; - color is picked per sticky note
        ;; - sticky notes can include images/videos
 
        ])))

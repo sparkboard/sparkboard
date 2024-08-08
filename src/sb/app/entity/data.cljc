@@ -48,7 +48,8 @@
                                      :ballot
                                      :site
                                      :asset
-                                     :chat.message]}
+                                     :chat.message
+                                     :note]}
      :entity/project-fields     {s- :entity/fields}
      :entity/member-fields      {s- :entity/fields}
      :entity/member-tags        {s- [:sequential :tag/as-map]}

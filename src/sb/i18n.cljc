@@ -452,7 +452,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/sort-entity-created-at-desc     {:en "Creation time descending"
                                           :fr "Temps de creation descendant"
                                           :es "Tiempo de creación descendente"}
-
+     :tr/new-note                        {:en "New note"
+                                          :fr "Nouvelle note"
+                                          :es "Nueva nota"}
      }))
 
 (defn tr*

@@ -12,11 +12,14 @@
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.membership.ui :as member.ui]
+            [sb.app.note.data :as note.data]
+            [sb.app.note.ui :as note.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.i18n :refer [t]]
             [sb.routing :as routing]
             [sb.util :as u]
@@ -97,7 +100,8 @@
         filter-fields (->> (:entity/project-fields board)
                            (filter :field/show-as-filter?))
         ;; TODO extend to all field types? In current dataset only `:field.type/select` is used.
-        filter-fields-select (filter (comp #{:field.type/select} :field/type) filter-fields)]
+        filter-fields-select (filter (comp #{:field.type/select} :field/type) filter-fields)
+        board-editor? (az/editor-role? (az/all-roles (:account-id params) board))]
     [:<>
      [header/entity board nil]
      [:div.p-body.flex-v.gap-6
@@ -128,6 +132,19 @@
                                                                              [(:field-option/value opt) i])
                                                                            options))]
                                    :field-option/label label}))}]
+       (when board-editor?
+         [ui/action-button
+          {:on-click (fn [_]
+                       (p/let [{:as   result
+                                :keys [entity/id]} (note.data/new! nil
+                                {:entity/parent board-id
+                                 :entity/title  (t :tr/untitled)
+                                 :entity/admission-policy :admission-policy/open
+                                 :entity/draft? true})]
+                         (when id
+                           (routing/nav! `note.ui/show {:note-id id}))
+                         result))}
+          (t :tr/new-note)])
        [ui/action-button
         {:on-click (fn [_]
                      (p/let [{:as   result
@@ -141,7 +158,16 @@
                        result))}
         (t :tr/new-project)]]
 
-       [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
+      (when board-editor?
+        (some->> (data/note-drafts {:board-id board-id})
+                 (into [card-grid]
+                       (map note.ui/card))))
+
+      (into [card-grid]
+            (map note.ui/card)
+            (data/notes {:board-id board-id}))
+
+      [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
                        :value           @!current-tab
                        :on-value-change #(do (reset! !current-tab %)
                                              (reset! ?filter nil))}
@@ -153,7 +179,7 @@
            {:title x :value x})]]
 
        [radix/tab-content {:value (t :tr/projects)}
-        (some->> (seq (data/drafts {:board-id board-id}))
+        (some->> (seq (data/project-drafts {:board-id board-id}))
                  (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
                        (map project.ui/card)))
         (->> (data/projects {:board-id board-id})
