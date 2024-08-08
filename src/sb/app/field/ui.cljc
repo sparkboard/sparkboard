@@ -99,40 +99,9 @@
        (when (seq messages)
          (into [:div.text-gray-500] (map form.ui/view-message) messages))]]]))
 
-(defn error-popover [anchor content]
-  (v/x [radix/persistent-popover
-        {:default-open? true
-         :content       (v/x content)
-         :classes       {:content "z-30 relative bg-white rounded shadow-lg px-3 py-2 border border-2 border-red-500"
-                         :arrow   "fill-red-500"
-                         :close   "rounded-full inline-flex items-center justify-center w-6 h-6 text-gray-500 absolute top-2 right-2"}}
-        anchor]))
-
-(defn with-messages-popover [?field anchor]
-  (error-popover anchor (form.ui/show-field-messages ?field)))
-
-(defn btn-progress-bar [classes]
-  (v/x [:div.h-1.progress-bar.inset-x-0.top-0.absolute {:class classes}]))
-
-(ui/defview action-btn [{:as   props
-                         :keys [on-click
-                                classes]} child]
-  (let [!async-state (h/use-state nil)
-        on-click     (fn [e]
-                       (reset! !async-state {:loading? true})
-                       (p/let [result (on-click e)]
-                         (reset! !async-state (when (:error result) result))))
-        {:keys [loading? error]} @!async-state]
-    (cond-> [:div.btn.relative
-             (-> props
-                 (dissoc :classes)
-                 (assoc :on-click (when-not loading? on-click))
-                 (v/merge-props {:class (:btn classes)}))
-             (when (:loading? @!async-state)
-               [btn-progress-bar (:progress-bar classes)])
-             child]
-            error
-            (error-popover error))))
+#?(:cljs
+   (defn with-messages-popover [?field anchor]
+     (ui/error-popover anchor (form.ui/show-field-messages ?field))))
 
 (ui/defview text-field
   "A text-input element that reads metadata from a ?field to display appropriately"

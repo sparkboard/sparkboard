@@ -227,7 +227,8 @@
             [query-ui tags fields !xform]
             (when board-editor?
               [ui/action-button
-               {:on-click (fn [_]
+               {:class "bg-white/40"
+                :on-click (fn [_]
                             (p/let [{:as   result
                                      :keys [entity/id]} (note.data/new! nil
                                                                         {:entity/parent board-id
@@ -239,7 +240,8 @@
                               result))}
                (t :tr/new-note)])
             [ui/action-button
-             {:on-click (fn [_]
+             {:class "bg-white/40"
+              :on-click (fn [_]
                           (p/let [{:as   result
                                    :keys [entity/id]} (project.data/new! nil
                                                                          {:entity/parent board-id
