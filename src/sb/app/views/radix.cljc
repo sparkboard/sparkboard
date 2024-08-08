@@ -282,12 +282,14 @@
 
                                           :style {:z-index 1}}))
         [:el.hidden popover/Trigger]
-        [:el popover/Anchor anchor]
-        [:div {:class (when-not content
-                        "hidden")}
-         [:el.outline-none popover/Content {:class (:content classes)}
-          [:el popover/Arrow {:class (:arrow classes)}]
-          content]]]))
+        [:el popover/Anchor {:as-child true}
+         [:div
+          anchor
+          [:div {:class (when-not content
+                          "hidden")}
+           [:el.outline-none popover/Content {:class (:content classes)}
+            [:el popover/Arrow {:class (:arrow classes)}]
+            content]]]]]))
 
 
 (v/defview toggle-group [{:keys [value on-change field/options field/wrap field/unwrap]

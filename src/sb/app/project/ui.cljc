@@ -137,9 +137,9 @@
        (when (:entity/draft? project)
          [:div.border-b-2.border-dashed.px-body.py-2.flex-center.gap-3.bg-gray-100
           [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
-          [field.ui/action-btn {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
-                                :classes  {:btn          "btn-primary px-4 py-1"
-                                           :progress-bar "text-[rgba(255,255,255,0.5)]"}}
+          [ui/action-button {:on-click #(entity.data/save-attribute! nil (:entity/id project) :entity/draft? false)
+                             :classes  {:btn          "btn-primary px-4 py-1"
+                                        :progress-bar "text-[rgba(255,255,255,0.5)]"}}
            (t :tr/publish)]])
        [:div.flex-v.gap-6.pb-6.rounded-lg.relative
         ;; title row
