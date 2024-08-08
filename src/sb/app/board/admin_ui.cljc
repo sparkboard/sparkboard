@@ -42,6 +42,10 @@
          (use-persisted :entity/description)
          (use-persisted :entity/domain-name)
          (use-persisted :image/avatar {:field/label (t :tr/logo)})
+         (use-persisted :image/logo-large {:field/label (t :tr/logo-large)})
+         (use-persisted :image/sub-header {:field/label (t :tr/image.sub-header)})
+         (use-persisted :image/footer {:field/label (t :tr/image.footer)})
+         (use-persisted :image/background {:field/label (t :tr/image.background)})
          (use-persisted :entity/member-tags)
          ]
 

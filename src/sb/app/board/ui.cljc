@@ -165,14 +165,17 @@
   [{:as params :keys [board-id]}]
   (let [board        (data/show {:board-id board-id})
         !current-tab (h/use-state (t :tr/projects))]
-    [:<>
+    [:div.flex-v.gap-6
+     {:style (ui/background-image-style board)}
      [header/entity board nil]
-     [:div.p-body.flex-v.gap-6
-      [radix/tab-root {:class           "flex flex-col gap-6 mt-6"
+     (ui/sub-header board)
+     [:div.m-body.p-4.flex-v.gap-6.backdrop-blur-md.rounded-lg
+      {:class "bg-white/20"}
+      [radix/tab-root {:class           "flex flex-col gap-6 mt-2"
                        :value           @!current-tab
                        :on-value-change #(reset! !current-tab %)}
        ;; tabs
-       [:div.flex.items-stretch.h-10.gap-3
+       [:div.flex.items-stretch.gap-3
         [radix/show-tab-list
          (for [x [:tr/projects :tr/members]
                :let [x (t x)]]
@@ -237,7 +240,8 @@
                 (into [] @!xform )
                 (grouped-card-grid (partial member.ui/card
                                             {:entity/member-tags tags
-                                             :entity/member-fields (filter :field/show-on-card? fields)})))])]]]]))
+                                             :entity/member-fields (filter :field/show-on-card? fields)})))])]]]
+      [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
 (comment
   [:ul                                                      ;; i18n stuff

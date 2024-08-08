@@ -3,6 +3,7 @@
   (:require [clojure.edn :refer [read-string]]
             [inside-out.forms :as forms]
             [promesa.core :as p]
+            [sb.app.asset.ui :as asset.ui]
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
@@ -25,7 +26,7 @@
            :keys [entity.data/description]} (data/show params)
           q     (ui/use-debounced-value (u/guard @?filter #(> (count %) 2)) 500)
           [result set-result!] (h/use-state nil)
-          title (v/from-element :h3.font-medium.text-lg.pt-6)]
+          title (v/from-element :h3.font-medium.text-lg.p-2)]
       (h/use-effect
         (fn []
           (when q
@@ -38,10 +39,14 @@
                                 :q     q}))))))
         [q])
       [:div
+       {:style (ui/background-image-style org)}
        (header/entity org nil)
+       (ui/sub-header org)
+       ;; TODO where does org description actually come from?
        [:div.p-body (field.ui/show-prose description)]
        [:div.p-body
-        [:div.flex.gap-4.items-stretch
+        [:div.flex.gap-4.items-stretch.backdrop-blur-md.p-2.rounded-lg
+         {:class "bg-white/20"}
          ;; TODO filter field is not as tall as sort selection and new-project button, looks ugly
          [field.ui/filter-field ?filter {:loading? (:loading? result)}]
          [field.ui/select-field ?sort
@@ -67,7 +72,8 @@
                                (dissoc (:value result) :q)
                                [[:boards (:entity/_parent org)]])
               :when (seq results)]
-          [:div.flex-v.gap-2
+          [:div.flex-v.gap-2.my-6.p-1.backdrop-blur-md.rounded-lg
+           {:class "bg-white/20"}
            [title (t (keyword "tr" (name kind)))]
            (into  [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
                   (comp (apply ui/sorted @?sort)

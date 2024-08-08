@@ -106,6 +106,9 @@
   (u/timed `show
            (if-let [board (db/pull `[~@entity.data/listing-fields
                                      ~@entity.data/site-fields
+                                     {:image/logo-large [:entity/id]}
+                                     {:image/footer [:entity/id]}
+                                     {:image/sub-header [:entity/id]}
                                      :entity/member-tags
                                      :entity/member-fields
                                      :entity/project-fields
@@ -199,6 +202,9 @@
                        :board/registration-url-override
                        :board/registration-page-message
                        :board/invite-email-text
+                       {:image/logo-large [:entity/id]}
+                       {:image/sub-header [:entity/id]}
+                       {:image/footer [:entity/id]}
                        {:image/background [:entity/id]}
                        {:entity/domain-name [:domain-name/name]}
                        :entity/member-tags

@@ -289,6 +289,18 @@
          (v/merge-props {:class class} props)
          (initials txt)]))))
 
+(defn sub-header [{:keys [image/sub-header]}]
+  (when-let [src (asset.ui/asset-src sub-header :page)]
+    [:img.mx-auto.my-4 {:class "w-2/3" :src src}]))
+
+(defn background-image-style [{:keys [image/background]}]
+  (when-let [src (asset.ui/asset-src background :page)]
+    {:background-image (str "linear-gradient(rgba(255, 255, 255, 0.0), rgba(255, 255, 255, 1.0)), "
+                            (asset.ui/css-url src))
+     :background-size "100% 90vmin"
+     :background-repeat "no-repeat"
+     :min-height "90vmin"}))
+
 (defclass ErrorBoundary
   (extends react/Component)
   (constructor [this props] (super props))
@@ -455,7 +467,8 @@
     [radix/tooltip {:delay-duration 0} error
      [:div.btn.btn-white.overflow-hidden.relative.py-2
       (-> props
-          (v/merge-props {:class (when error "ring-destructive ring-2")})
+          (v/merge-props {:class [(when error "ring-destructive ring-2")
+                                   "bg-white/40"]})
           (assoc :on-click (when-not loading? on-click)))
       child
       (when (:loading? @!async-state)

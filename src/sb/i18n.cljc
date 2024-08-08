@@ -218,6 +218,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/logo                            {:en "Logo"
                                           :fr "Logo"
                                           :es "Logo"},
+     :tr/logo-large                      {:en "Logo, large"
+                                          :fr "Logo, grande"
+                                          :es "Logo, grande"},
+     :tr/image.sub-header                {:en "Sub-Header"
+                                          :fr "sous-en-tête"
+                                          :es "Subtítulo"},
+     :tr/image.footer                    {:en "Footer"
+                                          :fr "bas de page"
+                                          :es "pie de página"},
      :tr/image.background                {:en "Background"
                                           :fr "Arrière-plan"
                                           :es "Fondo"},
