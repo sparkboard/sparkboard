@@ -565,7 +565,7 @@
 (def changes {:board/as-map
               [::prepare (partial flat-map :entity/id (partial to-uuid :board))
                ::always lookup-domain
-               ::defaults {:entity/admission-policy :open
+               ::defaults {:entity/admission-policy :admission-policy/open
                            :entity/public?          true
                            :entity/parent           (uuid-ref :org "base")}
                "createdAt" (& (xf #(Date. %)) (rename :entity/created-at))
@@ -1002,7 +1002,7 @@
                                        :boardId rm
                                        ::always (remove-when (comp empty? :post/_parent))]
               :project/as-map         [::defaults {:entity/archived?        false
-                                                   :entity/admission-policy :open}
+                                                   :entity/admission-policy :admission-policy/open}
 
                                        ::always (remove-when :sticky)
                                        ::always (remove-when :entity/deleted-at)
