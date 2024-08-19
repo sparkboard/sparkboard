@@ -136,10 +136,11 @@
 
 (q/defx delete!
   "Mutation fn. Marks project as deleted by given project-id."
-  [_req {:keys [project-id]}]
-  ;; TODO: auth
-  (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
-  {:body ""})
+  [{:keys [project-id account-id]}]
+  (az/auth-guard! (az/editor-role? (az/all-roles account-id (dl/entity project-id)))
+      "Not authorized to delete"
+    (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
+    {:body ""}))
 
 
 (q/defx join!
