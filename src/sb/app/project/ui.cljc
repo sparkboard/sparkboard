@@ -207,7 +207,7 @@
 
          (when can-edit?
            [ui/action-button {:on-click (fn [_]
-                                          (p/let [result (data/delete! nil {:project-id (sch/unwrap-id (:project-id params))})]
+                                          (p/let [result (data/delete! {:project-id (sch/unwrap-id (:project-id params))})]
                                             (routing/dissoc-router! :router/modal)
                                             result))}
             "delete"])]]]
