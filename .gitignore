@@ -35,3 +35,5 @@ cloudflare-mailer/.dev.vars
 .calva/output-window/**
 
 \#*#
+*~
+.#*

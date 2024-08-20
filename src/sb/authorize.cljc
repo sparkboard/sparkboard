@@ -9,8 +9,10 @@
   "Returns membership id for the given member and entity, or nil if not found."
   [member-id entity-id]
   ;; TODO, use malli for validations like these
-  (when-not (and member-id entity-id)
-    (throw (ex-info "Missing member-id or entity-id" {:member-id member-id :entity-id entity-id})))
+  (when-not member-id
+    (throw (ex-info "Missing member-id" {:entity-id entity-id})))
+  (when-not entity-id
+    (throw (ex-info "Missing entity-id" {:member-id member-id})))
   #_[:entity/id (sch/composite-uuid :membership member-id entity-id)]
   #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
                                           [:membership/member (sch/wrap-id member-id)]])))

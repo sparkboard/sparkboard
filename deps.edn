@@ -72,7 +72,7 @@
   :aot {:exec-fn sb.build/aot}
   :compile-java {:deps {io.github.clojure/tools.build {:mvn/version "0.9.4"}}
                  :ns-default dev.tools-build}
-  :dev {:extra-deps {cider/cider-nrepl {:mvn/version "0.30.0"}}}
+  :dev {:extra-deps {cider/cider-nrepl {:mvn/version "0.49.0"}}}
   :local {:extra-deps {io.github.mhuebert/re-db {:local/root "../re-db"}
                        io.github.mhuebert/yawn {:local/root "../yawn"}
                        io.github.mhuebert/inside-out {:local/root "../inside-out"}}}

@@ -149,7 +149,7 @@
   (let [membership-id   (:entity/id (az/membership account-id entity))
         last-message-id (:entity/id (or last-message (last messages)))]
     (or (= (get read-last membership-id) last-message-id)
-        (= membership-id (:entity/id (:entity/created-by last-message))))))
+        (= account-id (:entity/id (:entity/created-by last-message))))))
 
 (def unread? (complement read?))
 

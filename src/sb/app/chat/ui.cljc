@@ -92,12 +92,12 @@
 
 (ui/defview chat-message
   {:key (fn [_ {:keys [entity/id]}] id)}
-  [{:keys [membership-id]} {:keys [chat.message/content
-                                   entity/created-by
-                                   entity/id]}]
+  [{:keys [account-id]} {:keys [chat.message/content
+                                entity/created-by
+                                entity/id]}]
   [:div.p-2.flex-v
    {:class ["max-w-[600px] rounded-[12px]"
-            (if (sch/id= membership-id created-by)
+            (if (sch/id= account-id created-by)
               "bg-blue-500 text-white place-self-end"
               "bg-gray-100 text-gray-900 place-self-start")]
     :key   id}

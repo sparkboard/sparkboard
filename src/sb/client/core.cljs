@@ -2,6 +2,7 @@
   (:require ["react" :as react]
             ["react-dom" :as react-dom]
             [applied-science.js-interop :as j]
+            [clojure.string :as str]
             [inside-out.forms :as forms]
             [org.sparkboard.slack.firebase :as firebase]
             [re-db.api :as db]
@@ -10,9 +11,11 @@
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.client.scratch]
+            [sb.i18n :refer [t]]
             [sb.routing :as routing]
             [sb.schema :as sch]
             [sb.transit :as transit]
+            [yawn.hooks :as h]
             [yawn.root :as root]
             [yawn.view :as v]))
 
@@ -32,7 +35,28 @@
 (ui/defview root
   []
   (let [{:as match :keys [router/root
-                          router/modal]} (do #_react/useDeferredValue @routing/!location)]
+                          router/modal]} (do #_react/useDeferredValue @routing/!location)
+        root-params (:match/params root)
+        modal-params (:match/params modal)
+        title (doall (concat (when (= "settings"
+                                      (-> root
+                                          :match/data
+                                          :name
+                                          name))
+                               [(t :tr/settings)])
+                      (some-> modal-params :membership-id db/entity
+                                     :membership/member
+                                     :account/display-name
+                                     vector)
+                             (keep #(-> modal-params % db/entity :entity/title)
+                                   [:project-id :note-id])
+                             (keep #(-> root-params % db/entity :entity/title)
+                                   [:board-id :org-id])
+                             ["Sparkboard"]))]
+    (h/use-effect (fn []
+                    (set! (.-title js/document)
+                          (str/join " - " title)))
+                  (h/use-deps title))
     [:div.w-full.font-sans
      (dev-info match)
      [:Suspense {:fallback default-loading-bar}

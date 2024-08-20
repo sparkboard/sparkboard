@@ -1,4 +1,5 @@
 (ns sb.app.board.ui
+  (:refer-clojure :exclude [read-string])
   (:require [clojure.edn :refer [read-string]]
             [inside-out.forms :as forms]
             [inside-out.forms :as io]
