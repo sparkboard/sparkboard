@@ -165,6 +165,7 @@
         fields (:entity/project-fields board)
         !xform (h/use-state (constantly identity))]
     [:<>
+     [:h2.text-2xl (t :tr/community-vote)]
      [:div.mb-4 (t :tr/vote-blurb)]
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
       [query-ui tags fields !xform]]
@@ -172,30 +173,11 @@
           (into [] @!xform)
           (grouped-card-grid project.ui/vote-card))]))
 
-(ui/defview vote-result [ballots]
-  ;; TODO aggregate on server? perf && privacy
-  [:table.border-separate.border-spacing-4
-   (into [:tbody
-          [:tr
-           [:td.font-bold.text-gray-500 (t :tr/votes)]
-           [:td.font-bold.text-gray-500 (t :tr/project)]]]
-         (for [[project ballots] (->> ballots
-                                      (group-by :ballot/project)
-                                      (sort-by (comp count val) >))]
-           [:tr
-            [:td.text-right.font-mono
-             (str (count ballots))]
-            [:td
-             [:a {:href (routing/entity-path project 'ui/show)}
-              (:entity/title project)]]]))])
-
 (ui/defview show
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
   (let [board        (data/show {:board-id board-id})
-        !current-tab (h/use-state (t :tr/projects))
-        ballots (data/ballots {:board-id board-id})
-        show-votes-tab? (or (:member-vote/open? board) (seq ballots))]
+        !current-tab (h/use-state (t :tr/projects))]
     [:div.flex-v.gap-6
      {:style (ui/background-image-style board)}
      [header/entity board nil]
@@ -209,7 +191,7 @@
        [:div.flex.items-stretch.gap-3
         [radix/show-tab-list
          (for [x (cond-> [:tr/projects :tr/members]
-                   show-votes-tab?
+                   (:member-vote/open? board)
                    (conj :tr/votes))
                :let [x (t x)]]
            {:title x :value x})]]
@@ -274,12 +256,9 @@
                 (grouped-card-grid (partial member.ui/card
                                             {:entity/member-tags tags
                                              :entity/member-fields (filter :field/show-on-card? fields)})))])]
-       (when show-votes-tab?
+       (when (:member-vote/open? board)
          [radix/tab-content {:value (t :tr/votes)}
-          [:h2.text-2xl (t :tr/community-vote)]
-          (if (:member-vote/open? board)
-            [voting board]
-            [vote-result ballots])])]]
+          [voting board]])]]
       [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
 (comment

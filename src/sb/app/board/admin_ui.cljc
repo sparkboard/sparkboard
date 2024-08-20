@@ -6,6 +6,7 @@
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
+            [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]))
 
@@ -67,7 +68,23 @@
 
         [:div.field-label (t :tr/community-vote)]
         [:div.flex-v.gap-4
-         (use-persisted :member-vote/open? {:field/label (t :tr/vote-open)})]
+         (use-persisted :member-vote/open? {:field/label (t :tr/vote-open)})
+         (let [ballots (data/ballots {:board-id board-id})]
+           ;; TODO aggregate on server?
+           [:table.border-separate.border-spacing-4
+            (into [:tbody
+                   [:tr
+                    [:td.font-bold.text-gray-500 (t :tr/votes)]
+                    [:td.font-bold.text-gray-500 (t :tr/project)]]]
+                  (for [[project ballots] (->> ballots
+                                               (group-by :ballot/project)
+                                               (sort-by (comp count val) >))]
+                    [:tr
+                     [:td.text-right.font-mono
+                      (str (count ballots))]
+                     [:td
+                      [:a {:href (routing/entity-path project 'ui/show)}
+                       (:entity/title project)]]]))])]
         ]
 
 
