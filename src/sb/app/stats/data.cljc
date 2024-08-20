@@ -249,3 +249,9 @@
            (group-by :entity/kind))
       (update-vals (comp #(update-vals % (partial truncate-frequencies 5))
                          frequencies-by-key))))
+
+(q/defquery time-stats
+  ;; TODO proper authorization
+  {:prepare az/require-account!}
+  [params]
+  @u/!times)
