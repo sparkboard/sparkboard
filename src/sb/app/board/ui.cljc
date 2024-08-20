@@ -160,6 +160,35 @@
                       (into [:div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3] (map card) group)])))
         values))
 
+(ui/defview voting [{:keys [entity/id] :as board}]
+  (let [tags (:entity/project-tags board)
+        fields (:entity/project-fields board)
+        !xform (h/use-state (constantly identity))]
+    [:<>
+     [:div.mb-4 (t :tr/vote-blurb)]
+     [:div.flex.flex-wrap.gap-4.items-end.mb-6
+      [query-ui tags fields !xform]]
+     (->> (data/projects {:board-id (sch/wrap-id id)})
+          (into [] @!xform)
+          (grouped-card-grid project.ui/vote-card))]))
+
+(ui/defview vote-result [ballots]
+  ;; TODO aggregate on server? perf && privacy
+  [:table.border-separate.border-spacing-4
+   (into [:tbody
+          [:tr
+           [:td.font-bold.text-gray-500 (t :tr/votes)]
+           [:td.font-bold.text-gray-500 (t :tr/project)]]]
+         (for [[project ballots] (->> ballots
+                                      (group-by :ballot/project)
+                                      (sort-by (comp count val) >))]
+           [:tr
+            [:td.text-right.font-mono
+             (str (count ballots))]
+            [:td
+             [:a {:href (routing/entity-path project 'ui/show)}
+              (:entity/title project)]]]))])
+
 (ui/defview show
   {:route "/b/:board-id"}
   [{:as params :keys [board-id]}]
@@ -249,30 +278,8 @@
          [radix/tab-content {:value (t :tr/votes)}
           [:h2.text-2xl (t :tr/community-vote)]
           (if (:member-vote/open? board)
-            (let [tags (:entity/project-tags board)
-                  fields (:entity/project-fields board)
-                  !xform (h/use-state (constantly identity))]
-              [:<>
-               [:div.mb-4 (t :tr/vote-blurb)]
-               [:div.flex.flex-wrap.gap-4.items-end.mb-6
-                [query-ui tags fields !xform]]
-               (->> (data/projects {:board-id board-id})
-                    (into [] @!xform)
-                    (grouped-card-grid project.ui/vote-card))])
-            [:table.border-separate.border-spacing-4
-             (into [:tbody
-                    [:tr
-                     [:td.font-bold.text-gray-500 (t :tr/votes)]
-                     [:td.font-bold.text-gray-500 (t :tr/project)]]]
-                   (for [[project ballots] (->> ballots
-                                                (group-by :ballot/project)
-                                                (sort-by (comp count val) >))]
-                     [:tr
-                      [:td.text-right.font-mono
-                       (str (count ballots))]
-                      [:td
-                       [:a {:href (routing/entity-path project 'ui/show)}
-                        (:entity/title project)]]]))])])]]
+            [voting board]
+            [vote-result ballots])])]]
       [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
 (comment
