@@ -1,6 +1,7 @@
 (ns sb.app.project.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
+            [sb.app.discussion.data :as discussion.data]
             [sb.app.field.data :as field.data]
             [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
@@ -68,7 +69,8 @@
                                      (? :project/admin-description)
                                      (? :project/sticky?)
                                      (? :project/open-requests)
-                                     (? :entity/description)]
+                                     (? :entity/description)
+                                     (? :discussion/followers)]
                                  }
      :community-action/as-map   {s- [:map-of
                                      :community-action/label
@@ -86,33 +88,34 @@
   {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id membership/roles]}]
   (u/timed `show
-           (let [project (q/pull `[:entity/id
-                                   :entity/kind
-                                   :entity/title
-                                   :entity/description
-                                   :entity/admission-policy
-                                   {:entity/video [:video/url]}
-                                   {:project/badges [:badge/label
-                                                     :badge/color]}
-                                   :entity/field-entries
-                                   :entity/draft?
-                                   :entity/deleted-at
-                                   :project/sticky?
-                                   {:membership/_entity [:entity/id
-                                                         :entity/kind
-                                                         :entity/created-at
-                                                         :membership/roles
-                                                         {:membership/member [:account/display-name
-                                                                              :entity/id
-                                                                              :entity/kind
-                                                                              {:image/avatar [:entity/id]}]}]}
-                                   {:entity/parent
-                                    [~@entity.data/listing-fields
-                                     :board/sticky-color
-                                     {:entity/project-fields ~field.data/field-keys}]}]
-                                 project-id)]
-             (when (and project (not (:entity/deleted-at project)))
-               (merge project {:membership/roles roles})))))
+    (some-> (q/pull `[:entity/id
+                      :entity/kind
+                      :entity/title
+                      :entity/description
+                      :entity/admission-policy
+                      {:entity/video [:video/url]}
+                      {:project/badges [:badge/label
+                                        :badge/color]}
+                      :entity/field-entries
+                      :entity/draft?
+                      :entity/deleted-at
+                      :project/sticky?
+                      {:membership/_entity [:entity/id
+                                            :entity/kind
+                                            :entity/created-at
+                                            :membership/roles
+                                            {:membership/member [:account/display-name
+                                                                 :entity/id
+                                                                 :entity/kind
+                                                                 {:image/avatar [:entity/id]}]}]}
+                      ~discussion.data/posts-with-comments-field
+                      {:entity/parent
+                       [~@entity.data/listing-fields
+                        :board/sticky-color
+                        {:entity/project-fields ~field.data/field-keys}]}]
+                    project-id)
+            (u/guard (complement :entity/deleted-at))
+            (merge {:membership/roles roles}))))
 
 (q/defquery fields [{:keys [board-id]}]
   (-> (q/pull `[~@entity.data/id-fields
