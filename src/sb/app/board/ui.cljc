@@ -153,14 +153,19 @@
      [field.ui/filter-field ?match-filter nil]]))
 
 (ui/defview grouped-card-grid [card values]
-  (into [:<>]
+  (into [:div.flex-v.gap-6]
         (comp (partition-by (comp :group/label meta))
               (map (fn [group]
-                     [:div.mb-6
+                     [:div
                       (when-let [label (:group/label (meta (peek group)))]
                         [:h2.text-2xl.ml-4.mb-2.sticky.top-4.p-4.rounded-lg.inline-block.bg-white.z-10 label])
                       (into [:div.grid.gap-4.grid-cols-1.md:grid-cols-2.lg:grid-cols-3] (map card) group)])))
         values))
+
+(ui/defview drafts [body]
+  [:fieldset.border-t-2.border-b-2.border-gray-500.border-dashed.pt-2.pb-3
+   [:legend.text-gray-700.px-2.ml-4 (t :tr/drafts)]
+   body])
 
 (ui/defview voting [{:keys [entity/id] :as board}]
   (let [tags (:entity/project-tags board)
@@ -207,8 +212,8 @@
                              :entity/project-fields (filter :field/show-on-card? fields)})
               !project-filter (h/use-state nil)
               !xform (h/use-state (constantly identity))]
-          [:<>
-           [:div.flex.flex-wrap.gap-4.items-end.mb-6
+          [:div.flex-v.gap-6
+           [:div.flex.flex-wrap.gap-4.items-end
             [:div.field-wrapper
              [:label.field-label (t :tr/filters)]
              [radix/toggle-group {:value @!project-filter
@@ -245,14 +250,18 @@
                               (routing/nav! `project.ui/show {:project-id id}))
                             result))}
              (t :tr/new-project)]]
-           (when board-editor?
-             (some->> (data/note-drafts {:board-id board-id})
-                      (grouped-card-grid note.ui/card)))
+
+           ;; notes
+           (some->> (when board-editor?
+                      (seq (data/note-drafts {:board-id board-id})) )
+                    (grouped-card-grid note.ui/card)
+                    drafts)
            (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))
 
+           ;; projects
            (some->> (seq (data/project-drafts {:board-id board-id}))
-                    (into [:div.grid.border-b-2.border-gray-300.border-dashed.py-3.mb-3]
-                          (map card)))
+                    (grouped-card-grid card)
+                    drafts)
            (->> (data/projects {:board-id board-id})
                 (into [] (comp (case @!project-filter
                                  :my-projects
