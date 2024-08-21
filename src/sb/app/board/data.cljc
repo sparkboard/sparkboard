@@ -175,6 +175,7 @@
            (->> (db/where [[:entity/parent board-id]
                            [:entity/kind :note]
                            [:entity/draft? true]])
+                (remove :entity/deleted-at)
                 (mapv (db/pull note-fields)))))
 
 (q/defquery projects
