@@ -205,7 +205,7 @@
            (->> (db/where [[:ballot/board board-id]])
                 (mapv (db/pull [:entity/id
                                 {:ballot/board [:entity/id]}
-                                {:ballot/project [:entity/id]}
+                                {:ballot/project [:entity/id :entity/kind :entity/title]}
                                 {:entity/created-by [:entity/id]}])))))
 
 (q/defquery user-ballot
