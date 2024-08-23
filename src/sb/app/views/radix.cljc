@@ -158,7 +158,10 @@
 (defn dialog [{:props/keys [root
                             content]} & body]
   (v/x
-    [:el dialog/Root (v/props root)
+    [:el dialog/Root (v/props (update root :on-open-change
+                                      (fn [f]
+                                        #(do (.blur js/document.activeElement)
+                                             (when f (f %))))))
      [:el dialog/Portal
       [:el dialog/Overlay
        {:class "z-20 inset-0 fixed flex items-stretch md:items-start md:pt-[20px] justify-center backdrop-blur animate-appear bg-back/40 overflow-y-auto sm:grid "}
