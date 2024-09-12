@@ -133,13 +133,12 @@
            (az/unauthorized! (str "Not authorized to view this "
                                   (:entity/kind entity "entity."))))))))
 
-#?(:clj
-   (defn assert-can-edit [id-key]
-     (fn assert-can-edit* [req params]
-       (let [entity (dl/entity (id-key params))
-             account-id (-> req :account :entity/id)]
-         (az/auth-guard! (az/editor-role? (az/all-roles account-id entity))
-             "Not authorized to edit this")))))
+(defn assert-can-edit [id-key]
+  (fn assert-can-edit* [req params]
+    (let [entity (dl/entity (id-key params))
+          account-id (-> req :account :entity/id)]
+      (az/auth-guard! (az/editor-role? (az/all-roles account-id entity))
+          "Not authorized to edit this"))))
 
 (q/defquery descriptions
   {:prepare  az/with-account-id!}

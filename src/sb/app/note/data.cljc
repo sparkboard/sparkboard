@@ -2,6 +2,7 @@
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
             [sb.app.field.data :as field.data]
+            [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -58,14 +59,13 @@
                (merge note {:membership/roles roles})))))
 
 (q/defx new!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} note]
-  (az/auth-guard! (az/editor-role? (az/all-roles account-id (dl/entity (:entity/parent note))))
-      "You are not an admin of this board"
-    (let [note (dl/new-entity note :note :by account-id)]
-      (validate/assert note :note/as-map)
-      (db/transact! [note])
-      {:entity/id (:entity/id note)})))
+  {:prepare [az/with-account-id!
+             (member.data/assert-can-edit (comp :entity/parent :note))]}
+  [{:keys [account-id note]}]
+  (let [note (dl/new-entity note :note :by account-id)]
+    (validate/assert note :note/as-map)
+    (db/transact! [note])
+    {:entity/id (:entity/id note)}))
 
 (q/defx delete!
   "Mutation fn. Marks note as deleted by given note-id."

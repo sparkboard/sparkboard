@@ -123,13 +123,6 @@
   [_ {:keys [file-name]}]
   (server.html/formatted-text (md/md-to-html-string (slurp (io/resource (str "sparkboard/documents/" file-name ".md"))))))
 
-(defn prepare! [fs req params]
-  (cond (nil? fs) params
-        (sequential? fs) (reduce (fn [params f]
-                                   (or (f req params)
-                                       params)) params fs)
-        :else (fs req params)))
-
 (defn authorize! [f req params]
 
   (let [m           (meta f)
@@ -140,7 +133,7 @@
                                       :endpoint (meta f)
                                       :code     401}))))
 
-  (prepare! (:prepare (meta f)) req params))
+  (q/prepare! (:prepare (meta f)) req params))
 
 (defn effect!
   {:endpoint {:post "/effect"}
@@ -149,9 +142,8 @@
   (let [[id & args] body]
     (if-let [endpoint (routing/tag->endpoint id :effect)]
       (let [[params & args] args
-            result (apply (resolve (:endpoint/sym endpoint))
-                          (assoc params :account-id account-id)
-                          args)]
+            f (resolve (:endpoint/sym endpoint))
+            result (apply f (authorize! f req params) args)]
         (or (:http/response result)
             {:body result}))
       (throw (ex-info (str id " is not an effect endpoint.") {:id id :body body})))))
