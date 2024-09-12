@@ -2,7 +2,8 @@
   #?(:cljs (:require-macros [sb.authorize :refer [auth-guard!]]))
   (:require [re-db.api :as db]
             [sb.server.datalevin :as dl]
-            [sb.schema :as sch])
+            [sb.schema :as sch]
+            [sb.util :as u])
   #?(:clj (:import [re_db.read Entity])))
 
 (def rules
@@ -110,16 +111,9 @@
                               :clj  (membership account-id entity))))
       #{}))
 
-(defn ancestor-roles [account-id entity]
-  (->> (:entity/parent entity)
-       (iterate :entity/parent)
-       (take-while identity)
-       (mapcat (partial get-roles account-id))
-       (into #{})))
-
 (defn all-roles [account-id entity]
-  (into (get-roles account-id entity)
-        (ancestor-roles account-id entity)))
+  (->> (u/iterate-some :entity/parent entity)
+       (into #{} (mapcat (partial get-roles account-id)))))
 
 (comment
 
