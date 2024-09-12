@@ -92,10 +92,6 @@
          (assert (-> (mu/optional-keys schema)
                      (mu/assoc :entity/domain-name (mu/optional-keys :domain-name/as-map)))))))
 
-(defn can-edit? [account-id entity]
-  (-> (az/all-roles account-id entity)
-      az/editor-role?))
-
 (defn permission-denied! [& [message]]
   (let [message (or message "Permission denied")]
     (ex-info message
@@ -109,15 +105,6 @@
              {:response {:status 400
                          :body   {:error                             message
                                   :inside-out.forms/messages-by-path {() [message]}}}})))
-
-#?(:clj
-   (defn assert-can-edit!
-     ([roles]
-      (when-not (az/editor-role? roles)
-        (permission-denied!)))
-     ([account-id entity]
-      (assert-can-edit! (az/all-roles account-id entity)))))
-
 (comment
 
   (messages-by-path [:map {:closed true} :entity/title]

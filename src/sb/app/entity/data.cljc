@@ -150,7 +150,9 @@
   (let [e      (sch/wrap-id e)
         entity (dl/entity e)
         roles  (az/all-roles account-id entity)
-        _      (validate/assert-can-edit! roles)
+        ;; TODO put this in :prepare with member.data/assert-can-edit ?
+        _      (when-not (az/editor-role? roles)
+                 (validate/permission-denied!))
         txs    (-> (assoc m :db/id e)
                    retract-nils)]
     (doseq [k (keys m)

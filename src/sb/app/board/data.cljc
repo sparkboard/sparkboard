@@ -218,21 +218,12 @@
               {:entity/created-by [:entity/id]}]
              [:ballot/board+account (str/join "+" (map sch/unwrap-id [board-id account-id]))])))
 
-(defn authorize-edit! [board account-id]
-  (when-not (or (validate/can-edit? account-id board)
-                (validate/can-edit? account-id (:entity/parent board)))
-    (validate/permission-denied!)))
-
-(defn authorize-create! [board account-id]
-  (when-not (validate/can-edit? account-id (:entity/parent board))
-    (validate/permission-denied!)))
-
 (q/defx new!
-  {:prepare [az/with-account-id!]}
+  {:prepare [az/with-account-id!
+             (member.data/assert-can-edit (comp :entity/parent :board))]}
   [{:keys [board account-id]}]
   (let [board  (-> (dl/new-entity board :board :by account-id)
                    (validate/conform :board/as-map))
-        _      (authorize-create! board account-id)
         member (-> {:membership/entity board
                     :membership/member account-id
                     :membership/roles  #{:role/board-admin}}
@@ -243,9 +234,7 @@
 (q/defquery settings
   {:prepare [az/with-account-id!
              (az/with-roles :board-id)
-             (fn [_ {:as params :keys [board-id account-id]}]
-               (validate/assert-can-edit! account-id (dl/entity board-id))
-               params)]}
+             (member.data/assert-can-edit :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `settings
            (some->

@@ -69,9 +69,8 @@
 
 (q/defx delete!
   "Mutation fn. Marks note as deleted by given note-id."
-  {:prepare [az/with-account-id!]}
+  {:prepare [az/with-account-id!
+             (member.data/assert-can-edit :note-id)]}
   [{:keys [account-id]} {:keys [note-id]}]
-  (az/auth-guard! (az/editor-role? (az/all-roles account-id (dl/entity note-id)))
-      "You are not an admin of this board"
-    (db/transact! [[:db/add [:entity/id note-id] :entity/deleted-at (java.util.Date.)]])
-    {:body ""}))
+  (db/transact! [[:db/add [:entity/id note-id] :entity/deleted-at (java.util.Date.)]])
+  {:body ""})

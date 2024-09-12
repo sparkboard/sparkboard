@@ -83,14 +83,6 @@
                      q
                      org-id)}))
 
-(q/defx settings!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} {:as org :keys [entity.data/id]}]
-  (validate/assert-can-edit! account-id id)
-  (let [org (validate/conform org :org/as-map)]
-    (db/transact! [org])
-    {:body org}))
-
 (q/defx new!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id org]}]

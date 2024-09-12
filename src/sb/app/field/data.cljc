@@ -10,7 +10,6 @@
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
             [sb.util :as u]
-            [sb.validate :as validate]
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
@@ -201,28 +200,6 @@
                            :before "top-[-2px]"
                            :after "bottom-[-2px]" nil)]}]))])))
 
-(q/defx add-field
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e a new-field]
-  (let [e               (sch/wrap-id e)
-        entity (dl/entity e)
-        _ (validate/assert-can-edit! account-id entity)
-        existing-fields (a entity)
-        field           (assoc new-field :field/id (dl/new-uuid :field))]
-    (validate/assert field :field/as-map)
-    (db/transact! [[:db/add e a (conj existing-fields field)]])
-    {:field/id (:field/id field)}))
-
-(q/defx remove-field
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} parent-id a field-id]
-  (let [parent (db/entity (sch/wrap-id parent-id))]
-    (validate/assert-can-edit! account-id parent)
-    (db/transact! [[:db/add (:db/id parent) a (->> (get parent a)
-                                                   (remove (comp #{field-id} :field/id))
-                                                   vec)]])
-    {}))
-
 (defmulti entry-value (comp :field/type :field-entry/field))
 
 (defmethod entry-value nil [_] nil)
@@ -247,17 +224,6 @@
   (when-let [value (u/guard (:prose/string entry) (complement str/blank?))]
     {:prose/string value
      :prose/format (or (:prose/format entry) :prose.format/markdown)}))
-
-(q/defx save-entry! [{:keys [account-id]} parent-id field-id entry]
-  (let [field   (db/entity (sch/wrap-id field-id))
-        parent  (db/entity (sch/wrap-id parent-id))
-        _ (validate/assert-can-edit! account-id parent)
-        entries (assoc (get parent :entity/field-entries) field-id entry)]
-    (validate/assert (db/touch field) :field/as-map)
-    (validate/assert entry :field-entry/as-map)
-    (db/transact! [[:db/add (:db/id parent) :entity/field-entries entries]])
-    {:txs [{:entity/id            (:entity/id parent)
-            :entity/field-entries entries}]}))
 
 (comment
   *e
