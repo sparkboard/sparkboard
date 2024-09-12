@@ -89,6 +89,10 @@
                                                (update-vals #(sort-by :entity/created-at u/compare:desc %))
                                                (u/guard seq))
           boards-by-org (group-by :entity/parent board)
+          orgs (->> (keys boards-by-org)
+                    (sort-by :entity/created-at u/compare:desc)
+                    (into org)
+                    distinct)
           match-text    @?filter]
       [:div.divide-y
        [header/entity (data/account-as-entity account) nil]
@@ -98,9 +102,9 @@
           (when (> (count all) 6)
             [field.ui/filter-field ?filter nil])
           (let [limit (partial ui/truncate-items {:limit 10})]
-            (when (seq org)
+            (when (seq orgs)
               [:div.flex-v.gap-4
-               (u/for! [org org
+               (u/for! [org orgs
                         :let [projects-by-board (into {}
                                                       (keep (fn [board]
                                                               (when-let [projects (->> (az/membership account-id board)
@@ -129,6 +133,7 @@
                        [:div.pl-14.ml-1.flex.flex-wrap.gap-2.mt-2
                         (u/for! [project projects]
                           [:a.bg-gray-100.hover:bg-gray-200.rounded.h-12.inline-flex.items-center.px-3.cursor-default
+                           ;; TODO modal does not load all the necessary data
                            {:href (routing/entity-path project 'ui/show)}
                            (:entity/title project)])]]))])]))])
        [:div.p-body

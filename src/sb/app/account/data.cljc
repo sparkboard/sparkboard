@@ -71,7 +71,7 @@
                                                  :account/display-name
                                                  {:image/avatar [:entity/id]}]}
                             {:membership/entity [~@entity.data/listing-fields
-                                                 {:entity/parent [:entity/id]}
+                                                 {:entity/parent [~@entity.data/listing-fields]}
                                                  {:image/background [:entity/id]}]}
                             {:membership/_member :...}]}]
                         account-id)
