@@ -176,17 +176,12 @@
         (:default ?field))
     #_(throw-no-persistence! ?field)))
 
-(q/defx save-attribute!
-  {:prepare [az/with-account-id!]}
-  [ctx e a v]
-  (save-attributes! ctx e {a v}))
-
 (defn maybe-save-field
   [?field]
   (when-let [{:as ?persisted-field :keys [db/id attribute]} (io/ancestor-by ?field :field/persisted?)]
     (when (not= @?field (persisted-value ?field))
       (io/try-submit+ ?persisted-field
-        (save-attribute! nil id attribute @?persisted-field)))))
+        (save-attributes! nil id {attribute @?persisted-field})))))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))
