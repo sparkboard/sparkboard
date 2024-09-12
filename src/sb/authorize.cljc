@@ -89,6 +89,14 @@
         "User not signed in"
       params)))
 
+(defn with-member-id! [entity-fn]
+  (fn [req params]
+    (let [member-id (membership-id (-> req :account :entity/id)
+                                   (entity-fn params))]
+      (auth-guard! member-id
+          "Not a member"
+        (assoc params :member-id member-id)))))
+
 (defn entity? [x]
   (instance? #?(:cljs re-db.read/Entity :clj Entity) x))
 

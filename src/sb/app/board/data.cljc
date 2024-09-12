@@ -191,7 +191,7 @@
                 (mapv (db/pull project-fields)))))
 
 (q/defquery project-drafts
-  {:prepare az/with-account-id}
+  {:prepare az/with-account-id!}
   [{:keys [account-id board-id]}]
   (->> (az/membership account-id board-id)
        member.data/member-of

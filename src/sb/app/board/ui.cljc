@@ -225,31 +225,30 @@
                                                   {:field-option/label (t :tr/looking-for-help)
                                                    :field-option/value :looking-for-help}]}]]
             [query-ui tags fields !xform]
-            (when board-editor?
+            (when-let [doit! (note.data/new!-authorized {:note {:entity/parent board-id
+                                                                :entity/title  (t :tr/untitled)
+                                                                :entity/admission-policy :admission-policy/open
+                                                                :entity/draft? true}})]
               [ui/action-button
                {:on-click (fn [_]
                             (p/let [{:as   result
-                                     :keys [entity/id]} (note.data/new! nil
-                                                                        {:entity/parent board-id
-                                                                         :entity/title  (t :tr/untitled)
-                                                                         :entity/admission-policy :admission-policy/open
-                                                                         :entity/draft? true})]
+                                     :keys [entity/id]} (doit!)]
                               (when id
                                 (routing/nav! `note.ui/show {:note-id id}))
                               result))}
                (t :tr/new-note)])
-            [ui/action-button
-             {:on-click (fn [_]
-                          (p/let [{:as   result
-                                   :keys [entity/id]} (project.data/new! nil
-                                                                         {:entity/parent board-id
-                                                                          :entity/title  (t :tr/untitled)
-                                                                          :entity/admission-policy :admission-policy/open
-                                                                          :entity/draft? true})]
-                            (when id
-                              (routing/nav! `project.ui/show {:project-id id}))
-                            result))}
-             (t :tr/new-project)]]
+            (when-let [doit! (project.data/new!-authorized {:project {:entity/parent board-id
+                                                                      :entity/title  (t :tr/untitled)
+                                                                      :entity/admission-policy :admission-policy/open
+                                                                      :entity/draft? true}})]
+              [ui/action-button
+               {:on-click (fn [_]
+                            (p/let [{:as   result
+                                     :keys [entity/id]} (doit!)]
+                              (when id
+                                (routing/nav! `project.ui/show {:project-id id}))
+                              result))}
+               (t :tr/new-project)])]
 
            ;; notes
            (some->> (when board-editor?

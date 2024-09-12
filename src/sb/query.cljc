@@ -143,18 +143,34 @@
                    result))
          (p/catch (fn [e] {:error (ex-message e)})))))
 
+(defn prepare! [fs req params]
+  (cond (nil? fs) params
+        (sequential? fs) (reduce (fn [params f]
+                                   (or (f req params)
+                                       params)) params fs)
+        :else (fs req params)))
+
 #?(:clj
    (defn op-impl [env op name args]
      (let [[name doc params argv body] (u/parse-defn-args name args)
            fqn (symbol (str *ns*) (str name))]
        (if (:ns env)
-         (case op :query `(defn ~name [params#] (~'sb.query/deref! ['~fqn params#]))
-                  :effect `(defn ~name [& args#] (apply ~'sb.query/effect! '~fqn args#)))
+         (case op
+           :query `(defn ~name [params#] (~'sb.query/deref! ['~fqn params#]))
+           :effect `(do
+                      (defn ~name [& args#] (apply ~'sb.query/effect! '~fqn args#))
+                      (defn ~(symbol (str name "-authorized")) [params# & args#]
+                        (try
+                          (prepare! ~(:prepare params) {:account (db/get :env/config :account)} params#)
+                          #(apply ~name params# args#)
+                          (catch :default e#
+                            false)))))
          `(defn ~name
             ~@(when doc [doc])
             ~(assoc-in params [:endpoint op] true)
             ~argv
             ~@body)))))
+
 #?(:clj
    (defmacro defquery
      "Defines a query function. Accepts an options map containing:

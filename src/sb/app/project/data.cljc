@@ -121,17 +121,14 @@
       :entity/project-fields))
 
 (q/defx new!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} project]
+  {:prepare [az/with-account-id!
+             (az/with-member-id! (comp :entity/parent :project))]}
+  [{:keys [account-id member-id project]}]
   ;; TODO
   ;; verify that user is allowed to create a new project in parent
+  ;; check if project creation can even be restricted for board members
   (let [project    (dl/new-entity project :project :by account-id)
-        membership (member.data/new-entity-with-membership project
-                                                           (->> (:entity/parent project)
-                                                                (iterate (comp :entity/parent dl/entity))
-                                                                (take-while identity)
-                                                                (some (partial az/membership-id account-id)))
-                                                           #{:role/project-admin})]
+        membership (member.data/new-entity-with-membership project member-id #{:role/project-admin})]
     (validate/assert project :project/as-map)
     (validate/assert (update membership :membership/entity sch/wrap-id) :membership/as-map)
     (db/transact! [membership])
@@ -139,29 +136,29 @@
 
 (q/defx delete!
   "Mutation fn. Marks project as deleted by given project-id."
+  {:prepare [az/with-account-id!]}
   [{:keys [project-id account-id]}]
   (az/auth-guard! (az/editor-role? (az/all-roles account-id (dl/entity project-id)))
       "Not authorized to delete"
     (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
     {:body ""}))
 
-
 (q/defx join!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id project-id]}]
-  (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity project-id)))
-      "Project is invite only"
-    (if-let [member-id (-> account-id
-                           (az/membership-id (:entity/parent (dl/entity (sch/wrap-id project-id))))
-                           (az/deleted-membership-id project-id))]
-      (db/transact! [{:db/id member-id
-                      :entity/deleted-at sch/DELETED_SENTINEL}])
-      (let [membership (member.data/new-entity-with-membership (sch/wrap-id project-id)
-                                                               (az/membership-id account-id (:entity/parent (dl/entity project-id)))
-                                                               #{})]
-        (validate/assert membership :membership/as-map)
-        (db/transact! [membership])))
-    {:body ""}))
+  {:prepare [az/with-account-id!
+             (az/with-member-id! (comp :entity/parent dl/entity :project-id))
+             (fn [_ {:keys [project-id]}]
+               (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity project-id)))
+                   "Project is invite only"))]}
+  [{:keys [account-id member-id project-id]}]
+  (if-let [project-member-id (az/deleted-membership-id member-id project-id)]
+    (db/transact! [{:db/id project-member-id
+                    :entity/deleted-at sch/DELETED_SENTINEL}])
+    (let [membership (member.data/new-entity-with-membership (sch/wrap-id project-id)
+                                                             member-id
+                                                             #{})]
+      (validate/assert membership :membership/as-map)
+      (db/transact! [membership])))
+  {:body ""})
 
 (q/defx leave!
   {:prepare [az/with-account-id!]}
