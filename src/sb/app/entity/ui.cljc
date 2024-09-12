@@ -8,6 +8,7 @@
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]
+            [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
@@ -15,9 +16,8 @@
   (some-> (get @sch/!schema a) :malli/schema))
 
 (defn throw-no-persistence! [?field]
-  (throw (ex-info (str "No persistence for " (:sym ?field)) {:where (->> (iterate io/parent ?field)
-                                                                         (take-while identity)
-                                                                         (map :sym))})))
+  (throw (ex-info (str "No persistence for " (:sym ?field))
+                  {:where (map :sym (u/iterate-some io/parent ?field))})))
 
 (def persisted-value data/persisted-value)
 

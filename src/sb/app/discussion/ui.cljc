@@ -8,12 +8,11 @@
             [sb.i18n :refer [t]]
             [sb.routing :as routing]
             [sb.schema :as sch]
+            [sb.util :as u]
             [yawn.hooks :as h]))
 
 (defn post-ancestors [post]
-  (->> (iterate :post/parent post)
-       rest
-       (take-while identity)))
+  (rest (u/iterate-some :post/parent post)))
 
 (defn post-root-ancestor [post]
   (last (post-ancestors post)))

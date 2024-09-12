@@ -204,3 +204,6 @@
 (defn every-pred*
   ([] (constantly true))
   ([& xs] (apply every-pred xs)))
+
+(defn iterate-some [f x]
+  (take-while some? (iterate f x)))
