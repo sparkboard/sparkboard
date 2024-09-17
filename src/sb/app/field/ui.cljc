@@ -628,6 +628,9 @@
   (sch/kind #uuid "b30e4733-0c90-3491-be07-99af22250f92"))
 
 (ui/defview show-prose:card [field {:as m :prose/keys [format string]}]
+  ;; TODO use (something like) notification.ui/truncated-prose ?
+  ;; would need to use text-overflow: ellipsis without whitespace: nowrap
+  ;; advantage is that it always uses the maximum allocated space but disadvantage is that the allocated space changes with browser window width
   (when-not (str/blank? string)
     (let [string (u/truncate-string string 140)]
       (case format

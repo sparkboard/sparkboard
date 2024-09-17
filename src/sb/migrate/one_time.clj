@@ -967,8 +967,8 @@
               :discussion/as-map      [:_id rm
                                        :type rm
 
-                                       :followers (& (xf members->member-refs)
-                                                     (rename :discussion/followers))
+                                       :followers (& (xf (partial into [] (keep member->account-ref)))
+                                                     (rename :post/followers))
                                        :parent (& (xf (partial to-uuid :project))
                                                   (rename :entity/id))
                                        ::always (remove-when (comp (partial missing-entity? :project/as-map) :entity/id)) ;; prune discussions from deleted projects
@@ -984,9 +984,9 @@
 
                                                              :text (& (xf prose) (rename :post/text))
 
-                                                             :doNotFollow (& (xf members->member-refs)
+                                                             :doNotFollow (& (xf (partial into [] (keep member->account-ref)))
                                                                              (rename :post/do-not-follow))
-                                                             :followers (& (xf members->member-refs)
+                                                             :followers (& (xf (partial into [] (keep member->account-ref)))
                                                                            (rename :post/followers))
                                                              :comments (& (xf (partial change-keys
                                                                                        [:_id (partial id-with-timestamp :post)
@@ -1127,59 +1127,65 @@
                                        :discussion rm       ;; unused
                                        :project/card-classes (rename :note/card-classes)
                                        ]
-              :notification/as-map    [::defaults {:notification/emailed? false}
-                                       ::always (fn [m]
-                                                  (-> m
-                                                      (dissoc :targetViewed :notificationViewed)
-                                                      (assoc :notification/viewed? (boolean (or (:targetViewed m)
-                                                                                                (:notificationViewed m))))))
-                                       :_id (partial id-with-timestamp :notification)
+              :notification/as-map    [#_#_
                                        ::always (remove-when
                                                   (fn notification-filter [m]
                                                     (let [day-threshold 180]
                                                       (or (:notification/viewed? m)
-                                                          (> (-> (:entity/created-at m) date-time days-since)
+                                                          (> (-> (get-oid (:_id m))
+                                                                 bson-id-timestamp
+                                                                 date-time
+                                                                 days-since)
                                                              day-threshold)))))
-
+                                       :_id (fn [m a v]
+                                              (-> m
+                                                  ;; Project memberships don't have created-at so we supply it here
+                                                  (cond-> (= "newMember" (:type m))
+                                                    (assoc :entity/created-at (bson-id-timestamp (get-oid v))))
+                                                  (dissoc a)))
                                        :createdAt rm
-                                       :boardId (uuid-ref-as :board :notification/board)
-                                       :recipientId (& (xf member->board-membership-id)
-                                                       (uuid-ref-as :membership :notification/recipient))
-                                       ::always (remove-when (complement :notification/recipient))
-                                       :notificationEmailed (rename :notification/emailed?)
+                                       :boardId rm
+                                       :recipientId (& (xf #(some-> % member->account-ref vector))
+                                                       (rename :notification/recipients))
+                                       ::always (remove-when (complement :notification/recipients))
                                        :data (fn [m a v] (-> m (dissoc a) (merge v)))
                                        :project (& (xf :id)
                                                    (uuid-ref-as :project :notification/project))
                                        :user (& (xf :id)
-                                                (xf member->board-membership-id)
-                                                (uuid-ref-as :membership :notification/account))
-                                       :message (& (xf :body)
-                                                   (rename :notification/chat.new-message.text)
-                                                   )
-                                       :comment (& (xf :id)
-                                                   (uuid-ref-as :comment :notification/post.comment))
-                                       :post (& (xf :id)
-                                                (uuid-ref-as :post :notification/post))
-                                       :discussion (& (xf :id)
-                                                      (uuid-ref-as :discussion :notification/discussion))
-                                       ::always (fn [m]
-                                                  (let [{:keys [type targetId]} m]
-                                                    (-> m
-                                                        (dissoc :type :targetId :targetPath)
-                                                        (merge (case type
-                                                                 "newMember" {:notification/type :notification.type/project.new-member}
-                                                                 "newMessage" {:notification/type :notification.type/chat.new-message
-                                                                               :notification/chat (uuid-ref :chat (get-oid targetId))}
-                                                                 "newPost" {:notification/type :notification.type/discussion.new-post}
-                                                                 "newComment" {:notification/type :notification.type/discussion.new-comment})))))
-                                       ::always (remove-when #(or (missing-entity? :project/as-map (:notification/project %))
-                                                                  (not (:notification/account %))
-                                                                  (missing-entity? :chat/as-map (:notification/chat %))
-                                                                  (missing-entity? :post/as-map (:notification/post %))
-                                                                  (missing-entity? :discussion/as-map (:notification/discussion %))))
-                                       :notification/board rm
-
-                                       ]
+                                                (xf member->account-ref)
+                                                (rename :notification/account))
+                                       :message rm
+                                       :discussion rm
+                                       ::always (fn [{:notification/keys [project account recipients] :as m}]
+                                                  (-> m
+                                                      (dissoc :type :targetId :targetPath
+                                                              :post :comment
+                                                              :targetViewed :notificationViewed
+                                                              :notificationEmailed)
+                                                      (assoc :entity/id
+                                                             (case (:type m)
+                                                               "newMember" (when account
+                                                                             (-> (composite-uuid :membership project account)
+                                                                                 ;; TODO check how many of these are note memberships
+                                                                                 (u/guard (coll-entities-by-id :project/as-map))))
+                                                               ;; chat notifcations are generated by the migration of chats
+                                                               "newMessage" nil
+                                                               "newPost" (-> (:post m)
+                                                                             :id
+                                                                             (->> (to-uuid :post))
+                                                                             (u/guard (coll-entities-by-id :discussion/as-map)))
+                                                               "newComment" (-> (:comment m)
+                                                                                :id
+                                                                                (->> (to-uuid :post))
+                                                                                (u/guard (coll-entities-by-id :discussion/as-map)))))
+                                                      (cond-> (or (:targetViewed m)
+                                                                  (:notificationViewed m))
+                                                        (assoc :notification/unread-by recipients))
+                                                      (cond-> (not (:notificationEmailed m))
+                                                        (assoc :notification/email-to recipients))))
+                                       ::always (remove-when (comp nil? :entity/id))
+                                       :notification/account rm
+                                       :notification/project rm]
               :chat/as-map            [:_id (partial id-with-timestamp :chat)
                                        ::always (add-kind :chat)
                                        ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
@@ -1324,13 +1330,28 @@
                        :else (throw (ex-info (str "Unknown coll: " k) {:coll k}))))
         (changes k)))
 
+(defn flatten-entities-xf []
+  "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
+  (let [reverse-ks (into {} (comp (filter #(str/starts-with? (name %) "_"))
+                                  (map (juxt identity #(keyword (namespace %) (subs (name %) 1)))))
+                         (keys @sch/!schema))]
+    (mapcat (fn [doc]
+              (let [doc-id (sch/wrap-id doc)]
+                (into [(apply dissoc doc (keys reverse-ks))]
+                      (flatten-entities-xf)
+                      (mapcat (fn [[reverse-k k]]
+                                (map #(assoc % k doc-id)
+                                     (reverse-k doc)))
+                              reverse-ks)))))))
+
 (def coll-entities
   "Converts doc according to `changes`"
   (memoize
     (fn [k]
       (try
         (->> (read-coll k)
-             (change-keys (changes-for k)))
+             (change-keys (changes-for k))
+             (into [] (flatten-entities-xf)))
         (catch Exception e
           (prn :failed-in k)
           (throw e))))))
@@ -1353,32 +1374,11 @@
         (mapcat read-coll)
         colls))
 
-(defn root-entities
-  "Entities representing docs from the original coll. May contain nested (inline) entities."
-  []
-  (into []
-        (mapcat coll-entities)
-        colls))
-
-(defn flatten-entities-xf []
-  "Walks entities to pull out nested relations (eg. where a related entity is stored 'inline')"
-  (let [reverse-ks (into {} (comp (filter #(str/starts-with? (name %) "_"))
-                                  (map (juxt identity #(keyword (namespace %) (subs (name %) 1)))))
-                         (keys @sch/!schema))]
-    (mapcat (fn [doc]
-              (let [doc-id (sch/wrap-id doc)]
-                (into [(apply dissoc doc (keys reverse-ks))]
-                      (flatten-entities-xf)
-                      (mapcat (fn [[reverse-k k]]
-                                (map #(assoc % k doc-id)
-                                     (reverse-k doc)))
-                              reverse-ks)))))))
-
 (defn all-entities
   "Flat list of all entities (no inline nesting)" []
   (into []
-        (flatten-entities-xf)
-        (root-entities)))
+        (mapcat coll-entities)
+        colls))
 
 (defn contains-somewhere?
   "Deep walk of a data structure to see if `v` exists anywhere inside it (via =)"
@@ -1476,10 +1476,10 @@
   ;; generate examples for every schema entry
   (mapv (juxt identity mg/generate) (vals @sch/!entity-schemas))
 
-  (clojure.core/time (count (root-entities)))
+  (clojure.core/time (count (all-entities)))
   (firebase-account->email "m_5898a0e8f869e80400b2cfef" :foo)
 
-  #_(def missing (->> (root-entities)
+  #_(def missing (->> (all-entities)
                       (filter (partial contains-somewhere? #uuid "4d2b41ae-5fe2-36c9-955d-0b9b0b10770b"))
                       first))
   )

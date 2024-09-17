@@ -4,6 +4,7 @@
             [sb.app.discussion.data :as discussion.data]
             [sb.app.field.data :as field.data]
             [sb.app.membership.data :as member.data]
+            [sb.app.notification.data :as notification.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -67,7 +68,8 @@
                                      (? :project/admin-description)
                                      (? :project/open-requests)
                                      (? :entity/description)
-                                     (? :discussion/followers)]
+                                     (? :post/do-not-follow)
+                                     (? :post/followers)]
                                  }
      :community-action/as-map   {s- [:map-of
                                      :community-action/label
@@ -156,14 +158,19 @@
                (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity project-id)))
                    "Project is invite only"))]}
   [{:keys [account-id project-id]}]
-  (if-let [project-member-id (az/deleted-membership-id account-id project-id)]
-    (db/transact! [{:db/id project-member-id
-                    :entity/deleted-at sch/DELETED_SENTINEL}])
-    (let [membership (member.data/new-entity-with-membership (sch/wrap-id project-id)
-                                                             account-id
-                                                             #{})]
-      (validate/assert membership :membership/as-map)
-      (db/transact! [membership])))
+  (let [admins (->> (db/where [[:membership/entity (sch/wrap-id project-id)]
+                               (comp :role/project-admin :membership/roles)])
+                    (map (comp sch/wrap-id :membership/member)))]
+    (db/transact! (if-let [project-member-id (az/deleted-membership-id account-id project-id)]
+                    [(-> {:db/id project-member-id
+                          :entity/created-at (java.util.Date.)
+                          :entity/deleted-at sch/DELETED_SENTINEL}
+                         (notification.data/assoc-recipients admins))]
+                    [(-> (member.data/new-entity-with-membership (sch/wrap-id project-id)
+                                                                 account-id
+                                                                 #{})
+                         (notification.data/assoc-recipients admins)
+                         (validate/assert :membership/as-map))])))
   {:body ""})
 
 (q/defx leave!

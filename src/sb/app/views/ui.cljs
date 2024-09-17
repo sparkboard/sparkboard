@@ -503,3 +503,21 @@
                                                       (when-not current-year?
                                                         {:year :numeric}))))
              date)))
+
+(defn small-datestamp [date]
+  (let [now (js/Date.)
+        current-year? (= (.getFullYear now)
+                         (.getFullYear date))
+        current-month? (and current-year? (= (.getMonth now)
+                                             (.getMonth date)))
+        current-day? (and current-month? (= (.getDate now)
+                                            (.getDate date)))]
+    ;; TODO today as today
+    (.format (js/Intl.DateTimeFormat. js/undefined
+                                      (clj->js (merge {:day :numeric
+                                                       :weekday :long}
+                                                      (when-not current-day?
+                                                        {:month :long})
+                                                      (when-not current-year?
+                                                        {:year :numeric}))))
+             date)))

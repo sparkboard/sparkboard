@@ -197,7 +197,9 @@
 
          [entity.ui/persisted-attr project :project/open-requests field-params]
 
-         [:div.field-label (t :tr/questions-and-comments)]
+         [:div.flex.gap-2 #_.items-end #_.justify-between
+          [:div.field-label (t :tr/questions-and-comments)]
+          [discussion.ui/follow-toggle (:project-id params)]]
          [discussion.ui/show-posts project]
 
          (when can-edit?

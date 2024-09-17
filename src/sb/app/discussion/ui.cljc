@@ -14,6 +14,15 @@
 (defn post-level [post]
   (dec (count (u/iterate-some :post/parent post))))
 
+(ui/defview follow-toggle [entity-id]
+  (let [follows? (data/follows? {:entity-id entity-id})]
+    [ui/action-button {:class "h-6"
+                       :on-click (fn [_]
+                                   (data/set-follow! {:entity-id entity-id} (not follows?)))}
+     (if follows?
+       "unfollow"
+       "follow")]))
+
 (declare show-posts)
 
 (ui/defview show-post [post]
@@ -29,7 +38,9 @@
       [:div.flex-v
        [:div.flex.gap-2.items-end
         [:div.font-bold (:account/display-name author)]
-        [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]]
+        [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]
+        (when (= 1 level)
+          [follow-toggle (sch/wrap-id post)])]
        [:div
         (field.ui/show-prose
          (:post/text post))]]]

@@ -1,5 +1,6 @@
 (ns sb.app.membership.data
   (:require [sb.app.entity.data :as entity.data]
+            [sb.app.notification.data :as notification.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -49,28 +50,29 @@
                                          s-     :boolean},
 
 
-   :membership/as-map                   {s- [:map {:closed true}
-                                             :entity/id
-                                             :entity/kind
-                                             :membership/entity
-                                             :membership/member
-                                             (? :entity/uploads)
-                                             (? :membership/inactive?)
-                                             (? :membership/email-frequency)
-                                             (? :entity/custom-tags)
-                                             (? :membership/newsletter-subscription?)
-                                             (? :entity/tags)
-                                             (? :membership/roles)
+   :membership/as-map                   {s- (into [:map {:closed true}
+                                                   :entity/id
+                                                   :entity/kind
+                                                   :membership/entity
+                                                   :membership/member
+                                                   (? :entity/uploads)
+                                                   (? :membership/inactive?)
+                                                   (? :membership/email-frequency)
+                                                   (? :entity/custom-tags)
+                                                   (? :membership/newsletter-subscription?)
+                                                   (? :entity/tags)
+                                                   (? :membership/roles)
 
-                                             ;; TODO, backfill?
-                                             ;; only missing for memberships of projects, orgs and collections
-                                             ;; not for board memberships
-                                             (? :entity/created-at)
-                                             (? :entity/updated-at)
+                                                   ;; TODO, backfill?
+                                                   ;; only missing for memberships of orgs and collections
+                                                   ;; not for board memberships
+                                                   (? :entity/created-at)
+                                                   (? :entity/updated-at)
 
-                                             (? :entity/field-entries)
-                                             (? :entity/deleted-at)
-                                             (? :entity/modified-by)]}})
+                                                   (? :entity/field-entries)
+                                                   (? :entity/deleted-at)
+                                                   (? :entity/modified-by)]
+                                                  notification.data/notification-keys)}})
 
 (comment
   ;; Stats for memberships which do and do not have `:entity/created-at`
@@ -219,12 +221,14 @@
            ;:entity-id   [:entity/id #uuid "a1630339-64b3-3604-8110-0f22355e12be"]
            :search-term "matt"}))
 
-(defn new-entity-with-membership [entity member-id roles]
-  {:entity/id         (random-uuid)
-   :entity/kind       :membership
-   :membership/member (sch/wrap-id member-id)
-   :membership/entity entity
-   :membership/roles  roles})
+#?(:clj
+   (defn new-entity-with-membership [entity member-id roles]
+     {:entity/id         (random-uuid)
+      :entity/kind       :membership
+      :entity/created-at (java.util.Date.)
+      :membership/member (sch/wrap-id member-id)
+      :membership/entity entity
+      :membership/roles  roles}))
 
 (defn resolved-tags [board-membership]
   (mapv (comp (u/index-by (:entity/member-tags (:membership/entity board-membership))

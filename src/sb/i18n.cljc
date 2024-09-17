@@ -149,6 +149,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/no-messages                     {:en "You have no messages."
                                           :fr "Vous n'avez pas de messages."
                                           :es "No tienes mensajes."}
+     :tr/no-notifications                {:en "You have no notifications."
+                                          :fr "Vous n'avez pas de notifications."
+                                          :es "No tienes notificaciones."}
      :tr/domain-already-registered       {:en "Domain already registered"
                                           :fr "Domaine déjà enregistré"
                                           :es "Dominio ya registrado"},
@@ -524,6 +527,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/new-note                        {:en "New note"
                                           :fr "Nouvelle note"
                                           :es "Nueva nota"}
+     :tr/wrote                           {:en "wrote"
+                                          :fr "a écrit"
+                                          :es "escribió"}
+     :tr/replied-to                      {:en "replied to:"
+                                          :fr "a répondu à:"
+                                          :es "respondió a:"}
+     :tr/joined                          {:en "joined"
+                                          :fr "a rejoint"
+                                          :es "se unió"}
      }))
 
 (defn tr*
