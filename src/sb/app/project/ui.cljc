@@ -109,7 +109,7 @@
       [:div.flex.items-center.gap-2
        {:key      (:entity/id member)
         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
-       [:img.object-cover.rounded.w-12.h-12 {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]
+       [ui/avatar {:size 12} account]
        [:div.flex-v.gap-1
         display-name
         [:div.flex.flex-wrap.gap-2
