@@ -477,8 +477,8 @@
 
 (defn small-timestamp [date]
   (let [now (js/Date.)
-        current-year? (= (.getYear now)
-                         (.getYear date))
+        current-year? (= (.getFullYear now)
+                         (.getFullYear date))
         current-month? (and current-year? (= (.getMonth now)
                                              (.getMonth date)))
         current-day? (and current-month? (= (.getDate now)
