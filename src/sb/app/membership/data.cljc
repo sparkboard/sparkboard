@@ -97,8 +97,7 @@
                     {:membership/entity [~@entity.data/id-fields
                                          :entity/member-tags
                                          :entity/member-fields]}
-                    {:membership/member [~@entity.data/listing-fields
-                                         :account/display-name]}]
+                    {:membership/member ~entity.data/listing-fields}]
                   (:membership-id params))))
 
 #?(:clj
@@ -163,6 +162,7 @@
     (dl/q '[:find [(pull ?you [:entity/id
                                {:membership/entity [:entity/id {:image/avatar [:entity/id]}]
                                 :membership/member
+                                ;; TODO could use entity.data/listing-fields but quasiqouting is awkward here
                                 [:account/display-name
                                  :entity/id
                                  {:image/avatar [:entity/id]}]}])

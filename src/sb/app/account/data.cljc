@@ -67,9 +67,7 @@
                            [:membership/roles
                             :entity/id
                             :entity/kind
-                            {:membership/member [~@entity.data/id-fields
-                                                 :account/display-name
-                                                 {:image/avatar [:entity/id]}]}
+                            {:membership/member ~entity.data/id-fields}
                             {:membership/entity [~@entity.data/listing-fields
                                                  {:entity/parent [~@entity.data/listing-fields]}
                                                  {:image/background [:entity/id]}]}

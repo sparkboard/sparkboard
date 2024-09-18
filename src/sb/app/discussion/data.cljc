@@ -1,5 +1,6 @@
 (ns sb.app.discussion.data
   (:require [re-db.api :as db]
+            [sb.app.entity.data :as entity.data]
             [sb.authorize :as az]
             [sb.schema :as sch :refer [s- ?]]
             [sb.query :as q]
@@ -30,15 +31,12 @@
     {:discussion/followers (sch/ref :many)}))
 
 (def posts-field
-  {:post/_parent
-   [:entity/id
-    :entity/kind
-    :post/text
-    {:entity/created-by [:entity/id
-                         :entity/kind
-                         :account/display-name
-                         {:image/avatar [:entity/id]}]}
-    :entity/created-at]})
+  `{:post/_parent
+    [:entity/id
+     :entity/kind
+     :post/text
+     {:entity/created-by ~entity.data/listing-fields}
+     :entity/created-at]})
 
 (def posts-with-comments-field
   (update posts-field :post/_parent conj posts-field))
