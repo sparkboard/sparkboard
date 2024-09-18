@@ -227,15 +227,11 @@
    :membership/entity entity
    :membership/roles  roles})
 
-
-(defn resolve-tag [parent tag-id]
-  (-> parent :entity/member-tags (u/find-first #(= tag-id (:tag/id %)))))
-
 (defn resolved-tags [board-membership]
-  (mapv #(resolve-tag (:membership/entity board-membership) (:tag/id %))
+  (mapv (comp (u/index-by (:entity/member-tags (:membership/entity board-membership))
+                          :tag/id)
+              :tag/id)
         (:entity/tags board-membership)))
 
 (defn membership-colors [membership]
-  (into []
-        (map #(->> (:tag/id %) (resolve-tag (:membership/entity membership)) (:tag/color)))
-        (:entity/tags membership)))
+  (mapv :tag/color (resolved-tags membership)))

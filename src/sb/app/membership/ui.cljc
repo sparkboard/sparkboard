@@ -71,20 +71,21 @@
          [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
           (:entity/title project)])]]]))
 
-(defn show-tag [{:keys [tag/label tag/color] :or {color "#dddddd"}}]
-  [:div.tag-md
-   {:key   label
-    :style {:background-color color
-            :color            (color/contrasting-text-color color)}}
-   label])
+(ui/defview tags [size board-membership]
+  (let [tag-class (case size :small "tag-sm" :medium "tag-md")]
+    (into [:div.flex.flex-wrap.gap-1]
+          (map (fn [{:tag/keys [id label color] :or {color "#dddddd"}}]
+                 [:div
+                  {:class tag-class
+                   :style (color/color-pair color)}
+                  label]))
+          (concat (data/resolved-tags board-membership)
+                  (:entity/custom-tags board-membership)))))
 
 (ui/defview card
   {:key (fn [_ member] (str (:entity/id member)))}
-  [{:keys [entity/member-fields
-           entity/member-tags]} board-member]
-  (let [{:keys [entity/field-entries
-                entity/tags
-                entity/custom-tags]} board-member
+  [{:keys [entity/member-fields]} board-member]
+  (let [{:keys [entity/field-entries]} board-member
         {:as account :keys [account/display-name]} (:membership/member board-member)]
     [:a.flex-v.hover:bg-gray-100.rounded-lg.bg-slate-100 #_.rounded-xl.border.shadow
      {:href (routing/entity-path board-member 'ui/show)}
@@ -93,11 +94,7 @@
 
       [:div.flex-grow.flex-v.gap-1
        [:div.leading-snug.line-clamp-2.font-semibold display-name]
-       [:div.flex.flex-wrap.gap-1
-        (->> member-tags
-             (filter (comp (into #{} (map :tag/id) tags) :tag/id))
-             (map show-tag))
-        [:div.flex.flex-wrap.gap-1 (map show-tag custom-tags)]]
+       [tags :medium board-member]
        [:div.text-gray-500.contents (field.ui/show-entries member-fields field-entries)]]]]))
 
 ;; TODO review membership pointing at membership
