@@ -109,8 +109,11 @@
 (defn wrap-account-lookup [handler]
   (fn [req]
     (handler (assoc req :account
-                        (when-let [account-id (try (some-> (get-in req [:cookies "account-id" :value])
-                                                           t/read)
+                        (when-let [account-id (try (or (when (= "dev" (env/config :env))
+                                                         (some->> (get-in req [:cookies "account-email" :value])
+                                                                  (vector :account/email)))
+                                                       (some-> (get-in req [:cookies "account-id" :value])
+                                                               t/read))
                                                    (catch Exception e
                                                      (tap> [:ACCOUNT-ERROR e])))]
                           (try (some-> (not-empty (db/pull account-fields account-id))
