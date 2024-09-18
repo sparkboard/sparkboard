@@ -52,28 +52,6 @@
         (t :tr/view-all)]]
       (t :tr/no-messages))))
 
-(ui/defview chat-old []
-  (let [!open? (h/use-state false)
-        unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]
-    [:el Popover/Root
-     {:open           @!open?
-      :on-open-change #(reset! !open? %)}
-     [:el Popover/Trigger {:as-child true}
-      [:button {:tab-index 0}
-       (when unread
-         [:div.z-10.absolute.font-bold.text-xs.text-center.text-focus-accent
-          {:style {:top 2 :right 0 :width 20}}
-          unread])
-       [icons/paper-plane (when unread "text-focus-accent")]]]
-     [:el Popover/Portal
-      {:container (yu/find-or-create-element :radix-modal)}
-      [:Suspense {}
-       [:el.bg-white.shadow.p-2.outline-none.rounded-lg Popover/Content
-        {:align "end"
-         :style {:width 360}}
-        (when @!open?
-          (chats-list))]]]]))
-
 (ui/defview chat []
   (let [unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]
     [radix/menubar-menu {:trigger (v/x [:button {:tab-index 0}
