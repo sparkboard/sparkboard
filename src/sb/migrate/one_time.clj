@@ -271,22 +271,22 @@
         (dissoc k)
         (u/assoc-some as (some->> v (uuid-ref kind))))))
 
-(def unique-ids-from
+(def coll-entities-by-id
   (memoize
-    (fn [coll-k]
-      (into #{} (comp (mapcat sch/unique-keys)
-                      (map (comp val first))) (coll-entities coll-k)))))
+   (fn [coll-k]
+     (u/index-by (coll-entities coll-k)
+                 :entity/id))))
 
 (defn missing-entity? [coll-k ref]
   (let [kind   (keyword (namespace coll-k))
         coll-k ({:post/as-map :discussion/as-map} coll-k coll-k)]
     (and ref
-         (not ((unique-ids-from coll-k) (to-uuid kind ref))))))
+         (not ((coll-entities-by-id coll-k) (to-uuid kind ref))))))
 
 (defn missing-uuid? [the-uuid]
   (let [kind   (sch/kind the-uuid)
         coll-k (keyword (name kind) "as-map")]
-    (not (contains? (unique-ids-from coll-k) the-uuid))))
+    (not ((coll-entities-by-id coll-k) the-uuid))))
 
 (defn keep-entity [coll-k]
   (fn [m a v]
@@ -553,9 +553,6 @@
              (update-vals #(get % "stickyColor")))))
 
 (declare coll-entities)
-
-(def !boards (delay (-> (coll-entities :board/as-map)
-                        (u/index-by :entity/id))))
 
 (defn add-kind [kind]
   #(assoc % :entity/kind kind))
@@ -1069,7 +1066,8 @@
                                        :boardId (uuid-ref-as :board :entity/parent)
                                        ::always (fn [note]
                                                   (let [board-id (sch/unwrap-id (:entity/parent note))
-                                                        board (@!boards board-id)]
+                                                        board ((coll-entities-by-id :board/as-map) board-id)]
+                                                    ;; nb. we can't take sticky-color from `board` because it gets filtered out
                                                     (-> {:note/outline-color (@!board-sticky-colors board-id)
                                                          :entity/fields (->> (:entity/project-fields board)
                                                                              (into [] (filter (comp (:entity/field-entries note {})
