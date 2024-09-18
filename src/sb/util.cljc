@@ -189,11 +189,14 @@
              #(update-vals mss (fn [x] (x %)))))
 
 (defmacro timed [label & body]
-  `(let [start# (System/currentTimeMillis)]
-     (try
-       ~@body
-       (finally
-         (println (str ~label ": " (- (System/currentTimeMillis) start#) "ms"))))))
+  (let [now (if (:ns &env)
+              '(.getTime (js/Date.))
+              '(System/currentTimeMillis))]
+    `(let [start# ~now]
+       (try
+         ~@body
+         (finally
+           (println (str ~label ": " (- ~now start#) "ms")))))))
 
 (defmacro for! [& body]
   `(doall (for ~@body)))
