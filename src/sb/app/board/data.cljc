@@ -117,9 +117,7 @@
              (throw (ex-info "Board not found!" {:status 400})))))
 
 
-(def board-membership-fields `[{:membership/member [~@entity.data/id-fields
-                                                   {:image/avatar [:entity/id]}
-                                                   :account/display-name]}
+(def board-membership-fields `[{:membership/member ~entity.data/listing-fields}
                               {:entity/tags [:entity/id
                                              :tag/label
                                              :tag/color]}

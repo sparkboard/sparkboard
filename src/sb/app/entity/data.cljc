@@ -88,13 +88,13 @@
 (def id-fields [:entity/id :entity/kind])
 (def listing-fields `[~@id-fields
                       :entity/title
+                      :account/display-name
                       :entity/description
                       :entity/created-at
                       {:image/avatar [:entity/id]}])
 
 (def entity-keys `[~@listing-fields
                    {:entity/video [:video/url]}
-                   {:image/avatar [:entity/id]}
                    {:image/background [:entity/id]}
                    {:entity/domain-name [:domain-name/name]}])
 

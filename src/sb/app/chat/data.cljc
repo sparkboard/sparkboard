@@ -1,6 +1,7 @@
 (ns sb.app.chat.data
   (:require [clojure.string :as str]
             [re-db.api :as db]
+            [sb.app.entity.data :as entity.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [s-]]
@@ -91,19 +92,16 @@
      :message-id (sch/wrap-id (:entity/id new-message))}))
 
 (def chat-fields-meta
-  [:entity/id
-   :entity/updated-at
-   :chat/read-last
-   {:chat/entity [:entity/id
-                  :entity/title
-                  {:image/avatar [:entity/id]}]}
-   {:chat/participants [:entity/kind
-                        :entity/id
-                        {:membership/member [:entity/id
-                                             :entity/kind
-                                             :account/display-name
-                                             {:image/avatar [:entity/id]}]}
-                        {:membership/entity [:entity/id]}]}])
+  `[:entity/id
+    :entity/updated-at
+    :chat/read-last
+    {:chat/entity [:entity/id
+                   :entity/title
+                   {:image/avatar [:entity/id]}]}
+    {:chat/participants [:entity/kind
+                         :entity/id
+                         {:membership/member ~entity.data/listing-fields}
+                         {:membership/entity [:entity/id]}]}])
 
 (def message-fields
   [:entity/id

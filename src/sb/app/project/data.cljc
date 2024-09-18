@@ -101,10 +101,7 @@
                                             :entity/kind
                                             :entity/created-at
                                             :membership/roles
-                                            {:membership/member [:account/display-name
-                                                                 :entity/id
-                                                                 :entity/kind
-                                                                 {:image/avatar [:entity/id]}]}]}
+                                            {:membership/member ~entity.data/listing-fields}]}
                       ~discussion.data/posts-with-comments-field
                       {:entity/parent
                        [~@entity.data/listing-fields
