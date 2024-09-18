@@ -8,13 +8,11 @@
             [sb.app.discussion.ui :as discussion.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
-            [sb.app.membership.data :as member.data]
             [sb.app.membership.ui :as member.ui]
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.app.vote.data :as vote.data]
-            [sb.color :as color]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -112,10 +110,7 @@
        [ui/avatar {:size 12} account]
        [:div.flex-v.gap-1
         display-name
-        [:div.flex.flex-wrap.gap-2
-         (for [{:as tag :tag/keys [id label color]} (member.data/resolved-tags board-membership)]
-           [:div.tag-sm {:style (color/color-pair color)}
-            label])]]])]
+        [member.ui/tags :small board-membership]]])]
    (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])]
   )

@@ -675,6 +675,7 @@
                             field.data/entry-value)))
            u/prune))))
 
+;; TODO need to handle custom-tags
 (ui/defview tags-field
   {:make-?field (fn [init _props]
                   (io/field :many {:tag/id ?id}
