@@ -219,7 +219,7 @@
   (cond (:db/id x)   (:entity/kind (dl/entity (:db/id x)))
         (string? x)  'string
         (map? x)     'map
-        (vector? x)  'vector
+        (vector? x)  [(into #{} (map stat-type) x)]
         (set? x)     'set
         (integer? x) 'integer
         #?@(:clj [(instance? Date x) 'date])
