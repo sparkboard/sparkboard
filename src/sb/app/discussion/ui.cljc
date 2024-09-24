@@ -55,7 +55,7 @@
          [:div.ml-8
           (if @!expanded
             [show-posts post]
-            [:span.icon-gray
+            [:span.icon-gray.cursor-default
              {:on-click #(reset! !expanded true)}
              (if (= 0 nreplies)
                (t :tr/reply)
