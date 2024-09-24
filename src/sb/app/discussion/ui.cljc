@@ -30,20 +30,25 @@
   (let [level (post-level post)
         author (:entity/created-by post)]
     [:div
-     [:div.flex.gap-2.py-2.px-1
-      [:a.flex-none {:href (routing/entity-path (or @(az/membership author (:entity/parent (u/auto-reduce :post/parent post)))
-                                                    @author)
-                                                'ui/show)}
-       [ui/avatar {:size 12} author]]
-      [:div.flex-v
-       [:div.flex.gap-2.items-end
-        [:div.font-bold (:account/display-name author)]
-        [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]
-        (when (= 1 level)
-          [follow-toggle (sch/wrap-id post)])]
-       [:div
-        (field.ui/show-prose
-         (:post/text post))]]]
+     (if (sch/deleted? post)
+       [:div.text-gray-500
+        "[" (t :tr/deleted) "]"]
+       [:div.flex.gap-2.py-2.px-1
+        [:a.flex-none {:href (routing/entity-path (or @(az/membership author (:entity/parent (u/auto-reduce :post/parent post)))
+                                                      @author)
+                                                  'ui/show)}
+         [ui/avatar {:size 12} author]]
+        [:div.flex-v
+         [:div.flex.gap-2.items-end
+          [:div.font-bold (:account/display-name author)]
+          [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]
+          (when-let [doit! (data/delete!-authorized {:post-id (:entity/id post)})]
+            [ui/action-button {:class "h-6"
+                               :on-click #(doit!)}
+             (t :tr/delete)])]
+         [:div
+          (field.ui/show-prose
+           (:post/text post))]]])
      (when (= 1 level)
        (let [!expanded (h/use-state false)
              nreplies (count (:post/_parent post))]

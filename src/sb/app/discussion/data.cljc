@@ -38,7 +38,8 @@
      :entity/kind
      :post/text
      {:entity/created-by ~entity.data/listing-fields}
-     :entity/created-at]})
+     :entity/created-at
+     :entity/deleted-at]})
 
 (def posts-with-comments-field
   (update posts-field :post/_parent conj posts-field))
@@ -91,3 +92,13 @@
                                    (:post/do-not-follow parent))
                      [:db/add (:post/parent post) :post/followers account-id])])
     {:entity/id (:entity/id post)}))
+
+(q/defx delete!
+  {:prepare [az/with-account-id!
+             (fn [_ {:keys [account-id post-id]}]
+               (az/auth-guard! (sch/id= account-id (:entity/created-by (dl/entity [:entity/id post-id])))
+                   "Not authorized to delete this post"))]}
+  [{:keys [post-id]}]
+  (db/transact! [{:entity/id post-id
+                  :entity/deleted-at (java.util.Date.)}])
+  nil)
