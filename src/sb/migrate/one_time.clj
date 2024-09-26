@@ -1036,14 +1036,14 @@
                                                       (assoc project a (keep
                                                                          (fn [{:as   member
                                                                                :keys [user_id]}]
-                                                                           (when-let [member-id (member->board-membership-id user_id)]
+                                                                           (when-let [account-id (member->account-uuid user_id)]
                                                                              (let [role (if (and (not (:role member))
-                                                                                                 (sch/id= (member->account-uuid user_id) (:entity/created-by project)))
+                                                                                                 (sch/id= account-id (:entity/created-by project)))
                                                                                           :role/project-admin
                                                                                           (some->> (:role member) (role-kw :project)))]
-                                                                               (merge {:entity/id         (composite-uuid :membership project-id member-id)
+                                                                               (merge {:entity/id         (composite-uuid :membership project-id account-id)
                                                                                        :entity/kind       :membership
-                                                                                       :membership/member (uuid-ref :membership member-id)}
+                                                                                       :membership/member (uuid-ref :account account-id)}
                                                                                       (when role {:membership/roles #{role}})))))
                                                                          v))))
                                                   (rename :membership/_entity))
@@ -1107,14 +1107,12 @@
                                                       (assoc note a (keep
                                                                       (fn [{:as   member
                                                                             :keys [user_id]}]
-                                                                        (when-let [member-id (member->board-membership-id user_id)]
-                                                                          (let [role (if (and (not (:role member))
-                                                                                              (sch/id= (member->account-uuid user_id) (:entity/created-by note)))
-                                                                                       :role/project-admin
-                                                                                       (some->> (:role member) (role-kw :project)))]
-                                                                            (merge {:entity/id         (composite-uuid :membership note-id member-id)
+                                                                        (when-let [account-id (member->account-uuid user_id)]
+                                                                          ;; TODO review if note roles are actually used / make sense
+                                                                          (let [role (some->> (:role member) (role-kw :note))]
+                                                                            (merge {:entity/id         (composite-uuid :membership note-id account-id)
                                                                                     :entity/kind       :membership
-                                                                                    :membership/member (uuid-ref :membership member-id)}
+                                                                                    :membership/member (uuid-ref :account account-id)}
                                                                                    (when role {:membership/roles #{role}})))))
                                                                      v))))
                                                   (rename :membership/_entity))

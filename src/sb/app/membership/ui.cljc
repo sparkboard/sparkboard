@@ -33,7 +33,7 @@
       [:div.flex.px-6.gap-3
        (when (:image/avatar account) [ui/avatar {:size 20} account])
        [:div.flex-v.gap-2.grow
-        [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (-> membership :membership/member :account/display-name)]
+        [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (:account/display-name account)]
         [entity.ui/persisted-attr membership :entity/tags field-params]]
        [:a.btn.btn-white.flex.items-center.px-3.my-auto
         {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (:membership-id params)}])}
@@ -65,8 +65,11 @@
      [:div.px-body
       [:div.field-label (t :tr/project)]
       [:div.mt-3.flex.flex-wrap.gap-6
-       (for [project (->> (db/where [[:membership/member (sch/wrap-id membership)]])
-                          (map :membership/entity))]
+       (for [project (->> (db/where [[:membership/member (sch/wrap-id account)]])
+                          (map :membership/entity)
+                          (filter (every-pred (comp #{(:membership/entity membership)} :entity/parent)
+                                              ;; filter out sticky notes. TODO do we want to show them somewhere else?
+                                              (comp #{:project} :entity/kind))))]
          ^{:key (:entity/id project)}
          [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
           (:entity/title project)])]]]))
@@ -101,8 +104,8 @@
 (ui/defview members-for-card [entity]
   (let [members (data/members entity)]
     [:div.flex.flex-wrap.gap-2.px-3
-     (u/for! [member (take 6 members)
-              :let [account (:membership/member member)]]
+     (u/for! [account (take 6 members)
+              :let [member (az/membership account (:entity/parent entity))]]
        [:div.w-10.flex-v.gap-1
         [ui/avatar {:size 10} account]
         [:div.flex.h-2.items-stretch.rounded-sm.overflow-hidden

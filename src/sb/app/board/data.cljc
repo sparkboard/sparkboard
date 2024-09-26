@@ -134,7 +134,9 @@
                    {:entity/parent [:entity/id]}
                    {:membership/_entity [:entity/deleted-at
                                          ~@entity.data/id-fields
-                                         ~@board-membership-fields]}])
+                                         :membership/roles
+                                         {:membership/entity [:entity/id]}
+                                         {:membership/member [:entity/id]}]}])
 
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
@@ -144,7 +146,9 @@
                       {:entity/parent [:entity/id]}
                       {:membership/_entity [:entity/deleted-at
                                             ~@entity.data/id-fields
-                                            ~@board-membership-fields]}])
+                                            :membership/roles
+                                            {:membership/entity [:entity/id]}
+                                            {:membership/member [:entity/id]}]}])
 
 (q/defquery members
   {:prepare [(az/with-roles :board-id)
