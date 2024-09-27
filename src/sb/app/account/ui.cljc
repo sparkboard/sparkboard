@@ -11,6 +11,7 @@
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
+            [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
@@ -78,7 +79,7 @@
       [radix/tab-root]
       [account:continue-with params]]]))
 
-(ui/defview show
+(ui/defview home
   {:route            "/"
    :endpoint/public? true}
   [{:keys [account-id]} params]
@@ -144,3 +145,42 @@
                                          :href  (routing/path-for ['sb.app.board.ui/new])}
             (t :tr/create-first-board)]])]])
     (ui/redirect `sign-in)))
+
+(ui/defview show
+  {:route "/a/:this-account-id"
+   :view/router :router/modal}
+  [params]
+  (let [account (data/show params)
+        memberships (group-by :entity/kind (member.data/member-of account))
+        project-memberships (group-by :entity/parent (:project memberships))]
+    [:div.p-6.flex-v.gap-3
+     [:div.flex.gap-3
+      (when (:image/avatar account) [ui/avatar {:size 20} account])
+      [:div.flex-v.gap-2.grow
+       [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (:account/display-name account)]]
+      ;; TODO need chat with account instead of membership for this
+      #_
+      [:a.btn.btn-white.flex.items-center.px-3.my-auto
+       {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (:membership-id params)}])}
+       "message"]
+      [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
+       [radix/tooltip "Link to user"
+        [:a.modal-title-icon {:href (routing/entity-path account 'ui/show)}
+         [icons/link-2]]]
+       [radix/dialog-close
+        [:div.modal-title-icon [icons/close]]]]]
+     [:div.field-label (t :tr/memberships)]
+     (into [:div.flex-v.gap-6]
+           (map (fn [board]
+                  [:div
+                   [:div.flex.gap-3
+                    [:a.text-lg.hover:underline {:href (routing/entity-path board 'ui/show)}
+                     (:entity/title board)]
+                    [:a.btn.btn-white {:href (routing/entity-path (az/membership account board) 'ui/show)}
+                     (t :tr/profile)]]
+                   (into [:div.mt-3.flex.flex-wrap.gap-6]
+                         (map (fn [project]
+                                [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
+                                 (:entity/title project)]))
+                         (project-memberships board))]))
+           (:board memberships))]))

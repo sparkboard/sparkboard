@@ -284,7 +284,7 @@
 (defn entity-route [{:as e :entity/keys [kind id]} key]
   (when e
     [(symbol (str "sb.app." (name kind) "." key))
-     {(keyword (str (name kind) "-id")) id}]))
+     {(keyword (str (#({"account" "this-account"} % %) (name kind)) "-id")) id}]))
 
 (defn entity-path [e key]
   (some->> (entity-route e key)

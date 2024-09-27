@@ -54,6 +54,9 @@
         [radix/tooltip "Link to member"
          [:a.modal-title-icon {:href (routing/entity-path membership 'ui/show)}
           [icons/link-2]]]
+        [radix/tooltip "View user"
+         [:a.modal-title-icon {:href (routing/entity-path account 'ui/show)}
+          "U"]]
         [radix/dialog-close
          [:div.modal-title-icon [icons/close]]]]]]
      [:div.px-body.flex-v.gap-6
