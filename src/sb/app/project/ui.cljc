@@ -8,6 +8,7 @@
             [sb.app.discussion.ui :as discussion.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.membership.data :as member.data]
             [sb.app.membership.ui :as member.ui]
             [sb.app.project.data :as data]
             [sb.app.views.radix :as radix]
