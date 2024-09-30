@@ -153,6 +153,27 @@
                                        :entity/public?])))
                  ids)))
 
+(q/defquery search-membership-account
+  {:prepare [az/with-account-id!]}
+  [{:as params :keys [account-id entity-id search-term]}]
+  (if entity-id
+    ;; scoped to entity
+    (assert false "not implemented yet")
+    ;; all entities I'm also a member of
+    (dl/q '[:find [(pull ?your-account [:account/display-name
+                                        :entity/id
+                                        {:image/avatar [:entity/id]}])
+                   ...]
+            :in $ ?my-account ?search-term
+            :where
+            [?me :membership/member ?my-account]
+            [?me :membership/entity ?entity]
+            [?you :membership/entity ?entity]
+            [?you :membership/member ?your-account]
+            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+          account-id
+          search-term)))
+
 (q/defquery search-membership
   {:prepare [az/with-account-id!]}
   [{:as params :keys [account-id entity-id search-term]}]

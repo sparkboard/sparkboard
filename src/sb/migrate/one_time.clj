@@ -328,25 +328,31 @@
          defaults      (->> changes
                             (keep (fn [[k v]] (when (= ::defaults k) v)))
                             (apply merge))
+         splice        (->> changes
+                            (keep (fn [[k v]] (when (= ::splice k) v)))
+                            last)
          changes       (remove (comp #{::prepare
-                                       ::defaults} first) changes)
+                                       ::defaults
+                                       ::splice} first) changes)
          doc           (prepare doc)
          apply-changes (fn [doc]
                          (try
-                           (some->> (reduce (fn [m [a f]]
-                                              (try
-                                                (if (= a ::always)
-                                                  (f m)
-                                                  (if-some [v (some-value (m a))]
-                                                    (f m a v)
-                                                    (dissoc m a)))
-                                                (catch Exception e
-                                                  (clojure.pprint/pprint {:a   a
-                                                                          :doc m})
-                                                  (throw e))))
-                                            doc
-                                            changes)
-                                    (merge defaults))
+                           (some-> (reduce (fn [m [a f]]
+                                             (try
+                                               (if (= a ::always)
+                                                 (f m)
+                                                 (if-some [v (some-value (m a))]
+                                                   (f m a v)
+                                                   (dissoc m a)))
+                                               (catch Exception e
+                                                 (clojure.pprint/pprint {:a   a
+                                                                         :doc m})
+                                                 (throw e))))
+                                           doc
+                                           changes)
+                                   (->> (merge defaults))
+                                   (cond-> splice
+                                     splice))
                            (catch Exception e
                              (prn :failed-doc doc)
                              (throw e))))]
@@ -1186,51 +1192,34 @@
                                        ::always (remove-when (comp nil? :entity/id))
                                        :notification/account rm
                                        :notification/project rm]
-              :chat/as-map            [:_id (partial id-with-timestamp :chat)
-                                       ::always (add-kind :chat)
-                                       ::always (remove-when #(contains? #{"example" nil} (:boardId %)))
-                                       ::always (fn [m]
-                                                  (assoc m :chat/entity (uuid-ref :board (@!member-id->board-id
-                                                                                           (get-oid (first (:participantIds m)))))))
-                                       :participantIds (& (xf #(-> (members->member-refs %)
-                                                                   (u/guard (comp #{(count %)} count))))
-                                                          (rename :chat/participants))
-                                       ::always (remove-when (complement :chat/participants))
-                                       :createdAt (& (xf parse-mongo-date)
-                                                     (rename :entity/created-at))
-
-                                       :modifiedAt (& (xf parse-mongo-date) (rename :entity/updated-at))
-
-                                       ;; TODO - :messages
-                                       :messages (& (xf (partial change-keys [:_id (partial id-with-timestamp :message)
-                                                                              :createdAt rm
-                                                                              ::always (remove-when (comp str/blank? :body))
-                                                                              :body (& (xf prose)
-                                                                                       (rename :chat.message/content))
-                                                                              :senderId (& (xf member->account-ref)
-                                                                                           (rename :entity/created-by))
-                                                                              :senderData rm]))
-                                                    (rename :chat/messages))
-                                       :readBy (fn [m a v]
-                                                 (-> m
-                                                     (dissoc a)
-                                                     (assoc :chat/read-last
-                                                            (let [last-id (->> (:chat/messages m)
-                                                                               (sort-by :entity/created-at)
-                                                                               last
-                                                                               :entity/id)]
-                                                              (into {}
-                                                                    (comp (filter val)
-                                                                          (keep (fn [[k v]]
-                                                                                  (when v
-                                                                                    [(member->board-membership-id (name k))
-                                                                                     last-id]))))
-                                                                    v)))))
-                                       :boardId rm
-                                       ::always (remove-when (comp empty? :chat/messages))
-                                       ::always (remove-when (comp nil? :chat/entity))
-                                       ::always (fn [{:as m :keys [chat/participants chat/entity]}]
-                                                  (assoc m :chat/key (apply chat/make-key entity participants)))]
+              :chat/as-map            [::always (remove-when #(contains? #{"example" nil} (:boardId %)))
+                                       :participantIds (xf #(-> (into [] (keep member->account-ref) %)
+                                                                (u/guard (comp #{(count %)} count))))
+                                       ::always (remove-when (complement :participantIds))
+                                       :messages (xf (partial change-keys [:_id (partial id-with-timestamp :message)
+                                                                           :createdAt rm
+                                                                           ::always (add-kind :chat.message)
+                                                                           ::always (remove-when (comp str/blank? :body))
+                                                                           :body (& (xf prose)
+                                                                                    (rename :chat.message/content))
+                                                                           :senderId (& (xf member->account-ref)
+                                                                                        (rename :entity/created-by))
+                                                                           :senderData rm]))
+                                       ::always (fn [{:keys [messages participantIds readBy]}]
+                                                  {:messages
+                                                   (-> (mapv (fn [message]
+                                                               (assoc message
+                                                                      :chat.message/recipient (first (remove #{(:entity/created-by message)}
+                                                                                                             participantIds))))
+                                                             (sort-by :entity/created-at messages))
+                                                       (update (dec (count messages))
+                                                               (fn [{:keys [chat.message/recipient] :as message}]
+                                                                 (cond-> message
+                                                                   (not ((update-keys readBy (comp member->account-uuid name))
+                                                                         recipient))
+                                                                   (assoc :notification/unread-by [recipient]
+                                                                          :notification/email-to [recipient])))))})
+                                       ::splice :messages]
               ::mongo                 [:deleted (& (xf (fn [x] (when x deletion-time)))
                                                    (rename :entity/deleted-at))
                                        ::always (remove-when :entity/deleted-at)
@@ -1336,13 +1325,17 @@
                                   (map (juxt identity #(keyword (namespace %) (subs (name %) 1)))))
                          (keys @sch/!schema))]
     (mapcat (fn [doc]
-              (let [doc-id (sch/wrap-id doc)]
-                (into [(apply dissoc doc (keys reverse-ks))]
+              (if (sequential? doc)
+                (into []
                       (flatten-entities-xf)
-                      (mapcat (fn [[reverse-k k]]
-                                (map #(assoc % k doc-id)
-                                     (reverse-k doc)))
-                              reverse-ks)))))))
+                      doc)
+                (let [doc-id (sch/wrap-id doc)]
+                  (into [(apply dissoc doc (keys reverse-ks))]
+                        (flatten-entities-xf)
+                        (mapcat (fn [[reverse-k k]]
+                                  (map #(assoc % k doc-id)
+                                       (reverse-k doc)))
+                                reverse-ks))))))))
 
 (def coll-entities
   "Converts doc according to `changes`"

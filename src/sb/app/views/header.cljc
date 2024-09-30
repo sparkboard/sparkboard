@@ -42,17 +42,20 @@
       :items   (lang-menu-content)})])
 
 (ui/defview chats-list []
-  (let [params {:account-id (db/get :env/config :account-id)}
-        chats  (chat.data/chats-list params)]
+  (let [chats  (chat.data/chats-list nil)]
     (if (seq chats)
       [:div.flex-v
        (->> chats
             (take 6)
-            (map (partial chat.ui/chat-snippet params)))
+            (map (partial chat.ui/chat-snippet nil #_params)))
        [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
         {:href (routing/path-for [`chat.ui/chats])}
         (t :tr/view-all)]]
-      (t :tr/no-messages))))
+      [:div.flex-v
+       (t :tr/no-messages)
+       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
+        {:href (routing/path-for [`chat.ui/chats])}
+        (t :tr/view-all)]])))
 
 (ui/defview notifications []
   (let [unread (some-> (:unread (notification.data/counts nil)) (u/guard pos-int?))]
