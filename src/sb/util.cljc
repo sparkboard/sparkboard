@@ -207,3 +207,12 @@
 
 (defn iterate-some [f x]
   (take-while some? (iterate f x)))
+
+(defn auto-reduce
+  "same as `(comp last iterate-some)`"
+  [f x]
+  (loop [x x]
+    (let [y (f x)]
+      (if (nil? y)
+        x
+        (recur y)))))
