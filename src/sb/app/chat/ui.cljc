@@ -43,9 +43,9 @@
      [:div.flex-v.w-full.overflow-hidden
       [:div.flex.items-center
        [:div.font-bold.flex-auto (:account/display-name other)]]
-      [:div.text-gray-700.hidden.md:line-clamp-2.text-sm
+      [:div.text-gray-700.text-sm.truncate
        {:class (when (unread? message) "font-semibold")}
-       (field.ui/show-prose
+       (field.ui/truncated-prose
         (cond-> content
           (sch/id= created-by (db/get :env/config :account-id))
           (update :prose/string (partial str (t :tr/you) " "))))]]]))
@@ -80,10 +80,10 @@
                                 entity/created-by
                                 entity/id]}]
   [:div.p-2.flex-v
-   {:class ["max-w-[600px] rounded-[12px]"
+   {:class ["rounded-[12px]"
             (if (sch/id= account-id created-by)
-              "bg-blue-500 text-white place-self-end"
-              "bg-gray-100 text-gray-900 place-self-start")]
+              "bg-blue-500 text-white place-self-end ml-8"
+              "bg-gray-100 text-gray-900 place-self-start mr-8")]
     :key   id}
    (field.ui/show-prose content)])
 
@@ -149,8 +149,10 @@
    [:div.flex-v.overflow-hidden.flex-auto.relative.m-2
     {:class (when other-id "rounded bg-white shadow")}
     [:div.p-2.text-lg.flex.items-center.h-14.w-full.flex-none
-     [:div.truncate.flex-auto
-      (:account/display-name (db/entity other-id))]
+     (let [account (db/entity other-id)]
+       [:a.truncate.flex-auto
+        {:href (routing/entity-path account 'ui/show)}
+        (:account/display-name account)])
      [radix/dialog-close [icons/close "w-4 h-4 ml-2 hover:opacity-50 flex-none"]]]
     (when other-id
       [chat-messages params])]])
