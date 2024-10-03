@@ -104,7 +104,9 @@
         {:trigger [:button (t :tr/recent) down-arrow]
          :items   (mapv (fn [entity]
                           [{:on-select #(routing/nav! (routing/entity-route entity 'ui/show) entity)}
-                           (:entity/title entity)])
+                           (or (:entity/title entity)
+                               (:account/display-name (or (:membership/member entity)
+                                                          entity)))])
                         entities)}))))
 
 (ui/defview entity [{:as   entity
