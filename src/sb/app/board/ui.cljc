@@ -225,7 +225,7 @@
                                                   {:field-option/label (t :tr/looking-for-help)
                                                    :field-option/value :looking-for-help}]}]]
             [query-ui tags fields !xform]
-            (when-let [doit! (note.data/new!-authorized {:note {:entity/parent board-id
+            (when-let [create! (note.data/new!-authorized {:note {:entity/parent board-id
                                                                 :entity/title  (t :tr/untitled)
                                                                 :entity/admission-policy :admission-policy/open
                                                                 :entity/draft? true}})]
@@ -233,12 +233,12 @@
                {:class "bg-white/40"
                 :on-click (fn [_]
                             (p/let [{:as   result
-                                     :keys [entity/id]} (doit!)]
+                                     :keys [entity/id]} (create!)]
                               (when id
                                 (routing/nav! `note.ui/show {:note-id id}))
                               result))}
                (t :tr/new-note)])
-            (when-let [doit! (project.data/new!-authorized {:project {:entity/parent board-id
+            (when-let [create! (project.data/new!-authorized {:project {:entity/parent board-id
                                                                       :entity/title  (t :tr/untitled)
                                                                       :entity/admission-policy :admission-policy/open
                                                                       :entity/draft? true}})]
@@ -246,7 +246,7 @@
                {:class "bg-white/40"
                 :on-click (fn [_]
                             (p/let [{:as   result
-                                     :keys [entity/id]} (doit!)]
+                                     :keys [entity/id]} (create!)]
                               (when id
                                 (routing/nav! `project.ui/show {:project-id id}))
                               result))}

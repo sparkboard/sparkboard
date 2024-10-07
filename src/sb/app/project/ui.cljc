@@ -119,9 +119,9 @@
      [ui/action-button
       {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
       "leave"]
-     (when-let [doit! (data/join!-authorized {:project-id (sch/unwrap-id project)})]
+     (when-let [join! (data/join!-authorized {:project-id (sch/unwrap-id project)})]
        [ui/action-button
-        {:on-click (fn [_] (doit!))}
+        {:on-click (fn [_] (join!))}
         "join"]))])
 
 (ui/defview show

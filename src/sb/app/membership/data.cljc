@@ -236,6 +236,7 @@
   (mapv :tag/color (resolved-tags membership)))
 
 (defn members
+  "Returns members of `entity`, with an optional transducer `xform ` applied to the memberships first."
   ([entity] (members entity identity))
   ([entity xform]
    (->> (:membership/_entity entity)
@@ -244,10 +245,10 @@
                        (map :membership/member))))))
 
 (defn member-of
-  ([entity] (member-of entity identity))
-  ([entity xform]
-   (->> (:membership/_member entity)
-        ;; TODO `eduction` instead of `into []`?
+  "Returns all entities that `member` is a member of, with an optional transducer `xform` applied to the memberships first."
+  ([member] (member-of member identity))
+  ([member xform]
+   (->> (:membership/_member member)
         (into [] (comp (remove sch/deleted?)
                        xform
                        (map :membership/entity))))))
