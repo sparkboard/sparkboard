@@ -99,3 +99,26 @@
                                    (if (= ::data/other v)
                                      [:span.text-gray-500 "other"]
                                      [ui/pprinted v])]]))]]]))]]))))
+
+
+(ui/defview timings
+  {:route "/time-stats"}
+  [params]
+  [:table.border-separate.border-spacing-2
+   [:thead
+    [:tr
+     [:th]
+     [:th "count"]
+     [:th "min"]
+     [:th "avg"]
+     [:th "max"]]]
+   (into [:tbody]
+         (map (fn [[foo bar]]
+                [:tr
+                 [:td (str foo)]
+                 [:td.text-right (str (:count bar))]
+                 [:td.text-right (str (:min bar) "ms")]
+                 [:td.text-right (str (int (/ (:time bar) (:count bar))) "ms")]
+                 [:td.text-right (str (:max bar) "ms")]]))
+         (data/time-stats nil))]
+  )

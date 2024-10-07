@@ -29,6 +29,13 @@
                    m
                    (assoc m k (f v))))) m updaters))
 
+(defn update*
+  "Like `update` except when the key does not exist `f` called without args is passed as the old value"
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    (assoc m k (apply f (f) args))))
+
 (defn update-some-paths [m & pvs]
   (reduce (fn [m [path f]]
             (if-some [v (get-in m path)]
@@ -188,6 +195,8 @@
   (from-keys (distinct (mapcat keys (vals mss)))
              #(update-vals mss (fn [x] (x %)))))
 
+(def !times (atom {}))
+
 (defmacro timed [label & body]
   (let [now (if (:ns &env)
               '(.getTime (js/Date.))
@@ -196,7 +205,13 @@
        (try
          ~@body
          (finally
-           (println (str ~label ": " (- ~now start#) "ms")))))))
+           (let [time# (- ~now start#)]
+             (println (str ~label ": " time# "ms"))
+             (swap! !times update ~label #(-> %
+                                              (update* :count + 1)
+                                              (update* :time + time#)
+                                              (update :max (fnil max ##-Inf) time#)
+                                              (update :min (fnil min ##Inf) time#)))))))))
 
 (defmacro for! [& body]
   `(doall (for ~@body)))

@@ -102,10 +102,10 @@
   ;; 5. fix chat
   [:div.field-wrapper
    [:div.field-label (t :tr/team)]
-   [:div.grid.grid-cols-2.gap-6
+   [:div.grid.grid-cols-2.gap-x-6
     (for [board-membership (member.data/members project (xf/sort-by :entity/created-at u/compare:desc))
           :let [{:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
-      [:div.flex.items-center.gap-2
+      [:div.flex.items-center.gap-2.cursor-default.hover:bg-gray-100.py-3.rounded
        {:key      (:entity/id board-membership)
         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
        [ui/avatar {:size 12} account]
