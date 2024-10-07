@@ -90,24 +90,30 @@
                                 res))}
       (t :tr/register)]]))
 
-(ui/defview query-ui [tags fields !xform]
+(ui/defview query-ui [tags fields !xform !active?]
   (let [?match-filter  (h/use-memo #(io/field))
         !tag-filter    (h/use-state nil)
         !select-filter (h/use-state nil)
         ?sort          (h/use-memo #(io/field :init [:default]))]
-    (h/use-effect #(reset! !xform
-                           (comp (filter (apply u/every-pred*
-                                                (concat (some-> @!tag-filter   uuid ui/tag-pred   vector)
-                                                        (some-> @?match-filter      ui/match-pred vector)
-                                                        (keep (fn [[k v]]
-                                                                (when v
-                                                                  (fn [entity]
-                                                                    (= v (get-in entity
-                                                                                 [:entity/field-entries
-                                                                                  k
-                                                                                  :select/value])))))
-                                                              @!select-filter))))
-                                 (apply ui/sorted @?sort)))
+    (h/use-effect #(do
+                     (when !active?
+                       (reset! !active? (boolean (or @?match-filter
+                                                     @!tag-filter
+                                                     (some identity (vals @!select-filter))
+                                                     (not= [:default] @?sort)))))
+                     (reset! !xform
+                              (comp (filter (apply u/every-pred*
+                                                   (concat (some-> @!tag-filter   uuid ui/tag-pred   vector)
+                                                           (some-> @?match-filter      ui/match-pred vector)
+                                                           (keep (fn [[k v]]
+                                                                   (when v
+                                                                     (fn [entity]
+                                                                       (= v (get-in entity
+                                                                                    [:entity/field-entries
+                                                                                     k
+                                                                                     :select/value])))))
+                                                                 @!select-filter))))
+                                    (apply ui/sorted @?sort))))
                   (h/use-deps [@?match-filter @!tag-filter @!select-filter @?sort]))
     [:<>
      (when (seq tags)
@@ -175,7 +181,7 @@
      [:h2.text-2xl (t :tr/community-vote)]
      [:div.mb-4 (t :tr/vote-blurb)]
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
-      [query-ui tags fields !xform]]
+      [query-ui tags fields !xform nil]]
      (->> (data/projects {:board-id (sch/wrap-id id)})
           (into [] @!xform)
           (grouped-card-grid project.ui/vote-card))]))
@@ -211,7 +217,8 @@
                             {:entity/project-tags tags
                              :entity/project-fields (filter :field/show-on-card? fields)})
               !project-filter (h/use-state nil)
-              !xform (h/use-state (constantly identity))]
+              !xform (h/use-state (constantly identity))
+              !hide-notes? (h/use-state false)]
           [:div.flex-v.gap-6
            [:div.flex.flex-wrap.gap-4.items-end
             [:div.field-wrapper
@@ -224,7 +231,7 @@
                                                    :field-option/value :my-projects}
                                                   {:field-option/label (t :tr/looking-for-help)
                                                    :field-option/value :looking-for-help}]}]]
-            [query-ui tags fields !xform]
+            [query-ui tags fields !xform !hide-notes?]
             (when-let [create! (note.data/new!-authorized {:note {:entity/parent board-id
                                                                 :entity/title  (t :tr/untitled)
                                                                 :entity/admission-policy :admission-policy/open
@@ -253,11 +260,13 @@
                (t :tr/new-project)])]
 
            ;; notes
-           (some->> (when board-editor?
-                      (seq (data/note-drafts {:board-id board-id})) )
-                    (grouped-card-grid note.ui/card)
-                    drafts)
-           (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))
+           (when-not (or @!project-filter @!hide-notes?)
+             [:<>
+              (some->> (when board-editor?
+                         (seq (data/note-drafts {:board-id board-id})) )
+                       (grouped-card-grid note.ui/card)
+                       drafts)
+              (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))])
 
            ;; projects
            (some->> (seq (data/project-drafts {:board-id board-id}))
@@ -279,7 +288,7 @@
               !xform (h/use-state (constantly identity))]
           [:<>
            [:div.flex.flex-wrap.gap-4.items-end.mb-6
-            [query-ui tags fields !xform]]
+            [query-ui tags fields !xform nil]]
            (->> (data/members {:board-id board-id})
                 (into [] @!xform )
                 (grouped-card-grid (partial member.ui/card
