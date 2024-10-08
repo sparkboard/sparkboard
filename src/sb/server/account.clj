@@ -123,7 +123,7 @@
 
 (defn logout!
   [_ _]
-  (-> (ring.response/redirect (routing/path-for 'sb.app.account-ui/show))
+  (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/home))
       (res:logout)))
 
 (defn res:login [res account-id]
@@ -237,7 +237,7 @@
                           :body
                           (json/parse-string keyword))]
     (db/transact! (google-account-tx account-id provider-info))
-    (-> (ring.response/redirect (routing/path-for 'sb.app.account-ui/show))
+    (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/home))
         (res:login account-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

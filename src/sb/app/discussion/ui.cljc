@@ -25,7 +25,8 @@
         author (:entity/created-by post)]
     [:div
      [:div.flex.gap-2.py-2.px-1
-      [:a.flex-none {:href (routing/entity-path @(az/membership author (:entity/parent (post-root-ancestor post)))
+      [:a.flex-none {:href (routing/entity-path (or @(az/membership author (:entity/parent (post-root-ancestor post)))
+                                                    @author)
                                                 'ui/show)}
        [ui/avatar {:size 12} author]]
       [:div.flex-v

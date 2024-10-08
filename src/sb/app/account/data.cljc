@@ -104,3 +104,13 @@
                         :entity/kind          :entity/kind
                         :account/display-name :entity/title
                         :image/avatar         :image/avatar}))
+
+(q/defquery show
+  {:prepare az/with-account-id!}
+  [{:keys [this-account-id]}]
+  (db/pull `[~@entity.data/listing-fields
+             {:membership/_member [~@entity.data/id-fields
+                                   {:membership/entity
+                                    [~@entity.data/listing-fields
+                                     { :entity/parent [:entity/id]}]}]}]
+           this-account-id))

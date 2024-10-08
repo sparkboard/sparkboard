@@ -236,6 +236,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/member                          {:en "Member"
                                           :fr "Membre"
                                           :es "Miembro"},
+     :tr/memberships                     {:en "Memberships"
+                                          :fr "Adhésions"
+                                          :es "Membresías"}
      :tr/save                            {:en "Save"
                                           :fr "Enregistrer"
                                           :es "Guardar"},
@@ -270,6 +273,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/user                            {:en "User"
                                           :fr "Utilisateur"
                                           :es "Usuario"},
+     :tr/profile                         {:en "Profile"
+                                          :fr "Profil"
+                                          :es "Perfil"}
      :tr/members                         {:en "Members"
                                           :fr "Membres"
                                           :es "Miembros"},

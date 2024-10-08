@@ -10,6 +10,7 @@
             [sb.app.note.data :as data]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -26,8 +27,8 @@
   [:div.field-wrapper
    [:div.field-label (t :tr/members)]
    [:div.grid.grid-cols-2.gap-6
-    (for [board-membership (member.data/members note (xf/sort-by :entity/created-at u/compare:desc))
-          :let [{:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
+    (for [{:as account :keys [account/display-name]} (member.data/members note (xf/sort-by :entity/created-at u/compare:desc))
+          :let [board-membership (az/membership account (:entity/parent note))]]
       [:div.flex.items-center.gap-2
        {:key      (:entity/id board-membership)
         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
@@ -36,6 +37,7 @@
         display-name
         [member.ui/tags :small board-membership]]])]])
 
+;; TODO test this modal outside of owning board
 (ui/defview show
   {:route       "/n/:note-id"
    :view/router :router/modal}

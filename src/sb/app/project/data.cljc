@@ -110,7 +110,17 @@
                         {:entity/project-fields ~field.data/field-keys}]}]
                     project-id)
             (u/guard (complement sch/deleted?))
-            (merge {:membership/roles roles}))))
+            (merge {:membership/roles roles})
+            (as-> project
+                (assoc project :__profiles (mapv #(db/pull '[:entity/id :entity/kind
+                                                             {:membership/entity [:entity/id :entity/member-tags]}
+                                                             {:entity/tags [:entity/id
+                                                                            :tag/label
+                                                                            :tag/color]}
+                                                             {:membership/member [:entity/id]}]
+                                                           (az/membership-id (:membership/member %)
+                                                                             (:entity/parent project)))
+                                                 (:membership/_entity project)))))))
 
 (q/defquery fields [{:keys [board-id]}]
   (-> (q/pull `[~@entity.data/id-fields
@@ -120,12 +130,12 @@
 (q/defx new!
   {:prepare [az/with-account-id!
              (az/with-member-id! (comp :entity/parent :project))]}
-  [{:keys [account-id member-id project]}]
+  [{:keys [account-id project]}]
   ;; TODO
   ;; verify that user is allowed to create a new project in parent
   ;; check if project creation can even be restricted for board members
   (let [project    (dl/new-entity project :project :by account-id)
-        membership (member.data/new-entity-with-membership project member-id #{:role/project-admin})]
+        membership (member.data/new-entity-with-membership project account-id #{:role/project-admin})]
     (validate/assert project :project/as-map)
     (validate/assert (update membership :membership/entity sch/wrap-id) :membership/as-map)
     (db/transact! [membership])
@@ -145,12 +155,12 @@
              (fn [_ {:keys [project-id]}]
                (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity project-id)))
                    "Project is invite only"))]}
-  [{:keys [account-id member-id project-id]}]
-  (if-let [project-member-id (az/deleted-membership-id member-id project-id)]
+  [{:keys [account-id project-id]}]
+  (if-let [project-member-id (az/deleted-membership-id account-id project-id)]
     (db/transact! [{:db/id project-member-id
                     :entity/deleted-at sch/DELETED_SENTINEL}])
     (let [membership (member.data/new-entity-with-membership (sch/wrap-id project-id)
-                                                             member-id
+                                                             account-id
                                                              #{})]
       (validate/assert membership :membership/as-map)
       (db/transact! [membership])))
@@ -159,9 +169,7 @@
 (q/defx leave!
   {:prepare [az/with-account-id!]}
   [{:keys [account-id project-id]}]
-  (when-let [member-id (-> account-id
-                           (az/membership-id (:entity/parent (dl/entity (sch/wrap-id project-id))))
-                           (az/membership-id project-id))]
+  (when-let [member-id (az/membership-id account-id project-id)]
     (db/transact! [{:db/id member-id
                     :entity/deleted-at (java.util.Date.)}]))
   {:body ""})

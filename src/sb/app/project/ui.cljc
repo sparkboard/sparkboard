@@ -103,10 +103,10 @@
   [:div.field-wrapper
    [:div.field-label (t :tr/team)]
    [:div.grid.grid-cols-2.gap-6
-    (for [board-membership (member.data/members project (xf/sort-by :entity/created-at u/compare:desc))
-          :let [{:as account :keys [account/display-name]} (-> board-membership :membership/member)]]
+    (for [{:as account :keys [account/display-name]} (member.data/members project (xf/sort-by :entity/created-at u/compare:desc))
+          :let [board-membership (az/membership account (:entity/parent project))]]
       [:div.flex.items-center.gap-2
-       {:key      (:entity/id board-membership)
+       {:key      (:entity/id account)
         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
        [ui/avatar {:size 12} account]
        [:div.flex-v.gap-1
@@ -115,7 +115,6 @@
    (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])
    (if (some-> (db/get :env/config :account)
-               (az/membership-id (:entity/parent project))
                (az/membership-id project))
      [ui/action-button
       {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
