@@ -7,9 +7,6 @@
             [sb.routing :as routing]
             [net.cgrand.xforms :as xf]))
 
-(ui/defview truncated-prose [prose]
-  [:span.truncate {:class "[&_*]:inline [&_br]:hidden"}
-   (field.ui/show-prose prose)])
 
 (ui/defview new-post [{author :entity/created-by :post/keys [text parent]}]
   [:div.flex.gap-2
@@ -23,10 +20,10 @@
         [:<>
          (t :tr/replied-to)
          " "
-         [truncated-prose (:post/text parent)]]
+         [field.ui/truncated-prose (:post/text parent)]]
         (t :tr/wrote))]
      #_[:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]]
-    [truncated-prose text]]])
+    [field.ui/truncated-prose text]]])
 
 (ui/defview new-member [{:keys [notification/profile membership/member]}]
   [:div.flex.items-center.gap-2

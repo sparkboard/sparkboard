@@ -71,7 +71,7 @@
                         (u/group-by-with :entity/created-by newest-entity))
                    (->> (db/where [[:entity/created-by account-id]
                                    [:entity/kind :chat.message]])
-                        (u/group-by-with :entity/created-by newest-entity)))
+                        (u/group-by-with :chat.message/recipient newest-entity)))
        vals
        (sort-by :entity/created-at u/compare:desc)
        (mapv (db/pull message-fields))))
