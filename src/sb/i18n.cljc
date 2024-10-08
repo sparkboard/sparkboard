@@ -101,6 +101,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/delete                          {:en "Delete"
                                           :fr "Supprimer"
                                           :es "Eliminar"}
+     :tr/deleted                         {:en "Deleted"
+                                          :fr "Supprimé"
+                                          :es "Eliminado"}
      :tr/field-type                      {:en "Field type"
                                           :fr "Type de champ"
                                           :es "Tipo de campo"},

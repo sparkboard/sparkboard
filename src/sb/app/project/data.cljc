@@ -83,6 +83,13 @@
                                             :community-action.action/chat]})
      :community-action/hint     {s- :string}}))
 
+(defn strip-deleted-posts [entity]
+  (update entity :post/_parent
+          update-vals (comp strip-deleted-posts
+                            #(cond-> %
+                               (sch/deleted? %)
+                               (dissoc :entity/created-by :post/text)))))
+
 (q/defquery show
   {:prepare [(az/with-roles :project-id)]}
   [{:keys [project-id membership/roles]}]
@@ -112,6 +119,7 @@
                         {:entity/project-fields ~field.data/field-keys}]}]
                     project-id)
             (u/guard (complement sch/deleted?))
+            strip-deleted-posts
             (merge {:membership/roles roles})
             (as-> project
                 (assoc project :__profiles (mapv #(db/pull '[:entity/id :entity/kind
