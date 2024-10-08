@@ -11,28 +11,36 @@
             [sb.util :as u]
             [yawn.hooks :as h]))
 
-(defn post-ancestors [post]
-  (rest (u/iterate-some :post/parent post)))
+(defn post-level [post]
+  (dec (count (u/iterate-some :post/parent post))))
 
-(defn post-root-ancestor [post]
-  (last (post-ancestors post)))
+(ui/defview follow-toggle [entity-id]
+  (let [follows? (data/follows? {:entity-id entity-id})]
+    [ui/action-button {:class "h-6"
+                       :on-click (fn [_]
+                                   (data/set-follow! {:entity-id entity-id} (not follows?)))}
+     (if follows?
+       "unfollow"
+       "follow")]))
 
 (declare show-posts)
 
 (ui/defview show-post [post]
   ^{:key (:entity/id post)}
-  (let [level (count (post-ancestors post))
+  (let [level (post-level post)
         author (:entity/created-by post)]
     [:div
      [:div.flex.gap-2.py-2.px-1
-      [:a.flex-none {:href (routing/entity-path (or @(az/membership author (:entity/parent (post-root-ancestor post)))
+      [:a.flex-none {:href (routing/entity-path (or @(az/membership author (:entity/parent (u/auto-reduce :post/parent post)))
                                                     @author)
                                                 'ui/show)}
        [ui/avatar {:size 12} author]]
       [:div.flex-v
        [:div.flex.gap-2.items-end
         [:div.font-bold (:account/display-name author)]
-        [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]]
+        [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]
+        (when (= 1 level)
+          [follow-toggle (sch/wrap-id post)])]
        [:div
         (field.ui/show-prose
          (:post/text post))]]]
@@ -64,10 +72,9 @@
      [form.ui/submit-form !post (t :tr/post)]]))
 
 (ui/defview show-posts [parent]
-  (let [level (count (post-ancestors parent))]
-    [:<>
-     (cond-> (into [:<>]
-                   (map show-post)
-                   (sort-by :entity/created-at (:post/_parent parent)))
-       (< level 2)
-       (conj [post-form (sch/wrap-id parent)]))]))
+  [:<>
+   (cond-> (into [:<>]
+                 (map show-post)
+                 (sort-by :entity/created-at (:post/_parent parent)))
+     (< (post-level parent) 2)
+     (conj [post-form (sch/wrap-id parent)]))])

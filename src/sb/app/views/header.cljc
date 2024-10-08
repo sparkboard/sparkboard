@@ -7,6 +7,8 @@
             [sb.app.chat.ui :as chat.ui]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.membership.data :as member.data]
+            [sb.app.notification.data :as notification.data]
+            [sb.app.notification.ui :as notification.ui]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.i18n :as i :refer [t]]
@@ -40,17 +42,30 @@
       :items   (lang-menu-content)})])
 
 (ui/defview chats-list []
-  (let [params {:account-id (db/get :env/config :account-id)}
-        chats  (chat.data/chats-list params)]
+  (let [chats  (chat.data/chats-list nil)]
     (if (seq chats)
       [:div.flex-v
        (->> chats
             (take 6)
-            (map (partial chat.ui/chat-snippet params)))
+            (map (partial chat.ui/chat-snippet nil #_params)))
        [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
         {:href (routing/path-for [`chat.ui/chats])}
         (t :tr/view-all)]]
-      (t :tr/no-messages))))
+      [:div.flex-v
+       (t :tr/no-messages)
+       [:a.bg-blue-100.hover:bg-blue-200.rounded.text-center.py-2.mt-2.focus-ring
+        {:href (routing/path-for [`chat.ui/chats])}
+        (t :tr/view-all)]])))
+
+(ui/defview notifications []
+  (let [unread (some-> (:unread (notification.data/counts nil)) (u/guard pos-int?))]
+    [radix/menubar-menu {:trigger [:button {:tab-index 0}
+                                   (when unread
+                                     [:div.z-10.absolute.font-bold.text-xs.text-center.text-focus-accent
+                                      {:style {:top 2 :right 0 :width 20}}
+                                      unread])
+                                   [icons/bell (when unread "text-focus-accent")]]
+                         :content [notification.ui/show-all]}]))
 
 (ui/defview chat []
   (let [unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]
@@ -116,5 +131,6 @@
                   {:trigger [:button (t :tr/new) down-arrow]
                    :items   [[{:on-select #(routing/nav! 'sb.app.board.ui/new)} (t :tr/board)]
                              [{:on-select #(routing/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
+                [notifications]
                 [chat]
                 [account]])]]]))

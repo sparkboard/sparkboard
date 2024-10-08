@@ -23,15 +23,10 @@
   #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
                                           [:membership/member (sch/wrap-id member-id)]
                                           (complement sch/deleted?)])))
-     :clj  (first (dl/q '[:find [?e]
-                          :in $ % ?member-id ?entity-id
-                          :where
-                          [?e :membership/member ?member-id]
-                          [?e :membership/entity ?entity-id]
-                          (not (deleted? ?e))]
-                        rules
-                        (sch/wrap-id member-id)
-                        (sch/wrap-id entity-id)))))
+     :clj (-> (dl/entity [:membership/entity+member [(:db/id (dl/entity (sch/wrap-id entity-id)))
+                                                     (:db/id (dl/entity (sch/wrap-id member-id)))]])
+              (u/guard (complement sch/deleted?))
+              :db/id)))
 
 (defn deleted-membership-id
   "Returns deleted membership id for the given member and entity, or nil if not found."
@@ -45,15 +40,10 @@
   #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
                                           [:membership/member (sch/wrap-id member-id)]
                                           sch/deleted?])))
-     :clj  (first (dl/q '[:find [?e]
-                          :in $ % ?member-id ?entity-id
-                          :where
-                          [?e :membership/member ?member-id]
-                          [?e :membership/entity ?entity-id]
-                          (deleted? ?e)]
-                        rules
-                        (sch/wrap-id member-id)
-                        (sch/wrap-id entity-id)))))
+     :clj (-> (dl/entity [:membership/entity+member [(:db/id (dl/entity (sch/wrap-id entity-id)))
+                                                     (:db/id (dl/entity (sch/wrap-id member-id)))]])
+              (u/guard sch/deleted?)
+              :db/id)))
 
 (defn membership [member-id entity-id]
   (db/entity (membership-id member-id entity-id)))

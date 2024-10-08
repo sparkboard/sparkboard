@@ -207,3 +207,24 @@
 
 (defn iterate-some [f x]
   (take-while some? (iterate f x)))
+
+(defn auto-reduce
+  "same as `(comp last iterate-some)`"
+  [f x]
+  (loop [x x]
+    (let [y (f x)]
+      (if (nil? y)
+        x
+        (recur y)))))
+
+(defn group-by-with [keyfn mergefn coll]
+  (persistent!
+   (reduce
+    (fn [res x]
+      (let [k (keyfn x)
+            v (get res k ::not-found)]
+        (assoc! res k (if (= ::not-found v)
+                        x
+                        (mergefn v x)))))
+    (transient {})
+    coll)))

@@ -36,7 +36,7 @@
         [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (:account/display-name account)]
         [entity.ui/persisted-attr membership :entity/tags field-params]]
        [:a.btn.btn-white.flex.items-center.px-3.my-auto
-        {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (:membership-id params)}])}
+        {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (sch/wrap-id account)}])}
         "message"]
 
        [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
