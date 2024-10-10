@@ -118,11 +118,11 @@
                (az/membership-id project))
      [ui/action-button
       {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
-      "leave"]
+      (t :tr/leave)]
      (when-let [join! (data/join!-authorized {:project-id (sch/unwrap-id project)})]
        [ui/action-button
         {:on-click (fn [_] (join!))}
-        "join"]))])
+        (t :tr/join)]))])
 
 (ui/defview show
   {:route       "/p/:project-id"

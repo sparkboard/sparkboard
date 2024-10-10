@@ -446,6 +446,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/invite-only                     {:en "Invite only"
                                           :fr "Invitation seulement"
                                           :es "Solo por invitación"}
+     :tr/join                            {:en "Join"
+                                          :fr "Rejoindre"
+                                          :es "Unirse"}
+     :tr/leave                           {:en "Leave"
+                                          :fr "Partir"
+                                          :es "Dejar"}
      :tr/registration-page-message       {:en "Registration page message"
                                           :fr "Message de la page d'inscription"
                                           :es "Mensaje de la página de registro"}
