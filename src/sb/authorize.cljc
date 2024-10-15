@@ -11,42 +11,36 @@
      ~'[?e :entity/deleted-at ?deleted-at]
      [(~'not= ~'?deleted-at ~sch/DELETED_SENTINEL)]]])
 
-(defn membership-id
-  "Returns membership id for the given member and entity, or nil if not found."
+(defn raw-membership
+  "Returns membership (posssibly deleted) for the given member and entity"
   [member-id entity-id]
   ;; TODO, use malli for validations like these
   (when-not member-id
     (throw (ex-info "Missing member-id" {:entity-id entity-id})))
   (when-not entity-id
     (throw (ex-info "Missing entity-id" {:member-id member-id})))
-  #_[:entity/id (sch/composite-uuid :membership member-id entity-id)]
-  #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
-                                          [:membership/member (sch/wrap-id member-id)]
-                                          (complement sch/deleted?)])))
-     :clj (-> (dl/entity [:membership/entity+member [(:db/id (dl/entity (sch/wrap-id entity-id)))
-                                                     (:db/id (dl/entity (sch/wrap-id member-id)))]])
-              (u/guard (complement sch/deleted?))
-              :db/id)))
+  #?(:cljs (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
+                             [:membership/member (sch/wrap-id member-id)]]))
+     :clj (db/entity [:membership/entity+member [(:db/id (dl/entity (sch/wrap-id entity-id)))
+                                                 (:db/id (dl/entity (sch/wrap-id member-id)))]])))
+
+(defn membership [member-id entity-id]
+  (-> (raw-membership member-id entity-id)
+      (u/guard (complement sch/deleted?))))
+
+(defn deleted-membership [member-id entity-id]
+  (-> (raw-membership member-id entity-id)
+      (u/guard sch/deleted?)))
+
+(defn membership-id
+  "Returns membership id for the given member and entity, or nil if not found."
+  [member-id entity-id]
+  (:db/id (not-empty (membership member-id entity-id))))
 
 (defn deleted-membership-id
   "Returns deleted membership id for the given member and entity, or nil if not found."
   [member-id entity-id]
-  ;; TODO, use malli for validations like these
-  (when-not member-id
-    (throw (ex-info "Missing member-id" {:entity-id entity-id})))
-  (when-not entity-id
-    (throw (ex-info "Missing entity-id" {:member-id member-id})))
-  #_[:entity/id (sch/composite-uuid :membership member-id entity-id)]
-  #?(:cljs (sch/wrap-id (first (db/where [[:membership/entity (sch/wrap-id entity-id)]
-                                          [:membership/member (sch/wrap-id member-id)]
-                                          sch/deleted?])))
-     :clj (-> (dl/entity [:membership/entity+member [(:db/id (dl/entity (sch/wrap-id entity-id)))
-                                                     (:db/id (dl/entity (sch/wrap-id member-id)))]])
-              (u/guard sch/deleted?)
-              :db/id)))
-
-(defn membership [member-id entity-id]
-  (db/entity (membership-id member-id entity-id)))
+  (:db/id (not-empty (deleted-membership member-id entity-id))))
 
 (defn editor-role? [roles]
   (or (:role/self roles)

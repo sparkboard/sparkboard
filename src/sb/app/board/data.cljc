@@ -195,6 +195,7 @@
   {:prepare az/with-account-id!}
   [{:keys [account-id board-id]}]
   (->> (az/membership account-id board-id)
+       not-empty
        member.data/member-of
        (filter (every-pred :entity/draft? (complement sch/deleted?)))
        (mapv (db/pull project-fields))))
