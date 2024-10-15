@@ -11,6 +11,7 @@
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.membership.data :as member.data]
             [sb.app.membership.ui :as member.ui]
             [sb.app.note.data :as note.data]
             [sb.app.note.ui :as note.ui]
@@ -176,27 +177,45 @@
      (ui/sub-header board)
      [:div.m-body.p-4.flex-v.gap-6.backdrop-blur-md.rounded-lg
       {:class "bg-white/20"}
-      [:div {:class           "flex flex-col gap-6 mt-2"}
-       ;; tabs
-       (into [:div.flex.items-stretch.gap-3]
-             (comp (filter identity)
-                   (map (fn [[title-kw path]]
-                          (if (= title-kw current-tab)
-                            [:div {:class ["px-1 border-b-2"
-                                           "border-primary"
-                                           "text-txt"]
-                                   :href (routing/entity-path board 'ui/show)}
-                             (t title-kw)]
-                            [:a {:class ["px-1 border-b-2 border-transparent text-txt/60"
-                                         "hover:border-primary/10"]
-                                   :href path}
-                             (t title-kw)]))))
-             [[:tr/projects (routing/entity-path board 'ui/show)]
-              [:tr/members (routing/path-for [`members {:board-id board-id}])]
-              (when (:member-vote/open? board)
-                [:tr/votes (routing/path-for [`voting {:board-id board-id}])])])
+      [:div {:class           "flex flex-col gap-6"}
+       [:div.flex.justify-between.content-end
+        ;; tabs
+        (into [:div.flex.items-stretch.gap-3.mt-3]
+              (map (fn [[title-kw path]]
+                     (if (= title-kw current-tab)
+                       [:div {:class ["px-1 border-b-2"
+                                      "border-primary"
+                                      "text-txt"]
+                              :href (routing/entity-path board 'ui/show)}
+                        (t title-kw)]
+                       [:a {:class ["px-1 border-b-2 border-transparent text-txt/60"
+                                    "hover:border-primary/10"]
+                            :href path}
+                        (t title-kw)])))
+              (cons
+               [:tr/projects (routing/entity-path board 'ui/show)]
+               (when (:account-id params)
+                 (cons
+                  [:tr/members (routing/path-for [`members {:board-id board-id}])]
+                  (when (:member-vote/open? board)
+                    [[:tr/votes (routing/path-for [`voting {:board-id board-id}])]])))))
+        (when-let [account (db/get :env/config :account)]
+          (if-let [membership-id  (az/membership-id account board)]
+            [:a.btn.btn-white
+             {:class "bg-white/40"
+              :href (routing/entity-path (db/entity membership-id) 'ui/show)}
+             (t :tr/profile)]
+            (when-let [join! (member.data/join!-authorized {:board-id board-id})]
+              [ui/action-button
+               {:class "bg-white/40"
+                :on-click (fn [_]
+                            (p/let [foo (join!)]
+                              (prn ::aa foo)
+                              (routing/nav! `member.ui/show {:membership-id (:entity/id foo)})
+                              ))}
+               (t :tr/join)])))]
        body]]
-      [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
+     [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
 (ui/defview show
   {:route "/b/:board-id"}

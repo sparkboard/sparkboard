@@ -97,25 +97,32 @@
   )
 
 (q/defquery show
-  {:prepare [(az/with-roles :board-id)
+  {:prepare [az/with-account-id
+             (az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
-  [{:as params :keys [board-id membership/roles]}]
+  [{:as params :keys [account-id board-id membership/roles]}]
   (u/timed `show
-           (if-let [board (db/pull `[~@entity.data/listing-fields
-                                     ~@entity.data/site-fields
-                                     {:image/logo-large [:entity/id]}
-                                     {:image/footer [:entity/id]}
-                                     {:image/sub-header [:entity/id]}
-                                     :entity/member-tags
-                                     :entity/member-fields
-                                     :entity/project-fields
-                                     :entity/admission-policy
-                                     :member-vote/open?
-                                     {:entity/parent [~@entity.data/listing-fields :org/show-org-tab?]}]
-                                   board-id)]
-             (merge board {:membership/roles roles})
-             (throw (ex-info "Board not found!" {:status 400})))))
-
+    (if-let [board (db/pull `[~@entity.data/listing-fields
+                              ~@entity.data/site-fields
+                              {:image/logo-large [:entity/id]}
+                              {:image/footer [:entity/id]}
+                              {:image/sub-header [:entity/id]}
+                              :entity/member-tags
+                              :entity/member-fields
+                              :entity/project-fields
+                              :entity/admission-policy
+                              :member-vote/open?
+                              :board/home-page-message
+                              {:entity/parent [~@entity.data/listing-fields :org/show-org-tab?]}]
+                            board-id)]
+      (merge board {:membership/roles roles
+                    :membership (when account-id
+                                  (->> (:db/id (not-empty (az/raw-membership account-id board-id)))
+                                       (db/pull `[~@entity.data/id-fields
+                                                  {:membership/entity [:entity/id]}
+                                                  {:membership/member [:entity/id]}
+                                                  :entity/deleted-at])))})
+      (throw (ex-info "Board not found!" {:status 400})))))
 
 (def board-membership-fields `[{:membership/member ~entity.data/listing-fields}
                               {:entity/tags [:entity/id
