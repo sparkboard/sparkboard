@@ -92,7 +92,8 @@
   )
 
 (q/defquery show
-  {:prepare az/require-account!}
+  {:endpoint/public? true ;; TODO board visibility
+   }
   [params]
   (dissoc (q/pull `[~@entity.data/listing-fields
                     :entity/tags
