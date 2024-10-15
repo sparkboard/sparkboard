@@ -91,7 +91,8 @@
                                (dissoc :entity/created-by :post/text)))))
 
 (q/defquery show
-  {:prepare [(az/with-roles :project-id)]}
+  {:endpoint/public? true ;; TODO do we need to restrict by board visibility?
+   :prepare [(az/with-roles :project-id)]}
   [{:keys [project-id membership/roles]}]
   (u/timed `show
     (some-> (q/pull `[:entity/id

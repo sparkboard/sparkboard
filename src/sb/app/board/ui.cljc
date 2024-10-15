@@ -218,7 +218,8 @@
      [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
 (ui/defview show
-  {:route "/b/:board-id"}
+  {:route "/b/:board-id"
+   :endpoint/public? true}
   [{:as params :keys [board-id]}]
   (let [board        (data/show {:board-id board-id})
         board-editor? (az/editor-role? (az/all-roles (:account-id params) board))
@@ -278,7 +279,8 @@
       (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))
 
       ;; projects
-      (some->> (seq (data/project-drafts {:board-id board-id}))
+      (some->> (when (:account-id params)
+                 (seq (data/project-drafts {:board-id board-id})))
                (grouped-card-grid card)
                drafts)
       (->> (data/projects {:board-id board-id})

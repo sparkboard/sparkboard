@@ -97,7 +97,8 @@
   )
 
 (q/defquery show
-  {:prepare [az/with-account-id
+  {:endpoint/public? true
+   :prepare [az/with-account-id
              (az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
   [{:as params :keys [account-id board-id membership/roles]}]
@@ -168,7 +169,8 @@
                                           ~@board-membership-fields])))))
 
 (q/defquery notes
-  {:prepare [(az/with-roles :board-id)
+  {:endpoint/public? true
+   :prepare [(az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `notes
@@ -189,7 +191,8 @@
                 (mapv (db/pull note-fields)))))
 
 (q/defquery projects
-  {:prepare [(az/with-roles :board-id)
+  {:endpoint/public? true
+   :prepare [(az/with-roles :board-id)
              (member.data/assert-can-view :board-id)]}
   [{:keys [board-id membership/roles]}]
   (u/timed `projects
