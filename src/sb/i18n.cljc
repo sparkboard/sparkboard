@@ -458,6 +458,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/leave                           {:en "Leave"
                                           :fr "Partir"
                                           :es "Dejar"}
+     :tr/leave-board                     {:en "Leave board"
+                                          :fr "Partir tableau"
+                                          :es "Dejar tablero"}
      :tr/registration-page-message       {:en "Registration page message"
                                           :fr "Message de la page d'inscription"
                                           :es "Mensaje de la página de registro"}

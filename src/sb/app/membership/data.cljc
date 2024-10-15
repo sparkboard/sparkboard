@@ -6,6 +6,7 @@
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
             [sb.util :as u]
+            [sb.validate :as validate]
             [re-db.api :as db])
   #?(:clj (:import [java.util Date])))
 
@@ -277,3 +278,31 @@
         (into [] (comp (remove sch/deleted?)
                        xform
                        (map :membership/entity))))))
+
+(q/defx join!
+  {:prepare [az/with-account-id!
+             (fn [_ {:keys [board-id]}]
+               (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity board-id)))
+                   "Board is invite only"))]}
+  [{:keys [account-id board-id]}]
+  (if-let [board-member-id (az/deleted-membership-id account-id board-id)]
+    (do
+      (db/transact! [{:db/id board-member-id
+                      :entity/created-at (java.util.Date.)
+                      :entity/deleted-at sch/DELETED_SENTINEL}])
+      {:entity/id (:entity/id (db/entity board-member-id))})
+    (let [membership (-> (new-entity-with-membership (sch/wrap-id board-id)
+                                                     account-id
+                                                     #{})
+                         (validate/assert :membership/as-map))]
+      (db/transact! [membership])
+      {:entity/id (:entity/id membership)})))
+
+(q/defx leave!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id board-id]}]
+  (when-let [member-id (az/membership-id account-id board-id)]
+    (db/transact! [{:db/id member-id
+                    :entity/deleted-at (java.util.Date.)}])
+    (db/pull [:entity/id :entity/deleted-at]
+             member-id)))

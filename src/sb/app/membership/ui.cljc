@@ -1,5 +1,6 @@
 (ns sb.app.membership.ui
-  (:require [re-db.api :as db]
+  (:require [promesa.core :as p]
+            [re-db.api :as db]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
@@ -76,7 +77,16 @@
                                               (comp #{:project} :entity/kind))))]
          ^{:key (:entity/id project)}
          [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
-          (:entity/title project)])]]]))
+          (:entity/title project)])]]
+     (when (:role/self roles)
+       [:div.px-body
+        [ui/action-button
+         {:class "bg-white/40"
+          :on-click (fn [_]
+                      (p/do
+                        (data/leave! {:board-id (:entity/id (:membership/entity membership))})
+                        (routing/dissoc-router! :router/modal)))}
+         (t :tr/leave-board)]])]))
 
 (ui/defview tags [size board-membership]
   (let [tag-class (case size :small "tag-sm" :medium "tag-md")]
