@@ -68,7 +68,8 @@
      [:div.px-body
       [:div.field-label (t :tr/project)]
       [:div.mt-3.flex.flex-wrap.gap-6
-       (for [project (->> (db/where [[:membership/member (sch/wrap-id account)]])
+       (for [project (->> (db/where [[:membership/member (sch/wrap-id account)]
+                                     (complement sch/deleted?)])
                           (map :membership/entity)
                           (filter (every-pred (comp #{(:membership/entity membership)} :entity/parent)
                                               ;; filter out sticky notes. TODO do we want to show them somewhere else?
