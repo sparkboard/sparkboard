@@ -248,6 +248,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/save                            {:en "Save"
                                           :fr "Enregistrer"
                                           :es "Guardar"},
+     :tr/register                        {:en "Register"
+                                          :fr "Enregistrer"
+                                          :es "Registrar"}
+     :tr/sign-in                         {:en "Sign in"
+                                          :fr "Se connecter "
+                                          :es "Iniciar sesión"}
      :tr/logout                          {:en "Log out"
                                           :fr "Se déconnecter"
                                           :es "Cerrar sesión"},

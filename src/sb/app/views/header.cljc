@@ -128,11 +128,15 @@
       (entity.ui/settings-button entity)
       [radix/menubar-root {:class "contents"}
        (concat children
-               [(recents)
-                (radix/menubar-menu
-                  {:trigger [:button (t :tr/new) down-arrow]
-                   :items   [[{:on-select #(routing/nav! 'sb.app.board.ui/new)} (t :tr/board)]
-                             [{:on-select #(routing/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
-                [notifications]
-                [chat]
-                [account]])]]]))
+               [(recents)]
+               (if (db/get :env/config :account)
+                 [(radix/menubar-menu
+                   {:trigger [:button (t :tr/new) down-arrow]
+                    :items   [[{:on-select #(routing/nav! 'sb.app.board.ui/new)} (t :tr/board)]
+                              [{:on-select #(routing/nav! 'sb.app.org.ui/new)} (t :tr/org)]]})
+                  [notifications]
+                  [chat]
+                  [account]]
+                 ;; TODO redirect back to current view
+                 [[:a.btn.btn-white {:href (routing/path-for ['sb.app.account.ui/sign-in])}
+                   (t :tr/sign-in)]]))]]]))
