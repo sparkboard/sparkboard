@@ -82,7 +82,7 @@
 (ui/defview home
   {:route            "/"
    :endpoint/public? true}
-  [{:keys [account-id]} params]
+  [{:keys [account-id]}]
   (if account-id
     (let [?filter       (h/use-callback (forms/field))
           all           (data/all {})
