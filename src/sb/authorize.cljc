@@ -35,12 +35,12 @@
 (defn membership-id
   "Returns membership id for the given member and entity, or nil if not found."
   [member-id entity-id]
-  (:db/id (membership member-id entity-id)))
+  (:db/id (not-empty (membership member-id entity-id))))
 
 (defn deleted-membership-id
   "Returns deleted membership id for the given member and entity, or nil if not found."
   [member-id entity-id]
-  (:db/id (deleted-membership member-id entity-id)))
+  (:db/id (not-empty (deleted-membership member-id entity-id))))
 
 (defn editor-role? [roles]
   (or (:role/self roles)

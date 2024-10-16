@@ -118,7 +118,7 @@
                             board-id)]
       (merge board {:membership/roles roles
                     :membership (when account-id
-                                  (->> (:db/id (az/raw-membership account-id board-id))
+                                  (->> (:db/id (not-empty (az/raw-membership account-id board-id)))
                                        (db/pull `[~@entity.data/id-fields
                                                   {:membership/entity [:entity/id]}
                                                   {:membership/member [:entity/id]}
@@ -205,6 +205,7 @@
   {:prepare az/with-account-id!}
   [{:keys [account-id board-id]}]
   (->> (az/membership account-id board-id)
+       not-empty
        member.data/member-of
        (filter (every-pred :entity/draft? (complement sch/deleted?)))
        (mapv (db/pull project-fields))))
