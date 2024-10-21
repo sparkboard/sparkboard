@@ -78,18 +78,14 @@
 (ui/defview register
   {:route "/b/:board-id/register"}
   [{:as params :keys [route]}]
-  (ui/with-form [!membership {:membership/name     ?name
-                              :membership/password ?pass}]
-    [:div
-     [:h3 (t :tr/register)]
-     [field.ui/text-field ?name nil]
-     [field.ui/text-field ?pass nil]
-     [:button {:on-click #(p/let [res (routing/POST route @!membership)]
-                            ;; TODO - how to determine POST success?
-                            #_(when (http-ok? res)
-                                (routing/nav! [:board/read params])
-                                res))}
-      (t :tr/register)]]))
+  (if (:account-id params)
+    (h/use-effect (fn []
+                    (p/let [membership (member.data/join! {:board-id (:board-id params)})]
+                      (-> @routing/!location
+                          (routing/update-matches `show {:board-id (:board-id params)})
+                          (routing/update-matches `member.ui/show {:membership-id (:entity/id membership)})
+                          routing/nav!*))))
+    (h/use-effect (fn [] (routing/nav! `sb.app.account.ui/sign-in)))))
 
 (ui/defview query-ui [tags fields !xform]
   (let [?match-filter  (h/use-memo #(io/field))
@@ -174,6 +170,19 @@
     [:div.flex-v.gap-6
      {:style (ui/background-image-style board)}
      [header/entity board nil]
+     (when-not (:account-id params)
+       [:div.max-w-prose.mx-auto.text-center.p-4.flex-v.gap-2.backdrop-blur-md.rounded-lg
+        (when-let [src (asset.ui/asset-src (:image/logo-large board) :card)]
+          [:img.mx-auto.my-4 {:class "w-2/3" :src src}])
+        [field.ui/show-prose (:entity/description board)]
+        [:div.flex.gap-3.justify-center
+         [:a.btn.btn-primary.btn-base {:href (routing/path-for [`register {:board-id board-id}])}
+          (t :tr/register)]
+         [:a.btn.btn-white
+          {:class "bg-white/40"
+           :href (routing/path-for [`sb.app.account.ui/sign-in])}
+          (t :tr/sign-in)]]
+        [field.ui/show-prose (:board/home-page-message board)]])
      (ui/sub-header board)
      [:div.m-body.p-4.flex-v.gap-6.backdrop-blur-md.rounded-lg
       {:class "bg-white/20"}
@@ -209,10 +218,8 @@
               [ui/action-button
                {:class "bg-white/40"
                 :on-click (fn [_]
-                            (p/let [foo (join!)]
-                              (prn ::aa foo)
-                              (routing/nav! `member.ui/show {:membership-id (:entity/id foo)})
-                              ))}
+                            (p/let [membership (join!)]
+                              (routing/nav! `member.ui/show {:membership-id (:entity/id membership)})))}
                (t :tr/join)])))]
        body]]
      [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
