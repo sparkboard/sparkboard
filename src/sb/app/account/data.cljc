@@ -86,7 +86,7 @@
 
 #?(:clj
    (defn logout!
-     {:endpoint         {:get "/logout"}
+     {:endpoint         {:post "/logout"}
       :endpoint/public? true}
      [req params]
      (server.account/logout! req params)))
