@@ -88,7 +88,9 @@
        {:trigger [:button {:tab-index 0}
                   [:img.rounded.icon-lg {:src (asset.ui/asset-src (:image/avatar account) :avatar)}]]
         :items   [[{:on-click #(routing/nav! 'sb.app.account.ui/home)} (t :tr/home)]
-                  [{:on-click #(routing/nav! 'sb.app.account.ui/logout!)} (t :tr/logout)]
+                  [{:on-click #(p/do (routing/POST 'sb.app.account.data/logout! nil)
+                                     (js/window.location.reload))}
+                   (t :tr/logout)]
                   [{:trigger [icons/languages "w-5 h-5"]
                     :items   (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7

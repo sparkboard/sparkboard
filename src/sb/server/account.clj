@@ -123,7 +123,7 @@
 
 (defn logout!
   [_ _]
-  (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/home))
+  (-> (ring.response/response "")
       (res:logout)))
 
 (defn res:login [res account-id]
