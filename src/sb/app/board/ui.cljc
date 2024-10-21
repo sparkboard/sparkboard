@@ -82,9 +82,9 @@
                               :membership/password ?pass}]
     [:div
      [:h3 (t :tr/register)]
-     [field.ui/text-field ?name nil]
-     [field.ui/text-field ?pass nil]
-     [:button {:on-click #(p/let [res (routing/POST route @!membership)]
+     [field.ui/text-field ?name {:field/can-edit? true}]
+     [field.ui/text-field ?pass {:field/can-edit? true}]
+     [:button.btn.btn-white {:on-click #(p/let [res (routing/POST route @!membership)]
                             ;; TODO - how to determine POST success?
                             #_(when (http-ok? res)
                                 (routing/nav! [:board/read params])
@@ -174,6 +174,19 @@
     [:div.flex-v.gap-6
      {:style (ui/background-image-style board)}
      [header/entity board nil]
+     (when-not (:account-id params)
+       [:div.max-w-prose.mx-auto.text-center.p-4.flex-v.gap-2.backdrop-blur-md.rounded-lg
+        (when-let [src (asset.ui/asset-src (:image/logo-large board) :card)]
+          [:img.mx-auto.my-4 {:class "w-2/3" :src src}])
+        [field.ui/show-prose (:entity/description board)]
+        [:div.flex.gap-3.justify-center
+         [:a.btn.btn-primary.btn-base {:href (routing/path-for [`register {:board-id board-id}])}
+          (t :tr/register)]
+         [:a.btn.btn-white
+          {:class "bg-white/40"
+           :href (routing/path-for [`sb.app.account.ui/sign-in])}
+          (t :tr/sign-in)]]
+        [field.ui/show-prose (:board/home-page-message board)]])
      (ui/sub-header board)
      [:div.m-body.p-4.flex-v.gap-6.backdrop-blur-md.rounded-lg
       {:class "bg-white/20"}
