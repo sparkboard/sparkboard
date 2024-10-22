@@ -237,7 +237,7 @@
                           :body
                           (json/parse-string keyword))]
     (db/transact! (google-account-tx account-id provider-info))
-    (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/home))
+    (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/login-landing))
         (res:login account-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

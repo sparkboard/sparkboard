@@ -84,6 +84,15 @@
                   distinct
                   (take 6))))))
 
+(defonce !login-redirect (local/$local-storage ::login-redirect nil))
+
+(add-watch !location :login
+           (fn [_ _ old new]
+             (when (= 'sb.app.account.ui/sign-in
+                      (-> new :router/root :match/endpoints :view :endpoint/sym))
+               (let [{{:match/keys [endpoints params]} :router/root} old]
+                 (reset! !login-redirect [(-> endpoints :view :endpoint/sym) params])))))
+
 (defn aux:parse-path
   "Given a `path` string, returns map of {<route-name>, <path>}
 

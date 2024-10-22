@@ -79,6 +79,16 @@
       [radix/tab-root]
       [account:continue-with params]]]))
 
+(ui/defview login-landing
+  {:route "/login-landing"}
+  [_]
+  (h/use-effect (fn []
+                  (routing/nav! (if-let [route @routing/!login-redirect]
+                                  (do
+                                    (reset! routing/!login-redirect nil)
+                                    route)
+                                  `home)))))
+
 (ui/defview home
   {:route            "/"
    :endpoint/public? true}
