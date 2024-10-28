@@ -396,7 +396,8 @@
                                       [:domain-name/redirect-url "https://account.sb.com"]
                                       [:entity/id uuid])))]
                    (when (= kind :entity/id)
-                     [v {:domain-name/name (unmunge-domain-name name)}]))))
+                     [v {:entity/kind :domain-name
+                         :domain-name/name (unmunge-domain-name name)}]))))
          (into {}))))
 
 (comment
