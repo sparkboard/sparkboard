@@ -22,6 +22,28 @@
 ;; - when creating paths, first look up the router for the tag
 ;; - create a tag index - routes are all {"route" {:method {endpoint} :name :some/tag}}
 
+;; In this namespace we're dealing with three representations
+;; 1. paths: "/b/123-abc"
+;; 2. tag & params: [sb.app.board.ui/show {:board-id #uuid "123-abc"}]
+;; 3. matches:
+;; {:router/root {:match/endpoints {:view {:endpoint/sym sb.app.board.ui/show
+;;                                        :endpoint/tag sb.app.board.ui/show
+;;                                        :endpoint/method :view
+;;                                        :endpoint/path "/b/:board-id"}}
+;;               :match/data {:endpoints {:view {:endpoint/sym sb.app.board.ui/show
+;;                                               :endpoint/tag sb.app.board.ui/show
+;;                                               :endpoint/method :view
+;;                                               :endpoint/path "/b/:board-id"}}
+;;                            :name sb.app.board.ui/show}
+;;               :match/path "/b/123-abc"
+;;               :match/params {:board-id [:entity/id #uuid "123-abc"]
+;;                              :query-params nil}}}
+;;
+;; paths and matches' can also represent a modal together with a root:
+;; "/b/123-abc(modal:m/456-abc)" {:router/root ... :router/modal ...}
+;;
+;; to get a path from the combination of a root and modal tag&params `update-matches` can be chained with itself and `aux:emit-matches`
+
 (defonce !endpoints (r/atom []))
 
 (r/redef !routes (r/reaction (->> @!endpoints
@@ -259,18 +281,25 @@
   (reit/match-by-name @!router 'sb.app.board.data/show {:board-id (random-uuid)})
   (match-by-tag 'sb.app.asset-data/upload! {}))
 
+(defn update-matches
+  "Given a matches map and a route like `:route/id {:param1 val1}`,
+  returns either a new matches map for a `:router/root` match or
+  updates the matches map with a new modal match"
+  [location tag & {:as params}]
+  (let [match  (if (map? tag)
+                 tag ;; TODO is this branch ever taken? should it?
+                 (match-by-tag tag (dissoc params :query-params)))
+        router (or (get @!tag->router tag) :router/root)]
+    (if (= router :router/root)
+      {router match}
+      (assoc location router match))))
+
 (defn path-for
   "Given a route vector like `[:route/id {:param1 val1}]`, returns the path (string)"
   [tag & {:as params}]
   (if (vector? tag)
     (apply path-for tag)
-    (let [match  (if (map? tag)
-                   tag
-                   (match-by-tag tag (dissoc params :query-params)))
-          router (or (get @!tag->router tag) :router/root)]
-      (aux:emit-matches (if (= router :router/root)
-                          {router match}
-                          (assoc @!location router match))))))
+    (aux:emit-matches (update-matches @!location tag params))))
 
 (defn resolve [tag & args]
   (cond (string? tag) (aux:match-by-path tag)
@@ -315,14 +344,19 @@
      (defn dissoc-router! [router]
        (pushy/set-token! @!history (aux:emit-matches (dissoc @!location router))))
 
-     (defn nav! [tag & [params]]
+     (defn nav!* [matches]
+       (let [path (aux:emit-matches matches)]
+         (if (-> (or (:router/modal matches)
+                     (:router/root matches))
+                 :match/endpoints
+                 :view)
+           (js/setTimeout #(pushy/set-token! @!history path) 0)
+           (j/assoc-in! js/window [:location :href] path))))
+
+     (defn nav! [tag & {:as params}]
        (if (vector? tag)
          (apply nav! tag)
-         (let [{:match/keys [endpoints]} (match-by-tag tag params)
-               path (path-for tag params)]
-           (if (:view endpoints)
-             (js/setTimeout #(pushy/set-token! @!history path) 0)
-             (j/assoc-in! js/window [:location :href] path)))))))
+         (nav!* (update-matches @!location tag params))))))
 
 #?(:cljs
    (defn POST [route body]
