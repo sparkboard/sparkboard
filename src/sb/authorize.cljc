@@ -42,13 +42,15 @@
   [member-id entity-id]
   (:db/id (not-empty (deleted-membership member-id entity-id))))
 
-(defn editor-role? [roles]
-  (or (:role/self roles)
-      (:role/project-admin roles)
-      (:role/project-editor roles)
+(defn admin-role? [roles]
+  (or (:role/project-admin roles)
       (:role/board-admin roles)
       (:role/org-admin roles)))
 
+(defn editor-role? [roles]
+  (or (:role/self roles)
+      (:role/project-editor roles)
+      (admin-role? roles)))
 
 (defn require-account! [req params]
   (when-not (-> req :account :entity/id)
