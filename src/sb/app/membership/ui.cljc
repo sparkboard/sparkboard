@@ -80,6 +80,22 @@
          ^{:key (:entity/id project)}
          [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
           (:entity/title project)])]]
+     (when (az/admin-role? roles)
+       [:div.px-body
+        [:div.field-label
+         (t :tr/roles)]
+        [:label.flex.items-center.gap-1
+         [:input {:type "checkbox"
+                  :checked (boolean (:role/board-admin (:membership/roles membership)))
+                  :on-change (fn [event]
+                               (entity.data/save-attributes! nil (:entity/id membership)
+                                                             {:membership/roles ((if (-> event .-target .-checked)
+                                                                                   (fnil conj #{})
+                                                                                   disj)
+                                                                                 (:membership/roles membership)
+                                                                                 :role/board-admin)}))}]
+         [:div
+          (t :tr/board-admin)]]])
      (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id membership)})]
        [:div.px-body
         [ui/action-button

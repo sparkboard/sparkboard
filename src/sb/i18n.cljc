@@ -557,6 +557,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/joined                          {:en "joined"
                                           :fr "a rejoint"
                                           :es "se unió"}
+     :tr/roles                           {:en "Roles"
+                                          :fr "Rôles"
+                                          :es "Roles"}
+     :tr/board-admin                     {:en "Board admin"
+                                          :fr "Administrateur du tableau"
+                                          :es "Administrador del tablero"}
      }))
 
 (defn tr*

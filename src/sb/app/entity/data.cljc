@@ -142,7 +142,10 @@
                           (when (and (not admin?) (:tag/restricted? tag))
                             (validate/permission-denied! "Only admins may modify restricted tags"))
                           (when (not tag)
-                            (validate/validation-failed! (str "Tag " tag-id " does not exist"))))))))})
+                            (validate/validation-failed! (str "Tag " tag-id " does not exist"))))))))
+   :membership/roles (fn [roles k entity m]
+                       (when-not (az/admin-role? roles)
+                         (validate/permission-denied!)))})
 
 (q/defx save-attributes!
   {:prepare [az/with-account-id!]}
