@@ -476,6 +476,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/remove-from-board               {:en "Remove from board"
                                           :fr "Supprimer du tableu"
                                           :es "Eliminar del tablero"}
+     :tr/remove-from-project             {:en "Remove from project"
+                                          :fr "Supprimer du projet"
+                                          :es "Eliminar del proyecto"}
      :tr/basic-settings                  {:en "Basic settings"
                                           :fr "Paramètres de base"
                                           :es "Configuración básica"}

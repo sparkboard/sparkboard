@@ -131,7 +131,13 @@
                                                                            role)}}))}]
                        [:div
                         (t (keyword "tr" (name role)))]]))
-               [:role/project-admin :role/project-editor :role/project-member]))])]
+               [:role/project-admin :role/project-editor :role/project-member]))
+       (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id project-membership)})]
+         [ui/action-button
+          {:class "bg-white h-8"
+           :on-click (fn [_]
+                       (delete!))}
+          (t :tr/remove-from-project)])])]
    (when (az/admin-role? (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])
    (if-let [membership-id (some-> (db/get :env/config :account)
