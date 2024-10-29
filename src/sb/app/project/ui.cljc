@@ -114,11 +114,18 @@
         [member.ui/tags :small board-membership]]])]
    (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])
-   (if (some-> (db/get :env/config :account)
-               (az/membership-id project))
-     [ui/action-button
-      {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
-      (t :tr/leave)]
+   (if-let [membership-id (some-> (db/get :env/config :account)
+                                  (az/membership project)
+                                  not-empty
+                                  :entity/id)]
+     (when-let [delete! (entity.data/delete!-authorized {:entity-id membership-id})]
+       [ui/action-button
+        {:class "bg-white"
+         :on-click (fn [_]
+                     (p/let [result (delete!)]
+                       (routing/dissoc-router! :router/modal)
+                       result))}
+        (t :tr/leave)])
      (when-let [join! (data/join!-authorized {:project-id (sch/unwrap-id project)})]
        [ui/action-button
         {:on-click (fn [_] (join!))}
@@ -204,12 +211,14 @@
              [discussion.ui/follow-toggle (:project-id params)]]
             [discussion.ui/show-posts project]])
 
-         (when can-edit?
-           [ui/action-button {:on-click (fn [_]
-                                          (p/let [result (data/delete! {:project-id (sch/unwrap-id (:project-id params))})]
-                                            (routing/dissoc-router! :router/modal)
-                                            result))}
-            "delete"])]]]
+         (when-let [delete! (entity.data/delete!-authorized {:entity-id (sch/unwrap-id (:project-id params))})]
+           [ui/action-button
+            {:class "bg-white"
+             :on-click (fn [_]
+                         (p/let [result (delete!)]
+                           (routing/dissoc-router! :router/modal)
+                           result))}
+            (t :tr/delete)])]]]
       [ui/error-view
        {:error "Project not found"}])))
 

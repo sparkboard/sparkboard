@@ -109,12 +109,14 @@
 
          [note-members note field-params]
 
-         (when can-edit?
-           [ui/action-button {:on-click (fn [_]
-                                          (p/let [result (data/delete! nil {:note-id (sch/unwrap-id (:note-id params))})]
-                                            (routing/dissoc-router! :router/modal)
-                                            result))}
-            "delete"])]]]
+         (when-let [delete! (entity.data/delete!-authorized {:entity-id (sch/unwrap-id (:note-id params))})]
+           [ui/action-button
+            {:class "bg-white"
+             :on-click (fn [_]
+                         (p/let [result (delete!)]
+                           (routing/dissoc-router! :router/modal)
+                           result))}
+            (t :tr/delete)])]]]
       [ui/error-view
        {:error "Note not found"}])))
 

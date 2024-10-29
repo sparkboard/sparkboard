@@ -1,6 +1,7 @@
 (ns sb.app.membership.ui
   (:require [promesa.core :as p]
             [re-db.api :as db]
+            [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
@@ -79,25 +80,17 @@
          ^{:key (:entity/id project)}
          [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
           (:entity/title project)])]]
-     (when (:role/self roles)
-       [:div.px-body
-        [ui/action-button
-         {:class "bg-white/40"
-          :on-click (fn [_]
-                      (p/do
-                        (data/leave! {:board-id (:entity/id board)})
-                        (routing/dissoc-router! :router/modal)))}
-         (t :tr/leave-board)]])
-     (when-let [remove! (data/remove!-authorized {:board-id (:entity/id board)
-                                                  :membership-id (:entity/id membership)})]
+     (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id membership)})]
        [:div.px-body
         [ui/action-button
          {:class "bg-white"
           :on-click (fn [_]
                       (p/do
-                        (remove!)
+                        (delete!)
                         (routing/dissoc-router! :router/modal)))}
-         (t :tr/remove-from-board)]])]))
+         (if (:role/self roles)
+           (t :tr/leave-board)
+           (t :tr/remove-from-board))]])]))
 
 (ui/defview tags [size board-membership]
   (let [tag-class (case size :small "tag-sm" :medium "tag-md")]

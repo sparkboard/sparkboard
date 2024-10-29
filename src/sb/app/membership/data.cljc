@@ -144,13 +144,6 @@
       (az/auth-guard! (az/editor-role? (az/all-roles account-id entity))
           "Not authorized to edit this"))))
 
-(defn assert-can-admin [id-key]
-  (fn assert-can-admin* [req params]
-    (let [entity (dl/entity (id-key params))
-          account-id (-> req :account :entity/id)]
-      (az/auth-guard! (az/admin-role? (az/all-roles account-id entity))
-          "Not authorized to admin this"))))
-
 (q/defquery descriptions
   {:prepare  az/with-account-id!}
   [{:as params :keys [account-id ids]}]
@@ -305,21 +298,3 @@
                          (validate/assert :membership/as-map))]
       (db/transact! [membership])
       {:entity/id (:entity/id membership)})))
-
-(q/defx leave!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id board-id]}]
-  (when-let [member-id (az/membership-id account-id board-id)]
-    (db/transact! [{:db/id member-id
-                    :entity/deleted-at (java.util.Date.)}])
-    (db/pull [:entity/id :entity/deleted-at]
-             member-id)))
-
-(q/defx remove!
-  {:prepare [az/with-account-id!
-             (assert-can-admin :board-id)]}
-  [{:keys [board-id membership-id]}]
-  (when (dl/entity [:entity/id membership-id])
-    (db/transact! [{:entity/id membership-id
-                    :entity/deleted-at (java.util.Date.)}]))
-  {:body ""})

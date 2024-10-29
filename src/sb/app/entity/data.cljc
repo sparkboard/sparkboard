@@ -77,7 +77,7 @@
                                  :doc "Date the entity was created"},
      :entity/created-by         (merge (sch/ref :one)
                                        {:doc "Account who created this entity"}),
-     :entity/deleted-at         {:doc  "Date when entity was marked deleted"
+     :entity/deleted-at         {:doc  "Date when entity was marked deleted. Should always be generated on the server because client clocks can't be trusted"
                                  :todo "Excise deleted data after a grace period"
                                  s-    'inst?}
      :entity/modified-by        (merge (sch/ref :one)
@@ -170,6 +170,16 @@
       (catch Exception e (def E e) (throw e)))
 
     {:txs txs}))
+
+(q/defx delete!
+  "Sets `:entity/deletat-at` to current instant.
+We use this instead of `save-attributes!` because we do not trust the client's clock"
+  {:prepare [az/with-account-id!
+             (az/assert-can-admin-or-self :entity-id)]}
+  [{:keys [entity-id]}]
+  (db/transact! [{:entity/id entity-id
+                  :entity/deleted-at (java.util.Date.)}])
+  {:body ""})
 
 (defn persisted-value [?field]
   (if-let [{:keys [db/id attribute]} (when (:field/persisted? ?field) ?field)]

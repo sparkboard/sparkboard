@@ -152,14 +152,6 @@
     (db/transact! [membership])
     {:entity/id (:entity/id project)}))
 
-(q/defx delete!
-  "Mutation fn. Marks project as deleted by given project-id."
-  {:prepare [az/with-account-id!
-             (member.data/assert-can-edit :project-id)]}
-  [{:keys [project-id account-id]}]
-  (db/transact! [[:db/add [:entity/id project-id] :entity/deleted-at (java.util.Date.)]])
-  {:body ""})
-
 (q/defx join!
   {:prepare [az/with-account-id!
              (az/with-member-id! (comp :entity/parent dl/entity :project-id))
@@ -182,10 +174,3 @@
                          (validate/assert :membership/as-map))])))
   {:body ""})
 
-(q/defx leave!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id project-id]}]
-  (when-let [member-id (az/membership-id account-id project-id)]
-    (db/transact! [{:db/id member-id
-                    :entity/deleted-at (java.util.Date.)}]))
-  {:body ""})

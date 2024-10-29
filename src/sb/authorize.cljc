@@ -106,7 +106,9 @@
       #{}))
 
 (defn all-roles [account-id entity]
-  (->> (u/iterate-some :entity/parent entity)
+  (->> (cons entity
+             (u/iterate-some :entity/parent (or (:entity/parent entity)
+                                                (:membership/entity entity))))
        (into #{} (mapcat (partial get-roles account-id)))))
 
 (comment
@@ -133,3 +135,12 @@
    (defn with-roles [entity-key]
      (fn [req params]
        (#'with-roles* entity-key req params))))
+
+(defn assert-can-admin-or-self [id-key]
+  (fn assert-can-admin-or-self* [req params]
+    (let [entity (dl/entity (id-key params))
+          account-id (-> req :account :entity/id)
+          roles (all-roles account-id entity)]
+      (auth-guard! (or (:role/self roles)
+                       (admin-role? roles))
+          "Not authorized to admin this"))))
