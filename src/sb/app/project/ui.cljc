@@ -103,16 +103,36 @@
   [:div.field-wrapper
    [:div.field-label (t :tr/team)]
    [:div.grid.grid-cols-2.gap-x-6
-    (for [{:as account :keys [account/display-name]} (member.data/members project (xf/sort-by :entity/created-at u/compare:desc))
-          :let [board-membership (az/membership account (:entity/parent project))]]
-      [:div.flex.items-center.gap-2.cursor-default.hover:bg-gray-100.py-3.rounded
-       {:key      (:entity/id account)
-        :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
-       [ui/avatar {:size 12} account]
-       [:div.flex-v.gap-1
-        display-name
-        [member.ui/tags :small board-membership]]])]
-   (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
+    (for [project-membership (member.data/memberships project (xf/sort-by :entity/created-at u/compare:desc))
+          :let [{:as account :keys [account/display-name]} (:membership/member project-membership)
+                board-membership (az/membership account (:entity/parent project))]]
+      [:div.flex-v.cursor-default.hover:bg-gray-100.py-3.rounded
+       [:div.flex.items-center.gap-2
+        {:key      (:entity/id account)
+         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
+        [ui/avatar {:size 12} account]
+        [:div.flex-v.gap-1
+         display-name
+         [member.ui/tags :small board-membership]]]
+       (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id project-membership)
+                                                                :membership/roles #{:role/project-admin}}})
+         (into [:div.flex-v]
+               (map (fn [role]
+                      [:label.flex.items-center.gap-1
+                       [:input {:type "checkbox"
+                                :checked (boolean (role (:membership/roles project-membership)))
+                                :on-change (fn [event]
+                                             (entity.data/save-attributes!
+                                              {:entity {:entity/id (:entity/id project-membership)
+                                                        :membership/roles ((if (-> event .-target .-checked)
+                                                                             (fnil conj #{})
+                                                                             disj)
+                                                                           (:membership/roles project-membership)
+                                                                           role)}}))}]
+                       [:div
+                        (t (keyword "tr" (name role)))]]))
+               [:role/project-admin :role/project-editor :role/project-member]))])]
+   (when (az/admin-role? (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])
    (if-let [membership-id (some-> (db/get :env/config :account)
                                   (az/membership project)

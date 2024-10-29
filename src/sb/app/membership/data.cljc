@@ -262,14 +262,19 @@
 (defn membership-colors [membership]
   (mapv :tag/color (resolved-tags membership)))
 
-(defn members
-  "Returns members of `entity`, with an optional transducer `xform ` applied to the memberships first."
-  ([entity] (members entity identity))
+(defn memberships
+  "Returns memberships of `entity`, with an optional transducer `xform` applied to them."
+  ([entity] (memberships entity identity))
   ([entity xform]
    (->> (:membership/_entity entity)
         (into [] (comp (remove sch/deleted?)
-                       xform
-                       (map :membership/member))))))
+                       xform)))))
+
+(defn members
+  "Returns members of `entity`, with an optional transducer `xform` applied to the memberships first."
+  ([entity] (members entity identity))
+  ([entity xform]
+   (memberships entity (comp xform (map :membership/member)))))
 
 (defn member-of
   "Returns all entities that `member` is a member of, with an optional transducer `xform` applied to the memberships first."

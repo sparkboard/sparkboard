@@ -563,6 +563,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/board-admin                     {:en "Board admin"
                                           :fr "Administrateur du tableau"
                                           :es "Administrador del tablero"}
+     :tr/project-admin                   {:en "Project admin"
+                                          :fr "Administrateur du projet"
+                                          :es "Administrador del proyecto"}
+     :tr/project-editor                  {:en "Project editor"
+                                          :fr "Administrateur du projet"
+                                          :es "Administrador del proyecto"}
+     :tr/project-member                  {:en "Project member"
+                                          :fr "Membre du projet"
+                                          :es "Miembro del proyecto"}
      }))
 
 (defn tr*
