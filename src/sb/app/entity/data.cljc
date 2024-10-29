@@ -148,22 +148,20 @@
                          (validate/permission-denied!)))})
 
 (q/defx save-attributes!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e m]
-  (let [e      (sch/wrap-id e)
-        entity (dl/entity e)
-        roles  (az/all-roles account-id entity)
-        ;; TODO put this in :prepare with member.data/assert-can-edit ?
-        _      (when-not (az/editor-role? roles)
-                 (validate/permission-denied!))
-        txs    (-> (assoc m :db/id e)
-                   retract-nils)]
-    (doseq [k (keys m)
-            :let [rule (get rules k)]
-            :when rule]
-      (rule roles k entity m))
-
-    (let [parent-schema (-> (keyword (name (:entity/kind entity)) "as-map")
+  {:prepare [az/with-account-id!
+             (fn [_ {:keys [account-id] m :entity}]
+               (let [entity (dl/entity (sch/wrap-id m))
+                     roles  (az/all-roles account-id entity)]
+                 ;; TODO put this in :prepare with member.data/assert-can-edit ?
+                 (when-not (az/editor-role? roles)
+                   (validate/permission-denied!))
+                 (doseq [k (keys m)
+                         :let [rule (get rules k)]
+                         :when rule]
+                   (rule roles k entity m))))]}
+  [{:keys [account-id] m :entity}]
+  (let [txs (retract-nils m)]
+    (let [parent-schema (-> (keyword (name (:entity/kind (dl/entity (sch/wrap-id m)))) "as-map")
                             (@sch/!malli-registry))
           without-nils  (ignore-optional-nils parent-schema m)]
       (validate/assert without-nils (mu/select-keys parent-schema (keys without-nils))))
@@ -196,7 +194,7 @@ We use this instead of `save-attributes!` because we do not trust the client's c
   (when-let [{:as ?persisted-field :keys [db/id attribute]} (io/ancestor-by ?field :field/persisted?)]
     (when (not= @?field (persisted-value ?field))
       (io/try-submit+ ?persisted-field
-        (save-attributes! nil id {attribute @?persisted-field})))))
+                      (save-attributes! {:entity {:entity/id (sch/unwrap-id id) attribute @?persisted-field}})))))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))
