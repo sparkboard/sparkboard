@@ -68,7 +68,7 @@
      [:textarea (assoc props :rows 1)]]))
 
 (ui/defview checkbox-field
-  "A text-input element that reads metadata from a ?field to display appropriately"
+  "A checkbox-input element that reads metadata from a ?field to display appropriately"
   [?field props]
   (let [messages (forms/visible-messages ?field)
         loading? (:loading? ?field)
