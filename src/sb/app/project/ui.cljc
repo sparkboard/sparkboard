@@ -116,7 +116,7 @@
          [member.ui/tags :small board-membership]]]
        (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id project-membership)
                                                                 :membership/roles #{:role/project-admin}}})
-         (into [:div.flex-v]
+         (into [:div.flex.flex-wrap.gap-2]
                (map (fn [role]
                       [:label.flex.items-center.gap-1
                        [:input {:type "checkbox"
