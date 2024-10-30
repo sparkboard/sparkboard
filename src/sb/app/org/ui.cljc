@@ -9,10 +9,13 @@
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.membership.data :as member.data]
             [sb.app.org.data :as data]
             [sb.app.views.header :as header]
+            [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
+            [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.util :as u]
             [yawn.hooks :as h]
@@ -67,7 +70,11 @@
           {:class "bg-white/40"
            :href (routing/path-for ['sb.app.board.ui/new-in-org
                                     {:parent (:entity/id org)}])}
-          (t :tr/new-board)]]
+          (t :tr/new-board)]
+         [:a.btn.btn-white
+          {:class "bg-white/40"
+           :href (routing/path-for `members {:org-id (:org-id params)})}
+          (t :tr/members)]]
         [ui/error-view result]
         (for [[kind results] (if (seq q)
                                (dissoc (:value result) :q)
@@ -80,6 +87,52 @@
                   (comp (apply ui/sorted @?sort)
                         (map entity.ui/row))
                   results)])]])))
+
+(ui/defview members
+  {:route "/o/:org-id/members"
+   :view/router :router/modal}
+  [params]
+  (let [members (data/members {:org-id (:org-id params)})]
+    [:div.p-body.flex-v.gap-3
+     [:div.flex.gap-3
+      [:h1.font-medium.text-2xl (t :tr/members)]
+      [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
+       [radix/dialog-close
+        [:div.modal-title-icon [icons/close]]]]]
+     [:div.grid.grid-cols-2.gap-6
+      (for [org-membership members
+            :let [{:as account :keys [account/display-name]} (:membership/member org-membership)]]
+        [:div.flex-v
+         [:div.flex.items-center.gap-2
+          {:key      (:entity/id account)
+           :on-click #(routing/nav! (routing/entity-route account 'ui/show))}
+          [ui/avatar {:size 12} account]
+          [:div.flex-v.gap-1
+           display-name]]
+         (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id org-membership)
+                                                                  :membership/roles #{:role/org-admin}}})
+           (into [:div.flex.flex-wrap.gap-2]
+                 (map (fn [role]
+                        [:label.flex.items-center.gap-1
+                         [:input {:type "checkbox"
+                                  :checked (boolean (role (:membership/roles org-membership)))
+                                  :on-change (fn [event]
+                                               (entity.data/save-attributes!
+                                                {:entity {:entity/id (:entity/id org-membership)
+                                                          :membership/roles ((if (-> event .-target .-checked)
+                                                                               (fnil conj #{})
+                                                                               disj)
+                                                                             (:membership/roles org-membership)
+                                                                             role)}}))}]
+                         [:div
+                          (t (keyword "tr" (name role)))]]))
+                 [:role/org-admin]))
+         (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id org-membership)})]
+           [ui/action-button
+            {:class "bg-white h-8"
+             :on-click (fn [_]
+                         (delete!))}
+            (t :tr/remove-from-org)])])]]))
 
 (ui/defview new
   {:route       "/new/o"

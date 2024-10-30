@@ -473,6 +473,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/remove?                         {:en "Are you sure you want to remove this?"
                                           :fr "Etes-vous sûr de vouloir supprimer ceci ?"
                                           :es "¿Estás segura de que quieres eliminar esto?"}
+     :tr/remove-from-org                 {:en "Remove from organisation"
+                                          :fr "Supprimer du organisation"
+                                          :es "Eliminar del organización"}
      :tr/remove-from-board               {:en "Remove from board"
                                           :fr "Supprimer du tableu"
                                           :es "Eliminar del tablero"}
@@ -563,6 +566,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/roles                           {:en "Roles"
                                           :fr "Rôles"
                                           :es "Roles"}
+     :tr/org-admin                       {:en "Organisation admin"
+                                          :fr "Administrateur d'organisation"
+                                          :es "Administrador de la organización"}
      :tr/board-admin                     {:en "Board admin"
                                           :fr "Administrateur du tableau"
                                           :es "Administrador del tablero"}
