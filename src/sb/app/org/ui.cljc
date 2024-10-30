@@ -64,7 +64,8 @@
                            {:field-option/value [:random]
                             :field-option/label (t :tr/sort-random)}]}]
          [:a.btn.btn-white.flex.items-center.px-3
-          {:href (routing/path-for ['sb.app.board.ui/new-in-org
+          {:class "bg-white/40"
+           :href (routing/path-for ['sb.app.board.ui/new-in-org
                                     {:parent (:entity/id org)}])}
           (t :tr/new-board)]]
         [ui/error-view result]
