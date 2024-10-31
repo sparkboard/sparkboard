@@ -1115,12 +1115,9 @@
                                                                       (fn [{:as   member
                                                                             :keys [user_id]}]
                                                                         (when-let [account-id (member->account-uuid user_id)]
-                                                                          ;; TODO review if note roles are actually used / make sense
-                                                                          (let [role (some->> (:role member) (role-kw :note))]
-                                                                            (merge {:entity/id         (composite-uuid :membership note-id account-id)
-                                                                                    :entity/kind       :membership
-                                                                                    :membership/member (uuid-ref :account account-id)}
-                                                                                   (when role {:membership/roles #{role}})))))
+                                                                          {:entity/id         (composite-uuid :membership note-id account-id)
+                                                                           :entity/kind       :membership
+                                                                           :membership/member (uuid-ref :account account-id)}))
                                                                      v))))
                                                   (rename :membership/_entity))
 
