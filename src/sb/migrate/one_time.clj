@@ -27,9 +27,9 @@
 
 (defn role-kw [entity-kind role-name]
   (case role-name
+    "member" nil
 
     ("editor"
-      "member"
       "admin") (keyword "role" (str (name entity-kind) "-" role-name))
 
     ;; deprecating separate 'owner' role (this was only used in projects)

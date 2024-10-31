@@ -131,7 +131,7 @@
                                                                            role)}}))}]
                        [:div
                         (t (keyword "tr" (name role)))]]))
-               [:role/project-admin :role/project-editor :role/project-member]))
+               [:role/project-admin :role/project-editor]))
        (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id project-membership)})]
          [ui/action-button
           {:class "bg-white h-8"
