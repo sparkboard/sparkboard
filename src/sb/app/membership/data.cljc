@@ -303,3 +303,26 @@
                          (validate/assert :membership/as-map))]
       (db/transact! [membership])
       {:entity/id (:entity/id membership)})))
+
+(q/defx join-board-child!
+  "Creates or resurects project or note membership"
+  {:prepare [az/with-account-id!
+             (az/with-member-id! (comp :entity/parent dl/entity :entity-id))
+             (fn [_ {:keys [entity-id]}]
+               (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity entity-id)))
+                   "Entity is invite only"))]}
+  [{:keys [account-id entity-id]}]
+  (let [admins (->> (db/where [[:membership/entity (sch/wrap-id entity-id)]
+                               (comp :role/project-admin :membership/roles)])
+                    (map (comp sch/wrap-id :membership/member)))]
+    (db/transact! (if-let [entity-member-id (az/deleted-membership-id account-id entity-id)]
+                    [(-> {:db/id entity-member-id
+                          :entity/created-at (java.util.Date.)
+                          :entity/deleted-at sch/DELETED_SENTINEL}
+                         (notification.data/assoc-recipients admins))]
+                    [(-> (new-entity-with-membership (sch/wrap-id entity-id)
+                                                                 account-id
+                                                                 #{})
+                         (notification.data/assoc-recipients admins)
+                         (validate/assert :membership/as-map))])))
+  {:body ""})

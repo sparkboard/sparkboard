@@ -14,7 +14,8 @@
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]
-            [sb.util :as u]))
+            [sb.util :as u]
+            [net.cgrand.xforms :as xf]))
 
 (ui/defview show
   {:route       "/m/:membership-id"
@@ -136,7 +137,6 @@
        [tags :medium board-member]
        [:div.text-gray-500.contents (field.ui/show-entries member-fields field-entries)]]]]))
 
-;; TODO review membership pointing at membership
 (ui/defview members-for-card [entity]
   (let [members (data/members entity)]
     [:div.flex.flex-wrap.gap-2.px-3
@@ -151,3 +151,68 @@
                          (u/guard pos-int?))]
        [:div.w-10.h-10.flex-center.text-gray-400.text-lg.tracking-wider
         [:div.flex  "+" more]])]))
+
+(ui/defview for-modal [entity props]
+  ;; todo
+  ;; 3. button for adding a new member via searching this board
+  ;; 4. hover to see member details
+  [:<>
+   (when (az/admin-role? (:membership/roles props))
+     ;; TODO ensure :role/project-editor can't change this on the server
+     [entity.ui/persisted-attr entity :entity/admission-policy props])
+   (when-let [memberships (seq (data/memberships entity (xf/sort-by :entity/created-at u/compare:desc)))]
+     [:div.field-wrapper
+      [:div.field-label (t :tr/team)]
+      [:div.grid.grid-cols-2.gap-x-6
+       (for [entity-membership memberships
+             :let [{:as account :keys [account/display-name]} (:membership/member entity-membership)
+                   board-membership (az/membership account (:entity/parent entity))]]
+         [:div.flex-v.gap-1.cursor-default.hover:bg-gray-100.py-3.rounded
+          [:div.flex.items-center.gap-2
+           {:key      (:entity/id account)
+            :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
+           [ui/avatar {:size 12} account]
+           [:div.flex-v.gap-1
+            display-name
+            [tags :small board-membership]]]
+          (when-let [possible-roles (:possible-roles props)]
+            (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id entity-membership)
+                                                                     :membership/roles (set possible-roles)}})
+              (into [:div.flex.flex-wrap.gap-2]
+                    (map (fn [role]
+                           [:label.flex.items-center.gap-1
+                            [:input {:type "checkbox"
+                                     :checked (boolean (role (:membership/roles entity-membership)))
+                                     :on-change (fn [event]
+                                                  (entity.data/save-attributes!
+                                                   {:entity {:entity/id (:entity/id entity-membership)
+                                                             :membership/roles ((if (-> event .-target .-checked)
+                                                                                  (fnil conj #{})
+                                                                                  disj)
+                                                                                (:membership/roles entity-membership)
+                                                                                role)}}))}]
+                            [:div
+                             (t (keyword "tr" (name role)))]]))
+                    possible-roles)))
+          (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id entity-membership)})]
+            [ui/action-button
+             {:class "bg-white h-8"
+              :on-click (fn [_]
+                          (delete!))}
+             (t :tr/remove)])])]])
+   (if-let [membership-id (some-> (db/get :env/config :account)
+                                  (az/membership entity)
+                                  not-empty
+                                  :entity/id)]
+     (when-let [delete! (entity.data/delete!-authorized {:entity-id membership-id})]
+       [ui/action-button
+        {:class "bg-white"
+         :on-click (fn [_]
+                     (p/let [result (delete!)]
+                       (routing/dissoc-router! :router/modal)
+                       result))}
+        (t :tr/leave)])
+     (when-let [join! (data/join-board-child!-authorized {:entity-id (sch/unwrap-id entity)})]
+       [ui/action-button
+        {:on-click (fn [_] (join!))}
+        (t :tr/join)]))])

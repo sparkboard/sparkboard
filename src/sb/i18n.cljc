@@ -446,6 +446,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/registration-newsletter-field?  {:en "Registration newsletter field"
                                           :fr "Champ d'inscription à la newsletter"
                                           :es "Campo de registro de boletín"}
+     :tr/admission-policy                {:en "Admission policy"
+                                          :fr "Politique d'admission"
+                                          :es "Política de admisión"}
      :tr/anyone-may-join                 {:en "Anyone may join"
                                           :fr "Tout le monde peut rejoindre"
                                           :es "Cualquiera puede unirse"}

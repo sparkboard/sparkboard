@@ -253,7 +253,7 @@
        [query-ui tags fields !xform]
        (when-let [create! (note.data/new!-authorized {:note {:entity/parent board-id
                                                              :entity/title  (t :tr/untitled)
-                                                             :entity/admission-policy :admission-policy/open
+                                                             :entity/admission-policy :admission-policy/invite-only
                                                              :entity/draft? true}})]
          [ui/action-button
           {:class "bg-white/40"

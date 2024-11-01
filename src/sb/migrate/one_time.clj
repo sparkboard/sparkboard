@@ -1065,7 +1065,8 @@
                                                      (rename :entity/video))
                                        :discussion rm       ;; unused
                                        ]
-              :note/as-map            [::defaults {:entity/archived?        false}
+              :note/as-map            [::defaults {:entity/archived?        false
+                                                   :entity/admission-policy :admission-policy/open}
 
                                        ::always (remove-when (complement :sticky))
                                        ::always (remove-when :entity/deleted-at)
@@ -1107,7 +1108,11 @@
                                                   (rename :note/badges)) ;; should be ref
                                        :active (& (xf not) (rename :entity/archived?))
                                        :approved (rename :project/approved?)
-                                       :ready rm
+                                       :ready (& (xf (fn [ready?]
+                                                       (if ready?
+                                                         :admission-policy/invite-only
+                                                         :admission-policy/open)))
+                                                 (rename :entity/admission-policy))
                                        :members (&
                                                   (fn [note a v]
                                                     (let [note-id (:entity/id note)]

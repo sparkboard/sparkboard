@@ -15,27 +15,7 @@
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.schema :as sch]
-            [sb.util :as u]
-            [net.cgrand.xforms :as xf]))
-
-;; TODO taken from project.ui/project-members check if can be merged
-(ui/defview note-members [note props]
-  ;; todo
-  ;; 3. button for adding a new member via searching this board
-  ;; 4. hover to see member details
-  ;; 5. fix chat
-  [:div.field-wrapper
-   [:div.field-label (t :tr/members)]
-   [:div.grid.grid-cols-2.gap-6
-    (for [{:as account :keys [account/display-name]} (member.data/members note (xf/sort-by :entity/created-at u/compare:desc))
-          :let [board-membership (az/membership account (:entity/parent note))]]
-      [:div.flex.items-center.gap-2
-       {:key      (:entity/id board-membership)
-        :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
-       [ui/avatar {:size 12} account]
-       [:div.flex-v.gap-1
-        display-name
-        [member.ui/tags :small board-membership]]])]])
+            [sb.util :as u]))
 
 ;; TODO test this modal outside of owning board
 (ui/defview show
@@ -108,7 +88,7 @@
          [entity.ui/persisted-attr note :entity/fields
           {:field/can-edit? can-edit?}]
 
-         [note-members note field-params]
+         [member.ui/for-modal note field-params]
 
          (when-let [delete! (entity.data/delete!-authorized {:entity-id (sch/unwrap-id (:note-id params))})]
            [ui/action-button
