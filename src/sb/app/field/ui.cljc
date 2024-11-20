@@ -192,7 +192,7 @@
    [text-field ?field {:field/can-edit? true
                        :field/classes   {:wrapper "flex-auto items-stretch"
                                          :input   "form-text rounded default-ring pr-9"}
-                       :placeholder     (t :tr/search)}]
+                       :placeholder     (:placeholder attrs (t :tr/search))}]
    [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
     {:class "text-txt/40"}
     (icons/search "w-6 h-6")]])

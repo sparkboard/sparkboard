@@ -260,6 +260,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/search                          {:en "Search"
                                           :fr "Rechercher"
                                           :es "Buscar"},
+     :tr/search-to-invite                {:en "Search to invite"
+                                          :fr "Rechercher pour inviter"
+                                          :es "Buscar para invitar"}
      :tr/project                         {:en "Project"
                                           :fr "Projet"
                                           :es "Proyecto"},
@@ -362,6 +365,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/available                       {:en "Available"
                                           :fr "Disponible"
                                           :es "Disponible"}
+     :tr/pending                         {:en "Pending"
+                                          :fr "En attente"
+                                          :es "Pendiente"}
      :tr/account-not-found               {:en "Account not found"
                                           :fr "Compte introuvable"
                                           :es "Cuenta no encontrada"}
@@ -464,6 +470,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/leave-board                     {:en "Leave board"
                                           :fr "Partir tableau"
                                           :es "Dejar tablero"}
+     :tr/you-are-invited-to-join         {:en "You are invited to join"
+                                          :fr "Vous êtes invité à rejoindre"
+                                          :es "Estás invitado a unirte"}
      :tr/registration-page-message       {:en "Registration page message"
                                           :fr "Message de la page d'inscription"
                                           :es "Mensaje de la página de registro"}

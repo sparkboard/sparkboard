@@ -54,6 +54,7 @@
                    (db/pull `[:entity/id
                              :entity/kind
                              :entity/created-at
+                              :membership/member-approval-pending?
                              {:membership/member ~entity.data/listing-fields}
                               {:membership/entity [~@entity.data/listing-fields
                                                    {:entity/parent [:entity/id]}]}

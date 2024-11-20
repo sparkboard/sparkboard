@@ -27,6 +27,7 @@
    :membership/roles                    {s- [:set :membership/role]}
    :membership/entity                   (sch/ref :one)
    :membership/member                   (sch/ref :one)
+   :membership/member-approval-pending? {s- :boolean}
 
    :entity/tags                         {s- [:sequential [:map {:closed true} :tag/id]]}
    :entity/custom-tags                  {s- [:sequential [:map {:closed true} :tag/label]]}
@@ -63,6 +64,7 @@
                                                    (? :membership/newsletter-subscription?)
                                                    (? :entity/tags)
                                                    (? :membership/roles)
+                                                   (? :membership/member-approval-pending?)
 
                                                    ;; TODO, backfill?
                                                    ;; only missing for memberships of orgs and collections
@@ -262,13 +264,25 @@
 (defn membership-colors [membership]
   (mapv :tag/color (resolved-tags membership)))
 
+(defn raw-memberships
+  "Returns memberships (possibly deleted or pending) of `entity`, with an transducer `xform` applied to them."
+  ([entity xform]
+   (->> (:membership/_entity entity)
+        (into [] xform))))
+
 (defn memberships
   "Returns memberships of `entity`, with an optional transducer `xform` applied to them."
   ([entity] (memberships entity identity))
   ([entity xform]
-   (->> (:membership/_entity entity)
-        (into [] (comp (remove sch/deleted?)
-                       xform)))))
+   (raw-memberships entity (comp (remove (some-fn sch/deleted? :membership/member-approval-pending?))
+                                 xform))))
+
+(defn pending-memberships
+  "Returns pending memberships of `entity`, with an optional transducer `xform` applied to them."
+  ([entity] (memberships entity identity))
+  ([entity xform]
+   (raw-memberships entity (comp (filter (every-pred (complement sch/deleted?) :membership/member-approval-pending?))
+                                 xform))))
 
 (defn members
   "Returns members of `entity`, with an optional transducer `xform` applied to the memberships first."
@@ -281,7 +295,7 @@
   ([member] (member-of member identity))
   ([member xform]
    (->> (:membership/_member member)
-        (into [] (comp (remove sch/deleted?)
+        (into [] (comp (remove (some-fn sch/deleted? :membership/member-approval-pending?))
                        xform
                        (map :membership/entity))))))
 
@@ -326,3 +340,37 @@
                          (notification.data/assoc-recipients admins)
                          (validate/assert :membership/as-map))])))
   {:body ""})
+
+(q/defx create-board-child-invitation!
+  "Creates or resurects pending project or note membership"
+  {:prepare [az/with-account-id!
+             (az/assert-can-admin-or-self :entity-id)]}
+  [{:keys [invitee-account-id entity-id]}]
+  (db/transact! (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
+                  [(-> {:db/id entity-member-id
+                        :entity/created-at (java.util.Date.)
+                        :entity/deleted-at sch/DELETED_SENTINEL}
+                       (assoc :membership/member-approval-pending? true)
+                       (notification.data/assoc-recipients [(sch/wrap-id invitee-account-id)]))]
+                  [(-> (new-entity-with-membership (sch/wrap-id entity-id)
+                                                   invitee-account-id
+                                                   #{})
+                       (assoc :membership/member-approval-pending? true)
+                       (notification.data/assoc-recipients [(sch/wrap-id invitee-account-id)])
+                       (validate/assert :membership/as-map))]))
+  {:body ""})
+
+
+(q/defx approve-membership!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id entity-id]}]
+  (if-let [membership-id (az/membership-id account-id entity-id)]
+    (let [admins (->> (db/where [[:membership/entity (sch/wrap-id entity-id)]
+                                 (comp :role/board-admin :membership/roles)])
+                      (map (comp sch/wrap-id :membership/member)))]
+      (db/transact! [(-> {:db/id membership-id
+                          :membership/member-approval-pending? false}
+                         ;; TODO need to remove old notifications
+                         (notification.data/assoc-recipients admins))])
+      {:body ""})
+    (throw (ex-info "No membership to approve" {}))))
