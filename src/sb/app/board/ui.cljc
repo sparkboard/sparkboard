@@ -206,8 +206,11 @@
                (when (:account-id params)
                  (cons
                   [:tr/members (routing/path-for [`members {:board-id board-id}])]
-                  (when (:member-vote/open? board)
-                    [[:tr/votes (routing/path-for [`voting {:board-id board-id}])]])))))
+                  (concat
+                   (when (az/admin-role? (az/all-roles (:account-id params) board))
+                     [[:tr/pending-members (routing/path-for [`pending-members {:board-id board-id}])]])
+                   (when (:member-vote/open? board)
+                     [[:tr/votes (routing/path-for [`voting {:board-id board-id}])]]))))))
         (when-let [account (db/get :env/config :account)]
           (if-let [membership-id  (az/membership-id account board)]
             [:a.btn.btn-white
@@ -224,9 +227,7 @@
        body]]
      [:img.m-auto {:src (asset.ui/asset-src (:image/footer board) :page)}]]))
 
-(ui/defview show
-  {:route "/b/:board-id"
-   :endpoint/public? true}
+(ui/defview show*
   [{:as params :keys [board-id]}]
   (let [board        (data/show {:board-id board-id})
         board-editor? (az/editor-role? (az/all-roles (:account-id params) board))
@@ -237,102 +238,138 @@
                        :entity/project-fields (filter :field/show-on-card? fields)})
         !project-filter (h/use-state nil)
         !xform (h/use-state (constantly identity))]
-    [frame params :tr/projects
-     [:div.flex-v.gap-6
-      [:div.flex.flex-wrap.gap-4.items-end
-       [:div.field-wrapper
-        [:label.field-label (t :tr/filters)]
-        [radix/toggle-group {:value @!project-filter
-                             :on-change #(reset! !project-filter %)
-                             :field/wrap read-string
-                             :field/unwrap str
-                             :field/options [{:field-option/label (t :tr/my-projects)
-                                              :field-option/value :my-projects}
-                                             {:field-option/label (t :tr/looking-for-help)
-                                              :field-option/value :looking-for-help}]}]]
-       [query-ui tags fields !xform]
-       (when-let [create! (note.data/new!-authorized {:note {:entity/parent board-id
-                                                             :entity/title  (t :tr/untitled)
-                                                             :entity/admission-policy :admission-policy/invite-only
-                                                             :entity/draft? true}})]
-         [ui/action-button
-          {:class "bg-white/40"
-           :on-click (fn [_]
-                       (p/let [{:as   result
-                                :keys [entity/id]} (create!)]
-                         (when id
-                           (routing/nav! `note.ui/show {:note-id id}))
-                         result))}
-          (t :tr/new-note)])
-       (when-let [create! (project.data/new!-authorized {:project {:entity/parent board-id
-                                                                   :entity/title  (t :tr/untitled)
-                                                                   :entity/admission-policy :admission-policy/open
-                                                                   :entity/draft? true}})]
-         [ui/action-button
-          {:class "bg-white/40"
-           :on-click (fn [_]
-                       (p/let [{:as   result
-                                :keys [entity/id]} (create!)]
-                         (when id
-                           (routing/nav! `project.ui/show {:project-id id}))
-                         result))}
-          (t :tr/new-project)])]
+    [:div.flex-v.gap-6
+     [:div.flex.flex-wrap.gap-4.items-end
+      [:div.field-wrapper
+       [:label.field-label (t :tr/filters)]
+       [radix/toggle-group {:value @!project-filter
+                            :on-change #(reset! !project-filter %)
+                            :field/wrap read-string
+                            :field/unwrap str
+                            :field/options [{:field-option/label (t :tr/my-projects)
+                                             :field-option/value :my-projects}
+                                            {:field-option/label (t :tr/looking-for-help)
+                                             :field-option/value :looking-for-help}]}]]
+      [query-ui tags fields !xform]
+      (when-let [create! (note.data/new!-authorized {:note {:entity/parent board-id
+                                                            :entity/title  (t :tr/untitled)
+                                                            :entity/admission-policy :admission-policy/invite-only
+                                                            :entity/draft? true}})]
+        [ui/action-button
+         {:class "bg-white/40"
+          :on-click (fn [_]
+                      (p/let [{:as   result
+                               :keys [entity/id]} (create!)]
+                        (when id
+                          (routing/nav! `note.ui/show {:note-id id}))
+                        result))}
+         (t :tr/new-note)])
+      (when-let [create! (project.data/new!-authorized {:project {:entity/parent board-id
+                                                                  :entity/title  (t :tr/untitled)
+                                                                  :entity/admission-policy :admission-policy/open
+                                                                  :entity/draft? true}})]
+        [ui/action-button
+         {:class "bg-white/40"
+          :on-click (fn [_]
+                      (p/let [{:as   result
+                               :keys [entity/id]} (create!)]
+                        (when id
+                          (routing/nav! `project.ui/show {:project-id id}))
+                        result))}
+         (t :tr/new-project)])]
 
-      ;; notes
-      (some->> (when board-editor?
-                 (seq (data/note-drafts {:board-id board-id})) )
-               (grouped-card-grid note.ui/card)
-               drafts)
-      (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))
+     ;; notes
+     (some->> (when board-editor?
+                (seq (data/note-drafts {:board-id board-id})))
+              (grouped-card-grid note.ui/card)
+              drafts)
+     (grouped-card-grid note.ui/card (data/notes {:board-id board-id}))
 
-      ;; projects
-      (some->> (when (:account-id params)
-                 (seq (data/project-drafts {:board-id board-id})))
-               (grouped-card-grid card)
-               drafts)
-      (->> (data/projects {:board-id board-id})
-           (into [] (comp (case @!project-filter
-                            :my-projects (filter #(some-> (db/get :env/config :account)
-                                                          (az/membership-id board-id)
-                                                          (az/membership-id %)))
-                            :looking-for-help (filter (comp seq :project/open-requests))
-                            nil identity)
-                          @!xform))
-           (grouped-card-grid card))]]))
+     ;; projects
+     (some->> (when (:account-id params)
+                (seq (data/project-drafts {:board-id board-id})))
+              (grouped-card-grid card)
+              drafts)
+     (->> (data/projects {:board-id board-id})
+          (into [] (comp (case @!project-filter
+                           :my-projects (filter #(some-> (db/get :env/config :account)
+                                                         (az/membership-id board-id)
+                                                         (az/membership-id %)))
+                           :looking-for-help (filter (comp seq :project/open-requests))
+                           nil identity)
+                         @!xform))
+          (grouped-card-grid card))]))
+
+(ui/defview show
+  {:route "/b/:board-id"
+   :endpoint/public? true}
+  [params]
+  [frame params :tr/projects
+   [:Suspense {} [show* params]]])
+
+(ui/defview members* [board-id]
+  (let [board        (data/show {:board-id board-id})
+        tags (:entity/project-tags board)
+        fields (:entity/project-fields board)
+        !xform (h/use-state (constantly identity))]
+    [:<>
+     [:div.flex.flex-wrap.gap-4.items-end.mb-6
+      [query-ui tags fields !xform]]
+     (->> (data/members {:board-id board-id})
+          (into [] @!xform )
+          (grouped-card-grid (partial member.ui/card
+                                      {:entity/member-tags tags
+                                       :entity/member-fields (filter :field/show-on-card? fields)})))]))
 
 (ui/defview members
   {:route "/b/:board-id/members"}
   [{:as params :keys [board-id]}]
+  [frame params :tr/members
+   [:Suspense {} [members* board-id]]])
+
+(ui/defview pending-members*
+  {:route "/b/:board-id/pending-members"}
+  [board-id]
   (let [board        (data/show {:board-id board-id})
         tags (:entity/project-tags board)
         fields (:entity/project-fields board)
         !xform (h/use-state (constantly identity))]
-    [frame params :tr/members
-     [:<>
-      [:div.flex.flex-wrap.gap-4.items-end.mb-6
-       [query-ui tags fields !xform]]
-      (->> (data/members {:board-id board-id})
-           (into [] @!xform )
-           (grouped-card-grid (partial member.ui/card
-                                       {:entity/member-tags tags
-                                        :entity/member-fields (filter :field/show-on-card? fields)})))]]))
+    [:<>
+     [:div.flex.flex-wrap.gap-4.items-end.mb-6
+      [query-ui tags fields !xform]]
+     (->> (data/pending-members {:board-id board-id})
+          (into [] @!xform )
+          (grouped-card-grid (partial member.ui/card
+                                      {:entity/member-tags tags
+                                       :entity/member-fields (filter :field/show-on-card? fields)})))]))
+
+(ui/defview pending-members
+  {:route "/b/:board-id/pending-members"}
+  [{:as params :keys [board-id]}]
+  [frame params :tr/pending-members
+   [:Suspense {} [pending-members* board-id]]])
+
+(ui/defview voting*
+  {:route "/b/:board-id/voting"}
+  [board-id]
+  (let [board        (data/show {:board-id board-id})
+        tags (:entity/project-tags board)
+        fields (:entity/project-fields board)
+        !xform (h/use-state (constantly identity))]
+    [:<>
+     [:h2.text-2xl (t :tr/community-vote)]
+     [:div.mb-4 (t :tr/vote-blurb)]
+     [:div.flex.flex-wrap.gap-4.items-end.mb-6
+      [query-ui tags fields !xform]]
+     (->> (data/projects {:board-id board-id})
+          (into [] @!xform)
+          (grouped-card-grid project.ui/vote-card))]))
 
 (ui/defview voting
   {:route "/b/:board-id/voting"}
   [{:as params :keys [board-id]}]
-  (let [board        (data/show {:board-id board-id})
-        tags (:entity/project-tags board)
-        fields (:entity/project-fields board)
-        !xform (h/use-state (constantly identity))]
-    [frame params :tr/votes
-     [:<>
-      [:h2.text-2xl (t :tr/community-vote)]
-      [:div.mb-4 (t :tr/vote-blurb)]
-      [:div.flex.flex-wrap.gap-4.items-end.mb-6
-       [query-ui tags fields !xform]]
-      (->> (data/projects {:board-id board-id})
-           (into [] @!xform)
-           (grouped-card-grid project.ui/vote-card))]]))
+  [frame params :tr/votes
+   [:Suspense {} [voting* board-id]]])
 
 (comment
   [:ul                                                      ;; i18n stuff

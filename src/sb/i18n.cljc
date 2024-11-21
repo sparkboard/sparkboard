@@ -294,6 +294,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/members                         {:en "Members"
                                           :fr "Membres"
                                           :es "Miembros"},
+     :tr/pending-members                 {:en "Pending members"
+                                          :fr "Membres en attente"
+                                          :es "Miembros pendientes"}
      :tr/board                           {:en "Board"
                                           :fr "Tableau"
                                           :es "Tablero"}
