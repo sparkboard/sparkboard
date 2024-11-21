@@ -401,6 +401,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/hint                            {:en "Hint"
                                           :fr "Indice"
                                           :es "Pista"}
+     :tr/required                        {:en "Required"
+                                          :fr "Obligatoire"
+                                          :es "Requerido"}
      :tr/required?                       {:en "Required"
                                           :fr "Obligatoire"
                                           :es "Requerido"}
@@ -548,6 +551,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/looking-for-help                {:en "Looking for help"
                                           :fr "Cherchent de l'aide"
                                           :es "En busca de ayuda"}
+     :tr/join-blurb                      {:en "By joining this board you agree to share your email address with the admins of this board."
+                                          :fr "En rejoignant ce tableu, vous acceptez de partager votre adresse e-mail avec les administrateurs du tableau."
+                                          :es "Al unirse a este tablero, usted acepta compartir su dirección de correo electrónico con los administradores del tablero."}
      :tr/vote                            {:en "Vote"
                                           :fr "Vote"
                                           :es "Votar"}

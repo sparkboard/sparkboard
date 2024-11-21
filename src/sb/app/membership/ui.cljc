@@ -102,17 +102,31 @@
                                                              :role/board-admin)}}))}]
          [:div
           (t :tr/board-admin)]]])
-     (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id membership)})]
-       [:div.px-body
+     (if (and (:membership/member-approval-pending? membership)
+              (sch/id= (:account-id params) account))
+       [:div.px-body.flex-v.gap-2
+        (t :tr/join-blurb)
         [ui/action-button
-         {:class "bg-white"
-          :on-click (fn [_]
-                      (p/do
-                        (delete!)
-                        (routing/dissoc-router! :router/modal)))}
-         (if (:role/self roles)
-           (t :tr/leave-board)
-           (t :tr/remove-from-board))]])]))
+         (if-let [approve! (data/approve-board-membership!-authorized {:board-id (:entity/id board)})]
+           {:class "bg-white"
+            :on-click (fn [_]
+                        (p/let [result (data/approve-board-membership! {:board-id (:entity/id board)})]
+                          (when-not (:error result)
+                            (routing/dissoc-router! :router/modal))
+                          result))}
+           {:disabled true})
+         (t :tr/join)]]
+       (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id membership)})]
+         [:div.px-body
+          [ui/action-button
+           {:class "bg-white"
+            :on-click (fn [_]
+                        (p/do
+                          (delete!)
+                          (routing/dissoc-router! :router/modal)))}
+           (if (:role/self roles)
+             (t :tr/leave-board)
+             (t :tr/remove-from-board))]]))]))
 
 (ui/defview tags [size board-membership]
   (let [tag-class (case size :small "tag-sm" :medium "tag-md")]

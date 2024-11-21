@@ -100,6 +100,7 @@
   (dissoc (q/pull `[~@entity.data/listing-fields
                     :entity/tags
                     :entity/field-entries
+                    :membership/member-approval-pending?
                     {:membership/entity [~@entity.data/id-fields
                                          :entity/member-tags
                                          :entity/member-fields]}
@@ -308,12 +309,14 @@
   (if-let [board-member-id (az/deleted-membership-id account-id board-id)]
     (do
       (db/transact! [{:db/id board-member-id
+                      :membership/member-approval-pending? true
                       :entity/created-at (java.util.Date.)
                       :entity/deleted-at sch/DELETED_SENTINEL}])
       {:entity/id (:entity/id (db/entity board-member-id))})
     (let [membership (-> (new-entity-with-membership (sch/wrap-id board-id)
                                                      account-id
                                                      #{})
+                         (assoc :membership/member-approval-pending? true)
                          (validate/assert :membership/as-map))]
       (db/transact! [membership])
       {:entity/id (:entity/id membership)})))
@@ -360,6 +363,30 @@
                        (validate/assert :membership/as-map))]))
   {:body ""})
 
+(q/defx approve-board-membership!
+  {:prepare [az/with-account-id!
+             (az/with-member-id! :board-id)
+             (fn [_ {:keys [board-id member-id] :as params}]
+               (let [required-fields? (-> (apply disj (->> (:entity/member-fields (dl/entity board-id))
+                                                           (filter :field/required?)
+                                                           (map :field/id)
+                                                           set)
+                                                 (-> (db/entity member-id)
+                                                     :entity/field-entries
+                                                     keys))
+                                          empty?)]
+                 (when-not required-fields?
+                   (validate/permission-denied! "Not all required fields are filled out")))
+               params)]}
+  [{:keys [account-id board-id member-id]}]
+  (let [admins (->> (db/where [[:membership/entity (sch/wrap-id board-id)]
+                               (comp :role/project-admin :membership/roles)])
+                    (map (comp sch/wrap-id :membership/member)))]
+    (db/transact! [(-> {:db/id member-id
+                        :membership/member-approval-pending? false}
+                       ;; TODO need to remove old notifications
+                       (notification.data/assoc-recipients admins))])
+    {:body ""}))
 
 (q/defx approve-membership!
   {:prepare [az/with-account-id!]}
