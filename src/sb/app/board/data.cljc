@@ -135,17 +135,20 @@
                               {:entity/custom-tags [:tag/label]}
                               :membership/roles])
 
+(def member-fields `[:entity/deleted-at
+                     ~@entity.data/id-fields
+                     :membership/member-approval-pending?
+                     :membership/roles
+                     {:membership/entity [:entity/id]}
+                     {:membership/member [:entity/id]}])
+
 (def note-fields `[~@entity.data/listing-fields
                    :note/outline-color
                    :entity/fields
                    :entity/field-entries
                    {:entity/video [:video/url]}
                    {:entity/parent [:entity/id]}
-                   {:membership/_entity [:entity/deleted-at
-                                         ~@entity.data/id-fields
-                                         :membership/roles
-                                         {:membership/entity [:entity/id]}
-                                         {:membership/member [:entity/id]}]}])
+                   {:membership/_entity ~member-fields}])
 
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
@@ -153,11 +156,7 @@
                       :project/number
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
-                      {:membership/_entity [:entity/deleted-at
-                                            ~@entity.data/id-fields
-                                            :membership/roles
-                                            {:membership/entity [:entity/id]}
-                                            {:membership/member [:entity/id]}]}])
+                      {:membership/_entity ~member-fields}])
 
 (q/defquery members
   {:prepare [(az/with-roles :board-id)
