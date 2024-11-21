@@ -230,6 +230,13 @@
                           account]))))
           (board.data/members {:board-id (sch/wrap-id (:entity/parent entity))}))))
 
+(ui/defview invitation-widget [entity]
+  (let [?user-filter @(h/use-state (io/field))]
+    [:<>
+     [field.ui/filter-field ?user-filter {:placeholder (t :tr/search-to-invite)}]
+     [:Suspense {}
+      [invitation-list entity ?user-filter]]]))
+
 (ui/defview for-modal [entity props]
   ;; todo
   ;; 4. hover to see member details
@@ -251,11 +258,7 @@
          (into [:div.grid.grid-cols-2.gap-x-6]
                (map (partial with-admin entity props))
                memberships)])
-      (let [?user-filter @(h/use-state (io/field))]
-        [:<>
-         [field.ui/filter-field ?user-filter {:placeholder (t :tr/search-to-invite)}]
-         [:Suspense {}
-          [invitation-list entity ?user-filter]]])])
+      [invitation-widget entity]])
    (if-let [membership (some-> (db/get :env/config :account)
                                (az/membership entity)
                                not-empty)]
