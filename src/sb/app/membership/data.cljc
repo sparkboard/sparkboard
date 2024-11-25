@@ -165,17 +165,16 @@
     ;; scoped to entity
     (assert false "not implemented yet")
     ;; all entities I'm also a member of
-    (dl/q '[:find [(pull ?your-account [:account/display-name
-                                        :entity/id
-                                        {:image/avatar [:entity/id]}])
-                   ...]
-            :in $ ?my-account ?search-term
-            :where
-            [?me :membership/member ?my-account]
-            [?me :membership/entity ?entity]
-            [?you :membership/entity ?entity]
-            [?you :membership/member ?your-account]
-            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+    (dl/q (u/template
+           `[:find [(pull ?your-account ~entity.data/listing-fields)
+                    ...]
+             :in $ ?my-account ?search-term
+             :where
+             [?me :membership/member ?my-account]
+             [?me :membership/entity ?entity]
+             [?you :membership/entity ?entity]
+             [?you :membership/member ?your-account]
+             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]])
           account-id
           search-term)))
 
@@ -186,21 +185,18 @@
     ;; scoped to entity
     (assert false "not implemented yet")
     ;; all entities I'm also a member of
-    (dl/q '[:find [(pull ?you [:entity/id
-                               {:membership/entity [:entity/id {:image/avatar [:entity/id]}]
-                                :membership/member
-                                ;; TODO could use entity.data/listing-fields but quasiqouting is awkward here
-                                [:account/display-name
-                                 :entity/id
-                                 {:image/avatar [:entity/id]}]}])
-                   ...]
-            :in $ ?my-account ?search-term
-            :where
-            [?me :membership/member ?my-account]
-            [?me :membership/entity ?entity]
-            [?you :membership/entity ?entity]
-            [?you :membership/member ?your-account]
-            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+    (dl/q (u/template
+           `[:find [(pull ?you [:entity/id
+                                {:membership/entity [:entity/id {:image/avatar [:entity/id]}]
+                                 :membership/member ~entity.data/listing-fields}])
+                    ...]
+             :in $ ?my-account ?search-term
+             :where
+             [?me :membership/member ?my-account]
+             [?me :membership/entity ?entity]
+             [?you :membership/entity ?entity]
+             [?you :membership/member ?your-account]
+             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]])
           account-id
           search-term)))
 
@@ -211,27 +207,25 @@
     ;; scoped to entity
     (do
       (ensure-membership! account-id entity-id)
-      (dl/q '[:find [(pull ?account [:account/display-name
-                                     :entity/id
-                                     {:image/avatar [:entity/id]}]) ...]
-              :in $ ?entity ?search-term
-              :where
-              [?m :membership/entity ?entity]
-              [?m :membership/member ?account]
-              [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]]
+      (dl/q (u/template
+             `[:find [(pull ?account ~entity.data/listing-fields) ...]
+               :in $ ?entity ?search-term
+               :where
+               [?m :membership/entity ?entity]
+               [?m :membership/member ?account]
+               [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]])
             entity-id
             search-term))
     ;; all entities I'm also a member of
-    (dl/q '[:find [(pull ?your-account [:account/display-name
-                                        :entity/id
-                                        {:image/avatar [:entity/id]}]) ...]
-            :in $ ?my-account ?search-term
-            :where
-            [?me :membership/member ?my-account]
-            [?me :membership/entity ?entity]
-            [?you :membership/entity ?entity]
-            [?you :membership/member ?your-account]
-            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+    (dl/q (u/template
+           `[:find [(pull ?your-account ~entity.data/listing-fields) ...]
+             :in $ ?my-account ?search-term
+             :where
+             [?me :membership/member ?my-account]
+             [?me :membership/entity ?entity]
+             [?you :membership/entity ?entity]
+             [?you :membership/member ?your-account]
+             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]])
           account-id
           search-term)))
 
