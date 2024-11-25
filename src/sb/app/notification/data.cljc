@@ -42,15 +42,15 @@
                                                        (some (partial sch/id= account-id))
                                                        not)
                             :notification/profile
-                            (db/pull '[:entity/id :entity/kind
-                                       {:membership/entity [:entity/id :entity/member-tags]}
-                                       {:entity/tags [:entity/id
-                                                      :tag/label
-                                                      :tag/color]}
-                                       {:membership/member [:entity/id]}]
+                            (some->> (:entity/parent (get-project notification))
                                      (az/membership-id (or (:membership/member notification)
-                                                           (:entity/created-by notification))
-                                                       (:entity/parent (get-project notification))))))
+                                                           (:entity/created-by notification)))
+                                     (db/pull '[:entity/id :entity/kind
+                                                {:membership/entity [:entity/id :entity/member-tags]}
+                                                {:entity/tags [:entity/id
+                                                               :tag/label
+                                                               :tag/color]}
+                                                {:membership/member [:entity/id]}]))))
                    (db/pull `[:entity/id
                              :entity/kind
                              :entity/created-at

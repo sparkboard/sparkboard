@@ -2,6 +2,7 @@
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
             [sb.app.membership.data :as member.data]
+            [sb.app.notification.data :as notification.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
@@ -68,9 +69,18 @@
                   {:membership/entity [:entity/id]}
                   {:membership/member ~entity.data/listing-fields}
                   :membership/roles])
-        (member.data/memberships (dl/entity org-id)
+        (member.data/memberships (db/entity org-id)
                                  (xf/sort-by :entity/created-at u/compare:desc))))
 
+(q/defquery pending-memberships
+  {:prepare [az/require-account!]}
+  [{:keys [org-id]}]
+  (mapv (q/pull `[~@entity.data/id-fields
+                  {:membership/entity [:entity/id]}
+                  {:membership/member ~entity.data/listing-fields}
+                  :membership/roles])
+        (member.data/pending-memberships (db/entity org-id)
+                                         (xf/sort-by :entity/created-at u/compare:desc))))
 
 (q/defx search-once
   [{:as   params
@@ -107,3 +117,67 @@
                    (dl/new-entity :membership))]
     (db/transact! [member])
     org))
+
+(q/defx create-invitation!
+  "Creates or resurects pending org membership"
+  {:prepare [az/with-account-id!
+             (az/assert-can-admin-or-self :entity-id)]}
+  [{:keys [invitee-account-id entity-id]}]
+  (db/transact! (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
+                  [(-> {:db/id entity-member-id
+                        :entity/created-at (java.util.Date.)
+                        :entity/deleted-at sch/DELETED_SENTINEL}
+                       (assoc :membership/member-approval-pending? true)
+                       (notification.data/assoc-recipients [(sch/wrap-id invitee-account-id)]))]
+                  [(-> (member.data/new-entity-with-membership (sch/wrap-id entity-id)
+                                                   invitee-account-id
+                                                   #{})
+                       (assoc :membership/member-approval-pending? true)
+                       (notification.data/assoc-recipients [(sch/wrap-id invitee-account-id)])
+                       (validate/assert :membership/as-map))]))
+  {:body ""})
+
+(q/defquery org-membership
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id org-id]}]
+  (when-let [member-id (or (az/membership-id account-id org-id)
+                           (az/deleted-membership-id account-id org-id))]
+    (q/pull `[~@entity.data/id-fields
+              :entity/deleted-at
+              :membership/member-approval-pending?
+              {:membership/entity [:entity/id]}
+              {:membership/member ~entity.data/listing-fields}
+              :membership/roles]
+            member-id)))
+
+(q/defx approve-membership!
+  {:prepare [az/with-account-id!
+             #?(:cljs
+                (fn [_ params]
+                  ;; making sure the necessary data for the next `:prepare` step is loaded on the client
+                  (org-membership {:org-id (:org-id params)})
+                  nil))
+             (az/with-member-id! :org-id)
+             (fn [_ params]
+               (when-not (:membership/member-approval-pending? (db/entity (:member-id params)))
+                 (validate/permission-denied!)))]}
+  [{:keys [account-id org-id member-id]}]
+  (let [admins (->> (db/where [[:membership/entity (sch/wrap-id org-id)]
+                               (comp :role/org-admin :membership/roles)])
+                    (map (comp sch/wrap-id :membership/member)))]
+    (db/transact! [(-> {:db/id member-id
+                        :membership/member-approval-pending? false}
+                       ;; TODO need to remove old notifications
+                       (notification.data/assoc-recipients admins))])
+    {:body ""}))
+
+(q/defquery search-users
+  {:prepare [az/with-account-id!]}
+  [{:keys [filter-term]}]
+  (dl/q (u/template
+         `[:find [(pull ?account [~@entity.data/listing-fields]) ...]
+           :in $ ?terms
+           :where
+           [?account :entity/kind :account]
+           [(fulltext $ ?terms {:top 10}) [[?account _ _]]]])
+        filter-term))
