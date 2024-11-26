@@ -302,9 +302,9 @@
        (do
          ;; TODO do we want to reset `:membership/roles` here?
          (db/transact! [(-> {:db/id membership-id
-                             :entity/created-at (java.util.Date.)
-                             :entity/deleted-at sch/DELETED_SENTINEL}
-                            (merge more))])
+                             :entity/created-at (java.util.Date.)}
+                            (merge more))
+                        [:db/retract membership-id :entity/deleted-at]])
          (:entity/id (db/entity membership-id)))
        (let [membership (-> (new-entity-with-membership (sch/wrap-id entity-id)
                                                         account-id
