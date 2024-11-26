@@ -123,18 +123,20 @@
   {:prepare [az/with-account-id!
              (az/assert-can-admin-or-self :entity-id)]}
   [{:keys [invitee-account-id entity-id]}]
-  (db/transact! (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
-                  [(-> {:db/id entity-member-id
-                        :entity/created-at (java.util.Date.)
-                        :entity/deleted-at sch/DELETED_SENTINEL}
-                       (assoc :membership/member-approval-pending? true)
-                       (notification.data/assoc-recipients [(sch/wrap-id invitee-account-id)]))]
-                  [(-> (member.data/new-entity-with-membership (sch/wrap-id entity-id)
-                                                   invitee-account-id
-                                                   #{})
-                       (assoc :membership/member-approval-pending? true)
-                       (notification.data/assoc-recipients [(sch/wrap-id invitee-account-id)])
-                       (validate/assert :membership/as-map))]))
+  (let [membership (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
+                     {:db/id entity-member-id
+                      :entity/created-at (java.util.Date.)
+                      :entity/deleted-at sch/DELETED_SENTINEL
+                      :membership/member-approval-pending? true}
+                     (-> (member.data/new-entity-with-membership (sch/wrap-id entity-id)
+                                                                 invitee-account-id
+                                                                 #{})
+                         (assoc :membership/member-approval-pending? true)
+                         (validate/assert :membership/as-map)))]
+    (db/transact! [membership
+                   (notification.data/new :notification.type/new-invitation
+                                          (or (:db/id membership) (sch/wrap-id membership))
+                                          [(sch/wrap-id invitee-account-id)])]))
   {:body ""})
 
 (q/defquery org-membership
@@ -165,10 +167,11 @@
   (let [admins (->> (db/where [[:membership/entity (sch/wrap-id org-id)]
                                (comp :role/org-admin :membership/roles)])
                     (map (comp sch/wrap-id :membership/member)))]
-    (db/transact! [(-> {:db/id member-id
-                        :membership/member-approval-pending? false}
-                       ;; TODO need to remove old notifications
-                       (notification.data/assoc-recipients admins))])
+    (db/transact! [{:db/id member-id
+                    :membership/member-approval-pending? false}
+                   (notification.data/new :notification.type/new-member
+                                          member-id
+                                          admins)])
     {:body ""}))
 
 (q/defquery search-users

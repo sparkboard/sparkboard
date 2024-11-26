@@ -5,31 +5,44 @@
             [sb.query :as q]
             [sb.schema :as sch :refer [s- ?]]
             [sb.server.datalevin :as dl]
+            [sb.validate :as validate]
             [sb.util :as u]))
 
-(def notification-keys
-  [(? :notification/recipients)
-   (? :notification/unread-by)
-   (? :notification/email-to)])
-
 (sch/register!
- {:notification/recipients            (sch/ref :many),
+ {:notification/subject               (merge
+                                       (sch/ref :one)
+                                       {:doc "The primary entity referred to in the notification (when viewed"}),
+  :notification/type                  {s- [:enum
+                                           :notification.type/new-member
+                                           :notification.type/new-invitation
+                                           :notification.type/new-post]}
+  :notification/recipients            (sch/ref :many),
   :notification/unread-by             (sch/ref :many)
   :notification/email-to              (sch/ref :many)
-  :notification/as-map                {s- (into [:map {:closed true}
-                                                 :entity/id
-                                                 (? :entity/created-at)]
-                                                notification-keys)}})
+  :notification/as-map                {s- [:map {:closed true}
+                                           :entity/id
+                                           :entity/kind
+                                           :notification/type
+                                           :notification/subject
+                                           :notification/recipients
+                                           (? :notification/unread-by)
+                                           (? :notification/email-to)
+                                           :entity/created-at]}})
 
-(def get-project (some-fn :membership/entity (partial u/auto-reduce :post/parent)))
+(def get-context (comp (some-fn :membership/entity (partial u/auto-reduce :post/parent))
+                       :notification/subject))
 
-(defn assoc-recipients [entity recipients]
-  (let [;; validation fails for sets
-        recipients (vec recipients)]
-    (assoc entity
-           :notification/recipients recipients
-           :notification/unread-by recipients
-           :notification/email-to recipients)))
+#?(:clj
+   (defn new [ntype subject recipients]
+     (let [;; validation fails for sets
+           recipients (vec recipients)]
+       (-> (dl/new-entity {:notification/type ntype
+                           :notification/subject subject
+                           :notification/recipients recipients
+                           :notification/unread-by recipients
+                           :notification/email-to recipients}
+                          :notification)
+           (validate/assert :notification/as-map)))))
 
 (q/defquery all
   {:prepare [az/with-account-id]}
@@ -42,9 +55,9 @@
                                                        (some (partial sch/id= account-id))
                                                        not)
                             :notification/profile
-                            (some->> (:entity/parent (get-project notification))
-                                     (az/membership-id (or (:membership/member notification)
-                                                           (:entity/created-by notification)))
+                            (some->> (:entity/parent (get-context notification))
+                                     (az/membership-id (or (:membership/member (:notification/subject notification))
+                                                           (:entity/created-by (:notification/subject notification))))
                                      (db/pull '[:entity/id :entity/kind
                                                 {:membership/entity [:entity/id :entity/member-tags]}
                                                 {:entity/tags [:entity/id
@@ -52,21 +65,24 @@
                                                                :tag/color]}
                                                 {:membership/member [:entity/id]}]))))
                    (db/pull `[:entity/id
-                             :entity/kind
-                             :entity/created-at
-                              :membership/member-approval-pending?
-                             {:membership/member ~entity.data/listing-fields}
-                              {:membership/entity [~@entity.data/listing-fields
-                                                   {:entity/parent [:entity/id]}]}
-                              :post/text
-                              {:entity/created-by ~entity.data/listing-fields}
-                              {:post/parent [:entity/id
-                                             :entity/kind
-                                             :entity/title
-                                             :post/text
-                                             {:entity/parent [:entity/id]}
-                                             {:post/parent [~@entity.data/listing-fields
-                                                            {:entity/parent [:entity/id]}]}]}])))))
+                              :entity/kind
+                              :entity/created-at
+                              :notification/type
+                              {:notification/subject [:entity/id
+                                                      :entity/kind
+                                                      :membership/member-approval-pending?
+                                                      {:membership/member ~entity.data/listing-fields}
+                                                      {:membership/entity [~@entity.data/listing-fields
+                                                                           {:entity/parent [:entity/id]}]}
+                                                      :post/text
+                                                      {:entity/created-by ~entity.data/listing-fields}
+                                                      {:post/parent [:entity/id
+                                                                     :entity/kind
+                                                                     :entity/title
+                                                                     :post/text
+                                                                     {:entity/parent [:entity/id]}
+                                                                     {:post/parent [~@entity.data/listing-fields
+                                                                                    {:entity/parent [:entity/id]}]}]}]}])))))
 
 (q/defquery counts
   {:prepare [az/with-account-id!]}
