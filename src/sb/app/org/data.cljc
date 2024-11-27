@@ -1,12 +1,14 @@
 (ns sb.app.org.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
+            [sb.app.membership.data :as member.data]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [? s-]]
             [sb.server.datalevin :as dl]
             [sb.util :as u]
-            [sb.validate :as validate]))
+            [sb.validate :as validate]
+            [net.cgrand.xforms :as xf]))
 
 (sch/register!
   {:org/show-org-tab?          {:doc "Boards should visibly link to this parent organization"
@@ -58,6 +60,17 @@
                  ~@entity.data/site-fields
                  {:entity/_parent ~entity.data/listing-fields}])
        (merge {:membership/roles roles})))
+
+(q/defquery members
+  {:prepare [az/require-account!]}
+  [{:keys [org-id]}]
+  (mapv (q/pull `[~@entity.data/id-fields
+                  {:membership/entity [:entity/id]}
+                  {:membership/member ~entity.data/listing-fields}
+                  :membership/roles])
+        (member.data/memberships (dl/entity org-id)
+                                 (xf/sort-by :entity/created-at u/compare:desc))))
+
 
 (q/defx search-once
   [{:as   params

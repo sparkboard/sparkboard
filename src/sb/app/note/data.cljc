@@ -67,10 +67,3 @@
     (db/transact! [note])
     {:entity/id (:entity/id note)}))
 
-(q/defx delete!
-  "Mutation fn. Marks note as deleted by given note-id."
-  {:prepare [az/with-account-id!
-             (member.data/assert-can-edit :note-id)]}
-  [{:keys [account-id]} {:keys [note-id]}]
-  (db/transact! [[:db/add [:entity/id note-id] :entity/deleted-at (java.util.Date.)]])
-  {:body ""})

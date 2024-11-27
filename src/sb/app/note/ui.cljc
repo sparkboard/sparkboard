@@ -54,7 +54,8 @@
        (when (:entity/draft? note)
          [:div.border-b-2.border-dashed.px-body.py-2.flex-center.gap-3.bg-gray-100
           [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
-          [ui/action-button {:on-click #(entity.data/save-attributes! nil (:entity/id note) {:entity/draft? false})
+          [ui/action-button {:on-click #(entity.data/save-attributes! {:entity {:entity/id (:entity/id note)
+                                                                                :entity/draft? false}})
                              :classes  {:btn          "btn-primary px-4 py-1"
                                         :progress-bar "text-[rgba(255,255,255,0.5)]"}}
            (t :tr/publish)]])
@@ -109,12 +110,14 @@
 
          [note-members note field-params]
 
-         (when can-edit?
-           [ui/action-button {:on-click (fn [_]
-                                          (p/let [result (data/delete! nil {:note-id (sch/unwrap-id (:note-id params))})]
-                                            (routing/dissoc-router! :router/modal)
-                                            result))}
-            "delete"])]]]
+         (when-let [delete! (entity.data/delete!-authorized {:entity-id (sch/unwrap-id (:note-id params))})]
+           [ui/action-button
+            {:class "bg-white"
+             :on-click (fn [_]
+                         (p/let [result (delete!)]
+                           (routing/dissoc-router! :router/modal)
+                           result))}
+            (t :tr/delete)])]]]
       [ui/error-view
        {:error "Note not found"}])))
 

@@ -94,17 +94,17 @@
 
 (defn permission-denied! [& [message]]
   (let [message (or message "Permission denied")]
-    (ex-info message
-             {:response {:status 400
-                         :body   {:error                             message
-                                  :inside-out.forms/messages-by-path {() [message]}}}})))
+    (throw (ex-info message
+                    {:response {:status 400
+                                :body   {:error                             message
+                                         :inside-out.forms/messages-by-path {() [message]}}}}))))
 
 (defn validation-failed! [& [message]]
   (let [message (or message "Validation failed")]
-    (ex-info message
-             {:response {:status 400
-                         :body   {:error                             message
-                                  :inside-out.forms/messages-by-path {() [message]}}}})))
+    (throw (ex-info message
+                    {:response {:status 400
+                                :body   {:error                             message
+                                         :inside-out.forms/messages-by-path {() [message]}}}}))))
 (comment
 
   (messages-by-path [:map {:closed true} :entity/title]
