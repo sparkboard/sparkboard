@@ -112,6 +112,7 @@
                                             :entity/created-at
                                             :entity/deleted-at
                                             :membership/roles
+                                            :membership/member-approval-pending?
                                             {:membership/member ~entity.data/listing-fields}]}
                       ~discussion.data/posts-with-comments-field
                       {:entity/parent

@@ -3,6 +3,7 @@
   (:require [clojure.edn :refer [read-string]]
             [inside-out.forms :as forms]
             [promesa.core :as p]
+            [re-db.api :as db]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.data :as entity.data]
@@ -14,6 +15,7 @@
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -66,15 +68,21 @@
                             :field-option/label (t :tr/sort-entity-created-at-desc)}
                            {:field-option/value [:random]
                             :field-option/label (t :tr/sort-random)}]}]
-         [:a.btn.btn-white.flex.items-center.px-3
-          {:class "bg-white/40"
-           :href (routing/path-for ['sb.app.board.ui/new-in-org
-                                    {:parent (:entity/id org)}])}
-          (t :tr/new-board)]
-         [:a.btn.btn-white
-          {:class "bg-white/40"
-           :href (routing/path-for `members {:org-id (:org-id params)})}
-          (t :tr/members)]]
+         [:div
+          [:a.btn.btn-white.py-2
+           {:class "bg-white/40"
+            :href (routing/path-for ['sb.app.board.ui/new-in-org
+                                     {:parent (:entity/id org)}])}
+           (t :tr/new-board)]]
+         [:div
+          [:a.btn.btn-white.py-2
+           {:class "bg-white/40"
+            :href (routing/path-for `members {:org-id (:org-id params)})}
+           (t :tr/members)]]
+         (when-let [join! (data/approve-membership!-authorized {:org-id (:org-id params)})]
+           [ui/action-button {:class "bg-white/40"
+                              :on-click (fn [_] (join!))}
+            (t :tr/join)])]
         [ui/error-view result]
         (for [[kind results] (if (seq q)
                                (dissoc (:value result) :q)
@@ -88,6 +96,66 @@
                         (map entity.ui/row))
                   results)])]])))
 
+(ui/defview avatar-name [{:keys [on-click]}
+                         {:as account :keys [account/display-name]}]
+  [:div.flex.items-center.gap-2
+   {:key      (:entity/id account)
+    :on-click on-click}
+   [ui/avatar {:size 12} account]
+   [:div display-name]])
+
+(ui/defview member-with-admin [org-membership]
+  (let [account (:membership/member org-membership)]
+    [:div.flex-v
+     [avatar-name {:on-click #(routing/nav! (routing/entity-route account 'ui/show))}
+      account]
+     (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id org-membership)
+                                                              :membership/roles #{:role/org-admin}}})
+       (into [:div.flex.flex-wrap.gap-2]
+             (map (fn [role]
+                    [:label.flex.items-center.gap-1
+                     [:input {:type "checkbox"
+                              :checked (boolean (role (:membership/roles org-membership)))
+                              :on-change (fn [event]
+                                           (entity.data/save-attributes!
+                                            {:entity {:entity/id (:entity/id org-membership)
+                                                      :membership/roles ((if (-> event .-target .-checked)
+                                                                           (fnil conj #{})
+                                                                           disj)
+                                                                         (:membership/roles org-membership)
+                                                                         role)}}))}]
+                     [:div
+                      (t (keyword "tr" (name role)))]]))
+             [:role/org-admin]))
+     (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id org-membership)})]
+       [ui/action-button
+        {:class "bg-white h-8"
+         :on-click (fn [_]
+                     (delete!))}
+        (t :tr/remove-from-org)])]))
+
+(ui/defview invitation-list [entity ?user-filter]
+  (when-let [user-filter @?user-filter]
+    [:<>
+     #_[ui/pprinted (mapv deref (data/search-users {:filter-term user-filter}))]
+     (into [:div.flex-v.gap-1]
+           (map (fn [account]
+                  ;; TODO make it more obvious in the UI that clicking will invite
+                  [avatar-name {:on-click #(do
+                                             (reset! ?user-filter nil)
+                                             (data/create-invitation!
+                                              {:invitee-account-id (:entity/id account)
+                                               :entity-id (:entity/id entity)}))}
+                   account]))
+             (data/search-users {:filter-term user-filter}))]))
+
+(ui/defview invitation-widget [entity]
+  (let [?user-filter @(h/use-state (forms/field))]
+    [:<>
+     [field.ui/filter-field ?user-filter {:placeholder (t :tr/search-to-invite)}]
+     [:Suspense {}
+      [invitation-list entity ?user-filter]]]))
+
 (ui/defview members
   {:route "/o/:org-id/members"
    :view/router :router/modal}
@@ -99,40 +167,18 @@
       [:div.flex.px-1.rounded-bl-lg.border-b.border-l.absolute.top-0.right-0
        [radix/dialog-close
         [:div.modal-title-icon [icons/close]]]]]
-     [:div.grid.grid-cols-2.gap-6
-      (for [org-membership members
-            :let [{:as account :keys [account/display-name]} (:membership/member org-membership)]]
-        [:div.flex-v
-         [:div.flex.items-center.gap-2
-          {:key      (:entity/id account)
-           :on-click #(routing/nav! (routing/entity-route account 'ui/show))}
-          [ui/avatar {:size 12} account]
-          [:div.flex-v.gap-1
-           display-name]]
-         (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id org-membership)
-                                                                  :membership/roles #{:role/org-admin}}})
-           (into [:div.flex.flex-wrap.gap-2]
-                 (map (fn [role]
-                        [:label.flex.items-center.gap-1
-                         [:input {:type "checkbox"
-                                  :checked (boolean (role (:membership/roles org-membership)))
-                                  :on-change (fn [event]
-                                               (entity.data/save-attributes!
-                                                {:entity {:entity/id (:entity/id org-membership)
-                                                          :membership/roles ((if (-> event .-target .-checked)
-                                                                               (fnil conj #{})
-                                                                               disj)
-                                                                             (:membership/roles org-membership)
-                                                                             role)}}))}]
-                         [:div
-                          (t (keyword "tr" (name role)))]]))
-                 [:role/org-admin]))
-         (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id org-membership)})]
-           [ui/action-button
-            {:class "bg-white h-8"
-             :on-click (fn [_]
-                         (delete!))}
-            (t :tr/remove-from-org)])])]]))
+     (into [:div.grid.grid-cols-2.gap-6]
+           (map member-with-admin)
+           members)
+     (when (az/admin-role? (az/all-roles (:account-id params) (db/entity (:org-id params))))
+       [:<>
+        (when-let [memberships (seq (data/pending-memberships {:org-id (:org-id params)}))]
+          [:div.field-wrapper
+           [:div.field-label (t :tr/pending)]
+           (into [:div.grid.grid-cols-2.gap-6]
+                 (map member-with-admin)
+                 memberships)])
+        [invitation-widget (db/entity (:org-id params))]])]))
 
 (ui/defview new
   {:route       "/new/o"

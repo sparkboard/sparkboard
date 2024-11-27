@@ -320,7 +320,7 @@
          (pushy/start! @!history))))
 
 (defn entity-route [{:as e :entity/keys [kind id]} key]
-  (when e
+  (when (and kind id)
     [(symbol (str "sb.app." (name kind) "." key))
      {(keyword (str (#({"account" "this-account"} % %) (name kind)) "-id")) id}]))
 

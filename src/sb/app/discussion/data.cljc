@@ -21,16 +21,15 @@
                            (sch/ref :many))
      :post/followers     (merge {:doc "Members who should be notified upon new replies to this post"}
                                 (sch/ref :many))
-     :post/as-map        {s- (into [:map {:closed true}
-                                    :entity/id
-                                    :entity/kind
-                                    :post/parent
-                                    :post/text
-                                    :entity/created-by
-                                    :entity/created-at
-                                    (? :post/do-not-follow)
-                                    (? :post/followers)]
-                                   notification.data/notification-keys)}}))
+     :post/as-map        {s- [:map {:closed true}
+                              :entity/id
+                              :entity/kind
+                              :post/parent
+                              :post/text
+                              :entity/created-by
+                              :entity/created-at
+                              (? :post/do-not-follow)
+                              (? :post/followers)]}}))
 
 (def posts-field
   `{:post/_parent
@@ -83,11 +82,13 @@
   [{:keys [post account-id]}]
   (let [parent (dl/entity (:post/parent post))
         post (-> post
-                 (notification.data/assoc-recipients (-> (followers (:post/parent post))
-                                                         (disj account-id)))
                  (dl/new-entity :post :by account-id)
                  (validate/assert :post/as-map))]
     (db/transact! [post
+                   (notification.data/new :notification.type/new-post
+                                          (sch/wrap-id post)
+                                          (-> (followers (:post/parent post))
+                                              (disj account-id)))
                    (when-not (some (partial sch/id= account-id)
                                    (:post/do-not-follow parent))
                      [:db/add (:post/parent post) :post/followers account-id])])

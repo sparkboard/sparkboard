@@ -65,7 +65,8 @@
                                       {:style {:top 2 :right 0 :width 20}}
                                       unread])
                                    [icons/bell (when unread "text-focus-accent")]]
-                         :content [notification.ui/show-all]}]))
+                         :content [:Suspense {}
+                                   [notification.ui/show-all]]}]))
 
 (ui/defview chat []
   (let [unread (some-> (:unread (chat.data/chat-counts {})) (u/guard pos-int?))]

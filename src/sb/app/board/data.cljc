@@ -130,9 +130,17 @@
                                              :tag/label
                                              :tag/color]}
                               :entity/field-entries
+                               :membership/member-approval-pending?
                               {:membership/entity [:entity/id]}
                               {:entity/custom-tags [:tag/label]}
                               :membership/roles])
+
+(def member-fields `[:entity/deleted-at
+                     ~@entity.data/id-fields
+                     :membership/member-approval-pending?
+                     :membership/roles
+                     {:membership/entity [:entity/id]}
+                     {:membership/member [:entity/id]}])
 
 (def note-fields `[~@entity.data/listing-fields
                    :note/outline-color
@@ -140,11 +148,7 @@
                    :entity/field-entries
                    {:entity/video [:video/url]}
                    {:entity/parent [:entity/id]}
-                   {:membership/_entity [:entity/deleted-at
-                                         ~@entity.data/id-fields
-                                         :membership/roles
-                                         {:membership/entity [:entity/id]}
-                                         {:membership/member [:entity/id]}]}])
+                   {:membership/_entity ~member-fields}])
 
 (def project-fields `[~@entity.data/listing-fields
                       :entity/field-entries
@@ -152,11 +156,7 @@
                       :project/number
                       {:entity/video [:video/url]}
                       {:entity/parent [:entity/id]}
-                      {:membership/_entity [:entity/deleted-at
-                                            ~@entity.data/id-fields
-                                            :membership/roles
-                                            {:membership/entity [:entity/id]}
-                                            {:membership/member [:entity/id]}]}])
+                      {:membership/_entity ~member-fields}])
 
 (q/defquery members
   {:prepare [(az/with-roles :board-id)
@@ -164,9 +164,20 @@
   [{:keys [board-id]}]
   (u/timed `members (->> (db/entity board-id)
                          :membership/_entity
-                         (remove (some-fn sch/deleted? :entity/archived?))
+                         (remove (some-fn sch/deleted? :entity/archived? :membership/member-approval-pending?))
                          (mapv (db/pull `[~@entity.data/id-fields
                                           ~@board-membership-fields])))))
+
+(q/defquery pending-members
+  {:prepare [(az/with-roles :board-id)
+             (member.data/assert-can-view :board-id)]}
+  [{:keys [board-id]}]
+  (u/timed `pending-members
+    (->> (db/entity board-id)
+         :membership/_entity
+         (remove (some-fn sch/deleted? :entity/archived? (complement :membership/member-approval-pending?)))
+         (mapv (db/pull `[~@entity.data/id-fields
+                          ~@board-membership-fields])))))
 
 (q/defquery notes
   {:endpoint/public? true

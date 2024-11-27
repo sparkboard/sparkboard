@@ -260,6 +260,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/search                          {:en "Search"
                                           :fr "Rechercher"
                                           :es "Buscar"},
+     :tr/search-to-invite                {:en "Search to invite"
+                                          :fr "Rechercher pour inviter"
+                                          :es "Buscar para invitar"}
      :tr/project                         {:en "Project"
                                           :fr "Projet"
                                           :es "Proyecto"},
@@ -291,6 +294,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/members                         {:en "Members"
                                           :fr "Membres"
                                           :es "Miembros"},
+     :tr/pending-members                 {:en "Pending members"
+                                          :fr "Membres en attente"
+                                          :es "Miembros pendientes"}
      :tr/board                           {:en "Board"
                                           :fr "Tableau"
                                           :es "Tablero"}
@@ -362,6 +368,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/available                       {:en "Available"
                                           :fr "Disponible"
                                           :es "Disponible"}
+     :tr/pending                         {:en "Pending"
+                                          :fr "En attente"
+                                          :es "Pendiente"}
      :tr/account-not-found               {:en "Account not found"
                                           :fr "Compte introuvable"
                                           :es "Cuenta no encontrada"}
@@ -395,6 +404,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/hint                            {:en "Hint"
                                           :fr "Indice"
                                           :es "Pista"}
+     :tr/required                        {:en "Required"
+                                          :fr "Obligatoire"
+                                          :es "Requerido"}
      :tr/required?                       {:en "Required"
                                           :fr "Obligatoire"
                                           :es "Requerido"}
@@ -464,6 +476,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/leave-board                     {:en "Leave board"
                                           :fr "Partir tableau"
                                           :es "Dejar tablero"}
+     :tr/you-are-invited-to-join         {:en "You are invited to join"
+                                          :fr "Vous êtes invité à rejoindre"
+                                          :es "Estás invitado a unirte"}
      :tr/registration-page-message       {:en "Registration page message"
                                           :fr "Message de la page d'inscription"
                                           :es "Mensaje de la página de registro"}
@@ -539,6 +554,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/looking-for-help                {:en "Looking for help"
                                           :fr "Cherchent de l'aide"
                                           :es "En busca de ayuda"}
+     :tr/join-blurb                      {:en "By joining this board you agree to share your email address with the admins of this board."
+                                          :fr "En rejoignant ce tableu, vous acceptez de partager votre adresse e-mail avec les administrateurs du tableau."
+                                          :es "Al unirse a este tablero, usted acepta compartir su dirección de correo electrónico con los administradores del tablero."}
      :tr/vote                            {:en "Vote"
                                           :fr "Vote"
                                           :es "Votar"}

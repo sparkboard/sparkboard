@@ -150,7 +150,12 @@
     (when (or can-edit? (u/some-str (:value props)))
       [:div.field-wrapper
        (merge data-props {:class (:wrapper classes)})
-       (form.ui/show-label ?field (:field/label props) (:label classes))
+       [:div.flex.items-end.gap-1
+        (form.ui/show-label ?field (:field/label props) (:label classes))
+        (when (and (:field/required? props)
+                   (not @?field))
+          [:span.text-red-500.text-sm
+           (t :tr/required)])]
        [:div.flex-v.relative
         (with-messages-popover ?field
           [auto-size (-> (u/dissoc-qualified props)
@@ -192,7 +197,7 @@
    [text-field ?field {:field/can-edit? true
                        :field/classes   {:wrapper "flex-auto items-stretch"
                                          :input   "form-text rounded default-ring pr-9"}
-                       :placeholder     (t :tr/search)}]
+                       :placeholder     (:placeholder attrs (t :tr/search))}]
    [:div.absolute.top-0.right-0.bottom-0.flex.items-center.pr-3
     {:class "text-txt/40"}
     (icons/search "w-6 h-6")]])
@@ -273,7 +278,12 @@
                                   :or {unwrap identity
                                        wrap   identity}}]
   [:div.field-wrapper {:class (:wrapper classes)}
-   (form.ui/show-label ?field label)
+   [:div.flex.items-end.gap-1
+    (form.ui/show-label ?field label)
+    (when (and (:field/required? props)
+               (not @?field))
+      [:span.text-red-500.text-sm
+       (t :tr/required)])]
    (if can-edit?
      (with-messages-popover ?field
        [radix/select-menu (-> (form.ui/?field-props ?field (merge {:field/event->value identity}
@@ -613,7 +623,7 @@
           (-> @?entry :field-entry/field :field/id))}
   [?entry props]
   (let [field (:field-entry/field @?entry)
-        props (merge (select-keys field [:field/label :field/hint :field/options])
+        props (merge (select-keys field [:field/label :field/hint :field/options :field/required?])
                      (select-keys props [:field/can-edit?]))]
     (case (:field/type field)
       :field.type/video [video-field ('video/?url ?entry) props]

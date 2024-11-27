@@ -27,6 +27,7 @@
    :membership/roles                    {s- [:set :membership/role]}
    :membership/entity                   (sch/ref :one)
    :membership/member                   (sch/ref :one)
+   :membership/member-approval-pending? {s- :boolean}
 
    :entity/tags                         {s- [:sequential [:map {:closed true} :tag/id]]}
    :entity/custom-tags                  {s- [:sequential [:map {:closed true} :tag/label]]}
@@ -51,29 +52,29 @@
                                          s-     :boolean},
 
 
-   :membership/as-map                   {s- (into [:map {:closed true}
-                                                   :entity/id
-                                                   :entity/kind
-                                                   :membership/entity
-                                                   :membership/member
-                                                   (? :entity/uploads)
-                                                   (? :membership/inactive?)
-                                                   (? :membership/email-frequency)
-                                                   (? :entity/custom-tags)
-                                                   (? :membership/newsletter-subscription?)
-                                                   (? :entity/tags)
-                                                   (? :membership/roles)
+   :membership/as-map                   {s- [:map {:closed true}
+                                             :entity/id
+                                             :entity/kind
+                                             :membership/entity
+                                             :membership/member
+                                             (? :entity/uploads)
+                                             (? :membership/inactive?)
+                                             (? :membership/email-frequency)
+                                             (? :entity/custom-tags)
+                                             (? :membership/newsletter-subscription?)
+                                             (? :entity/tags)
+                                             (? :membership/roles)
+                                             (? :membership/member-approval-pending?)
 
-                                                   ;; TODO, backfill?
-                                                   ;; only missing for memberships of orgs and collections
-                                                   ;; not for board memberships
-                                                   (? :entity/created-at)
-                                                   (? :entity/updated-at)
+                                             ;; TODO, backfill?
+                                             ;; only missing for memberships of orgs and collections
+                                             ;; not for board memberships
+                                             (? :entity/created-at)
+                                             (? :entity/updated-at)
 
-                                                   (? :entity/field-entries)
-                                                   (? :entity/deleted-at)
-                                                   (? :entity/modified-by)]
-                                                  notification.data/notification-keys)}})
+                                             (? :entity/field-entries)
+                                             (? :entity/deleted-at)
+                                             (? :entity/modified-by)]}})
 
 (comment
   ;; Stats for memberships which do and do not have `:entity/created-at`
@@ -98,6 +99,7 @@
   (dissoc (q/pull `[~@entity.data/listing-fields
                     :entity/tags
                     :entity/field-entries
+                    :membership/member-approval-pending?
                     {:membership/entity [~@entity.data/id-fields
                                          :entity/member-tags
                                          :entity/member-fields]}
@@ -162,17 +164,16 @@
     ;; scoped to entity
     (assert false "not implemented yet")
     ;; all entities I'm also a member of
-    (dl/q '[:find [(pull ?your-account [:account/display-name
-                                        :entity/id
-                                        {:image/avatar [:entity/id]}])
-                   ...]
-            :in $ ?my-account ?search-term
-            :where
-            [?me :membership/member ?my-account]
-            [?me :membership/entity ?entity]
-            [?you :membership/entity ?entity]
-            [?you :membership/member ?your-account]
-            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+    (dl/q (u/template
+           `[:find [(pull ?your-account ~entity.data/listing-fields)
+                    ...]
+             :in $ ?my-account ?search-term
+             :where
+             [?me :membership/member ?my-account]
+             [?me :membership/entity ?entity]
+             [?you :membership/entity ?entity]
+             [?you :membership/member ?your-account]
+             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]])
           account-id
           search-term)))
 
@@ -183,21 +184,18 @@
     ;; scoped to entity
     (assert false "not implemented yet")
     ;; all entities I'm also a member of
-    (dl/q '[:find [(pull ?you [:entity/id
-                               {:membership/entity [:entity/id {:image/avatar [:entity/id]}]
-                                :membership/member
-                                ;; TODO could use entity.data/listing-fields but quasiqouting is awkward here
-                                [:account/display-name
-                                 :entity/id
-                                 {:image/avatar [:entity/id]}]}])
-                   ...]
-            :in $ ?my-account ?search-term
-            :where
-            [?me :membership/member ?my-account]
-            [?me :membership/entity ?entity]
-            [?you :membership/entity ?entity]
-            [?you :membership/member ?your-account]
-            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+    (dl/q (u/template
+           `[:find [(pull ?you [:entity/id
+                                {:membership/entity [:entity/id {:image/avatar [:entity/id]}]
+                                 :membership/member ~entity.data/listing-fields}])
+                    ...]
+             :in $ ?my-account ?search-term
+             :where
+             [?me :membership/member ?my-account]
+             [?me :membership/entity ?entity]
+             [?you :membership/entity ?entity]
+             [?you :membership/member ?your-account]
+             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]])
           account-id
           search-term)))
 
@@ -208,27 +206,25 @@
     ;; scoped to entity
     (do
       (ensure-membership! account-id entity-id)
-      (dl/q '[:find [(pull ?account [:account/display-name
-                                     :entity/id
-                                     {:image/avatar [:entity/id]}]) ...]
-              :in $ ?entity ?search-term
-              :where
-              [?m :membership/entity ?entity]
-              [?m :membership/member ?account]
-              [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]]
+      (dl/q (u/template
+             `[:find [(pull ?account ~entity.data/listing-fields) ...]
+               :in $ ?entity ?search-term
+               :where
+               [?m :membership/entity ?entity]
+               [?m :membership/member ?account]
+               [(fulltext $ ?search-term {:top 20}) [[?account ?a ?v]]]])
             entity-id
             search-term))
     ;; all entities I'm also a member of
-    (dl/q '[:find [(pull ?your-account [:account/display-name
-                                        :entity/id
-                                        {:image/avatar [:entity/id]}]) ...]
-            :in $ ?my-account ?search-term
-            :where
-            [?me :membership/member ?my-account]
-            [?me :membership/entity ?entity]
-            [?you :membership/entity ?entity]
-            [?you :membership/member ?your-account]
-            [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]]
+    (dl/q (u/template
+           `[:find [(pull ?your-account ~entity.data/listing-fields) ...]
+             :in $ ?my-account ?search-term
+             :where
+             [?me :membership/member ?my-account]
+             [?me :membership/entity ?entity]
+             [?you :membership/entity ?entity]
+             [?you :membership/member ?your-account]
+             [(fulltext $ ?search-term {:top 20}) [[?your-account ?a ?v]]]])
           account-id
           search-term)))
 
@@ -262,13 +258,25 @@
 (defn membership-colors [membership]
   (mapv :tag/color (resolved-tags membership)))
 
+(defn raw-memberships
+  "Returns memberships (possibly deleted or pending) of `entity`, with an transducer `xform` applied to them."
+  ([entity xform]
+   (->> (:membership/_entity entity)
+        (into [] xform))))
+
 (defn memberships
   "Returns memberships of `entity`, with an optional transducer `xform` applied to them."
   ([entity] (memberships entity identity))
   ([entity xform]
-   (->> (:membership/_entity entity)
-        (into [] (comp (remove sch/deleted?)
-                       xform)))))
+   (raw-memberships entity (comp (remove (some-fn sch/deleted? :membership/member-approval-pending?))
+                                 xform))))
+
+(defn pending-memberships
+  "Returns pending memberships of `entity`, with an optional transducer `xform` applied to them."
+  ([entity] (memberships entity identity))
+  ([entity xform]
+   (raw-memberships entity (comp (filter (every-pred (complement sch/deleted?) :membership/member-approval-pending?))
+                                 xform))))
 
 (defn members
   "Returns members of `entity`, with an optional transducer `xform` applied to the memberships first."
@@ -281,7 +289,7 @@
   ([member] (member-of member identity))
   ([member xform]
    (->> (:membership/_member member)
-        (into [] (comp (remove sch/deleted?)
+        (into [] (comp (remove (some-fn sch/deleted? :membership/member-approval-pending?))
                        xform
                        (map :membership/entity))))))
 
@@ -294,12 +302,14 @@
   (if-let [board-member-id (az/deleted-membership-id account-id board-id)]
     (do
       (db/transact! [{:db/id board-member-id
+                      :membership/member-approval-pending? true
                       :entity/created-at (java.util.Date.)
                       :entity/deleted-at sch/DELETED_SENTINEL}])
       {:entity/id (:entity/id (db/entity board-member-id))})
     (let [membership (-> (new-entity-with-membership (sch/wrap-id board-id)
                                                      account-id
                                                      #{})
+                         (assoc :membership/member-approval-pending? true)
                          (validate/assert :membership/as-map))]
       (db/transact! [membership])
       {:entity/id (:entity/id membership)})))
@@ -314,15 +324,79 @@
   [{:keys [account-id entity-id]}]
   (let [admins (->> (db/where [[:membership/entity (sch/wrap-id entity-id)]
                                (comp :role/project-admin :membership/roles)])
-                    (map (comp sch/wrap-id :membership/member)))]
-    (db/transact! (if-let [entity-member-id (az/deleted-membership-id account-id entity-id)]
-                    [(-> {:db/id entity-member-id
-                          :entity/created-at (java.util.Date.)
-                          :entity/deleted-at sch/DELETED_SENTINEL}
-                         (notification.data/assoc-recipients admins))]
-                    [(-> (new-entity-with-membership (sch/wrap-id entity-id)
-                                                                 account-id
-                                                                 #{})
-                         (notification.data/assoc-recipients admins)
-                         (validate/assert :membership/as-map))])))
+                    (map (comp sch/wrap-id :membership/member)))
+        membership (if-let [entity-member-id (az/deleted-membership-id account-id entity-id)]
+                     {:db/id entity-member-id
+                      :entity/created-at (java.util.Date.)
+                      :entity/deleted-at sch/DELETED_SENTINEL}
+                     (-> (new-entity-with-membership (sch/wrap-id entity-id)
+                                                     account-id
+                                                     #{})
+                         (validate/assert :membership/as-map)))]
+    (db/transact! [membership
+                   (notification.data/new :notification.type/new-member
+                                          (or (:db/id membership) (sch/wrap-id membership))
+                                          admins)]))
   {:body ""})
+
+(q/defx create-board-child-invitation!
+  "Creates or resurects pending project or note membership"
+  {:prepare [az/with-account-id!
+             (az/assert-can-admin-or-self :entity-id)]}
+  [{:keys [invitee-account-id entity-id]}]
+  (let [membership (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
+                     {:db/id entity-member-id
+                      :entity/created-at (java.util.Date.)
+                      :entity/deleted-at sch/DELETED_SENTINEL
+                      :membership/member-approval-pending? true}
+                     (-> (new-entity-with-membership (sch/wrap-id entity-id)
+                                                     invitee-account-id
+                                                     #{})
+                         (assoc :membership/member-approval-pending? true)
+                         (validate/assert :membership/as-map)))]
+    (db/transact! [membership
+                   (notification.data/new :notification.type/new-invitation
+                                          (or (:db/id membership) (sch/wrap-id membership))
+                                          [(sch/wrap-id invitee-account-id)])]))
+  {:body ""})
+
+(q/defx approve-board-membership!
+  {:prepare [az/with-account-id!
+             (az/with-member-id! :board-id)
+             (fn [_ {:keys [board-id member-id] :as params}]
+               (let [required-fields? (-> (apply disj (->> (:entity/member-fields (dl/entity board-id))
+                                                           (filter :field/required?)
+                                                           (map :field/id)
+                                                           set)
+                                                 (-> (db/entity member-id)
+                                                     :entity/field-entries
+                                                     keys))
+                                          empty?)]
+                 (when-not required-fields?
+                   (validate/permission-denied! "Not all required fields are filled out")))
+               params)]}
+  [{:keys [account-id board-id member-id]}]
+  (let [admins (->> (db/where [[:membership/entity (sch/wrap-id board-id)]
+                               (comp :role/project-admin :membership/roles)])
+                    (map (comp sch/wrap-id :membership/member)))]
+    (db/transact! [{:db/id member-id
+                    :membership/member-approval-pending? false}
+                   (notification.data/new :notification.type/new-member
+                                          member-id
+                                          admins)])
+    {:body ""}))
+
+(q/defx approve-membership!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id entity-id]}]
+  (if-let [membership-id (az/membership-id account-id entity-id)]
+    (let [admins (->> (db/where [[:membership/entity (sch/wrap-id entity-id)]
+                                 (comp :role/board-admin :membership/roles)])
+                      (map (comp sch/wrap-id :membership/member)))]
+      (db/transact! [{:db/id membership-id
+                      :membership/member-approval-pending? false}
+                     (notification.data/new :notification.type/new-member
+                                            membership-id
+                                            admins)])
+      {:body ""})
+    (throw (ex-info "No membership to approve" {}))))

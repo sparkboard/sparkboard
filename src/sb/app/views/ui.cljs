@@ -469,15 +469,17 @@
 
 (ui/defview action-button [{:as props :keys [on-click classes]} child]
   (let [!async-state (h/use-state nil)
-        on-click     (fn [e]
-                       (reset! !async-state {:loading? true})
-                       (p/let [result (on-click e)]
-                         (reset! !async-state (when (:error result) result))))
+        on-click     (when on-click
+                       (fn [e]
+                         (reset! !async-state {:loading? true})
+                         (p/let [result (on-click e)]
+                           (reset! !async-state (when (:error result) result)))))
         {:keys [loading? error]} @!async-state]
 
     (-> [:div.btn.btn-white.overflow-hidden.relative.py-2.w-full
          (-> props
              (dissoc :classes)
+             (v/merge-props {:class "[&[disabled]]:text-gray-400"})
              (v/merge-props {:class (:btn classes)})
              (assoc :on-click (when-not loading? on-click)))
          child
