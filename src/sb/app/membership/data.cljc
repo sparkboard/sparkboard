@@ -1,4 +1,7 @@
 (ns sb.app.membership.data
+  "In general 'member' refers to an :account that is a member of another entity while
+  'membership' refers to the :membership entity that records this relationship
+  ;; TODO check that the code is consistent with this"
   (:require [sb.app.entity.data :as entity.data]
             [sb.app.notification.data :as notification.data]
             [sb.authorize :as az]
@@ -293,26 +296,32 @@
                        xform
                        (map :membership/entity))))))
 
+#?(:clj
+   (defn create-or-undelete-membership! [account-id entity-id & {:as more}]
+     (if-let [membership-id (az/deleted-membership-id account-id entity-id)]
+       (do
+         ;; TODO do we want to reset `:membership/roles` here?
+         (db/transact! [(-> {:db/id membership-id
+                             :entity/created-at (java.util.Date.)}
+                            (merge more))
+                        [:db/retract membership-id :entity/deleted-at]])
+         (:entity/id (db/entity membership-id)))
+       (let [membership (-> (new-entity-with-membership (sch/wrap-id entity-id)
+                                                        account-id
+                                                        #{})
+                            (merge more)
+                            (validate/assert :membership/as-map))]
+         (db/transact! [membership])
+         (:entity/id membership)))))
+
 (q/defx join!
   {:prepare [az/with-account-id!
              (fn [_ {:keys [board-id]}]
                (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity board-id)))
                    "Board is invite only"))]}
   [{:keys [account-id board-id]}]
-  (if-let [board-member-id (az/deleted-membership-id account-id board-id)]
-    (do
-      (db/transact! [{:db/id board-member-id
-                      :membership/member-approval-pending? true
-                      :entity/created-at (java.util.Date.)
-                      :entity/deleted-at sch/DELETED_SENTINEL}])
-      {:entity/id (:entity/id (db/entity board-member-id))})
-    (let [membership (-> (new-entity-with-membership (sch/wrap-id board-id)
-                                                     account-id
-                                                     #{})
-                         (assoc :membership/member-approval-pending? true)
-                         (validate/assert :membership/as-map))]
-      (db/transact! [membership])
-      {:entity/id (:entity/id membership)})))
+  {:entity/id (create-or-undelete-membership! account-id board-id
+                                              {:membership/member-approval-pending? true})})
 
 (q/defx join-board-child!
   "Creates or resurects project or note membership"
@@ -325,17 +334,9 @@
   (let [admins (->> (db/where [[:membership/entity (sch/wrap-id entity-id)]
                                (comp :role/project-admin :membership/roles)])
                     (map (comp sch/wrap-id :membership/member)))
-        membership (if-let [entity-member-id (az/deleted-membership-id account-id entity-id)]
-                     {:db/id entity-member-id
-                      :entity/created-at (java.util.Date.)
-                      :entity/deleted-at sch/DELETED_SENTINEL}
-                     (-> (new-entity-with-membership (sch/wrap-id entity-id)
-                                                     account-id
-                                                     #{})
-                         (validate/assert :membership/as-map)))]
-    (db/transact! [membership
-                   (notification.data/new :notification.type/new-member
-                                          (or (:db/id membership) (sch/wrap-id membership))
+        membership-id (create-or-undelete-membership! account-id entity-id)]
+    (db/transact! [(notification.data/new :notification.type/new-member
+                                          [:entity/id membership-id]
                                           admins)]))
   {:body ""})
 
@@ -344,19 +345,10 @@
   {:prepare [az/with-account-id!
              (az/assert-can-admin-or-self :entity-id)]}
   [{:keys [invitee-account-id entity-id]}]
-  (let [membership (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
-                     {:db/id entity-member-id
-                      :entity/created-at (java.util.Date.)
-                      :entity/deleted-at sch/DELETED_SENTINEL
-                      :membership/member-approval-pending? true}
-                     (-> (new-entity-with-membership (sch/wrap-id entity-id)
-                                                     invitee-account-id
-                                                     #{})
-                         (assoc :membership/member-approval-pending? true)
-                         (validate/assert :membership/as-map)))]
-    (db/transact! [membership
-                   (notification.data/new :notification.type/new-invitation
-                                          (or (:db/id membership) (sch/wrap-id membership))
+  (let [membership-id (create-or-undelete-membership! invitee-account-id entity-id
+                                                      {:membership/member-approval-pending? true})]
+    (db/transact! [(notification.data/new :notification.type/new-invitation
+                                          [:entity/id membership-id]
                                           [(sch/wrap-id invitee-account-id)])]))
   {:body ""})
 

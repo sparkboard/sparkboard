@@ -7,9 +7,8 @@
   #?(:clj (:import [re_db.read Entity])))
 
 (def rules
-  `[[~'(deleted? ?e)
-     ~'[?e :entity/deleted-at ?deleted-at]
-     [(~'not= ~'?deleted-at ~sch/DELETED_SENTINEL)]]])
+  '[[(deleted? ?e)
+     [?e :entity/deleted-at ?deleted-at]]])
 
 (defn raw-membership
   "Returns membership (posssibly deleted) for the given member and entity"

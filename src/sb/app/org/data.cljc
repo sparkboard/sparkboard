@@ -118,24 +118,16 @@
     (db/transact! [member])
     org))
 
+;; TODO identical to member.data/create-board-child-invitiation. merge?
 (q/defx create-invitation!
   "Creates or resurects pending org membership"
   {:prepare [az/with-account-id!
              (az/assert-can-admin-or-self :entity-id)]}
   [{:keys [invitee-account-id entity-id]}]
-  (let [membership (if-let [entity-member-id (az/deleted-membership-id invitee-account-id entity-id)]
-                     {:db/id entity-member-id
-                      :entity/created-at (java.util.Date.)
-                      :entity/deleted-at sch/DELETED_SENTINEL
-                      :membership/member-approval-pending? true}
-                     (-> (member.data/new-entity-with-membership (sch/wrap-id entity-id)
-                                                                 invitee-account-id
-                                                                 #{})
-                         (assoc :membership/member-approval-pending? true)
-                         (validate/assert :membership/as-map)))]
-    (db/transact! [membership
-                   (notification.data/new :notification.type/new-invitation
-                                          (or (:db/id membership) (sch/wrap-id membership))
+  (let [membership-id (member.data/create-or-undelete-membership! invitee-account-id entity-id
+                                                                  {:membership/member-approval-pending? true})]
+    (db/transact! [(notification.data/new :notification.type/new-invitation
+                                          [:entity/id membership-id]
                                           [(sch/wrap-id invitee-account-id)])]))
   {:body ""})
 
