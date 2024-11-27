@@ -29,9 +29,9 @@
         backtick/backtick {:mvn/version "0.3.4"}
 
         ;; logging
-        com.taoensso/timbre {:mvn/version "4.10.0"}
+        com.taoensso/timbre {:mvn/version "6.6.1"}
         timbre-ns-pattern-level/timbre-ns-pattern-level {:mvn/version "0.1.2"}
-        com.fzakaria/slf4j-timbre {:mvn/version "0.3.19"}
+        com.fzakaria/slf4j-timbre {:mvn/version "0.4.1"}
 
         ;; http server
         ring/ring-core {:mvn/version "1.10.0"}
