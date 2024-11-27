@@ -152,25 +152,4 @@
     (db/transact! [membership])
     {:entity/id (:entity/id project)}))
 
-(q/defx join!
-  {:prepare [az/with-account-id!
-             (az/with-member-id! (comp :entity/parent dl/entity :project-id))
-             (fn [_ {:keys [project-id]}]
-               (az/auth-guard! (= :admission-policy/open (:entity/admission-policy (dl/entity project-id)))
-                   "Project is invite only"))]}
-  [{:keys [account-id project-id]}]
-  (let [admins (->> (db/where [[:membership/entity (sch/wrap-id project-id)]
-                               (comp :role/project-admin :membership/roles)])
-                    (map (comp sch/wrap-id :membership/member)))]
-    (db/transact! (if-let [project-member-id (az/deleted-membership-id account-id project-id)]
-                    [(-> {:db/id project-member-id
-                          :entity/created-at (java.util.Date.)
-                          :entity/deleted-at sch/DELETED_SENTINEL}
-                         (notification.data/assoc-recipients admins))]
-                    [(-> (member.data/new-entity-with-membership (sch/wrap-id project-id)
-                                                                 account-id
-                                                                 #{})
-                         (notification.data/assoc-recipients admins)
-                         (validate/assert :membership/as-map))])))
-  {:body ""})
 

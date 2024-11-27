@@ -22,8 +22,7 @@
             [sb.util :as u]
             [yawn.hooks :as h]
             [yawn.view :as v]
-            [re-db.api :as db]
-            [net.cgrand.xforms :as xf]))
+            [re-db.api :as db]))
 
 (ui/defview manage-community-actions [project actions]
   (forms/with-form [!actions (?actions :many {:community-action/label  ?label
@@ -93,70 +92,6 @@
 
        ])))
 
-
-(ui/defview project-members [project props]
-  ;; todo
-  ;; 1. pass in all-roles to know if we are an a board-admin
-  ;; 3. button for adding a new member via searching this board
-  ;; 4. hover to see member details
-  ;; 5. fix chat
-  [:div.field-wrapper
-   [:div.field-label (t :tr/team)]
-   [:div.grid.grid-cols-2.gap-x-6
-    (for [project-membership (member.data/memberships project (xf/sort-by :entity/created-at u/compare:desc))
-          :let [{:as account :keys [account/display-name]} (:membership/member project-membership)
-                board-membership (az/membership account (:entity/parent project))]]
-      [:div.flex-v.cursor-default.hover:bg-gray-100.py-3.rounded
-       [:div.flex.items-center.gap-2
-        {:key      (:entity/id account)
-         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
-        [ui/avatar {:size 12} account]
-        [:div.flex-v.gap-1
-         display-name
-         [member.ui/tags :small board-membership]]]
-       (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id project-membership)
-                                                                :membership/roles #{:role/project-admin}}})
-         (into [:div.flex.flex-wrap.gap-2]
-               (map (fn [role]
-                      [:label.flex.items-center.gap-1
-                       [:input {:type "checkbox"
-                                :checked (boolean (role (:membership/roles project-membership)))
-                                :on-change (fn [event]
-                                             (entity.data/save-attributes!
-                                              {:entity {:entity/id (:entity/id project-membership)
-                                                        :membership/roles ((if (-> event .-target .-checked)
-                                                                             (fnil conj #{})
-                                                                             disj)
-                                                                           (:membership/roles project-membership)
-                                                                           role)}}))}]
-                       [:div
-                        (t (keyword "tr" (name role)))]]))
-               [:role/project-admin :role/project-editor]))
-       (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id project-membership)})]
-         [ui/action-button
-          {:class "bg-white h-8"
-           :on-click (fn [_]
-                       (delete!))}
-          (t :tr/remove-from-project)])])]
-   (when (az/admin-role? (:membership/roles props))
-     [entity.ui/persisted-attr project :entity/admission-policy props])
-   (if-let [membership-id (some-> (db/get :env/config :account)
-                                  (az/membership project)
-                                  not-empty
-                                  :entity/id)]
-     (when-let [delete! (entity.data/delete!-authorized {:entity-id membership-id})]
-       [ui/action-button
-        {:class "bg-white"
-         :on-click (fn [_]
-                     (p/let [result (delete!)]
-                       (routing/dissoc-router! :router/modal)
-                       result))}
-        (t :tr/leave)])
-     (when-let [join! (data/join!-authorized {:project-id (sch/unwrap-id project)})]
-       [ui/action-button
-        {:on-click (fn [_] (join!))}
-        (t :tr/join)]))])
-
 (ui/defview show
   {:route       "/p/:project-id"
    :view/router :router/modal}
@@ -224,7 +159,8 @@
            :membership/roles roles
            :field/can-edit?  can-edit?}]
 
-         [project-members project field-params]
+         [member.ui/for-modal project (assoc field-params
+                                             :possible-roles [:role/project-admin :role/project-editor])]
 
          #_[:section.flex-v.gap-2.items-start
             [manage-community-actions project (:project/community-actions project)]]
