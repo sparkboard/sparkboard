@@ -25,8 +25,7 @@
                                              :role/board-admin
                                              :role/org-admin
                                              :role/project-admin
-                                             :role/project-editor
-                                             :role/project-member]}
+                                             :role/project-editor]}
    :membership/roles                    {s- [:set :membership/role]}
    :membership/entity                   (sch/ref :one)
    :membership/member                   (sch/ref :one)
