@@ -38,6 +38,8 @@
    :project/badges          {:view field.ui/badges-field}
    :prose/as-map            {:view field.ui/prose-field}
    :entity/tags             {:view field.ui/tags-field}
+   :entity/custom-tags      {:view field.ui/custom-tags-field
+                             :props {:field/label "Custom tags"}}
    :note/outline-color      {:view field.ui/color-field-with-label
                              :props {:field/label "Outline color"}}
    :account/email           {:props      {:type        "email"
