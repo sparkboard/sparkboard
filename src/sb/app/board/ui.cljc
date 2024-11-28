@@ -328,7 +328,6 @@
    [:Suspense {} [members* board-id]]])
 
 (ui/defview pending-members*
-  {:route "/b/:board-id/pending-members"}
   [board-id]
   (let [board        (data/show {:board-id board-id})
         tags (:entity/project-tags board)
@@ -350,7 +349,6 @@
    [:Suspense {} [pending-members* board-id]]])
 
 (ui/defview voting*
-  {:route "/b/:board-id/voting"}
   [board-id]
   (let [board        (data/show {:board-id board-id})
         tags (:entity/project-tags board)
