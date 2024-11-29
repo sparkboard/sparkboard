@@ -92,3 +92,10 @@
      :unread (->> notifications
                   (filter (complement :notification/viewed?))
                   count)}))
+
+(q/defx set-as-read!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id notification-id]}]
+  (db/transact! [[:db/retract notification-id :notification/unread-by account-id]
+                 [:db/retract notification-id :notification/email-to account-id]])
+  {:body ""})

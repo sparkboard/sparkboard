@@ -7,6 +7,7 @@
             [sb.app.views.ui :as ui]
             [sb.i18n :as i :refer [t]]
             [sb.routing :as routing]
+            [yawn.hooks :as h]
             [net.cgrand.xforms :as xf]))
 
 
@@ -45,17 +46,26 @@
     "unreachable"))
 
 (ui/defview show [notification]
-  [:div.flex.gap-2.items-center
-   [:div.bg-focus-accent.w-2.h-2.rounded.flex-none
-    {:class (when (:notification/viewed? notification)
-              "opacity-0")}]
-   [:div.min-w-0
-    ((case (:notification/type notification)
-       :notification.type/new-post new-post
-       :notification.type/new-member new-member
-       :notification.type/new-invitation new-invitation
-       (comp ui/pprinted deref))
-     notification)]])
+  (let [!div (h/use-ref nil)]
+    (h/use-effect (fn []
+                    (let [observer (js/IntersectionObserver.
+                                    (fn [entries]
+                                      (when (some #(.-isIntersecting %) entries)
+                                        (data/set-as-read! {:notification-id (sch/wrap-id notification)})))
+                                    (clj->js {:threshold 0.9}))]
+                      (.observe observer @!div)
+                      #(.disconnect observer))))
+    [:div.flex.gap-2.items-center {:ref !div}
+     [:div.bg-focus-accent.w-2.h-2.rounded.flex-none
+      {:class (when (:notification/viewed? notification)
+                "opacity-0")}]
+     [:div.min-w-0
+      ((case (:notification/type notification)
+         :notification.type/new-post new-post
+         :notification.type/new-member new-member
+         :notification.type/new-invitation new-invitation
+         (comp ui/pprinted deref))
+       notification)]]))
 
 (ui/defview show-all []
   (if-let [all (not-empty (data/all nil))]
