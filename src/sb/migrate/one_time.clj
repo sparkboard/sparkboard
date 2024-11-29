@@ -564,6 +564,18 @@
              (update-keys (partial to-uuid :board))
              (update-vals #(get % "stickyColor")))))
 
+(def !account-email-frequency
+  (delay (into {}
+               (map (fn [{:keys [firebaseAccount emailFrequency]}]
+                      [(to-uuid :account firebaseAccount)
+                       (case emailFrequency
+                         "never" :account.email-frequency/never
+                         "daily" :account.email-frequency/daily
+                         "periodic" :account.email-frequency/hourly ;; labeld 'Hourly' in the old UI
+                         "instant" :account.email-frequency/instant
+                         :account.email-frequency/hourly)]))
+               @!members-raw)))
+
 (declare coll-entities)
 
 (defn add-kind [kind]
@@ -884,6 +896,8 @@
                                                                                       :account/display-name (:name most-recent-member-doc)
                                                                                       :account/email (:email account)
                                                                                       :account/email-verified? (:emailVerified account)
+                                                                                      :account/email-frequency (@!account-email-frequency account-id
+                                                                                                                :account.email-frequency/hourly)
                                                                                       :account/last-sign-in (some-> account :lastSignedInAt Long/parseLong time/instant Date/from)
                                                                                       :account/password-hash (:passwordHash account)
                                                                                       :account/password-salt (:salt account)
@@ -916,8 +930,7 @@
                                        ::always (remove-when :suspectedFake)
                                        ::always (add-kind :membership)
 
-                                       ::defaults {:membership/inactive?       false
-                                                   :membership/email-frequency :member.email-frequency/periodic}
+                                       ::defaults {:membership/inactive? false}
                                        :lastModifiedBy rm
                                        :salt rm
                                        :hash rm
@@ -936,13 +949,7 @@
 
                                        :firebaseAccount (uuid-ref-as :account :membership/member)
 
-                                       :emailFrequency (& (xf #(case %
-                                                                 "never" :member.email-frequency/never
-                                                                 "daily" :member.email-frequency/daily
-                                                                 "periodic" :member.email-frequency/periodic
-                                                                 "instant" :member.email-frequency/instant
-                                                                 :member.email-frequency/periodic))
-                                                          (rename :membership/email-frequency))
+                                       :emailFrequency rm
                                        :acceptedTerms rm
                                        :contact_me rm
 

@@ -6,7 +6,7 @@
     [sb.app.membership.data :as member.data]
     [sb.authorize :as az]
     [sb.query :as q]
-    [sb.schema :as sch :refer [?]]
+    [sb.schema :as sch :refer [? s-]]
     [sb.server.datalevin :as dl]
     [sb.util :as u]))
 
@@ -20,11 +20,17 @@
    :account/password-hash       {:malli/schema :string}
    :account/password-salt       {:malli/schema :string}
    :account/locale              {:malli/schema :i18n/locale}
+   :account/email-frequency     {s- [:enum
+                                     :account.email-frequency/never
+                                     :account.email-frequency/daily
+                                     :account.email-frequency/hourly
+                                     :account.email-frequency/instant]}
    :account/as-map              {:malli/schema [:map {:closed true}
                                                 :entity/id
                                                 :account/email
                                                 :account/email-verified?
                                                 :entity/created-at
+                                                :account/email-frequency
                                                 (? :account/locale)
                                                 (? :account/last-sign-in)
                                                 (? :account/display-name)
