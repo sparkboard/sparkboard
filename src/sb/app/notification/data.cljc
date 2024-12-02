@@ -1,12 +1,14 @@
 (ns sb.app.notification.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
+            [sb.app.time :as time]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [s- ?]]
             [sb.server.datalevin :as dl]
             [sb.validate :as validate]
-            [sb.util :as u]))
+            [sb.util :as u]
+            [net.cgrand.xforms :as xf]))
 
 (sch/register!
  {:notification/subject               (merge
@@ -31,6 +33,21 @@
 
 (def get-context (comp (some-fn :membership/entity (partial u/auto-reduce :post/parent))
                        :notification/subject))
+
+(defn sort-and-group [notifications]
+  (into []
+        (comp (xf/sort-by #(.getTime (:entity/created-at %)) >)
+              (partition-by (comp time/small-datestamp :entity/created-at))
+              (map (fn [notifications-on-day]
+                     {:first-notification-at (:entity/created-at (first notifications-on-day))
+                      :notifications
+                      (into []
+                            (comp (partition-by get-context)
+                                  (map (fn [notifications]
+                                         {:context (get-context (peek notifications))
+                                          :notifications notifications})))
+                            notifications-on-day)})))
+        notifications))
 
 #?(:clj
    (defn new [ntype subject recipients]

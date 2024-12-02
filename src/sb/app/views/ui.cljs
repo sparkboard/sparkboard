@@ -487,39 +487,3 @@
            [:div.progress-bar.absolute.top-0.left-0.right-0.h-1 {:class (:progress-bar classes)}])]
         (error-popover error))))
 
-(defn small-timestamp [date]
-  (let [now (js/Date.)
-        current-year? (= (.getFullYear now)
-                         (.getFullYear date))
-        current-month? (and current-year? (= (.getMonth now)
-                                             (.getMonth date)))
-        current-day? (and current-month? (= (.getDate now)
-                                            (.getDate date)))]
-    (.format (js/Intl.DateTimeFormat. js/undefined
-                                      (clj->js (merge {:minute :numeric
-                                                       :hour :numeric}
-                                                      (when-not current-day?
-                                                        {:day :numeric
-                                                         :weekday :long
-                                                         :month :long})
-                                                      (when-not current-year?
-                                                        {:year :numeric}))))
-             date)))
-
-(defn small-datestamp [date]
-  (let [now (js/Date.)
-        current-year? (= (.getFullYear now)
-                         (.getFullYear date))
-        current-month? (and current-year? (= (.getMonth now)
-                                             (.getMonth date)))
-        current-day? (and current-month? (= (.getDate now)
-                                            (.getDate date)))]
-    ;; TODO today as today
-    (.format (js/Intl.DateTimeFormat. js/undefined
-                                      (clj->js (merge {:day :numeric
-                                                       :weekday :long}
-                                                      (when-not current-day?
-                                                        {:month :long})
-                                                      (when-not current-year?
-                                                        {:year :numeric}))))
-             date)))

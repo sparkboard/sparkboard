@@ -4,6 +4,7 @@
             [sb.app.discussion.data :as data]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.time :as time]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
             [sb.routing :as routing]
@@ -41,7 +42,7 @@
         [:div.flex-v
          [:div.flex.gap-2.items-end
           [:div.font-bold (:account/display-name author)]
-          [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]
+          [:div.text-sm.text-gray-500.flex-grow (time/small-timestamp (:entity/created-at post))]
           (when-let [doit! (data/delete!-authorized {:post-id (:entity/id post)})]
             [ui/action-button {:class "h-6"
                                :on-click #(doit!)}
