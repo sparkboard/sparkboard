@@ -500,6 +500,24 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/remove-from-project             {:en "Remove from project"
                                           :fr "Supprimer du projet"
                                           :es "Eliminar del proyecto"}
+     :tr/notification-settings           {:en "Notification Settings"
+                                          :fr "Paramètres de notification"
+                                          :es "Configuración de notificaciones"}
+     :tr/send-email                      {:en "Send email"
+                                          :fr "Envoyer un courriel"
+                                          :es "Enviar un correo electrónico"}
+     :tr/never                           {:en "Never"
+                                          :fr "Jamais"
+                                          :es "Nunca"}
+     :tr/daily                           {:en "Daily"
+                                          :fr "Journellement"
+                                          :es "Diariamente"}
+     :tr/hourly                          {:en "Hourly"
+                                          :fr "Dans l'heure"
+                                          :es "Cada hora"}
+     :tr/instant                         {:en "Instant"
+                                          :fr "Moment"
+                                          :es "Al instante"}
      :tr/basic-settings                  {:en "Basic settings"
                                           :fr "Paramètres de base"
                                           :es "Configuración básica"}

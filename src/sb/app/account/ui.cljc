@@ -192,3 +192,13 @@
                                  (:entity/title project)]))
                          (project-memberships board))]))
            (:board memberships))]))
+
+(ui/defview settings
+  {:route "/settings"}
+  [params]
+  (let [account (data/settings nil)]
+    [:<>
+     [header/entity (data/account-as-entity account) nil]
+     [:div.mx-auto.my-6 {:class "max-w-[600px]"}
+      [:div.field-label.text-lg.pb-3 (t :tr/notification-settings)]
+      [entity.ui/persisted-attr account :account/email-frequency {:field/can-edit? true}]]]))

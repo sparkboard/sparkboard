@@ -118,5 +118,12 @@
              {:membership/_member [~@entity.data/id-fields
                                    {:membership/entity
                                     [~@entity.data/listing-fields
-                                     { :entity/parent [:entity/id]}]}]}]
+                                     {:entity/parent [:entity/id]}]}]}]
            this-account-id))
+
+(q/defquery settings
+  {:prepare az/with-account-id!}
+  [{:keys [account-id]}]
+  (db/pull `[~@entity.data/listing-fields
+             :account/email-frequency]
+           account-id))
