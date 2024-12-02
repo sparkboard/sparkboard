@@ -31,8 +31,12 @@
                                            (? :notification/email-to)
                                            :entity/created-at]}})
 
-(def get-context (comp (some-fn :membership/entity (partial u/auto-reduce :post/parent))
-                       :notification/subject))
+(def get-context (some-fn
+                  ;; `:notification`
+                  (comp (some-fn :membership/entity (partial u/auto-reduce :post/parent))
+                        :notification/subject)
+                  ;; `:chat.message`
+                  :entity/created-by))
 
 (defn sort-and-group [notifications]
   (into []
@@ -42,7 +46,7 @@
                      {:first-notification-at (:entity/created-at (first notifications-on-day))
                       :notifications
                       (into []
-                            (comp (partition-by get-context)
+                            (comp (partition-by (comp :entity/id get-context))
                                   (map (fn [notifications]
                                          {:context (get-context (peek notifications))
                                           :notifications notifications})))
