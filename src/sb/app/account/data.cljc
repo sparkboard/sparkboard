@@ -25,6 +25,7 @@
                                      :account.email-frequency/daily
                                      :account.email-frequency/hourly
                                      :account.email-frequency/instant]}
+   :account/last-emailed-at     {:malli/schema 'inst?}
    :account/as-map              {:malli/schema [:map {:closed true}
                                                 :entity/id
                                                 :entity/kind
@@ -37,6 +38,7 @@
                                                 (? :account/display-name)
                                                 (? :account/password-hash)
                                                 (? :account/password-salt)
+                                                (? :account/last-emailed-at)
                                                 (? :image/avatar)
                                                 (? :account.provider.google/sub)]}})
 
