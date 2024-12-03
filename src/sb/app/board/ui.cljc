@@ -229,6 +229,7 @@
 
 (ui/defview show*
   [{:as params :keys [board-id]}]
+  (data/members {:board-id board-id})
   (let [board        (data/show {:board-id board-id})
         board-editor? (az/editor-role? (az/all-roles (:account-id params) board))
         tags (:entity/project-tags board)
@@ -293,7 +294,6 @@
      (->> (data/projects {:board-id board-id})
           (into [] (comp (case @!project-filter
                            :my-projects (filter #(some-> (db/get :env/config :account)
-                                                         (az/membership-id board-id)
                                                          (az/membership-id %)))
                            :looking-for-help (filter (comp seq :project/open-requests))
                            nil identity)
@@ -328,7 +328,6 @@
    [:Suspense {} [members* board-id]]])
 
 (ui/defview pending-members*
-  {:route "/b/:board-id/pending-members"}
   [board-id]
   (let [board        (data/show {:board-id board-id})
         tags (:entity/project-tags board)
@@ -350,7 +349,6 @@
    [:Suspense {} [pending-members* board-id]]])
 
 (ui/defview voting*
-  {:route "/b/:board-id/voting"}
   [board-id]
   (let [board        (data/show {:board-id board-id})
         tags (:entity/project-tags board)

@@ -13,6 +13,7 @@
             [sb.app.form.ui :as form.ui]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
+            [sb.authorize :as az]
             [sb.client.sanitize :as sanitize]
             [sb.icons :as icons]
             [sb.routing :as routing]
@@ -756,6 +757,40 @@
   ;;  - show an "x" for removing each tag,
   ;;  - show unused tags, click-to-add
   )
+
+(ui/defview custom-tags-field
+  {:make-?field (fn [init props]
+                  (io/field :many (u/prune {:tag/label ?label})
+                            :init init))}
+  [?tags {:as field-props :keys [membership/roles]}]
+  (plural-editor
+   (-> field-props
+       (cond-> (not (az/admin-role? roles)) (dissoc :field/label))
+       (merge {:?items          ?tags
+               :field/can-edit? (az/admin-role? roles)
+               :make-?item      (fn [init props]
+                                  (io/form (u/prune {:tag/label ?label})
+                                    :required [?label]
+                                    :init init))
+               :edit-?item      (fn [{:as ?item :syms [?label]} submit!]
+                                  [:form.outline-none.flex-v.gap-2.items-stretch
+                                   {:on-submit (fn [e]
+                                                 (.preventDefault e)
+                                                 (submit!))}
+                                   [:div.flex.gap-2
+                                    [text-field ?label (merge field-props
+                                                              {:placeholder       (t :tr/label)
+                                                               :field/keybindings {:Enter submit!}
+                                                               :field/multi-line? false
+                                                               :field/label       false})]
+                                    [:button.flex.items-center {:type "submit"} [icons/checkmark "w-5 h-5 icon-gray"]]]])
+               :show-?item      (fn [{:syms [?label]} _props]
+                                  (let [bg    "#dddddd"
+                                        color (color/contrasting-text-color bg)]
+                                    (v/x [:div.rounded.bg-badge.text-badge-txt.py-1.px-2.text-sm.inline-flex.gap-1.items-center
+                                          {:key   @?label
+                                           :style {:background-color bg :color color}}
+                                          @?label])))}))))
 
 (ui/defview show-entries [member-fields field-entries]
   (when-let [entries (seq (into []
