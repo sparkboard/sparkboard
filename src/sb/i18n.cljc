@@ -598,6 +598,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/replied-to                      {:en "replied to:"
                                           :fr "a répondu à:"
                                           :es "respondió a:"}
+     :tr/messaged-you                    {:en "messaged you"
+                                          :fr "t'a envoyé un message"
+                                          :es "te envió un mensaje"}
      :tr/joined                          {:en "joined"
                                           :fr "a rejoint"
                                           :es "se unió"}
@@ -619,7 +622,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/project-member                  {:en "Project member"
                                           :fr "Membre du projet"
                                           :es "Miembro del proyecto"}
-
+     :tr/activity-on-sparkboard          {:en "Activity on Sparkboard"
+                                          :fr "Activité sur Sparkboard"
+                                          :es "Actividad en Sparkboard"}
      :tr/notifcation-email               {:en (str "Dear %1,\n"
                                                    "here's what's been happening on sparkboard:\n\n"
                                                    "%2\n\n"

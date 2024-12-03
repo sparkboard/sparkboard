@@ -42,24 +42,23 @@
    notification))
 
 (defn compose [account notifications]
-  (binding [i/*selected-locale* (:account/locale account)]
-    (t :tr/notifcation-email
-       [(:account/display-name account)
-        (->> (data/sort-and-group notifications)
-             (map (fn [{:keys [first-notification-at notifications]}]
-                    (str (time/small-datestamp first-notification-at) "\n\n"
-                         (->> notifications
-                              (map (fn [{:keys [context notifications]}]
-                                     (str (when context
-                                            (if (= :account (:entity/kind context))
-                                              (str (:account/display-name context) " messaged you:\n"
-                                                   (env/config :link-prefix)
-                                                   (routing/path-for [`sb.app.chat.ui/chat {:other-id (:entity/id context)}]) "\n")
-                                              (str "== " (str/trim (:entity/title context)) " ==\n"
-                                                   (env/config :link-prefix) (routing/entity-path context 'ui/show) "\n")))
-                                          (str/join "\n\n" (map show notifications)))))
-                              (str/join "\n\n")))))
-             (str/join "\n\n"))])))
+  (t :tr/notifcation-email
+     [(:account/display-name account)
+      (->> (data/sort-and-group notifications)
+           (map (fn [{:keys [first-notification-at notifications]}]
+                  (str (time/small-datestamp first-notification-at) "\n\n"
+                       (->> notifications
+                            (map (fn [{:keys [context notifications]}]
+                                   (str (when context
+                                          (if (= :account (:entity/kind context))
+                                            (str (:account/display-name context) " " (t :tr/messaged-you) ":\n"
+                                                 (env/config :link-prefix)
+                                                 (routing/path-for [`sb.app.chat.ui/chat {:other-id (:entity/id context)}]) "\n")
+                                            (str "== " (str/trim (:entity/title context)) " ==\n"
+                                                 (env/config :link-prefix) (routing/entity-path context 'ui/show) "\n")))
+                                        (str/join "\n\n" (map show notifications)))))
+                            (str/join "\n\n")))))
+           (str/join "\n\n"))]))
 
 (defn scheduled-at [account]
   (when (and (:account/email-verified? account)
@@ -77,9 +76,10 @@
 
 (defn maybe-email! [account]
   (when-let [notifications (seq (db/where [[:notification/email-to (:db/id account)]]))]
-    (email/send! {:to (:account/email account)
-                :subject "Activity on Sparkbord"
-                :body (compose account notifications)})
+    (binding [i/*selected-locale* (:account/locale account)]
+      (email/send! {:to (:account/email account)
+                    :subject (t :tr/activity-on-sparkboard)
+                    :body (compose account notifications)}))
     (db/transact! (into [{:db/id (:db/id account)
                           :account/last-emailed-at (java.util.Date.)}]
                         (map (fn [notification]
