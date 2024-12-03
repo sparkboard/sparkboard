@@ -35,6 +35,7 @@
             [sb.log]
             [sb.routing :as routing]
             [sb.app]                                        ;; includes all endpoints
+            [sb.app.notification.email :as notification.email]
             [sb.server.account :as accounts]
             [sb.server.env :as env]
             [sb.server.html :as server.html]
@@ -262,7 +263,8 @@
   (fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
                        port
-                       3000)))
+                       3000))
+  (notification.email/start-polling!))
 
 (comment                                                    ;;; Webserver control panel
   (-main)
