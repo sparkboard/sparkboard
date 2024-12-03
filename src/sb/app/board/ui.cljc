@@ -15,6 +15,7 @@
             [sb.app.membership.ui :as member.ui]
             [sb.app.note.data :as note.data]
             [sb.app.note.ui :as note.ui]
+            [sb.app.org.ui :as org.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
             [sb.app.views.header :as header]
@@ -336,6 +337,7 @@
     [:<>
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
       [query-ui tags fields !xform]]
+     [org.ui/invitation-widget (db/entity board-id)]
      (->> (data/pending-members {:board-id board-id})
           (into [] @!xform )
           (grouped-card-grid (partial member.ui/card
