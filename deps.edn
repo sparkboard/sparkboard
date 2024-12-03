@@ -6,7 +6,7 @@
         ;; v2
         datalevin/datalevin {:mvn/version "0.8.21"}
         io.github.mhuebert/re-db {:git/sha "888abb58198959f4490d9dcce006c394955bac4c"}
-        io.github.mhuebert/yawn {:git/sha "68285f6c132f26a2ff3cc2f7dffc3fe68c9856d9"}
+        io.github.mhuebert/yawn {:git/sha "9d6568a9acfe7c0ddc9e5694463037f79d590c39"}
         io.github.mhuebert/inside-out {:git/sha "18b8b99e766b1ef02aae8762d592b99f70af3087"}
 
         ;; Google Cloud
