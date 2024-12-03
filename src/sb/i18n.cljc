@@ -15,11 +15,10 @@
 
 
 (defn locales []
-  #?(:cljs (->> [(current-locale) "en"]
-                (into []
-                      (comp (keep identity)
-                            (distinct))))
-     :clj  ["en"]))
+  (->> [(current-locale) "en"]
+       (into []
+             (comp (keep identity)
+                   (distinct)))))
 
 (defmacro ungroup-dict [dict]
   (-> (u/map-transpose dict)
@@ -620,6 +619,19 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/project-member                  {:en "Project member"
                                           :fr "Membre du projet"
                                           :es "Miembro del proyecto"}
+
+     :tr/notifcation-email               {:en (str "Dear %1,\n"
+                                                   "here's what's been happening on sparkboard:\n\n"
+                                                   "%2\n\n"
+                                                   "Greetings\nThe Sparkbot")
+                                          :fr (str "Salut %1,\n"
+                                                   "Voici ce qui se passe sur Sparkboard :\n\n"
+                                                   "%2\n\n"
+                                                   "Salutations\nLe Sparkbot")
+                                          :es (str "Hola %1,\n"
+                                                   "Esto es lo que ha estado sucediendo en Sparkboard:\n\n"
+                                                   "%2\n\n"
+                                                   "Saludos\nEl Sparkbot")}
      }))
 
 (defn tr*

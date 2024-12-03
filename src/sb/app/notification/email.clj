@@ -3,6 +3,7 @@
             [re-db.api :as db]
             [sb.app.notification.data :as data]
             [sb.app.time :as time]
+            [sb.i18n :as i :refer [t]]
             [sb.routing :as routing]
             [sb.server.email :as email]
             [sb.server.env :as env]
@@ -14,17 +15,17 @@
 
 (defn new-post [{{author :entity/created-by :post/keys [text parent]} :notification/subject}]
   (if (= :post (:entity/kind parent))
-    (str (:account/display-name author) " replied to:\n"
+    (str (:account/display-name author) " " (t :tr/replied-to) "\n"
          ">> " (:prose/string (:post/text parent)) "\n"
          "> " (:prose/string text))
-    (str (:account/display-name author) " wrote:\n"
+    (str (:account/display-name author) " " (t :tr/wrote) ":\n"
          "> " (:prose/string text))))
 
 (defn new-member [{{:keys [membership/member]} :notification/subject}]
-  (str (:account/display-name member) " joined."))
+  (str (:account/display-name member) " " (t :tr/join) "."))
 
 (defn new-invitation [{{:keys [membership/member]} :notification/subject}]
-  "You are invited to join.")
+  (t :tr/you-are-invited-to-join))
 
 (defn new-message [message]
   (str "> " (:prose/string (:chat.message/content message))))
@@ -41,25 +42,24 @@
    notification))
 
 (defn compose [account notifications]
-  ;; TODO i18n
-  (apply str "Dear " (:account/display-name account) ",\n"
-         "here's what's been happening on sparkboard:\n\n"
-         (->> (data/sort-and-group notifications)
-              (map (fn [{:keys [first-notification-at notifications]}]
-                     (str (time/small-datestamp first-notification-at) "\n\n"
-                          (->> notifications
-                               (map (fn [{:keys [context notifications]}]
-                                      (str (when context
-                                             (if (= :account (:entity/kind context))
-                                               (str (:account/display-name context) " messaged you:\n"
-                                                    (env/config :link-prefix)
-                                                    (routing/path-for [`sb.app.chat.ui/chat {:other-id (:entity/id context)}]) "\n")
-                                               (str "== " (str/trim (:entity/title context)) " ==\n"
-                                                    (env/config :link-prefix) (routing/entity-path context 'ui/show) "\n")))
-                                           (str/join "\n\n" (map show notifications)))))
-                               (str/join "\n\n")))))
-              (str/join "\n\n"))
-         "\n\nGreetings\nThe Sparkbot"))
+  (binding [i/*selected-locale* (:account/locale account)]
+    (t :tr/notifcation-email
+       [(:account/display-name account)
+        (->> (data/sort-and-group notifications)
+             (map (fn [{:keys [first-notification-at notifications]}]
+                    (str (time/small-datestamp first-notification-at) "\n\n"
+                         (->> notifications
+                              (map (fn [{:keys [context notifications]}]
+                                     (str (when context
+                                            (if (= :account (:entity/kind context))
+                                              (str (:account/display-name context) " messaged you:\n"
+                                                   (env/config :link-prefix)
+                                                   (routing/path-for [`sb.app.chat.ui/chat {:other-id (:entity/id context)}]) "\n")
+                                              (str "== " (str/trim (:entity/title context)) " ==\n"
+                                                   (env/config :link-prefix) (routing/entity-path context 'ui/show) "\n")))
+                                          (str/join "\n\n" (map show notifications)))))
+                              (str/join "\n\n")))))
+             (str/join "\n\n"))])))
 
 (defn scheduled-at [account]
   (when (and (:account/email-verified? account)
@@ -107,3 +107,11 @@
              (proxy [java.util.TimerTask] [] (run [] (send-scheduled!)))
              0
              (* 60 1000))) ;; one Minute
+
+(comment
+  (start-polling!)
+
+  (->> (schedules)
+       (map #(update % 1 :account/email)))
+
+  )
