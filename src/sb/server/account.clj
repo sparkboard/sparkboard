@@ -187,9 +187,11 @@
             :account/display-name (:name provider-info)
             :account/email (:email provider-info)
             :account/email-verified? (:email_verified provider-info)
+            :account/email-frequency :account.email-frequency/hourly
             :image/avatar (some-> (:picture provider-info) (assets/link-asset))
             :account/locale (some-> (:locale provider-info) (str/split #"-") first)}
-           (filter-vals some?))
+           (filter-vals some?)
+           (vd/assert :account/as-map))
        existing
        ;; last-sign-in can overwrite existing data
        {:account/last-sign-in now})]))

@@ -27,6 +27,7 @@
                                      :account.email-frequency/instant]}
    :account/as-map              {:malli/schema [:map {:closed true}
                                                 :entity/id
+                                                :entity/kind
                                                 :account/email
                                                 :account/email-verified?
                                                 :entity/created-at
