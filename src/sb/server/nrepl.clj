@@ -36,7 +36,7 @@
 (defn start! []
   (stop!)
   (let [nrepl-port 7888
-        nrepl-host "::"]
+        nrepl-host "localhost"]
     (log/info "Starting nrepl server" {:port nrepl-port :host nrepl-host})
     (reset! !nrepl-server (nrepl/start-server :bind nrepl-host :port nrepl-port))
     (start-shutdown-check!)))

@@ -37,7 +37,7 @@
          fly             (shell (str "fly -a " app " " (str/join " " *command-line-args*)))
 
          build-report    (shell "yarn shadow-cljs run shadow.cljs.build-report browser report.html")
-         run             (shell "java -jar target/sparkboard.jar")
+         run             (shell "java --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED -jar target/sparkboard.jar")
 
          migrate:fetch   (yarn shadow-cljs clj-run sb.migrate.core/tx!)
          migrate         (do (shell "rm -rf .db/datalevin")
