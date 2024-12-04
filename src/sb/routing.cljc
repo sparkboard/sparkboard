@@ -359,6 +359,14 @@
          (nav!* (update-matches @!location tag params))))))
 
 #?(:cljs
+   (defn login-redirect! []
+     (nav! (if-let [route @!login-redirect]
+             (do
+               (reset! !login-redirect nil)
+               route)
+             `home))))
+
+#?(:cljs
    (defn POST [route body]
      (let [path (path-for route)]
        (-> (js/fetch path
