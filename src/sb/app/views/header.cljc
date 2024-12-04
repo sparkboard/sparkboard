@@ -92,6 +92,8 @@
                   [{:on-click #(p/do (routing/POST 'sb.app.account.data/logout! nil)
                                      (js/window.location.reload))}
                    (t :tr/logout)]
+                  [{:on-click #(routing/nav! 'sb.app.account.ui/show {:this-account-id (:entity/id account)})}
+                   (t :tr/profile)]
                   [{:on-click #(routing/nav! 'sb.app.account.ui/settings)} (t :tr/settings)]
                   [{:trigger [icons/languages "w-5 h-5"]
                     :items   (lang-menu-content)}]]})]
