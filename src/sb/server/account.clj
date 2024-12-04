@@ -133,6 +133,8 @@
 
 (defn login!
   "POST handler. Returns 200/OK with account data if successful."
+  {:endpoint {:post "/login"}
+   :endpoint/public? true}
   [_req {{:as   account
           :keys [account/email
                  account/password]} :body}]

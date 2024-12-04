@@ -40,23 +40,25 @@
                            :account/password (?password :init "")}
                  :required [?email ?password]]
     (let [!step (h/use-state :email)]
-      [:form.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
-       {:on-submit (fn [^js e]
+      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       [:div.flex-v.gap-2
+        [field.ui/text-field ?email {:field/can-edit? true}]
+        (when (= :password @!step)
+          [field.ui/text-field ?password {:autoFocus true
+                                          :field/can-edit? true}])
+        (str (forms/visible-messages !account))
+        [ui/action-button
+         {:classes {:btn "btn-primary h-10 text-sm"}
+          :on-click (fn [^js e]
                      (.preventDefault e)
                      (case @!step
-                       :email (do (reset! !step :password)
-                                  (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
-                       :password (p/let [res (routing/POST 'sb.server.account/login! @!account)]
-                                   (js/console.log "res" res)
-                                   (prn :res res))))}
-
-
-       [:div.flex-v.gap-2
-        [field.ui/text-field ?email nil]
-        (when (= :password @!step)
-          [field.ui/text-field ?password {:id "account-password"}])
-        (str (forms/visible-messages !account))
-        [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
+                       :email (reset! !step :password)
+                       :password (forms/try-submit+ !account
+                                  (p/let [res (routing/POST 'sb.server.account/login! @!account)]
+                                    ;; TODO put error messages in the right location
+                                    (when-not (:error res)
+                                      (set! js/window.location.href (routing/path-for `login-landing)))
+                                    res))))}
          (t :tr/continue-with-email)]]
 
        [:div.relative
