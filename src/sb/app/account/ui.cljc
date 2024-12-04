@@ -84,12 +84,7 @@
 (ui/defview login-landing
   {:route "/login-landing"}
   [_]
-  (h/use-effect (fn []
-                  (routing/nav! (if-let [route @routing/!login-redirect]
-                                  (do
-                                    (reset! routing/!login-redirect nil)
-                                    route)
-                                  `home)))))
+  (h/use-effect routing/login-redirect!))
 
 (ui/defview home
   {:route            "/"
