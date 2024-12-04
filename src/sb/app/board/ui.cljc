@@ -230,7 +230,8 @@
 
 (ui/defview show*
   [{:as params :keys [board-id]}]
-  (data/members {:board-id board-id})
+  (when (:account-id params)
+    (data/members {:board-id board-id}))
   (let [board        (data/show {:board-id board-id})
         board-editor? (az/editor-role? (az/all-roles (:account-id params) board))
         tags (:entity/project-tags board)
