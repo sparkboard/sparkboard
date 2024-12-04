@@ -167,7 +167,13 @@
      [:div.flex.gap-3
       (when (:image/avatar account) [ui/avatar {:size 20} account])
       [:div.flex-v.gap-2.grow
-       [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (:account/display-name account)]]
+       [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2
+        [entity.ui/persisted-attr account :account/display-name
+         {:field/can-edit?   (= (:account-id params)
+                                (:this-account-id params))
+          :field/label       false
+          :field/multi-line? false
+          :field/unstyled?   (not (empty? (:account/display-name account)))}]]]
       [:a.btn.btn-white.flex.items-center.px-3.my-auto
        {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (:this-account-id params)}])}
        "message"]
