@@ -210,6 +210,7 @@
             (server.html/app-page
               {:tx [(assoc env/client-config
                       :db/id :env/config
+                      :locale (:locale req)
                       :account-id (sch/wrap-id (:entity/id (:account req)))
                       :account (:account req))]}))
           (ring.http/not-found "Not found")))))

@@ -8,9 +8,9 @@
 
 #?(:clj (def ^:dynamic *selected-locale* "en"))
 (defn current-locale []
-  #?(:cljs (-> (db/entity :env/config)
-               :account
-               (:account/locale "en"))
+  #?(:cljs (if-let [account (db/get :env/config :account)]
+             (:account/locale account "en")
+             (:locale (db/get :env/config) "en"))
      :clj  *selected-locale*))
 
 
@@ -668,13 +668,13 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 #?(:clj
    (defn req-locale [req]
      (or (some-> (:account req) :account/locale supported-locales) ;; a known user explicitly set their language
-         (some-> (:cookies req) (get "locale") supported-locales) ;; anonymous user explicitly set their language
+         (some-> (:cookies req) (get "locale") :value supported-locales) ;; anonymous user explicitly set their language
          (some-> (:board req) :entity/locale-default supported-locales) ;; board has a preferred language
          (some-> (:org req) :entity/locale-default supported-locales) ;; org has preferred language
          (some-> (get-in req [:headers "accept-language"]) accept-language->639-2) ;; use the browser's language
          "en")))                                            ;; fallback to english
 
-(q/defx set-locale!
+(q/defx set-locale*!
   {:prepare [az/with-account-id]}
   [{:keys [i18n/locale account-id]}]
   ((resolve 'sb.validate/assert) locale :i18n/locale)
@@ -688,6 +688,13 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
       :cookies {"locale" {:value   locale
                           :max-age 31536000
                           :path    "/"}}})})
+
+#?(:cljs
+   (defn set-locale!
+     [locale]
+     (if (db/get :env/config :account)
+       (set-locale*! {:i18n/locale locale})
+       (set! js/document.cookie (str "locale=" locale ";max-age=31546000;path=/")))))
 
 
 #?(:clj

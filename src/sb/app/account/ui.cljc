@@ -74,7 +74,7 @@
   (if (db/get :env/config :account-id)
     (ui/redirect `home)
     [:div.h-screen.flex-v
-     [header/lang "absolute top-0 right-0 p-4"]
+     [header/lang "absolute top-0 right-0"]
      [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
       {:class ["bg-secondary rounded-lg border border-txt/05"]}
       [:h1.text-3xl.font-medium.text-center (t :tr/welcome)]
