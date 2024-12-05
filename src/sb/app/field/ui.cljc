@@ -63,10 +63,12 @@
         props (merge props {:value     (or (:value props @v!) "")
                             :on-change (:on-change props
                                          #(reset! v! (j/get-in % [:target :value])))})]
-    [:div.auto-size
-     [:div (select-keys props [:class :style])
-      (str (:value props) " ")]
-     [:textarea (assoc props :rows 1)]]))
+    (if (= "password" (:type props))
+      [:input props]
+      [:div.auto-size
+       [:div (select-keys props [:class :style])
+        (str (:value props) " ")]
+       [:textarea (assoc props :rows 1)]])))
 
 (ui/defview checkbox-field
   "A checkbox-input element that reads metadata from a ?field to display appropriately"
@@ -166,6 +168,7 @@
                             :disabled    (not can-edit?)
                             :class       ["w-full" (:input classes)]
                             :placeholder (:placeholder props)
+                            :type (:type props)
                             :on-key-down (let [save (fn [^js e]
                                                       (if (io/ancestor-by ?field :field/persisted?)
                                                         (entity.data/maybe-save-field ?field)
