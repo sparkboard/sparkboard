@@ -25,7 +25,7 @@
      (let [current-locale (i/current-locale)
            on-select      (fn [v]
                             (p/do
-                              (i/set-locale! {:i18n/locale v})
+                              (i/set-locale! v)
                               (js/window.location.reload)))]
        (mapv (fn [lang]
                (let [selected (= lang current-locale)]
@@ -38,7 +38,7 @@
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
                                                    classes]}
    (radix/dropdown-menu
-     {:trigger [icons/languages]
+     {:trigger [:div.p-4 [icons/languages "w-6 h-6"]]
       :items   (lang-menu-content)})])
 
 (ui/defview chats-list []
