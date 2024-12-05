@@ -4,6 +4,7 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
+            [sb.authorize :as az]
             [sb.server.datalevin :as dl]
             [sb.validate :as vd]
             [sb.transit :as t]
@@ -243,6 +244,26 @@
     (db/transact! (google-account-tx account-id provider-info))
     (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/login-landing))
         (res:login account-id))))
+
+(defn create!
+  {:endpoint {:post "/create-account"}
+   :endpoint/public? true}
+  [_ {{{:as proto-account :account/keys [email password display-name]} :account} :body}]
+  (when (not-empty (dl/entity [:account/email email]))
+    (az/unauthorized! "An account with this email already exists"))
+  (vd/assert proto-account
+             [:map
+              [:account/password [:string {:min 8}]]
+              [:account/email [:re #"^[^@]+@[^@]+$"]]])
+  (db/transact! [(-> (dl/new-entity (merge {:account/email email
+                                            :account/email-verified? false
+                                            :account/email-frequency :account.email-frequency/hourly
+                                            :account/display-name display-name}
+                                           (hash-password password))
+                                    :account)
+                     (vd/assert :account/as-map))])
+  (-> {:body ""}
+      (res:login [:account/email email])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Middleware
