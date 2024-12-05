@@ -353,6 +353,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/domain-name                     {:en "Domain name"
                                           :fr "Nom de domaine"
                                           :es "Nombre de dominio"}
+     :tr/name                            {:en "Name"
+                                          :fr "Nom"
+                                          :es "Nombre"}
      :tr/description                     {:en "Description"
                                           :fr "Description"
                                           :es "Descripción"}

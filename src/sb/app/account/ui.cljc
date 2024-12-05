@@ -66,7 +66,43 @@
         [:div.relative.flex.justify-center.text-xs.uppercase
          [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
        [account:sign-in-with-google]
+       [:div.relative
+        [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+        [:div.relative.flex.justify-center.text-xs.uppercase
+         [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
+       [:a.text-center {:href (routing/path-for `create)}
+        (t :tr/register)]
        [account:sign-in-terms]])))
+
+(ui/defview create
+  {:route "/create-account"}
+  [params]
+  (ui/with-form [!account {:account/email    (?email :init "")
+                           :account/password (?password :init "")
+                           :account/display-name (?display-name :init "")}]
+    [:div.h-screen.flex-v
+      [header/lang "absolute top-0 right-0"]
+     [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
+      {:class ["bg-secondary rounded-lg border border-txt/05"]}
+      [:h1.text-3xl.font-medium.text-center (t :tr/welcome)]
+      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       [field.ui/text-field ?email {:field/can-edit? true}]
+       [field.ui/text-field ?password {:field/can-edit? true}]
+       [field.ui/text-field ?display-name {:field/can-edit? true
+                                           :field/label (t :tr/name)}]
+       [ui/action-button
+        {:classes {:btn "btn-primary h-10 text-sm"}
+         :on-click (fn [e]
+                     (forms/try-submit+ !account
+                      (-> (routing/POST 'sb.server.account/create! {:account @!account})
+                          (p/then (fn [{:as result :keys [txs]}]
+                                    (when txs
+                                      (db/transact! txs))
+                                    (when-not (:error result)
+                                      (set! js/window.location.href (routing/path-for `login-landing)))
+                                    result))
+                          (p/catch (fn [e] {:error (ex-message e)})))))}
+        (t :tr/register)]]]]))
 
 (ui/defview sign-in
   {:route "/login"}

@@ -47,6 +47,7 @@
                              :validators [form.ui/email-validator]}
    :account/password        {:view       field.ui/text-field
                              :props      {:type        "password"
+                                          ;; TODO make sure it actually is rendered as a password input
                                           :placeholder (t :tr/password)}
                              :validators [(io/min-length 8)]}
    :account/email-frequency {:view field.ui/select-field
