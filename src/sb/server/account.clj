@@ -9,6 +9,7 @@
             [sb.validate :as vd]
             [sb.transit :as t]
             [sb.routing :as routing]
+            [sb.server.email :as email]
             [sb.server.env :as env]
             [re-db.api :as db]
             [ring.middleware.oauth2 :as oauth2]
@@ -245,6 +246,33 @@
     (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/login-landing))
         (res:login account-id))))
 
+(defn verify-email!
+  {:endpoint {:get "/verify-email/:token"}
+   :endpoint/public? true}
+  [_ params]
+  (if-let [token (parse-uuid (:token params))]
+    (if-let [account (dl/entity [:account/email-verification-token token])]
+      (if (< (.getTime (java.util.Date.))
+             (.getTime (:account/email-verification-token.expires-at account)))
+        (let [account-id (:db/id account)]
+          (db/transact! [[:db/add account-id :account/email-verified? true]
+                         [:db/retract account-id :account/email-verification-token]
+                         [:db/retract account-id :account/email-verification-token.expires-at]])
+          (ring.response/response "Email successfully verified!"))
+        (az/unauthorized! "Verification token has expired"))
+      (az/unauthorized! "Unknown or expired verification token"))
+    (az/unauthorized! "Not a valid  verification token")))
+
+(defn send-email-verification! [{:account/keys [email email-verification-token display-name]}]
+  (email/send! {:to email
+                :subject "Please verify your email address"
+                :body (str "Dear " display-name ",\n\n"
+                           "you have signed up to Sparkboard with this email address. Please verify it by clicking the link below:\n"
+                           (env/config :link-prefix) (routing/path-for [`verify-email! {:token email-verification-token}]) "\n\n"
+                           "If you did not sign up to Sparkboard you can simply ignore this email.\n\n"
+                           "Greetings\n"
+                           "The Sparkbot")}))
+
 (defn create!
   {:endpoint {:post "/create-account"}
    :endpoint/public? true}
@@ -255,13 +283,20 @@
              [:map
               [:account/password [:string {:min 8}]]
               [:account/email [:re #"^[^@]+@[^@]+$"]]])
-  (db/transact! [(-> (dl/new-entity (merge {:account/email email
-                                            :account/email-verified? false
-                                            :account/email-frequency :account.email-frequency/hourly
-                                            :account/display-name display-name}
-                                           (hash-password password))
-                                    :account)
-                     (vd/assert :account/as-map))])
+  (let [token (random-uuid)
+        account (-> (dl/new-entity (merge {:account/email email
+                                           :account/email-verified? false
+                                           :account/email-verification-token token
+                                           :account/email-verification-token.expires-at
+                                           (java.util.Date/from (.plus (java.time.Instant/now)
+                                                                       (java.time.Duration/ofDays 1)))
+                                           :account/email-frequency :account.email-frequency/hourly
+                                           :account/display-name display-name}
+                                          (hash-password password))
+                                   :account)
+                    (vd/assert :account/as-map))]
+    (db/transact! [account])
+    (send-email-verification! account))
   (-> {:body ""}
       (res:login [:account/email email])))
 

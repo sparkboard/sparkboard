@@ -13,6 +13,8 @@
 (sch/register!
   {:account/email               sch/unique-id-str
    :account/email-verified?     {:malli/schema :boolean}
+   :account/email-verification-token            sch/unique-uuid
+   :account/email-verification-token.expires-at {:malli/schema 'inst?}
    :account/display-name        {:malli/schema :string
                                  :db/fulltext  true}
    :account.provider.google/sub sch/unique-id-str
@@ -29,6 +31,9 @@
    :account/as-map              {:malli/schema [:map {:closed true}
                                                 :entity/id
                                                 :entity/kind
+                                                ;; TODO maybe make :account/email optional and add :account/unverified-email
+                                                ;; This way when someone changes their email we still remember their old email until they verify their new one
+                                                ;; Also makes it harder to accidently send an email to an unverified address
                                                 :account/email
                                                 :account/email-verified?
                                                 :entity/created-at
@@ -38,6 +43,8 @@
                                                 (? :account/display-name)
                                                 (? :account/password-hash)
                                                 (? :account/password-salt)
+                                                (? :account/email-verification-token)
+                                                (? :account/email-verification-token.expires-at)
                                                 (? :account/last-emailed-at)
                                                 (? :image/avatar)
                                                 (? :account.provider.google/sub)]}})
