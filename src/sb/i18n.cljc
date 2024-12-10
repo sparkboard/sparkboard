@@ -628,6 +628,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/activity-on-sparkboard          {:en "Activity on Sparkboard"
                                           :fr "Activité sur Sparkboard"
                                           :es "Actividad en Sparkboard"}
+     :tr/email-template                  {:en (str "Dear %1,\n"
+                                                   "%2\n\n"
+                                                   "Greetings\nThe Sparkbot")
+                                          :fr (str "Salut %1,\n"
+                                                   "%2\n\n"
+                                                   "Salutations\nLe Sparkbot")
+                                          :es (str "Hola %1,\n"
+                                                   "%2\n\n"
+                                                   "Saludos\nEl Sparkbot")}
      :tr/notifcation-email               {:en (str "Dear %1,\n"
                                                    "here's what's been happening on sparkboard:\n\n"
                                                    "%2\n\n"
@@ -640,7 +649,34 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                                    "Esto es lo que ha estado sucediendo en Sparkboard:\n\n"
                                                    "%2\n\n"
                                                    "Saludos\nEl Sparkbot")}
-     }))
+     :tr/change-password                  {:en "Change password"
+                                           :fr "Changer le mot de passe"
+                                           :es "Cambiar la contraseña"}
+     :tr/forgot-password?                 {:en "Forgot password?"
+                                           :fr "Mot de passe oublié ?"
+                                           :es "¿Has olvidado tu contraseña?"}
+     :tr/send-password-reset-email        {:en "Send password reset email"
+                                           :fr "Envoyer un e-mail de réinitialisation du mot de passe"
+                                           :es "Enviar correo electrónico para restablecer contraseña"}
+     :tr/password-reset-email-success     {:en "A link to reset your password has been sent to your email address"
+                                           :fr "Un lien pour réinitialiser votre mot de passe a été envoyé à votre adresse e-mail"
+                                           :es "Se ha enviado un enlace a su dirección de correo electrónico para restablecer su contraseña"}
+     :tr/password-reset-subject           {:en "Password reset on Sparkboard"
+                                           :fr "Réinitialisation du mot de passe sur Sparkboard"
+                                           :es "Restablecimiento de contraseña en Sparkboard"}
+     :tr/password-reset-template          {:en (str "someone just requested a password reset for your account.\n\n"
+                                                    "If this was you click the following link to reset your password\n"
+                                                    "%1\n\n"
+                                                    "If you didn't request to reset your password you can ignore this email")
+                                           :fr (str "quelqu'un vient de demander une réinitialisation du mot de passe pour votre compte.\n\n"
+                                                    "Si c'était vous, cliquez sur le lien suivant pour réinitialiser votre mot de passe\n"
+                                                    "%1\n\n"
+                                                    "Si vous n'avez pas demandé la réinitialisation de votre mot de passe, vous pouvez ignorer cet e-mail")
+                                           :es (str "Alguien acaba de solicitar un restablecimiento de contraseña para su cuenta.\n\n"
+                                                    "Si fue usted, haga clic en el siguiente enlace para restablecer su contraseña\n"
+                                                    "%1\n\n"
+                                                    "Si no solicitó restablecer su contraseña, puede ignorar este correo electrónico")}
+    }))
 
 (defn tr*
   ([resource-ids]

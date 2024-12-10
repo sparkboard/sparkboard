@@ -1,6 +1,7 @@
 (ns sb.server.email
   (:require [cognitect.aws.client.api :as aws]
             [cognitect.aws.credentials :as credentials]
+            [sb.i18n :as i :refer [t]]
             [sb.server.env :as env]))
 
 (def ses (aws/client {:api :email
@@ -26,6 +27,18 @@
       (println "Subject:" subject)
       (println body))
     (aws-send! params)))
+
+
+(defn send-to-account!
+  "Sends an email with greetings added to the email address of `account` if that email address is verified.
+  Use this function instead of send `send!` if possible."
+  [{:keys [account subject body]}]
+  (if (:account/email-verified? account)
+    (send! {:to (:account/email account)
+            :subject subject
+            :body (binding [i/*selected-locale* (:account/locale account)]
+                    (t :tr/email-template [(:account/display-name account)
+                                           body]))})))
 
 
 (comment

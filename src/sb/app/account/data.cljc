@@ -8,13 +8,16 @@
     [sb.query :as q]
     [sb.schema :as sch :refer [? s-]]
     [sb.server.datalevin :as dl]
-    [sb.util :as u]))
+    [sb.util :as u]
+    [sb.validate :as validate]))
 
 (sch/register!
   {:account/email               sch/unique-id-str
    :account/email-verified?     {:malli/schema :boolean}
    :account/email-verification-token            sch/unique-uuid
    :account/email-verification-token.expires-at {:malli/schema 'inst?}
+   :account/password-reset-token                sch/unique-uuid
+   :account/password-reset-token.expires-at     {:malli/schema 'inst?}
    :account/display-name        {:malli/schema :string
                                  :db/fulltext  true}
    :account.provider.google/sub sch/unique-id-str
@@ -45,6 +48,8 @@
                                                 (? :account/password-salt)
                                                 (? :account/email-verification-token)
                                                 (? :account/email-verification-token.expires-at)
+                                                (? :account/password-reset-token)
+                                                (? :account/password-reset-token.expires-at)
                                                 (? :account/last-emailed-at)
                                                 (? :image/avatar)
                                                 (? :account.provider.google/sub)]}})
@@ -137,3 +142,11 @@
   (db/pull `[~@entity.data/listing-fields
              :account/email-frequency]
            account-id))
+
+(q/defx set-password!
+  {:prepare az/with-account-id!}
+  [{:keys [account-id password]}]
+  (validate/assert password [:string {:min 8}])
+  (db/transact! [(merge {:db/id account-id}
+                        (server.account/hash-password password))])
+  {:body ""})

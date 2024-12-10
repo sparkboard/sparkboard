@@ -300,6 +300,42 @@
   (-> {:body ""}
       (res:login [:account/email email])))
 
+(defn reset-password!
+  {:endpoint {:get "/reset-password/:token"}
+   :endpoint/public? true}
+  [_ params]
+  (if-let [token (parse-uuid (:token params))]
+    (if-let [account (dl/entity [:account/password-reset-token token])]
+      (if (< (.getTime (java.util.Date.))
+             (.getTime (:account/password-reset-token.expires-at account)))
+        ;; TODO add password change to settings
+        (res:login (ring.response/redirect (routing/path-for 'sb.app.account.ui/settings))
+                   [:account/email (:account/email account)])
+        (az/unauthorized! "Verification token has expired"))
+      (az/unauthorized! "Unknown or expired verification token"))
+    (az/unauthorized! "Not a valid  verification token")))
+
+(defn send-password-reset-email!
+  {:endpoint {:post "/send-password-reset-email"}
+   :endpoint/public? true}
+  [_ {{{:account/keys [email]} :account} :body}]
+  (if-let [account (dl/entity [:account/email email])]
+    (if (:account/email-verified? account)
+      (let [token (random-uuid)]
+        (db/transact! [{:db/id (:db/id account)
+                        :account/password-reset-token token
+                        :account/password-reset-token.expires-at
+                        (java.util.Date/from (.plus (java.time.Instant/now)
+                                                    (java.time.Duration/ofHours 2)))}])
+        (email/send-to-account! {:account account
+                                 :subject (t :tr/password-reset)
+                                 :body (t :tr/password-reset-template
+                                          [(str (env/config :link-prefix)
+                                                (routing/path-for [`reset-password! {:token token}]))])}))
+      (az/unauthorized! "Email not verified"))
+    (az/unauthorized! "Unkown email"))
+  {:body ""})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Middleware
 
