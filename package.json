@@ -60,7 +60,7 @@
         "wrangler": "^2.20.0"
     },
     "devDependencies": {
-        "shadow-cljs": "^2.22.10"
+        "shadow-cljs": "^2.28.20"
     },
     "resolutions": {
         "@radix-ui/react-dismissable-layer": "1.0.5"
