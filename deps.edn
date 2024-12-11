@@ -51,6 +51,11 @@
         com.lambdaworks/scrypt {:mvn/version "1.4.0"}
         markdown-clj/markdown-clj {:mvn/version "1.11.4"}
 
+        ;; email
+        com.cognitect.aws/api {:mvn/version "0.8.711"}
+        com.cognitect.aws/endpoints {:mvn/version "1.1.12.772"}
+        com.cognitect.aws/email {:mvn/version "869.2.1687.0"}
+
         ;; schema
         metosin/malli {:mvn/version "0.11.0"}
         com.gfredericks/test.chuck {:mvn/version "0.2.10"}
