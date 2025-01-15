@@ -4,9 +4,11 @@
             [sb.app.membership.ui :as member.ui]
             [sb.app.notification.data :as data]
             [sb.schema :as sch]
+            [sb.app.time :as time]
             [sb.app.views.ui :as ui]
             [sb.i18n :as i :refer [t]]
             [sb.routing :as routing]
+            [yawn.hooks :as h]
             [net.cgrand.xforms :as xf]))
 
 
@@ -24,7 +26,7 @@
          " "
          [field.ui/truncated-prose (:post/text parent)]]
         (t :tr/wrote))]
-     #_[:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]]
+     #_[:div.text-sm.text-gray-500.flex-grow (time/small-timestamp (:entity/created-at post))]]
     [field.ui/truncated-prose text]]])
 
 (ui/defview new-member [{{:keys [membership/member]} :notification/subject
@@ -45,38 +47,42 @@
     "unreachable"))
 
 (ui/defview show [notification]
-  [:div.flex.gap-2.items-center
-   [:div.bg-focus-accent.w-2.h-2.rounded.flex-none
-    {:class (when (:notification/viewed? notification)
-              "opacity-0")}]
-   [:div.min-w-0
-    ((case (:notification/type notification)
-       :notification.type/new-post new-post
-       :notification.type/new-member new-member
-       :notification.type/new-invitation new-invitation
-       (comp ui/pprinted deref))
-     notification)]])
+  (let [!div (h/use-ref nil)]
+    (h/use-effect (fn []
+                    (let [observer (js/IntersectionObserver.
+                                    (fn [entries]
+                                      (when (some #(.-isIntersecting %) entries)
+                                        (data/set-as-read! {:notification-id (sch/wrap-id notification)})))
+                                    (clj->js {:threshold 0.9}))]
+                      (.observe observer @!div)
+                      #(.disconnect observer))))
+    [:div.flex.gap-2.items-center {:ref !div}
+     [:div.bg-focus-accent.w-2.h-2.rounded.flex-none
+      {:class (when (:notification/viewed? notification)
+                "opacity-0")}]
+     [:div.min-w-0
+      ((case (:notification/type notification)
+         :notification.type/new-post new-post
+         :notification.type/new-member new-member
+         :notification.type/new-invitation new-invitation
+         (comp ui/pprinted deref))
+       notification)]]))
 
 (ui/defview show-all []
   (if-let [all (not-empty (data/all nil))]
     (into [:div.overflow-auto.flex-v.gap-6.max-w-prose {:class "max-h-[90vh]"}]
-          (comp (xf/sort-by #(.getTime (:entity/created-at %)) >)
-                (partition-by (comp ui/small-datestamp :entity/created-at))
-
-                (map (fn [notifications-on-day]
-                       (into [:div.flex-v
+          (map (fn [{:keys [first-notification-at notifications]}]
+                (into [:div.flex-v
                               [:div.mx-auto.sticky.top-1.bg-white.z-10.p-1.rounded-sm
-                               (ui/small-datestamp (:entity/created-at (first notifications-on-day)))]]
-                             (comp (partition-by data/get-context)
-                                   (map (fn [notifications-about-project]
-                                          (let [project (data/get-context (peek notifications-about-project))]
-                                            [:a.block.hover:bg-gray-100.p-3.pl-2
-                                             {:href (routing/entity-path project 'ui/show)}
-                                             [:div.font-semibold.text-gray-600.truncate.mb-1.ml-4
-                                              (:entity/title project)]
-                                             (into [:div.flex-v.gap-2] (map show) notifications-about-project)]))))
-                             notifications-on-day))))
-          all)
+                               (time/small-datestamp first-notification-at)]]
+                      (map (fn [{:keys [context notifications]}]
+                             [:a.block.hover:bg-gray-100.p-3.pl-2
+                              {:href (routing/entity-path context 'ui/show)}
+                              [:div.font-semibold.text-gray-600.truncate.mb-1.ml-4
+                               (:entity/title context)]
+                              (into [:div.flex-v.gap-2] (map show) notifications)]))
+                             notifications)))
+          (data/sort-and-group all))
     [:div.p-2
      {:style {:width 360}}
      (t :tr/no-notifications)]))

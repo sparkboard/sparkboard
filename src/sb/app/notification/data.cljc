@@ -1,12 +1,14 @@
 (ns sb.app.notification.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
+            [sb.app.time :as time]
             [sb.authorize :as az]
             [sb.query :as q]
             [sb.schema :as sch :refer [s- ?]]
             [sb.server.datalevin :as dl]
             [sb.validate :as validate]
-            [sb.util :as u]))
+            [sb.util :as u]
+            [net.cgrand.xforms :as xf]))
 
 (sch/register!
  {:notification/subject               (merge
@@ -29,8 +31,27 @@
                                            (? :notification/email-to)
                                            :entity/created-at]}})
 
-(def get-context (comp (some-fn :membership/entity (partial u/auto-reduce :post/parent))
-                       :notification/subject))
+(def get-context (some-fn
+                  ;; `:notification`
+                  (comp (some-fn :membership/entity (partial u/auto-reduce :post/parent))
+                        :notification/subject)
+                  ;; `:chat.message`
+                  :entity/created-by))
+
+(defn sort-and-group [notifications]
+  (into []
+        (comp (xf/sort-by #(.getTime (:entity/created-at %)) >)
+              (partition-by (comp time/small-datestamp :entity/created-at))
+              (map (fn [notifications-on-day]
+                     {:first-notification-at (:entity/created-at (first notifications-on-day))
+                      :notifications
+                      (into []
+                            (comp (partition-by (comp :entity/id get-context))
+                                  (map (fn [notifications]
+                                         {:context (get-context (peek notifications))
+                                          :notifications notifications})))
+                            notifications-on-day)})))
+        notifications))
 
 #?(:clj
    (defn new [ntype subject recipients]
@@ -92,3 +113,10 @@
      :unread (->> notifications
                   (filter (complement :notification/viewed?))
                   count)}))
+
+(q/defx set-as-read!
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id notification-id]}]
+  (db/transact! [[:db/retract notification-id :notification/unread-by account-id]
+                 [:db/retract notification-id :notification/email-to account-id]])
+  {:body ""})

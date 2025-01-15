@@ -49,6 +49,19 @@
                              :props      {:type        "password"
                                           :placeholder (t :tr/password)}
                              :validators [(io/min-length 8)]}
+   :account/email-frequency {:view field.ui/select-field
+                             :props {:field/wrap    keyword
+                                     :field/unwrap  #(subs (str %) 1)
+                                     ;; TODO fix translations not being used
+                                     :field/label (t :tr/send-email)
+                                     :field/options [{:field-option/value :account.email-frequency/never
+                                                      :field-option/label (t :tr/never)}
+                                                     {:field-option/value :account.email-frequency/daily
+                                                      :field-option/label (t :tr/daily)}
+                                                     {:field-option/value :account.email-frequency/hourly
+                                                      :field-option/label (t :tr/hourly)}
+                                                     {:field-option/value :account.email-frequency/instant
+                                                      :field-option/label (t :tr/instant)}]}}
    :entity/title            {:validators [(io/min-length 3)]}
    :field/options           {:view field.admin-ui/options-editor}
    :entity/domain-name      {:view domain.ui/domain-field}

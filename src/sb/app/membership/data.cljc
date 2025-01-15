@@ -37,14 +37,6 @@
    ;; TODO: move/remove. this should simply be a field that an organizer adds.
    :membership/newsletter-subscription? {s- :boolean},
 
-   ;; TODO: move email-frequency to a separate place (focused on notifications)
-   :membership/email-frequency          {s- [:enum
-                                             :member.email-frequency/never
-                                             :member.email-frequency/daily
-                                             :member.email-frequency/periodic
-                                             :member.email-frequency/instant]}
-
-
    ;; TODO: better define this state.
    ;; - used for people who are no longer attending / need to be managed by organizers.
    ;; - different than deleted - user can still sign in to reactivate?
@@ -61,7 +53,6 @@
                                              :membership/member
                                              (? :entity/uploads)
                                              (? :membership/inactive?)
-                                             (? :membership/email-frequency)
                                              (? :entity/custom-tags)
                                              (? :membership/newsletter-subscription?)
                                              (? :entity/tags)

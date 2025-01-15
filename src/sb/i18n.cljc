@@ -8,18 +8,17 @@
 
 #?(:clj (def ^:dynamic *selected-locale* "en"))
 (defn current-locale []
-  #?(:cljs (-> (db/entity :env/config)
-               :account
-               (:account/locale "en"))
+  #?(:cljs (if-let [account (db/get :env/config :account)]
+             (:account/locale account "en")
+             (:locale (db/get :env/config) "en"))
      :clj  *selected-locale*))
 
 
 (defn locales []
-  #?(:cljs (->> [(current-locale) "en"]
-                (into []
-                      (comp (keep identity)
-                            (distinct))))
-     :clj  ["en"]))
+  (->> [(current-locale) "en"]
+       (into []
+             (comp (keep identity)
+                   (distinct)))))
 
 (defmacro ungroup-dict [dict]
   (-> (u/map-transpose dict)
@@ -354,6 +353,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/domain-name                     {:en "Domain name"
                                           :fr "Nom de domaine"
                                           :es "Nombre de dominio"}
+     :tr/name                            {:en "Name"
+                                          :fr "Nom"
+                                          :es "Nombre"}
      :tr/description                     {:en "Description"
                                           :fr "Description"
                                           :es "Descripción"}
@@ -500,6 +502,24 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/remove-from-project             {:en "Remove from project"
                                           :fr "Supprimer du projet"
                                           :es "Eliminar del proyecto"}
+     :tr/notification-settings           {:en "Notification Settings"
+                                          :fr "Paramètres de notification"
+                                          :es "Configuración de notificaciones"}
+     :tr/send-email                      {:en "Send email"
+                                          :fr "Envoyer un courriel"
+                                          :es "Enviar un correo electrónico"}
+     :tr/never                           {:en "Never"
+                                          :fr "Jamais"
+                                          :es "Nunca"}
+     :tr/daily                           {:en "Daily"
+                                          :fr "Journellement"
+                                          :es "Diariamente"}
+     :tr/hourly                          {:en "Hourly"
+                                          :fr "Dans l'heure"
+                                          :es "Cada hora"}
+     :tr/instant                         {:en "Instant"
+                                          :fr "Moment"
+                                          :es "Al instante"}
      :tr/basic-settings                  {:en "Basic settings"
                                           :fr "Paramètres de base"
                                           :es "Configuración básica"}
@@ -581,6 +601,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/replied-to                      {:en "replied to:"
                                           :fr "a répondu à:"
                                           :es "respondió a:"}
+     :tr/messaged-you                    {:en "messaged you"
+                                          :fr "t'a envoyé un message"
+                                          :es "te envió un mensaje"}
      :tr/joined                          {:en "joined"
                                           :fr "a rejoint"
                                           :es "se unió"}
@@ -602,7 +625,58 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/project-member                  {:en "Project member"
                                           :fr "Membre du projet"
                                           :es "Miembro del proyecto"}
-     }))
+     :tr/activity-on-sparkboard          {:en "Activity on Sparkboard"
+                                          :fr "Activité sur Sparkboard"
+                                          :es "Actividad en Sparkboard"}
+     :tr/email-template                  {:en (str "Dear %1,\n"
+                                                   "%2\n\n"
+                                                   "Greetings\nThe Sparkbot")
+                                          :fr (str "Salut %1,\n"
+                                                   "%2\n\n"
+                                                   "Salutations\nLe Sparkbot")
+                                          :es (str "Hola %1,\n"
+                                                   "%2\n\n"
+                                                   "Saludos\nEl Sparkbot")}
+     :tr/notifcation-email               {:en (str "Dear %1,\n"
+                                                   "here's what's been happening on sparkboard:\n\n"
+                                                   "%2\n\n"
+                                                   "Greetings\nThe Sparkbot")
+                                          :fr (str "Salut %1,\n"
+                                                   "Voici ce qui se passe sur Sparkboard :\n\n"
+                                                   "%2\n\n"
+                                                   "Salutations\nLe Sparkbot")
+                                          :es (str "Hola %1,\n"
+                                                   "Esto es lo que ha estado sucediendo en Sparkboard:\n\n"
+                                                   "%2\n\n"
+                                                   "Saludos\nEl Sparkbot")}
+     :tr/change-password                  {:en "Change password"
+                                           :fr "Changer le mot de passe"
+                                           :es "Cambiar la contraseña"}
+     :tr/forgot-password?                 {:en "Forgot password?"
+                                           :fr "Mot de passe oublié ?"
+                                           :es "¿Has olvidado tu contraseña?"}
+     :tr/send-password-reset-email        {:en "Send password reset email"
+                                           :fr "Envoyer un e-mail de réinitialisation du mot de passe"
+                                           :es "Enviar correo electrónico para restablecer contraseña"}
+     :tr/password-reset-email-success     {:en "A link to reset your password has been sent to your email address"
+                                           :fr "Un lien pour réinitialiser votre mot de passe a été envoyé à votre adresse e-mail"
+                                           :es "Se ha enviado un enlace a su dirección de correo electrónico para restablecer su contraseña"}
+     :tr/password-reset-subject           {:en "Password reset on Sparkboard"
+                                           :fr "Réinitialisation du mot de passe sur Sparkboard"
+                                           :es "Restablecimiento de contraseña en Sparkboard"}
+     :tr/password-reset-template          {:en (str "someone just requested a password reset for your account.\n\n"
+                                                    "If this was you click the following link to reset your password\n"
+                                                    "%1\n\n"
+                                                    "If you didn't request to reset your password you can ignore this email")
+                                           :fr (str "quelqu'un vient de demander une réinitialisation du mot de passe pour votre compte.\n\n"
+                                                    "Si c'était vous, cliquez sur le lien suivant pour réinitialiser votre mot de passe\n"
+                                                    "%1\n\n"
+                                                    "Si vous n'avez pas demandé la réinitialisation de votre mot de passe, vous pouvez ignorer cet e-mail")
+                                           :es (str "Alguien acaba de solicitar un restablecimiento de contraseña para su cuenta.\n\n"
+                                                    "Si fue usted, haga clic en el siguiente enlace para restablecer su contraseña\n"
+                                                    "%1\n\n"
+                                                    "Si no solicitó restablecer su contraseña, puede ignorar este correo electrónico")}
+    }))
 
 (defn tr*
   ([resource-ids]
@@ -633,13 +707,13 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
 #?(:clj
    (defn req-locale [req]
      (or (some-> (:account req) :account/locale supported-locales) ;; a known user explicitly set their language
-         (some-> (:cookies req) (get "locale") supported-locales) ;; anonymous user explicitly set their language
+         (some-> (:cookies req) (get "locale") :value supported-locales) ;; anonymous user explicitly set their language
          (some-> (:board req) :entity/locale-default supported-locales) ;; board has a preferred language
          (some-> (:org req) :entity/locale-default supported-locales) ;; org has preferred language
          (some-> (get-in req [:headers "accept-language"]) accept-language->639-2) ;; use the browser's language
          "en")))                                            ;; fallback to english
 
-(q/defx set-locale!
+(q/defx set-locale*!
   {:prepare [az/with-account-id]}
   [{:keys [i18n/locale account-id]}]
   ((resolve 'sb.validate/assert) locale :i18n/locale)
@@ -653,6 +727,13 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
       :cookies {"locale" {:value   locale
                           :max-age 31536000
                           :path    "/"}}})})
+
+#?(:cljs
+   (defn set-locale!
+     [locale]
+     (if (db/get :env/config :account)
+       (set-locale*! {:i18n/locale locale})
+       (set! js/document.cookie (str "locale=" locale ";max-age=31546000;path=/")))))
 
 
 #?(:clj

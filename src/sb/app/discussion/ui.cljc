@@ -4,6 +4,7 @@
             [sb.app.discussion.data :as data]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
+            [sb.app.time :as time]
             [sb.app.views.ui :as ui]
             [sb.i18n :refer [t]]
             [sb.routing :as routing]
@@ -28,9 +29,11 @@
 (ui/defview show-post [post]
   ^{:key (:entity/id post)}
   (let [level (post-level post)
-        author (:entity/created-by post)]
+        author (:entity/created-by post)
+        nreplies (count (:post/_parent post))
+        !expanded (h/use-state false)]
     [:div
-     (if (sch/deleted? post)
+     (if (:entity/deleted-at post)
        [:div.text-gray-500
         "[" (t :tr/deleted) "]"]
        [:div.flex.gap-2.py-2.px-1
@@ -41,7 +44,7 @@
         [:div.flex-v
          [:div.flex.gap-2.items-end
           [:div.font-bold (:account/display-name author)]
-          [:div.text-sm.text-gray-500.flex-grow (ui/small-timestamp (:entity/created-at post))]
+          [:div.text-sm.text-gray-500.flex-grow (time/small-timestamp (:entity/created-at post))]
           (when-let [doit! (data/delete!-authorized {:post-id (:entity/id post)})]
             [ui/action-button {:class "h-6"
                                :on-click #(doit!)}
@@ -49,17 +52,17 @@
          [:div
           (field.ui/show-prose
            (:post/text post))]]])
-     (when (= 1 level)
-       (let [!expanded (h/use-state false)
-             nreplies (count (:post/_parent post))]
-         [:div.ml-8
-          (if @!expanded
-            [show-posts post]
-            [:span.icon-gray.cursor-default
-             {:on-click #(reset! !expanded true)}
-             (if (= 0 nreplies)
-               (t :tr/reply)
-               (str nreplies " " (t :tr/replies)))])]))]))
+     (when (and (= 1 level)
+                (or (< 0 nreplies)
+                    (not (:entity/deleted-at post))))
+       [:div.ml-8
+        (if @!expanded
+          [show-posts post]
+          [:span.icon-gray.cursor-default
+           {:on-click #(reset! !expanded true)}
+           (if (= 0 nreplies)
+             (t :tr/reply)
+             (str nreplies " " (t :tr/replies)))])])]))
 
 (ui/defview post-form [parent-id]
   (forms/with-form [!post {:post/parent parent-id

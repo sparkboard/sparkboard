@@ -40,31 +40,104 @@
                            :account/password (?password :init "")}
                  :required [?email ?password]]
     (let [!step (h/use-state :email)]
-      [:form.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
-       {:on-submit (fn [^js e]
+      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       [:div.flex-v.gap-2
+        [field.ui/text-field ?email {:field/can-edit? true}]
+        (when (= :password @!step)
+          [field.ui/text-field ?password {:autoFocus true
+                                          :field/can-edit? true}])
+        (str (forms/visible-messages !account))
+        [ui/action-button
+         {:classes {:btn "btn-primary h-10 text-sm"}
+          :on-click (fn [^js e]
                      (.preventDefault e)
                      (case @!step
-                       :email (do (reset! !step :password)
-                                  (js/setTimeout #(.focus (js/document.getElementById "account-password")) 100))
-                       :password (p/let [res (routing/POST 'sb.server.account/login! @!account)]
-                                   (js/console.log "res" res)
-                                   (prn :res res))))}
-
-
-       [:div.flex-v.gap-2
-        [field.ui/text-field ?email nil]
-        (when (= :password @!step)
-          [field.ui/text-field ?password {:id "account-password"}])
-        (str (forms/visible-messages !account))
-        [:button.btn.btn-primary.w-full.h-10.text-sm.p-3
+                       :email (reset! !step :password)
+                       :password (forms/try-submit+ !account
+                                  (p/let [res (routing/POST 'sb.server.account/login! @!account)]
+                                    ;; TODO put error messages in the right location
+                                    (when-not (:error res)
+                                      (set! js/window.location.href (routing/path-for `login-landing)))
+                                    res))))}
          (t :tr/continue-with-email)]]
+       [:a.gray-link.text-right.text-sm {:href (routing/path-for `forgot-password)}
+        (t :tr/forgot-password?)]
 
        [:div.relative
         [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
         [:div.relative.flex.justify-center.text-xs.uppercase
          [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
        [account:sign-in-with-google]
+       [:div.relative
+        [:div.absolute.inset-0.flex.items-center [:span.w-full.border-t]]
+        [:div.relative.flex.justify-center.text-xs.uppercase
+         [:span.bg-secondary.px-2.text-muted-txt (t :tr/or)]]]
+       [:a.text-center {:href (routing/path-for `create)}
+        (t :tr/register)]
        [account:sign-in-terms]])))
+
+(ui/defview create
+  {:route "/create-account"}
+  [params]
+  (ui/with-form [!account {:account/email    (?email :init "")
+                           :account/password (?password :init "")
+                           :account/display-name (?display-name :init "")}]
+    [:div.h-screen.flex-v
+      [header/lang "absolute top-0 right-0"]
+     [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
+      {:class ["bg-secondary rounded-lg border border-txt/05"]}
+      [:h1.text-3xl.font-medium.text-center (t :tr/welcome)]
+      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       [field.ui/text-field ?email {:field/can-edit? true}]
+       [field.ui/text-field ?password {:field/can-edit? true}]
+       [field.ui/text-field ?display-name {:field/can-edit? true
+                                           :field/label (t :tr/name)}]
+       [ui/action-button
+        {:classes {:btn "btn-primary h-10 text-sm"}
+         :on-click (fn [e]
+                     (forms/try-submit+ !account
+                      (-> (routing/POST 'sb.server.account/create! {:account @!account})
+                          (p/then (fn [{:as result :keys [txs]}]
+                                    (when txs
+                                      (db/transact! txs))
+                                    (when-not (:error result)
+                                      (set! js/window.location.href (routing/path-for `login-landing)))
+                                    result))
+                          (p/catch (fn [e] {:error (ex-message e)})))))}
+        (t :tr/register)]]]]))
+
+(ui/defview forgot-password
+  {:route "/forgot-password"}
+  [params]
+  (ui/with-form [!account {:account/email    (?email :init "")}]
+    [:div.h-screen.flex-v
+     [header/lang "absolute top-0 right-0"]
+     [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
+      {:class ["bg-secondary rounded-lg border border-txt/05"]}
+      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       [field.ui/text-field ?email {:field/can-edit? true}]
+       [ui/action-button
+        {:classes {:btn "btn-primary text-sm"}
+         :on-click (fn [e]
+                     (forms/try-submit+ !account
+                                        (-> (routing/POST 'sb.server.account/send-password-reset-email! {:account @!account})
+                                            (p/then (fn [{:as result :keys [txs]}]
+                                                      (when txs
+                                                        (db/transact! txs))
+                                                      (when-not (:error result)
+                                                        (routing/nav! `forgot-password-success))
+                                                      result))
+                                            (p/catch (fn [e] {:error (ex-message e)})))))}
+        (t :tr/send-password-reset-email)]]]]))
+
+(ui/defview forgot-password-success
+  {:route "/forgot-password-success"}
+  [params]
+  [:div.h-screen.flex-v
+   [header/lang "absolute top-0 right-0"]
+   [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
+    {:class ["bg-secondary rounded-lg border border-txt/05"]}
+    [:h1.text-3xl.font-medium.text-center (t :tr/password-reset-email-success)]]])
 
 (ui/defview sign-in
   {:route "/login"}
@@ -72,7 +145,7 @@
   (if (db/get :env/config :account-id)
     (ui/redirect `home)
     [:div.h-screen.flex-v
-     [header/lang "absolute top-0 right-0 p-4"]
+     [header/lang "absolute top-0 right-0"]
      [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.gap-6
       {:class ["bg-secondary rounded-lg border border-txt/05"]}
       [:h1.text-3xl.font-medium.text-center (t :tr/welcome)]
@@ -82,12 +155,7 @@
 (ui/defview login-landing
   {:route "/login-landing"}
   [_]
-  (h/use-effect (fn []
-                  (routing/nav! (if-let [route @routing/!login-redirect]
-                                  (do
-                                    (reset! routing/!login-redirect nil)
-                                    route)
-                                  `home)))))
+  (h/use-effect routing/login-redirect!))
 
 (ui/defview home
   {:route            "/"
@@ -167,7 +235,13 @@
      [:div.flex.gap-3
       (when (:image/avatar account) [ui/avatar {:size 20} account])
       [:div.flex-v.gap-2.grow
-       [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2 (:account/display-name account)]]
+       [:h1.font-medium.text-2xl.flex-auto.flex.items-center.mt-2
+        [entity.ui/persisted-attr account :account/display-name
+         {:field/can-edit?   (= (:account-id params)
+                                (:this-account-id params))
+          :field/label       false
+          :field/multi-line? false
+          :field/unstyled?   (not (empty? (:account/display-name account)))}]]]
       [:a.btn.btn-white.flex.items-center.px-3.my-auto
        {:href (routing/path-for ['sb.app.chat.ui/chat {:other-id (:this-account-id params)}])}
        "message"]
@@ -192,3 +266,28 @@
                                  (:entity/title project)]))
                          (project-memberships board))]))
            (:board memberships))]))
+
+(ui/defview settings
+  {:route "/settings"}
+  [params]
+  (let [account (data/settings nil)]
+    [:<>
+     [header/entity (data/account-as-entity account) nil]
+     [:div.mx-auto.my-6.flex-v.gap-6 {:class "max-w-[600px]"}
+      [:div
+       [:div.field-label.text-lg.pb-3 (t :tr/notification-settings)]
+       [entity.ui/persisted-attr account :account/email-frequency {:field/can-edit? true}]]
+      [:div
+       [:div.field-label.text-lg.pb-3 (t :tr/change-password)]
+       ;; TODO should be submittable with enter key
+       (ui/with-form [!account {:account/password (?password :init "")}]
+         [:div.flex-v.gap-4
+          [field.ui/text-field ?password {:field/can-edit? true}]
+          [ui/action-button {:classes {:btn "btn-primary text-sm"}
+                             :on-click (fn [e]
+                                         (p/let [res (data/set-password! {:password @?password})]
+                                           (when-not (:error res)
+                                             ;; TODO show a success message
+                                             (reset! ?password nil))
+                                           res))}
+           (t :tr/change-password)]])]]]))

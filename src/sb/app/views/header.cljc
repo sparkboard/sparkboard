@@ -25,7 +25,7 @@
      (let [current-locale (i/current-locale)
            on-select      (fn [v]
                             (p/do
-                              (i/set-locale! {:i18n/locale v})
+                              (i/set-locale! v)
                               (js/window.location.reload)))]
        (mapv (fn [lang]
                (let [selected (= lang current-locale)]
@@ -38,7 +38,7 @@
   [:div.inline-flex.flex-row.items-center {:class ["hover:text-txt-faded"
                                                    classes]}
    (radix/dropdown-menu
-     {:trigger [icons/languages]
+     {:trigger [:div.p-4 [icons/languages "w-6 h-6"]]
       :items   (lang-menu-content)})])
 
 (ui/defview chats-list []
@@ -92,6 +92,9 @@
                   [{:on-click #(p/do (routing/POST 'sb.app.account.data/logout! nil)
                                      (js/window.location.reload))}
                    (t :tr/logout)]
+                  [{:on-click #(routing/nav! 'sb.app.account.ui/show {:this-account-id (:entity/id account)})}
+                   (t :tr/profile)]
+                  [{:on-click #(routing/nav! 'sb.app.account.ui/settings)} (t :tr/settings)]
                   [{:trigger [icons/languages "w-5 h-5"]
                     :items   (lang-menu-content)}]]})]
     [:a.btn.btn-transp.px-3.py-1.h-7

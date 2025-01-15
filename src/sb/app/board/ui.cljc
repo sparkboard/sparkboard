@@ -15,6 +15,7 @@
             [sb.app.membership.ui :as member.ui]
             [sb.app.note.data :as note.data]
             [sb.app.note.ui :as note.ui]
+            [sb.app.org.ui :as org.ui]
             [sb.app.project.data :as project.data]
             [sb.app.project.ui :as project.ui]
             [sb.app.views.header :as header]
@@ -229,7 +230,8 @@
 
 (ui/defview show*
   [{:as params :keys [board-id]}]
-  (data/members {:board-id board-id})
+  (when (:account-id params)
+    (data/members {:board-id board-id}))
   (let [board        (data/show {:board-id board-id})
         board-editor? (az/editor-role? (az/all-roles (:account-id params) board))
         tags (:entity/project-tags board)
@@ -336,6 +338,7 @@
     [:<>
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
       [query-ui tags fields !xform]]
+     [org.ui/invitation-widget (db/entity board-id)]
      (->> (data/pending-members {:board-id board-id})
           (into [] @!xform )
           (grouped-card-grid (partial member.ui/card

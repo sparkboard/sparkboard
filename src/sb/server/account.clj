@@ -4,10 +4,12 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
+            [sb.authorize :as az]
             [sb.server.datalevin :as dl]
             [sb.validate :as vd]
             [sb.transit :as t]
             [sb.routing :as routing]
+            [sb.server.email :as email]
             [sb.server.env :as env]
             [re-db.api :as db]
             [ring.middleware.oauth2 :as oauth2]
@@ -133,6 +135,8 @@
 
 (defn login!
   "POST handler. Returns 200/OK with account data if successful."
+  {:endpoint {:post "/login"}
+   :endpoint/public? true}
   [_req {{:as   account
           :keys [account/email
                  account/password]} :body}]
@@ -187,9 +191,11 @@
             :account/display-name (:name provider-info)
             :account/email (:email provider-info)
             :account/email-verified? (:email_verified provider-info)
+            :account/email-frequency :account.email-frequency/hourly
             :image/avatar (some-> (:picture provider-info) (assets/link-asset))
             :account/locale (some-> (:locale provider-info) (str/split #"-") first)}
-           (filter-vals some?))
+           (filter-vals some?)
+           (vd/assert :account/as-map))
        existing
        ;; last-sign-in can overwrite existing data
        {:account/last-sign-in now})]))
@@ -239,6 +245,96 @@
     (db/transact! (google-account-tx account-id provider-info))
     (-> (ring.response/redirect (routing/path-for 'sb.app.account.ui/login-landing))
         (res:login account-id))))
+
+(defn verify-email!
+  {:endpoint {:get "/verify-email/:token"}
+   :endpoint/public? true}
+  [_ params]
+  (if-let [token (parse-uuid (:token params))]
+    (if-let [account (dl/entity [:account/email-verification-token token])]
+      (if (< (.getTime (java.util.Date.))
+             (.getTime (:account/email-verification-token.expires-at account)))
+        (let [account-id (:db/id account)]
+          (db/transact! [[:db/add account-id :account/email-verified? true]
+                         [:db/retract account-id :account/email-verification-token]
+                         [:db/retract account-id :account/email-verification-token.expires-at]])
+          (ring.response/response "Email successfully verified!"))
+        (az/unauthorized! "Verification token has expired"))
+      (az/unauthorized! "Unknown or expired verification token"))
+    (az/unauthorized! "Not a valid  verification token")))
+
+(defn send-email-verification! [{:account/keys [email email-verification-token display-name]}]
+  (email/send! {:to email
+                :subject "Please verify your email address"
+                :body (str "Dear " display-name ",\n\n"
+                           "you have signed up to Sparkboard with this email address. Please verify it by clicking the link below:\n"
+                           (env/config :link-prefix) (routing/path-for [`verify-email! {:token email-verification-token}]) "\n\n"
+                           "If you did not sign up to Sparkboard you can simply ignore this email.\n\n"
+                           "Greetings\n"
+                           "The Sparkbot")}))
+
+(defn create!
+  {:endpoint {:post "/create-account"}
+   :endpoint/public? true}
+  [_ {{{:as proto-account :account/keys [email password display-name]} :account} :body}]
+  (when (not-empty (dl/entity [:account/email email]))
+    (az/unauthorized! "An account with this email already exists"))
+  (vd/assert proto-account
+             [:map
+              [:account/password [:string {:min 8}]]
+              [:account/email [:re #"^[^@]+@[^@]+$"]]])
+  (let [token (random-uuid)
+        account (-> (dl/new-entity (merge {:account/email email
+                                           :account/email-verified? false
+                                           :account/email-verification-token token
+                                           :account/email-verification-token.expires-at
+                                           (java.util.Date/from (.plus (java.time.Instant/now)
+                                                                       (java.time.Duration/ofDays 1)))
+                                           :account/email-frequency :account.email-frequency/hourly
+                                           :account/display-name display-name}
+                                          (hash-password password))
+                                   :account)
+                    (vd/assert :account/as-map))]
+    (db/transact! [account])
+    (send-email-verification! account))
+  (-> {:body ""}
+      (res:login [:account/email email])))
+
+(defn reset-password!
+  {:endpoint {:get "/reset-password/:token"}
+   :endpoint/public? true}
+  [_ params]
+  (if-let [token (parse-uuid (:token params))]
+    (if-let [account (dl/entity [:account/password-reset-token token])]
+      (if (< (.getTime (java.util.Date.))
+             (.getTime (:account/password-reset-token.expires-at account)))
+        ;; TODO add password change to settings
+        (res:login (ring.response/redirect (routing/path-for 'sb.app.account.ui/settings))
+                   [:account/email (:account/email account)])
+        (az/unauthorized! "Verification token has expired"))
+      (az/unauthorized! "Unknown or expired verification token"))
+    (az/unauthorized! "Not a valid  verification token")))
+
+(defn send-password-reset-email!
+  {:endpoint {:post "/send-password-reset-email"}
+   :endpoint/public? true}
+  [_ {{{:account/keys [email]} :account} :body}]
+  (if-let [account (dl/entity [:account/email email])]
+    (if (:account/email-verified? account)
+      (let [token (random-uuid)]
+        (db/transact! [{:db/id (:db/id account)
+                        :account/password-reset-token token
+                        :account/password-reset-token.expires-at
+                        (java.util.Date/from (.plus (java.time.Instant/now)
+                                                    (java.time.Duration/ofHours 2)))}])
+        (email/send-to-account! {:account account
+                                 :subject (t :tr/password-reset)
+                                 :body (t :tr/password-reset-template
+                                          [(str (env/config :link-prefix)
+                                                (routing/path-for [`reset-password! {:token token}]))])}))
+      (az/unauthorized! "Email not verified"))
+    (az/unauthorized! "Unkown email"))
+  {:body ""})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Middleware

@@ -20,6 +20,12 @@
             [yawn.hooks :as h]
             [net.cgrand.xforms :as xf]))
 
+;; :accounts can have a :membership in an :org, :board, :project, or :note
+;; The following table shows the differences between the different membership types
+;;                                       O B P N
+;; can have tags                         - o - -
+;; needs to be also member of the parent - - o o
+
 (ui/defview show
   {:route       "/m/:membership-id"
    :view/router :router/modal}
