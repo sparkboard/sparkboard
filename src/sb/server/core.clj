@@ -263,7 +263,7 @@
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
   (fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
-                       port
+                       (some-> port Integer.)
                        3000))
   (notification.email/start-polling!))
 
