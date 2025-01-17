@@ -173,8 +173,8 @@
                      :authorize-uri    "https://accounts.google.com/o/oauth2/v2/auth"
                      :access-token-uri "https://accounts.google.com/o/oauth2/token"
                      :launch-uri       "/oauth2/google/launch"
-                     :redirect-uri     "/oauth2/google/callback"
-                     :landing-uri      "/oauth2/google/landing"}})
+                     :redirect-uri     (str (env/config :link-prefix) "/oauth2/google/callback")
+                     :landing-uri      (str (env/config :link-prefix) "/oauth2/google/landing")}})
 
 (defn filter-vals [m pred]
   (into {} (filter (comp pred val) m)))
