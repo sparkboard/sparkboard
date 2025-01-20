@@ -49,7 +49,7 @@
      :on-close [socket]
      "
      [& {:as options}]
-     (let [{:keys [url port path pack unpack handlers]} (merge ws:default-options options)
+     (let [{:keys [path pack unpack handlers]} (merge ws:default-options options)
            !ws     (atom nil)
            channel {:!last-message (atom nil)
                     :dispose-delay (* 10 60000)
@@ -60,7 +60,7 @@
                                          (.send ws (pack message)))))}
            context (assoc options :channel channel)
            init-ws (fn init-ws []
-                     (let [ws (js/WebSocket. (or url (str "ws://localhost:" port path)))]
+                     (let [ws (js/WebSocket. path)]
                        (reset! !ws ws)
                        (doto ws
                          (.addEventListener "open" (fn [_]
@@ -76,8 +76,7 @@
 
 #?(:cljs
    (defonce ws:channel
-            (delay (ws:connect {:port     3000
-                                :handlers (sync/result-handlers entity-diff/result-handlers)}))))
+            (delay (ws:connect {:handlers (sync/result-handlers entity-diff/result-handlers)}))))
 
 #?(:clj
    (def pull
