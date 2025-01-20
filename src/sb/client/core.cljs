@@ -4,7 +4,7 @@
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [inside-out.forms :as forms]
-            [org.sparkboard.slack.firebase :as firebase]
+            #_[org.sparkboard.slack.firebase :as firebase]
             [re-db.api :as db]
             [re-db.integrations.reagent]
             [sb.app :as app]
@@ -101,7 +101,7 @@
 (defn init []
   (db/merge-schema! @sch/!schema)
   (read-env!)
-  (firebase/init)
+  #_(firebase/init)
   (init-endpoints!)
   (init-forms)
   (render))

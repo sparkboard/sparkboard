@@ -40,7 +40,7 @@
             [sb.server.env :as env]
             [sb.server.html :as server.html]
             [sb.server.nrepl :as nrepl]
-            [org.sparkboard.slack.firebase.jvm :as fire-jvm]
+            #_#_[org.sparkboard.slack.firebase.jvm :as fire-jvm]
             [org.sparkboard.slack.server :as slack.server]
             [sb.transit :as t]
             [sb.query :as q]
@@ -221,7 +221,7 @@
 (def app-handler
   (delay
     (join-handlers (serve-static "public")
-                   slack.server/handlers
+                   #_slack.server/handlers
                    (-> #'route-handler
                        i18n/wrap-i18n
                        accounts/wrap-accounts
@@ -261,7 +261,7 @@
 
 (defn -main [& [port]]
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")})
-  (fire-jvm/sync-all)                                       ;; cache firebase db locally
+  #_(fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
                        (some-> port Integer.)
                        3000))
