@@ -41,7 +41,7 @@
     `(some-> (io/resource ~path) slurp)))
 
 (defn read-config []
-  (parse-config (or (env-var :SPARKBOARD_CONFIG)
+  (parse-config (or (some-> (env-var :SPARKBOARD_CONFIG) slurp)
                     (some-inline-resource ".local.config.edn"))))
 (def config
   (or (read-config) {}))
