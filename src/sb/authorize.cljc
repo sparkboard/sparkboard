@@ -57,7 +57,7 @@
   params)
 
 (defn with-account-id [req params]
-  (assoc params :account-id [:entity/id (-> req :account :entity/id)]))
+  (assoc params :account-id (sch/wrap-id (-> req :account :entity/id))))
 
 (defn unauthorized! [message & [data]]
   (throw (ex-info message (merge {:code 400} data))))
