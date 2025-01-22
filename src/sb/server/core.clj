@@ -168,6 +168,7 @@
              $query    (q/from-var query-var)]
          ($txs ($query params)))
        (catch Exception e
+         (log/error (pr-str e))
          (r/reaction {:error (ex-message e)}))))
 
 (comment
