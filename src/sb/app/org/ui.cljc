@@ -68,17 +68,19 @@
                             :field-option/label (t :tr/sort-entity-created-at-desc)}
                            {:field-option/value [:random]
                             :field-option/label (t :tr/sort-random)}]}]
-         [:div
-          [:a.btn.btn-white.py-2
-           {:class "bg-white/40"
-            :href (routing/path-for ['sb.app.board.ui/new-in-org
-                                     {:parent (:entity/id org)}])}
-           (t :tr/new-board)]]
-         [:div
-          [:a.btn.btn-white.py-2
-           {:class "bg-white/40"
-            :href (routing/path-for `members {:org-id (:org-id params)})}
-           (t :tr/members)]]
+         (when (az/admin-role? (az/all-roles (:account-id params) org))
+           [:div
+            [:a.btn.btn-white.py-2
+             {:class "bg-white/40"
+              :href (routing/path-for ['sb.app.board.ui/new-in-org
+                                       {:parent (:entity/id org)}])}
+             (t :tr/new-board)]])
+         (when (some-> (:account-id params) (az/membership-id org))
+           [:div
+            [:a.btn.btn-white.py-2
+             {:class "bg-white/40"
+              :href (routing/path-for `members {:org-id (:org-id params)})}
+             (t :tr/members)]])
          (when-let [join! (data/approve-membership!-authorized {:org-id (:org-id params)})]
            [ui/action-button {:class "bg-white/40"
                               :on-click (fn [_] (join!))}

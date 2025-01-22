@@ -53,8 +53,10 @@
           org-id))
 
 (q/defquery show
-  {:prepare [az/require-account!
-             (az/with-roles :org-id)]}
+  {:endpoint/public? true
+   :prepare [az/with-account-id
+             (az/with-roles :org-id)
+             (member.data/assert-can-view :org-id)]}
   [{:keys [org-id membership/roles]}]
   (->> (dl/resolve-id org-id)
        (q/pull `[~@entity.data/listing-fields
