@@ -116,7 +116,9 @@
      (let [kind (:entity/kind entity)]
        (case kind
          (:board :org) (or (:entity/public? entity)
-                           (active-member? (az/membership account-id entity)))
+                           (some-> account-id
+                                   (az/membership entity)
+                                   active-member?))
          :project (can-view? account-id (:entity/parent entity))
          :membership (let [member (:membership/member entity)]
                        (case (:entity/kind member)
