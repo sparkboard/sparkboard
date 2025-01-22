@@ -22,4 +22,5 @@
       (use-attr :image/sub-header {:field/label (t :tr/image.sub-header)})
       (use-attr :image/background {:field/label (t :tr/image.background)})
 
+      (use-attr :entity/public?)
       ]]))
