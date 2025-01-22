@@ -48,6 +48,7 @@
          (use-persisted :image/footer {:field/label (t :tr/image.footer)})
          (use-persisted :image/background {:field/label (t :tr/image.background)})
          (use-persisted :entity/member-tags)
+         (use-persisted :entity/public?)
          ]
 
 

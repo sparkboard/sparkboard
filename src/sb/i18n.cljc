@@ -199,6 +199,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/tags                            {:en "Tags"
                                           :fr "Mots clés"
                                           :es "Etiquetas"},
+     :tr/public?                         {:en "Public"
+                                          :fr "public"
+                                          :es "público"}
      :tr/continue-with-email             {:en "Continue with email"
                                           :fr "Continuer avec courriel"
                                           :es "Continuar con correo electrónico"},
