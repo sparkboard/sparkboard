@@ -1,4 +1,4 @@
-(ns sb.app.discussion.data
+(ns sb.app.post.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
             [sb.app.notification.data :as notification.data]

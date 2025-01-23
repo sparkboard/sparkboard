@@ -5,7 +5,7 @@
             [sb.app.board.data :as board.data]
             [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
-            [sb.app.discussion.ui :as discussion.ui]
+            [sb.app.post.ui :as post.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.membership.data :as member.data]
@@ -171,8 +171,8 @@
            [:<>
             [:div.flex.gap-2
              [:div.field-label (t :tr/questions-and-comments)]
-             [discussion.ui/follow-toggle (:project-id params)]]
-            [discussion.ui/show-posts project]])
+             [post.ui/follow-toggle (:project-id params)]]
+            [post.ui/show-posts project]])
 
          (when-let [delete! (entity.data/delete!-authorized {:entity-id (sch/unwrap-id (:project-id params))})]
            [ui/action-button

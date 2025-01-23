@@ -1,7 +1,7 @@
-(ns sb.app.discussion.ui
+(ns sb.app.post.ui
   (:require [inside-out.forms :as forms]
             [sb.authorize :as az]
-            [sb.app.discussion.data :as data]
+            [sb.app.post.data :as data]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.time :as time]

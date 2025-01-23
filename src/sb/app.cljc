@@ -8,7 +8,7 @@
             [sb.app.chat.ui]
             [sb.app.collection.ui]
             [sb.app.content.ui]
-            [sb.app.discussion.ui]
+            [sb.app.post.ui]
             [sb.app.domain-name.ui :as domain.ui]
             [sb.app.entity.ui]
             [sb.app.field.admin-ui :as field.admin-ui]

@@ -1,7 +1,7 @@
 (ns sb.app.project.data
   (:require [re-db.api :as db]
             [sb.app.entity.data :as entity.data]
-            [sb.app.discussion.data :as discussion.data]
+            [sb.app.post.data :as post.data]
             [sb.app.field.data :as field.data]
             [sb.app.membership.data :as member.data]
             [sb.app.notification.data :as notification.data]
@@ -114,7 +114,7 @@
                                             :membership/roles
                                             :membership/member-approval-pending?
                                             {:membership/member ~entity.data/listing-fields}]}
-                      ~discussion.data/posts-with-comments-field
+                      ~post.data/posts-with-comments-field
                       {:entity/parent
                        [~@entity.data/listing-fields
                         :board/sticky-color
