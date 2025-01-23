@@ -25,9 +25,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Password authentication using the Firebase SCRYPT hashing algorithm
 
-(def hash-config (:password-auth/hash-config (cond-> env/config
-                                                     (not (= "staging" (:env env/config)))
-                                                     :prod)))
+(def hash-config (:password-auth/hash-config env/config))
 
 
 (defn generate-salt
