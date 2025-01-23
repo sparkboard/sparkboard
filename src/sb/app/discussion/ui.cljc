@@ -37,8 +37,8 @@
        [:div.text-gray-500
         "[" (t :tr/deleted) "]"]
        [:div.flex.gap-2.py-2.px-1
-        [:a.flex-none {:href (routing/entity-path (or @(az/membership author (:entity/parent (u/auto-reduce :post/parent post)))
-                                                      @author)
+        [:a.flex-none {:href (routing/entity-path @(or (not-empty (az/membership author (:entity/parent (u/auto-reduce :post/parent post))))
+                                                       author)
                                                   'ui/show)}
          [ui/avatar {:size 12} author]]
         [:div.flex-v
