@@ -118,7 +118,8 @@
 (ui/defview entity [{:as   entity
                      :keys [entity/title
                             image/avatar]} children]
-  (let [path (routing/entity-path entity 'ui/show)]
+  (let [path (routing/entity-path entity 'ui/show)
+        parent (:entity/parent entity)]
     [:div.header
      (when avatar
        (h/use-effect #(set! (.-href (.querySelector js/document "link[rel~='icon']"))
@@ -127,6 +128,12 @@
        [:a {:href path}
         [:img.h-10
          {:src (asset.ui/asset-src avatar :avatar)}]])
+     (when (:org/show-org-tab? parent)
+       [:<>
+        [:a.hover:underline.text-xl.font-medium.text-ellipsis.truncate.self-center
+         {:href (routing/entity-path parent 'ui/show)}
+         (:entity/title parent)]
+        [:div.text-xl.font-medium.self-center.text-gray-400 ">"]])
      [:a.hover:underline.text-xl.font-medium.text-ellipsis.truncate.self-center {:href path} title]
 
      [:div.flex-grow]
