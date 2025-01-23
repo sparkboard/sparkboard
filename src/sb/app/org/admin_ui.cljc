@@ -23,4 +23,5 @@
       (use-attr :image/background {:field/label (t :tr/image.background)})
 
       (use-attr :entity/public?)
+      (use-attr :org/show-org-tab?)
       ]]))

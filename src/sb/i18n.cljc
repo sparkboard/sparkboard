@@ -202,6 +202,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/public?                         {:en "Public"
                                           :fr "public"
                                           :es "público"}
+     :tr/show-org-tab?                   {:en "Link back to organization on board pages"
+                                          :fr "Lien vers l'organisation à les pages de tableau"
+                                          :es "Enlace a la organización en las páginas de tablero"}
      :tr/continue-with-email             {:en "Continue with email"
                                           :fr "Continuer avec courriel"
                                           :es "Continuar con correo electrónico"},
