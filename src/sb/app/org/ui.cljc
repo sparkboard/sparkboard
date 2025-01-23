@@ -23,6 +23,17 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
+;; same as board.ui/grouped-card-grid except for gap and cols
+(ui/defview grouped-card-grid [card values]
+  (into [:div.flex-v.gap-6]
+        (comp (partition-by (comp :group/label meta))
+              (map (fn [group]
+                     [:div
+                      (when-let [label (:group/label (meta (peek group)))]
+                        [:h2.text-2xl.ml-4.mb-2.sticky.top-4.p-4.rounded-lg.inline-block.bg-white.z-10 label])
+                      (into [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2] (map card) group)])))
+        values))
+
 (ui/defview show
   {:route "/o/:org-id"}
   [params]
@@ -67,7 +78,9 @@
                            {:field-option/value [:entity/created-at :direction :desc]
                             :field-option/label (t :tr/sort-entity-created-at-desc)}
                            {:field-option/value [:random]
-                            :field-option/label (t :tr/sort-random)}]}]
+                            :field-option/label (t :tr/sort-random)}
+                           {:field-option/value [:entity/public?]
+                            :field-option/label (t :tr/public?)}]}]
          (when (az/admin-role? (az/all-roles (:account-id params) org))
            [:div
             [:a.btn.btn-white.py-2
@@ -93,10 +106,7 @@
           [:div.flex-v.gap-2.my-6.p-1.backdrop-blur-md.rounded-lg
            {:class "bg-white/20"}
            [title (t (keyword "tr" (name kind)))]
-           (into  [:div.grid.grid-cols-1.sm:grid-cols-2.md:grid-cols-3.lg:grid-cols-4.gap-2]
-                  (comp (apply ui/sorted @?sort)
-                        (map entity.ui/row))
-                  results)])]])))
+           (grouped-card-grid entity.ui/row (into [] (apply ui/sorted @?sort) results))])]])))
 
 (ui/defview avatar-name [{:keys [on-click]}
                          {:as account :keys [account/display-name]}]
