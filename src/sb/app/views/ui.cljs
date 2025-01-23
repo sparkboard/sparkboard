@@ -17,7 +17,7 @@
             [sb.app.entity.data :as entity.data]
             [sb.app.views.radix :as radix]
             [sb.client.sanitize :as sanitize]
-            [sb.i18n]
+            [sb.i18n :refer [t]]
             [sb.icons :as icons]
             [sb.routing :as routing]
             [sb.util :as u]
@@ -77,6 +77,10 @@
     :default (xf/sort-by #(clojure.pprint/cl-format nil "~10d" ( :project/number %)))
     :entity/created-at (xf/sort-by :entity/created-at (case direction :asc compare :desc u/compare:desc))
     :random (xf/sort #(rand-nth [-1 1]))
+    :entity/public? (comp (xf/sort-by (complement :entity/public?))
+                          (map #(vary-meta % assoc :group/label (t (if (:entity/public? %)
+                                                                     :tr/public
+                                                                     :tr/not-public)))))
     :field.type/select (let [field-positions (u/entry-indexes (map :field-option/value field-options))
                              field-labels (u/index-by field-options :field-option/value :field-option/label)]
                          (comp (xf/sort-by (comp field-positions :select/value #(get % field-id) :entity/field-entries))

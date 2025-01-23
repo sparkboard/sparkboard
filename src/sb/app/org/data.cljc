@@ -61,7 +61,8 @@
   (->> (dl/resolve-id org-id)
        (q/pull `[~@entity.data/listing-fields
                  ~@entity.data/site-fields
-                 {:entity/_parent ~entity.data/listing-fields}])
+                 {:entity/_parent [~@entity.data/listing-fields
+                                   :entity/public?]}])
        (merge {:membership/roles roles})))
 
 (q/defquery members

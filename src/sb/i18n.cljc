@@ -200,8 +200,14 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                           :fr "Mots clés"
                                           :es "Etiquetas"},
      :tr/public?                         {:en "Public"
-                                          :fr "public"
-                                          :es "público"}
+                                          :fr "Public"
+                                          :es "Público"}
+     :tr/public                          {:en "Public"
+                                          :fr "Public"
+                                          :es "Público"}
+     :tr/not-public                      {:en "Not public"
+                                          :fr "Non public"
+                                          :es "No público"}
      :tr/show-org-tab?                   {:en "Link back to organization on board pages"
                                           :fr "Lien vers l'organisation à les pages de tableau"
                                           :es "Enlace a la organización en las páginas de tablero"}
