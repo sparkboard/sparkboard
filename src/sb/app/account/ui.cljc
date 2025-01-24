@@ -39,17 +39,8 @@
   (ui/with-form [!account {:account/email    (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
-    (let [!step (h/use-state :email)]
-      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
-       [:div.flex-v.gap-2
-        [field.ui/text-field ?email {:field/can-edit? true}]
-        (when (= :password @!step)
-          [field.ui/text-field ?password {:autoFocus true
-                                          :field/can-edit? true}])
-        (str (forms/visible-messages !account))
-        [ui/action-button
-         {:classes {:btn "btn-primary h-10 text-sm"}
-          :on-click (fn [^js e]
+    (let [!step (h/use-state :email)
+          submit! (fn [^js e]
                      (.preventDefault e)
                      (case @!step
                        :email (reset! !step :password)
@@ -58,7 +49,17 @@
                                     ;; TODO put error messages in the right location
                                     (when-not (:error res)
                                       (set! js/window.location.href (routing/path-for `login-landing)))
-                                    res))))}
+                                    res))))]
+      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       [:form.flex-v.gap-2
+        {:on-submit submit!}
+        [field.ui/text-field ?email {:field/can-edit? true}]
+        (when (= :password @!step)
+          [field.ui/text-field ?password {:autoFocus true
+                                          :field/can-edit? true}])
+        (str (forms/visible-messages !account))
+        [ui/action-button {:classes {:btn "btn-primary h-10 text-sm"}
+                           :on-click submit!}
          (t :tr/continue-with-email)]]
        [:a.gray-link.text-right.text-sm {:href (routing/path-for `forgot-password)}
         (t :tr/forgot-password?)]
