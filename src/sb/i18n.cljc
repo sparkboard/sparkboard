@@ -632,8 +632,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                           :fr "Administrateur du projet"
                                           :es "Administrador del proyecto"}
      :tr/project-editor                  {:en "Project editor"
-                                          :fr "Administrateur du projet"
-                                          :es "Administrador del proyecto"}
+                                          :fr "Éditeur du projet"
+                                          :es "Editor del proyecto"}
      :tr/project-member                  {:en "Project member"
                                           :fr "Membre du projet"
                                           :es "Miembro del proyecto"}
