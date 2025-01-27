@@ -6,6 +6,7 @@
             [sb.app.account.data :as data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
+            [sb.app.form.ui :as form.ui]
             [sb.app.membership.data :as member.data]
             [sb.app.views.header :as header]
             [sb.app.views.radix :as radix]
@@ -39,28 +40,29 @@
   (ui/with-form [!account {:account/email    (?email :init "")
                            :account/password (?password :init "")}
                  :required [?email ?password]]
-    (let [!step (h/use-state :email)
-          submit! (fn [^js e]
-                     (.preventDefault e)
-                     (case @!step
-                       :email (reset! !step :password)
-                       :password (forms/try-submit+ !account
-                                  (p/let [res (routing/POST 'sb.server.account/login! @!account)]
-                                    ;; TODO put error messages in the right location
-                                    (when-not (:error res)
-                                      (set! js/window.location.href (routing/path-for `login-landing)))
-                                    res))))]
+    (let [!step (h/use-state :email)]
       [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
        [:form.flex-v.gap-2
-        {:on-submit submit!}
+        {:on-submit (fn [^js e]
+                      (.preventDefault e)
+                      (case @!step
+                        :email (reset! !step :password)
+                        :password (forms/try-submit+ !account
+                                                     (-> (p/let [res (routing/POST 'sb.server.account/login! @!account)]
+                                                           ;; TODO put error messages in the right location
+                                                           (when-not (:error res)
+                                                             (set! js/window.location.href (routing/path-for `login-landing)))
+                                                           res)))))}
         [field.ui/text-field ?email {:field/can-edit? true}]
         (when (= :password @!step)
           [field.ui/text-field ?password {:autoFocus true
                                           :field/can-edit? true}])
-        (str (forms/visible-messages !account))
-        [ui/action-button {:classes {:btn "btn-primary h-10 text-sm"}
-                           :on-click submit!}
-         (t :tr/continue-with-email)]]
+        [form.ui/submit-button (-> (form.ui/form-props !account)
+                                   (assoc :classes {:btn "h-10 text-sm"})
+                                   (cond-> (and (= :email @!step)
+                                                (forms/valid? ?email))
+                                     (assoc :disabled false)))
+           (t :tr/continue-with-email)]]
        [:a.gray-link.text-right.text-sm {:href (routing/path-for `forgot-password)}
         (t :tr/forgot-password?)]
 
@@ -85,27 +87,26 @@
                            :account/display-name (?display-name :init "")}]
     [:div.h-screen.flex-v
       [header/lang "absolute top-0 right-0"]
-     [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
-      {:class ["bg-secondary rounded-lg border border-txt/05"]}
+     [:form.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
+      {:class ["bg-secondary rounded-lg border border-txt/05"]
+       :on-submit (fn [e]
+                    (.preventDefault e)
+                    (forms/try-submit+ !account
+                                       (-> (routing/POST 'sb.server.account/create! {:account @!account})
+                                           (p/then (fn [{:as result :keys [txs]}]
+                                                     (when txs
+                                                       (db/transact! txs))
+                                                     (when-not (:error result)
+                                                       (set! js/window.location.href (routing/path-for `login-landing)))
+                                                     result))
+                                           (p/catch (fn [e] {:error (ex-message e)})))))}
       [:h1.text-3xl.font-medium.text-center (t :tr/welcome)]
       [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
        [field.ui/text-field ?email {:field/can-edit? true}]
        [field.ui/text-field ?password {:field/can-edit? true}]
        [field.ui/text-field ?display-name {:field/can-edit? true
                                            :field/label (t :tr/name)}]
-       [ui/action-button
-        {:classes {:btn "btn-primary h-10 text-sm"}
-         :on-click (fn [e]
-                     (forms/try-submit+ !account
-                      (-> (routing/POST 'sb.server.account/create! {:account @!account})
-                          (p/then (fn [{:as result :keys [txs]}]
-                                    (when txs
-                                      (db/transact! txs))
-                                    (when-not (:error result)
-                                      (set! js/window.location.href (routing/path-for `login-landing)))
-                                    result))
-                          (p/catch (fn [e] {:error (ex-message e)})))))}
-        (t :tr/register)]]]]))
+       [form.ui/submit-form !account (t :tr/register)]]]]))
 
 (ui/defview forgot-password
   {:route "/forgot-password"}
@@ -115,11 +116,9 @@
      [header/lang "absolute top-0 right-0"]
      [:div.flex-v.items-center.max-w-sm.mt-10.relative.mx-auto.py-6.px-3.gap-6
       {:class ["bg-secondary rounded-lg border border-txt/05"]}
-      [:div.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
-       [field.ui/text-field ?email {:field/can-edit? true}]
-       [ui/action-button
-        {:classes {:btn "btn-primary text-sm"}
-         :on-click (fn [e]
+      [:form.flex-grow.m-auto.gap-6.flex-v.max-w-sm.px-4
+       {:on-submit (fn [e]
+                     (.preventDefault e)
                      (forms/try-submit+ !account
                                         (-> (routing/POST 'sb.server.account/send-password-reset-email! {:account @!account})
                                             (p/then (fn [{:as result :keys [txs]}]
@@ -129,7 +128,8 @@
                                                         (routing/nav! `forgot-password-success))
                                                       result))
                                             (p/catch (fn [e] {:error (ex-message e)})))))}
-        (t :tr/send-password-reset-email)]]]]))
+       [field.ui/text-field ?email {:field/can-edit? true}]
+       [form.ui/submit-form !account (t :tr/send-password-reset-email)]]]]))
 
 (ui/defview forgot-password-success
   {:route "/forgot-password-success"}
@@ -280,15 +280,16 @@
        [entity.ui/persisted-attr account :account/email-frequency {:field/can-edit? true}]]
       [:div
        [:div.field-label.text-lg.pb-3 (t :tr/change-password)]
-       ;; TODO should be submittable with enter key
-       (ui/with-form [!account {:account/password (?password :init "")}]
-         [:div.flex-v.gap-4
+       (ui/with-form [!account {:account/password (?password :init "")}
+                      :required [?password]]
+         [:form.flex-v.gap-4
+          {:on-submit (fn [e]
+                        (.preventDefault e)
+                        (p/let [res (forms/try-submit+ !account (data/set-password! {:password @?password}))]
+                          (when-not (:error res)
+                            ;; TODO show a success message
+                            (reset! ?password nil))
+                          res))}
           [field.ui/text-field ?password {:field/can-edit? true}]
-          [ui/action-button {:classes {:btn "btn-primary text-sm"}
-                             :on-click (fn [e]
-                                         (p/let [res (data/set-password! {:password @?password})]
-                                           (when-not (:error res)
-                                             ;; TODO show a success message
-                                             (reset! ?password nil))
-                                           res))}
+          [form.ui/submit-form !account
            (t :tr/change-password)]])]]]))

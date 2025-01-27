@@ -76,13 +76,28 @@
   (when-let [messages (seq (io/visible-messages ?field))]
     (v/x (into [:div.gap-3.text-sm] (map view-message messages)))))
 
+(ui/defview submit-button [props label]
+  (-> [:button.btn.btn-primary.relative.w-full
+       {:type     "submit"
+        :class (-> props :classes :btn)
+        :disabled (:disabled props)}
+       label
+       (when (:loading? props)
+         [:div.progress-bar.absolute.top-0.left-0.right-0.h-1])]
+      (ui/error-popover (:error props))))
+
+(defn form-props [?form]
+  {:disabled (not (io/submittable? ?form))
+   :loading? (:loading? ?form)
+   :error (->> (io/visible-messages ?form)
+               ;; TODO what to do with non-error messages?
+               (filter (comp #{:error :invalid} :type))
+               (map :content)
+               (apply str)
+               not-empty)})
+
 (ui/defview submit-form [?form label]
-  [:<>
-   (show-field-messages ?form)
-   [:button.btn.btn-primary
-    {:type     "submit"
-     :disabled (not (io/submittable? ?form))}
-    label]])
+  [submit-button (form-props ?form) label])
 
 #?(:cljs
    (defn use-dev-panel [entity role-map default]
