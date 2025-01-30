@@ -571,13 +571,13 @@
         img      (v/x [:img.object-contain.h-16.w-16.rounded.overflow-hidden.bg-gray-50.transition-all
                        {:src   url
                         :class [(when dragging "opacity-20 w-0")
-                                (when current? "outline outline-2 outline-black")]}])]
+                                (when current? "outline outline-2 outline-black")]
+                        :on-click #(reset! !?current ?image) }])]
     (if can-edit?
       [radix/context-menu
        {:key     url
         :trigger (v/x [:div.relative.transition-all
-                       (v/merge-props {:class    (when (= dropping :before) "pl-4")
-                                       :on-click #(reset! !?current ?image)}
+                       (v/merge-props {:class    (when (= dropping :before) "pl-4")}
                                       drag-handle-props
                                       drag-subject-props)
                        img])
@@ -589,6 +589,8 @@
 
 (ui/defview images-field [?images {:as props :field/keys [label can-edit?]}]
   (let [hook-deps (h/use-deps (:init ?images))
+        ;; TODO nice to have would be to only reset `!?current` when `@!?current` no longer is in `?images`
+        ;; currently it is reset whenever `?images` changes
         !?current (h/use-state-with-deps (first ?images) hook-deps)
         use-order (ui/use-orderable-parent ?images {:axis :x})
         [selected-url loading?] (ui/use-last-loaded (some-> @!?current ('?id) deref (asset.ui/asset-src :card)) hook-deps)]
