@@ -118,13 +118,14 @@
 (ui/defview entity [{:as   entity
                      :keys [entity/title
                             image/avatar]} children]
+  (h/use-effect #(when avatar
+                   (set! (.-href (.querySelector js/document "link[rel~='icon']"))
+                         (asset.ui/asset-src avatar :avatar)))
+                (h/use-deps avatar))
   (let [path (routing/entity-path entity 'ui/show)
         parent (:entity/parent entity)]
     [:div.header
      (when avatar
-       (h/use-effect #(set! (.-href (.querySelector js/document "link[rel~='icon']"))
-                            (asset.ui/asset-src avatar :avatar))
-                     (h/use-deps avatar))
        [:a {:href path}
         [:img.h-10
          {:src (asset.ui/asset-src avatar :avatar)}]])
