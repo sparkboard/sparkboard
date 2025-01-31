@@ -490,6 +490,15 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/leave-board                     {:en "Leave board"
                                           :fr "Partir tableau"
                                           :es "Dejar tablero"}
+     :tr/invite                          {:en "Invite"
+                                          :fr "Inviter"
+                                          :es "Invitar"}
+     :tr/invite-to                       {:en "Invite to %1"
+                                          :fr "Inviter à %1"
+                                          :es "Invitar a %1 "}
+     :tr/invited-to                      {:en "Invited to"
+                                          :fr "Invité à"
+                                          :es "Invitado a"}
      :tr/you-are-invited-to-join         {:en "You are invited to join"
                                           :fr "Vous êtes invité à rejoindre"
                                           :es "Estás invitado a unirte"}

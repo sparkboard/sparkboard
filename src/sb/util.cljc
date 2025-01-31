@@ -243,3 +243,9 @@
                         (mergefn v x)))))
     (transient {})
     coll)))
+
+(defn filter-by
+  "same as [(vec (filter pred coll)) (vec (remove pred coll))]"
+  [pred coll]
+  (let [{ts true fs false} (group-by (comp boolean pred) coll)]
+    [ts fs]))

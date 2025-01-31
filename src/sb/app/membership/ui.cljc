@@ -79,18 +79,42 @@
        {:entity/fields    (-> board :entity/member-fields)
         :membership/roles roles
         :field/can-edit?  can-edit?}]]
-     [:div.px-body
-      [:div.field-label (t :tr/project)]
-      [:div.mt-3.flex.flex-wrap.gap-6
-       (for [project (->> (db/where [[:membership/member (sch/wrap-id account)]
-                                     (complement sch/deleted?)])
-                          (map :membership/entity)
-                          (filter (every-pred (comp #{board} :entity/parent)
-                                              ;; filter out sticky notes. TODO do we want to show them somewhere else?
-                                              (comp #{:project} :entity/kind))))]
-         ^{:key (:entity/id project)}
-         [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
-          (:entity/title project)])]]
+     (let [[invitations theirs] (->> (data/project-memberships-on-board board (sch/wrap-id account))
+                                     (u/filter-by :membership/member-approval-pending?)
+                                     (map (partial mapv :membership/entity)))
+           mine (->> (data/project-memberships-on-board board (:account-id params))
+                     (map :membership/entity)
+                     (filter (comp (complement (into (set theirs) invitations)))))]
+       [:div.px-body
+        ;; TODO do we want to show sticky-note memberships somewhere?
+        [:div.field-label (t :tr/project)]
+        [:div.flex-v.gap-6
+         (when (seq theirs)
+           [:div.mt-3.flex.flex-wrap.gap-6
+            (for [project theirs]
+              ^{:key (:entity/id project)}
+              [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
+               (:entity/title project)])])
+         (when (seq invitations)
+           [:div
+            [:div.field-label.text-sm (t :tr/invited-to)]
+            [:div.mt-3.flex.flex-wrap.gap-6
+             (for [project invitations]
+               ^{:key (:entity/id project)}
+               [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
+                (:entity/title project)])]])
+         (when (seq mine)
+           [:div
+            [:div.field-label.text-sm (t :tr/invite)]
+            [:div.mt-3.flex.flex-wrap.gap-6
+             (for [project mine]
+               ^{:key (:entity/id project)}
+               ;; TODO do we want to enable invitation to sticky notes here?
+               [ui/action-button {:classes {:btn "btn-primary"}
+                                  :on-click #(data/create-board-child-invitation!
+                                              {:invitee-account-id (:entity/id account)
+                                               :entity-id (:entity/id project)})}
+                (t :tr/invite-to [(:entity/title project)])])]])]])
      (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id membership)
                                                               :membership/roles #{:role/board-admin}}})
        [:div.px-body

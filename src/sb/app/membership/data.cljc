@@ -306,6 +306,13 @@
          (db/transact! [membership])
          (:entity/id membership)))))
 
+(defn project-memberships-on-board [board account-id]
+  (db/where [[:membership/member account-id]
+             (complement sch/deleted?)
+             (comp (every-pred (comp #{board} :entity/parent)
+                               (comp #{:project} :entity/kind))
+                   :membership/entity)]))
+
 (q/defx join!
   {:prepare [az/with-account-id!
              (fn [_ {:keys [board-id]}]
