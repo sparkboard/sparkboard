@@ -44,7 +44,7 @@
                           (j/!set :innerHTML (.render Markdown (or source "")))
                           (linkify-element))))
                   [@!ref source])
-    (v/x [:div {:class                   "overflow-hidden"
+    (v/x [:div {:class                   "overflow-hidden [&_ol]:list-inside [&_ol]:list-decimal"
                 :ref                     !ref
                 :dangerouslySetInnerHTML #js{:__html ""}}])))
 
