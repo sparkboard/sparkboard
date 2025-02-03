@@ -100,8 +100,11 @@
   (or (case (:entity/kind entity)
         :account (when (sch/id= account-id entity) #{:role/self})
         :membership (when (sch/id= account-id (membership-account entity)) #{:role/self})
-        (:membership/roles #?(:cljs entity
-                              :clj  (membership account-id entity))))
+        (cond-> (:membership/roles #?(:cljs entity
+                                      :clj  (membership account-id entity)))
+          (sch/id= account-id (:entity/parent entity))
+          (-> set (conj (keyword "role" (str (name (:entity/kind entity))
+                                             "-admin"))))))
       #{}))
 
 (defn all-roles [account-id entity]
