@@ -133,7 +133,8 @@
                         tags-changed (concat
                                        (set/difference tags-before tags-after) ;; removed
                                        (set/difference tags-after tags-before)) ;; added
-                        admin?       (:role/board-admin roles)]
+                        admin?       (or (:role/board-admin roles)
+                                         (:role/org-admin roles))]
                     (when (seq tags-changed)
                       (let [tag-defs (-> entity :membership/entity :entity/member-tags (u/index-by :tag/id))]
                         (doseq [tag-id tags-changed         ;; added
