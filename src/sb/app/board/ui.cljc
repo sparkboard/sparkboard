@@ -311,7 +311,7 @@
 
 (ui/defview members* [board-id]
   (let [board        (data/show {:board-id board-id})
-        tags (:entity/project-tags board)
+        tags (:entity/member-tags board)
         fields (:entity/project-fields board)
         !xform (h/use-state (constantly identity))]
     [:<>
@@ -332,7 +332,7 @@
 (ui/defview pending-members*
   [board-id]
   (let [board        (data/show {:board-id board-id})
-        tags (:entity/project-tags board)
+        tags (:entity/member-tags board)
         fields (:entity/project-fields board)
         !xform (h/use-state (constantly identity))]
     [:<>
