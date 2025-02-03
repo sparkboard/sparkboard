@@ -9,6 +9,7 @@
             [sb.app.asset.ui :as asset.ui]
             [sb.app.board.data :as data]
             [sb.app.domain-name.ui :as domain.ui]
+            [sb.app.entity.data :as entity.data]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
             [sb.app.membership.data :as member.data]
@@ -22,6 +23,7 @@
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.authorize :as az]
+            [sb.icons :as icons]
             [sb.i18n :refer [t]]
             [sb.routing :as routing]
             [sb.schema :as sch]
@@ -167,8 +169,10 @@
    body])
 
 (ui/defview frame
-  [{:as params :keys [board-id]} current-tab body]
-  (let [board        (data/show {:board-id board-id})]
+  [{:as params :keys [board-id account-id]} current-tab body]
+  (let [board        (data/show {:board-id board-id})
+        membership   (some-> account-id (az/membership board))
+        membership-id (:db/id (not-empty membership))]
     [:div.flex-v.gap-6
      {:style (ui/background-image-style board)}
      [header/entity board nil]
@@ -185,7 +189,14 @@
            :href (routing/path-for [`sb.app.account.ui/sign-in])}
           (t :tr/sign-in)]]
         [field.ui/show-prose (:board/home-page-message board)]])
-     (ui/sub-header board)
+     [radix/collapsible {:open (not (:membership/hide-sub-header? membership))
+                         :on-open-change #(entity.data/save-attributes! {:entity {:entity/id (sch/unwrap-id membership)
+                                                                                  :membership/hide-sub-header? (not %)}})}
+      (when membership-id
+        ;; TODO have some localStorage based fallback for non-members
+        [:div.mx-auto.flex.justify-end {:class "w-2/3"}
+         [icons/chevron-down]])
+      (ui/sub-header board)]
      [:div.m-body.p-4.flex-v.gap-6.backdrop-blur-md.rounded-lg
       {:class "bg-white/20"}
       [:div {:class           "flex flex-col gap-6"}
@@ -213,8 +224,8 @@
                      [[:tr/pending-members (routing/path-for [`pending-members {:board-id board-id}])]])
                    (when (:member-vote/open? board)
                      [[:tr/votes (routing/path-for [`voting {:board-id board-id}])]]))))))
-        (when-let [account (db/get :env/config :account)]
-          (if-let [membership-id  (az/membership-id account board)]
+        (when account-id
+          (if membership-id
             [:a.btn.btn-white
              {:class "bg-white/40"
               :href (routing/entity-path (db/entity membership-id) 'ui/show)}

@@ -34,6 +34,8 @@
    :entity/tags                         {s- [:sequential [:map {:closed true} :tag/id]]}
    :entity/custom-tags                  {s- [:sequential [:map {:closed true} :tag/label]]}
 
+   :membership/hide-sub-header?         {s- :boolean}
+
    ;; TODO: move/remove. this should simply be a field that an organizer adds.
    :membership/newsletter-subscription? {s- :boolean},
 
@@ -58,6 +60,7 @@
                                              (? :entity/tags)
                                              (? :membership/roles)
                                              (? :membership/member-approval-pending?)
+                                             (? :membership/hide-sub-header?)
 
                                              ;; TODO, backfill?
                                              ;; only missing for memberships of orgs and collections

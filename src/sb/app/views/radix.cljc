@@ -2,6 +2,7 @@
   (:require #?(:cljs ["@radix-ui/react-context-menu" :as ContextMenu])
             #?(:cljs ["@radix-ui/react-accordion" :as accordion])
             #?(:cljs ["@radix-ui/react-alert-dialog" :as alert])
+            #?(:cljs ["@radix-ui/react-collapsible" :as collapsible])
             #?(:cljs ["@radix-ui/react-dialog" :as dialog])
             #?(:cljs ["@radix-ui/react-dropdown-menu" :as dm])
             #?(:cljs ["@radix-ui/react-popover" :as popover])
@@ -261,6 +262,13 @@
                  [:el.accordion-trigger accordion/Trigger (v/x trigger) [icons/chevron-down]]]
                 [:el.accordion-content accordion/Content
                  (v/x content)]])))]))
+
+(defn collapsible [props trigger content]
+  #?(:cljs
+     [:el.collapsible-root collapsible/Root (v/props {:open (:open props)
+                                                      :on-open-change (:on-open-change props)})
+      [:el.collapsible-trigger collapsible/Trigger {} trigger]
+      [:el.collapsible-content collapsible/Content {} content]]))
 
 (def context-menu-item (v/from-element :el.text-sm.flex.items-center.outline-none.user-select-none.rounded.px-2.py-1.cursor-default ContextMenu/Item
                                        {:class "data-[highlighted]:bg-gray-100"}))

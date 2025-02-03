@@ -319,10 +319,12 @@
         @apply px-1 py-2 icon-light-gray
     }
 
-    .accordion-content[data-state='open'] {
+    .accordion-content[data-state='open'],
+    .collapsible-content[data-state='open'] {
         animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
     }
-    .accordion-content[data-state='closed'] {
+    .accordion-content[data-state='closed'],
+    .collapsible-content[data-state='closed'] {
         animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
     }
     .accordion-content {
@@ -333,14 +335,22 @@
         px-3 flex h-16 items-center justify-between w-full
          rounded bg-gray-50 hover:bg-gray-100  data-[state=open]:bg-gray-100
     }
-    .accordion-trigger .icon {
+
+    .collapsible-trigger {
+        @apply
+        w-full
+    }
+
+    .accordion-trigger .icon,
+    .collapsible-trigger .icon {
         transition: transform 300ms cubic-bezier(0.87, 0, 0.13, 1);
     }
 
     .accordion-trigger[data-state='open'] {
 
     }
-    .accordion-trigger[data-state='open'] .icon {
+    .accordion-trigger[data-state='open'] .icon,
+    .collapsible-trigger[data-state='open'] .icon {
         transform: rotate(180deg);
     }
 

@@ -122,6 +122,7 @@
                                        (db/pull `[~@entity.data/id-fields
                                                   {:membership/entity [:entity/id]}
                                                   {:membership/member [:entity/id]}
+                                                  :membership/hide-sub-header?
                                                   :entity/deleted-at])))})
       (throw (ex-info "Board not found!" {:status 400})))))
 
