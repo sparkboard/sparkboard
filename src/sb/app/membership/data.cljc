@@ -306,10 +306,10 @@
          (db/transact! [membership])
          (:entity/id membership)))))
 
-(defn project-memberships-on-board [board account-id]
-  (db/where [[:membership/member account-id]
+(defn project-memberships-of-board-membership [{:membership/keys [member entity]}]
+  (db/where [[:membership/member (sch/wrap-id member)]
              (complement sch/deleted?)
-             (comp (every-pred (comp #{board} :entity/parent)
+             (comp (every-pred (comp #{entity} :entity/parent)
                                (comp #{:project} :entity/kind))
                    :membership/entity)]))
 

@@ -256,6 +256,12 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/memberships                     {:en "Memberships"
                                           :fr "Adhésions"
                                           :es "Membresías"}
+     :tr/number-of-projects              {:en "Number of projects"
+                                          :fr "Nombre de projets"
+                                          :es "Número de proyectos"}
+     :tr/member-of-n-projects            {:en "Member of %1 projects"
+                                          :fr "Membre de %1 projets"
+                                          :es "Miembro de %1 proyectos"}
      :tr/save                            {:en "Save"
                                           :fr "Enregistrer"
                                           :es "Guardar"},

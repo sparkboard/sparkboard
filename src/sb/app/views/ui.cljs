@@ -15,6 +15,7 @@
             [re-db.react]
             [sb.app.asset.ui :as asset.ui]
             [sb.app.entity.data :as entity.data]
+            [sb.app.membership.data :as member.data]
             [sb.app.views.radix :as radix]
             [sb.client.sanitize :as sanitize]
             [sb.i18n :refer [t]]
@@ -81,6 +82,11 @@
                           (map #(vary-meta % assoc :group/label (t (if (:entity/public? %)
                                                                      :tr/public
                                                                      :tr/not-public)))))
+    :member/num-projects (comp (map #(let [n (count (member.data/project-memberships-of-board-membership %))]
+                                       (vary-meta % assoc
+                                                  :group/label (t :tr/member-of-n-projects [n])
+                                                  :member/num-projects n)))
+                               (xf/sort-by (comp :member/num-projects meta)))
     :field.type/select (let [field-positions (u/entry-indexes (map :field-option/value field-options))
                              field-labels (u/index-by field-options :field-option/value :field-option/label)]
                          (comp (xf/sort-by (comp field-positions :select/value #(get % field-id) :entity/field-entries))

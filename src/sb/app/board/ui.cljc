@@ -88,7 +88,7 @@
                           routing/nav!*))))
     (h/use-effect (fn [] (routing/nav! `sb.app.account.ui/sign-in)))))
 
-(ui/defview query-ui [tags fields !xform]
+(ui/defview query-ui [options tags fields !xform]
   (let [?match-filter  (h/use-memo #(io/field))
         !tag-filter    (h/use-state nil)
         !select-filter (h/use-state nil)
@@ -131,23 +131,24 @@
        :field/can-edit? true
        :field/wrap read-string
        :field/unwrap str
-       :field/options (into [{:field-option/value [:default]
-                              :field-option/label (t :tr/sort-default)}
-                             {:field-option/value [:entity/created-at :direction :asc]
-                              :field-option/label (t :tr/sort-entity-created-at-asc)}
-                             {:field-option/value [:entity/created-at :direction :desc]
-                              :field-option/label (t :tr/sort-entity-created-at-desc)}
-                             {:field-option/value [:random]
-                              :field-option/label (t :tr/sort-random)}]
-                            (comp (filter (every-pred :field/show-as-filter?
-                                                      ;; TODO extend to all field types? In current dataset only `:field.type/select` is used.
-                                                      (comp #{:field.type/select} :field/type)))
-                                  (map (fn [{:field/keys [id label options]}]
-                                         {:field-option/value [:field.type/select
-                                                               :field-id id
-                                                               :field-options options]
-                                          :field-option/label label})))
-                            fields)}]
+       :field/options (-> [{:field-option/value [:default]
+                            :field-option/label (t :tr/sort-default)}
+                           {:field-option/value [:entity/created-at :direction :asc]
+                            :field-option/label (t :tr/sort-entity-created-at-asc)}
+                           {:field-option/value [:entity/created-at :direction :desc]
+                            :field-option/label (t :tr/sort-entity-created-at-desc)}
+                           {:field-option/value [:random]
+                            :field-option/label (t :tr/sort-random)}]
+                          (into (:extra-sort-options options))
+                          (into (comp (filter (every-pred :field/show-as-filter?
+                                                          ;; TODO extend to all field types? In current dataset only `:field.type/select` is used.
+                                                          (comp #{:field.type/select} :field/type)))
+                                      (map (fn [{:field/keys [id label options]}]
+                                             {:field-option/value [:field.type/select
+                                                                   :field-id id
+                                                                   :field-options options]
+                                              :field-option/label label})))
+                                fields))}]
      [field.ui/filter-field ?match-filter nil]]))
 
 (ui/defview grouped-card-grid [card values]
@@ -253,7 +254,7 @@
                                              :field-option/value :my-projects}
                                             {:field-option/label (t :tr/looking-for-help)
                                              :field-option/value :looking-for-help}]}]]
-      [query-ui tags fields !xform]
+      [query-ui {} tags fields !xform]
       (when-let [create! (note.data/new!-authorized {:note {:entity/parent board-id
                                                             :entity/title  (t :tr/untitled)
                                                             :entity/admission-policy :admission-policy/invite-only
@@ -316,7 +317,10 @@
         !xform (h/use-state (constantly identity))]
     [:<>
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
-      [query-ui tags fields !xform]]
+      [query-ui {:extra-sort-options [;; TODO need to load the data for this sort ordering
+                                      {:field-option/value [:member/num-projects]
+                                       :field-option/label (t :tr/number-of-projects)}]}
+       tags fields !xform]]
      (->> (data/members {:board-id board-id})
           (into [] @!xform )
           (grouped-card-grid (partial member.ui/card
@@ -337,7 +341,7 @@
         !xform (h/use-state (constantly identity))]
     [:<>
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
-      [query-ui tags fields !xform]]
+      [query-ui {} tags fields !xform]]
      [org.ui/invitation-widget (db/entity board-id)]
      (->> (data/pending-members {:board-id board-id})
           (into [] @!xform )
@@ -361,7 +365,7 @@
      [:h2.text-2xl (t :tr/community-vote)]
      [:div.mb-4 (t :tr/vote-blurb)]
      [:div.flex.flex-wrap.gap-4.items-end.mb-6
-      [query-ui tags fields !xform]]
+      [query-ui {} tags fields !xform]]
      (->> (data/projects {:board-id board-id})
           (into [] @!xform)
           (grouped-card-grid project.ui/vote-card))]))

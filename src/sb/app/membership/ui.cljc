@@ -79,10 +79,11 @@
        {:entity/fields    (-> board :entity/member-fields)
         :membership/roles roles
         :field/can-edit?  can-edit?}]]
-     (let [[invitations theirs] (->> (data/project-memberships-on-board board (sch/wrap-id account))
+     (let [[invitations theirs] (->> (data/project-memberships-of-board-membership membership)
                                      (u/filter-by :membership/member-approval-pending?)
                                      (map (partial mapv :membership/entity)))
-           mine (->> (data/project-memberships-on-board board (:account-id params))
+           mine (->> (data/project-memberships-of-board-membership {:membership/entity board
+                                                                    :membership/member (:account-id params)})
                      (map :membership/entity)
                      (filter (comp (complement (into (set theirs) invitations)))))]
        [:div.px-body
