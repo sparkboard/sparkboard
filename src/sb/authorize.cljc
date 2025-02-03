@@ -102,7 +102,8 @@
         :membership (when (sch/id= account-id (membership-account entity)) #{:role/self})
         (cond-> (:membership/roles #?(:cljs entity
                                       :clj  (membership account-id entity)))
-          (sch/id= account-id (:entity/parent entity))
+          (and account-id
+               (sch/id= account-id (:entity/parent entity)))
           (-> set (conj (keyword "role" (str (name (:entity/kind entity))
                                              "-admin"))))))
       #{}))
