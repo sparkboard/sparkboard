@@ -19,8 +19,6 @@
   (throw (ex-info (str "No persistence for " (:sym ?field))
                   {:where (map :sym (u/iterate-some io/parent ?field))})))
 
-(def persisted-value data/persisted-value)
-
 (defn get-view [?field props]
   (or (:view props)
       (:view ?field)
