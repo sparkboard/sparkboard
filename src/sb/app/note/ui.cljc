@@ -8,6 +8,7 @@
             [sb.app.membership.data :as member.data]
             [sb.app.membership.ui :as member.ui]
             [sb.app.note.data :as data]
+            [sb.app.note.field :as field]
             [sb.app.views.radix :as radix]
             [sb.app.views.ui :as ui]
             [sb.authorize :as az]
@@ -78,15 +79,15 @@
                                                                     :placeholder "Description"})]
          [entity.ui/persisted-attr note :entity/video field-params]
 
-         [entity.ui/persisted-attr note
-          :entity/field-entries
-          {:entity/fields    (:entity/fields note)
-           :membership/roles roles
-           :field/can-edit?  can-edit?}]
-
-
-         [entity.ui/persisted-attr note :entity/fields
-          {:field/can-edit? can-edit?}]
+         (if can-edit?
+           [field/fields-editor note
+            {:entity/fields    (:entity/fields note)
+             :field/can-edit? can-edit?}]
+           [entity.ui/persisted-attr note
+            :entity/field-entries
+            {:entity/fields    (:entity/fields note)
+             :membership/roles roles
+             :field/can-edit?  can-edit?}])
 
          [member.ui/for-modal note field-params]
 

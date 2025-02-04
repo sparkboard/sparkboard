@@ -40,22 +40,26 @@
   (when-some [init (:init m)] (reset! ?field init))
   ?field)
 
+#?(:cljs
+   (defn persisted-field [e a make-field props]
+     (let [persisted-value (get e a)
+           ?field          (h/use-memo #(doto (make-field persisted-value props)
+                                          (add-meta! {:attribute        a
+                                                      :db/id            (sch/wrap-id e)
+                                                      :field/label      (:field/label props)
+                                                      :field/persisted? true}))
+                                       ;; create a new field when the persisted value changes
+                                       ;; TODO - instead of creating a new field, reset :init if possible.
+                                       ;; this will break one place where we currently rely on recognizing a new field
+                                       ;; (image-field)
+                                       (h/use-deps [persisted-value props]))]
+       ?field)))
+
 (ui/defview persisted-attr [e a props]
-  (let [persisted-value (get e a)
-        view            (or (:view props) (-> a io/global-meta :view))
+  (let [view            (or (:view props) (-> a io/global-meta :view))
         make-field      (or (:make-?field (meta view))
-                            (fn [init _props] (io/field :init init)))
-        ?field          (h/use-memo #(doto (make-field persisted-value props)
-                                       (add-meta! {:attribute        a
-                                                   :db/id            (sch/wrap-id e)
-                                                   :field/label      (:field/label props)
-                                                   :field/persisted? true}))
-                                    ;; create a new field when the persisted value changes
-                                    ;; TODO - instead of creating a new field, reset :init if possible.
-                                    ;; this will break one place where we currently rely on recognizing a new field
-                                    ;; (image-field)
-                                    (h/use-deps [persisted-value props]))]
-    (view-field ?field (assoc props :view view))))
+                            (fn [init _props] (io/field :init init)))]
+    (view-field (persisted-field e a make-field props) (assoc props :view view))))
 
 #?(:cljs
    (defn href [{:as e :entity/keys [kind id]} key]
