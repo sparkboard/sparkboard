@@ -40,7 +40,9 @@
 
 
 (q/defquery show
-  {:prepare [(az/with-roles :note-id)]}
+  {:endpoint/public? true
+   :prepare [(member.data/assert-can-view :note-id)
+             (az/with-roles :note-id)]}
   [{:keys [note-id membership/roles]}]
   (u/timed `show
            (let [note (q/pull `[:entity/id

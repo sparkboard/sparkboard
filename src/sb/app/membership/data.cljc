@@ -122,7 +122,7 @@
                            (some-> account-id
                                    (az/membership entity)
                                    active-member?))
-         :project (can-view? account-id (:entity/parent entity))
+         (:project :note) (can-view? account-id (:entity/parent entity))
          :membership (let [member (:membership/member entity)]
                        (case (:entity/kind member)
                          :account (sch/id= account-id member)
