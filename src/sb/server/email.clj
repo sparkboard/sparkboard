@@ -1,6 +1,8 @@
 (ns sb.server.email
-  (:require [cognitect.aws.client.api :as aws]
+  (:require [clj-http.client :as http]
+            [cognitect.aws.client.api :as aws]
             [cognitect.aws.credentials :as credentials]
+            [jsonista.core :as j]
             [sb.i18n :as i :refer [t]]
             [sb.server.env :as env]))
 
@@ -20,13 +22,24 @@
                              :Message {:Subject {:Data subject}
                                        :Body {:Text {:Data body}}}}}))
 
+(defn sendgrid-send! [{:keys [to subject body]}]
+  (http/post "https://api.sendgrid.com/v3/mail/send"
+             {:headers {"Content-Type" "application/json"
+                        "Authorization" (str "Bearer " (env/config :sendgrid/api-key))}
+              :body (-> {:personalizations [{:to [{:email to}]}]
+                         :from {:email (env/config :sparkbot/email)}
+                         :subject subject
+                         :content [{:type "text/plain"
+                                    :value body}]}
+                        j/write-value-as-string)}))
+
 (defn send! [{:as params :keys [to subject body]}]
   (if (= "dev" (:env env/config))
     (do
       (println "Would send email to:" to)
       (println "Subject:" subject)
       (println body))
-    (aws-send! params)))
+    (sendgrid-send! params)))
 
 
 (defn send-to-account!
