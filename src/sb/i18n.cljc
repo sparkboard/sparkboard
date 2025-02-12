@@ -118,6 +118,9 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
      :tr/links                           {:en "Links"
                                           :fr "Liens"
                                           :es "Enlaces"},
+     :tr/add-link                        {:en "Add link"
+                                          :fr "Ajouter un lien"
+                                          :es "Añadir enlace"}
      :tr/image                           {:en "Image"
                                           :fr "Image"
                                           :es "Imagen"},

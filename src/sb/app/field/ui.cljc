@@ -663,18 +663,42 @@
                                          :!?current !?current
                                          :?images   ?images}))))])]))
 
-(ui/defview link-list-field
-  ;; TODO make this editable
-  {:make-?field (fn [init _props]
-                  (io/field :many {}))}
-  [?links {:field/keys [label]}]
-  [:div.field-wrapper
-   (form.ui/show-label ?links label)
-   (for [{:syms [link/?text link/?url]} ?links]
-     ^{:key @?url}
-     [:a {:href @?url} (or @?text @?url)])
 
-   ])
+(ui/defview link-field [{:link/syms [?label ?url] :as ?link}]
+  [:<>
+   [text-field ?label {:field/label false
+                       :placeholder (t :tr/label)
+                       :field/can-edit? true}]
+   [text-field ?url {:field/label false
+                     :placeholder "https://..."
+                     :field/can-edit? true}]])
+
+(defn clean-url [url]
+  (when url
+    (-> url
+        (str/replace #"^https?://(?:www)?" "")
+        (u/truncate-string 20))))
+
+(ui/defview show-links [links]
+  (into [:div.flex-v.gap-3]
+        (for [{:link/keys [label url]} links]
+          [:a.text-black.underline {:href url} (or label (clean-url url))])))
+
+(ui/defview link-list-field [?links {:field/keys [label can-edit?] :as props}]
+  (if can-edit?
+    [list-editor ?links (assoc props
+                               :list/label label
+                               :list/template-columns "auto auto"
+                               :list/entry-view link-field
+                               :list/add-label (t :tr/add-link)
+                               :list/make-?entry #(io/form {:link/label link/?label
+                                                            :link/url link/?url}
+                                                    :init {:link/label ""
+                                                           :link/url ""}))]
+    (when (seq @?links)
+      [:div.field-wrapper
+       [:div.field-label label]
+       (show-links @?links)])))
 
 (ui/defview show-entry-field
   {:key (fn [?entry props]
@@ -709,24 +733,12 @@
         :prose.format/html [sanitize/safe-html string]
         :prose.format/markdown [ui/show-markdown string]))))
 
-(defn clean-url [url]
-  (when url
-    (-> url
-        (str/replace #"^https?://(?:www)?" "")
-        (u/truncate-string 20))))
-
-(defn show-link-list:card [field {:keys [link-list/links]}]
-  (v/x
-    [:div.flex-v.gap-3
-     (for [{:keys [text url]} links]
-       [:a.text-black.underline {:href url} (or text (clean-url url))])]))
-
 (ui/defview show-entry:card {:key (comp :field/id :field-entry/field)}
   [{:as entry :keys [field-entry/field]}]
   (case (:field/type field)
     :field.type/video [show-video-url (:video/url entry)]
     :field.type/select [show-select-value field (:select/value entry)]
-    :field.type/link-list [show-link-list:card field entry]
+    :field.type/link-list [show-links (:link-list/links entry)]
     :field.type/image-list [show-image-list:card field entry]
     :field.type/prose [show-prose:card field entry]
     (str "no match" field)))
@@ -740,8 +752,8 @@
                       :image-list/images (image-list/?images :many {:entity/id ?id})
                       :video/url         video/?url
                       :select/value      select/?value
-                      :link-list/links   (link-list/?links :many {:text link/?text
-                                                                  :url  link/?url})
+                      :link-list/links   (link-list/?links :many {:link/label link/?label
+                                                                  :link/url  link/?url})
                       :prose/format      prose/?format
                       :prose/string      prose/?string}
                      :init init)
