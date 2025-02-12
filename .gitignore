@@ -23,6 +23,7 @@ classes
 resources/**/*.html
 resources/**/*.css
 resources/public/js/**
+resources/public/version
 
 **/.*.config.edn
 .db
