@@ -468,6 +468,67 @@
                                                      :before "left-[-2px]"
                                                      :after "right-[-2px]" nil)]}])))}))))
 
+(defn parse-px [s]
+  (js/Number (subs s 0 (- (.-length s) 2))))
+
+(defn use-orderable-parent-grid
+  [?parent]
+  (let [group         (goog/getUid ?parent)
+        transfer-data (fn [e data]
+                        (j/call-in e [:dataTransfer :setData]
+                                   (str group)
+                                   (pr-str data))
+                        (j/assoc-in! e [:dataTransfer :effectAllowed] "move"))
+        receive-data  (fn [e]
+                        (try
+                          (read-string (j/call-in e [:dataTransfer :getData] (str group)))
+                          (catch js/Error e nil)))
+        !?source (h/use-state nil)
+        !px (h/use-state 0)
+        !i (h/use-state 0)]
+    {:drag-parent-props
+     {:on-drag-over (j/fn [^js {:as e :keys [clientY currentTarget]}]
+                        (when @!?source
+                          (let [relative-y (->> currentTarget
+                                                .getBoundingClientRect
+                                                .-y
+                                                (- clientY))
+                                computed-style (js/getComputedStyle currentTarget)
+                                gap (parse-px (.-gap computed-style))
+                                rows (-> (.-gridTemplateRows computed-style)
+                                         (str/split " ")
+                                         (->> (map parse-px)))]
+                            (loop [i 0 px 0 [row & rows] rows]
+                              (if (and row (< (+ px (/ row 2)) relative-y))
+                                (recur (inc i) (+ px row gap) rows)
+                                (do (reset! !px px)
+                                    (reset! !i i))))))
+                        (j/call e :preventDefault))
+        :on-drop (fn [^js e]
+                   (.preventDefault e))
+        :on-drag-end (fn [^js e]
+                       (.preventDefault e)
+                       (when-let [id (receive-data e)]
+                         (reset! !?source nil)
+                         (io/swap-many-children! ?parent
+                                                 #(let [remover (remove #{@!?source})]
+                                                    (-> []
+                                                        (into (comp (take @!i) remover) %)
+                                                        (conj @!?source)
+                                                        (into (comp (drop @!i) remover) %))))
+                         (entity.data/maybe-save-field ?parent)))}
+     :destination-px
+     (when @!?source
+       @!px)
+     :use-order
+     (fn [?child]
+       {:drag-handle-props  {:draggable true
+                             :on-drag-start (fn [^js e]
+                                              (reset! !?source ?child)
+                                              (transfer-data e (:sym ?child)))}
+        :drag-subject-props {:class (when (= ?child @!?source)
+                                      "[&>*]:opacity-50")}})}))
+
 (defn error-popover [anchor content]
   (v/x [radix/persistent-popover
         {:default-open? true

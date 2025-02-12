@@ -70,6 +70,58 @@
         (str (:value props) " ")]
        [:textarea (assoc props :rows 1)]])))
 
+(ui/defview list-entry [use-order entry-view ?entry]
+  (let [{:keys [drag-handle-props drag-subject-props]} (use-order ?entry)]
+    [:div.contents.group.relative.-ml-6.py-1
+     drag-subject-props
+     [:div.icon-gray.w-6.flex.flex-none.items-center.justify-center.icon-gray.-mr-3
+      (merge drag-handle-props
+             {:class ["opacity-0 group-hover:opacity-100"
+                      "cursor-drag"]})
+      [icons/drag-dots]]
+     [entry-view ?entry]
+     [radix/dropdown-menu {:id      :field-request
+                           :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
+                                     [icons/ellipsis-horizontal "w-4 h-4"]]
+                           :items   [[{:on-select (fn [_]
+                                                    (radix/simple-alert! {:message      (t :tr/remove?)
+                                                                          :confirm-text (t :tr/remove)
+                                                                          :confirm-fn   (fn []
+                                                                                          (io/remove-many! ?entry)
+                                                                                          (p/do (entity.data/maybe-save-field ?entry)
+                                                                                                (radix/close-alert!)))}))}
+                                      (t :tr/remove)]]}]]))
+
+(ui/defview list-editor
+  [?list props]
+  (let [{:keys [drag-parent-props destination-px use-order]} (ui/use-orderable-parent-grid ?list)]
+    [:div.col-span-2.flex-v.gap-3
+     [:label.field-label (:list/label props)]
+     (when (:loading? ?list)
+       [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
+     (-> (into [:div.relative.grid.-ml-6.gap-3
+                (merge drag-parent-props
+                       {:style {:grid-template-columns
+                                (str "max-content " (:list/template-columns props "auto") " max-content")}})]
+               (map (partial list-entry use-order (:list/entry-view props)))
+               ?list)
+         (cond-> destination-px
+           ;; TODO update to tailwind4 to make -col-end-2 work
+           (conj [:div.absolute.bg-focus-accent.w-full.col-start-2.-col-end-2
+                  {:class "transition-[top] h-[4px]"
+                   :style {:top (str (- destination-px 2) "px")}}])))
+     (let [!generation (h/use-state 0)
+           ?new (h/use-memo (:list/make-?entry props) (h/use-deps @!generation))]
+       [:form.flex.gap-2 {:on-submit (fn [^js e]
+                                       (.preventDefault e)
+                                       (io/add-many! ?list @?new)
+                                       (io/try-submit+ ?new
+                                                       (p/let [result (entity.data/maybe-save-field ?list)]
+                                                         (swap! !generation inc)
+                                                         result)))}
+        [(:list/entry-view props) ?new]
+        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} (:list/add-label props)]])]))
+
 (ui/defview checkbox-field
   "A checkbox-input element that reads metadata from a ?field to display appropriately"
   [?field props]
@@ -816,58 +868,20 @@
                          (data/entry-value @?entry))]
            (show-entry-field ?entry props))))
 
-;; TODO adapted from admin_ui/show-option merge?
-(ui/defview show-request [{:as props :keys [request/use-order]}
-                         {:as ?request :syms [?text]}]
-  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (use-order ?request)]
-    [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
-     drag-subject-props
-     [:div
-      drop-indicator
-      [:div.flex.flex-none.items-center.justify-center.icon-gray
-       (merge drag-handle-props
-              {:class ["w-6 -mr-2"
-                       "opacity-0 group-hover:opacity-100"
-                       "cursor-drag"]})
-       [icons/drag-dots]]]
-     [text-field ?text {:field/label     false
-                        :field/can-edit? true
-                        :field/classes   {:wrapper "flex-auto"}
-                        :class           "rounded-sm relative focus:z-2"}]
-     [radix/dropdown-menu {:id      :field-request
-                           :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
-                                     [icons/ellipsis-horizontal "w-4 h-4"]]
-                           :items   [[{:on-select (fn [_]
-                                                    (radix/simple-alert! {:message      (t :tr/remove?)
-                                                                          :confirm-text (t :tr/remove)
-                                                                          :confirm-fn   (fn []
-                                                                                          (io/remove-many! ?request)
-                                                                                          (p/do (entity.data/maybe-save-field ?request)
-                                                                                                (radix/close-alert!)))}))}
-                                      (t :tr/remove)]]}]]))
+(ui/defview show-request [{:as ?request :syms [?text]}]
+  [text-field ?text {:field/label     false
+                     :placeholder     (t :tr/request-text)
+                     :field/can-edit? true
+                     :field/classes   {:wrapper "flex-auto"}
+                     :class           "rounded-sm relative focus:z-2"}])
 
-;; TODO adapted from admin_ui/options-editor, merge?
-(ui/defview requests-editor
-  [?requests props]
-  (let [use-order (ui/use-orderable-parent ?requests {:axis :y})]
-    [:div.col-span-2.flex-v.gap-3
-     [:label.field-label (t :tr/requests)]
-     (when (:loading? ?requests)
-       [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
-     (into [:div.flex-v]
-           (map (partial show-request (assoc props :request/use-order use-order)) ?requests))
-     (let [?new (h/use-memo #(io/field :init ""))]
-       [:form.flex.gap-2 {:on-submit (fn [^js e]
-                                       (.preventDefault e)
-                                       (io/add-many! ?requests {'?text @?new})
-                                       (io/try-submit+ ?new
-                                                       (p/let [result (entity.data/maybe-save-field ?requests)]
-                                                         (reset! ?new (:init ?new))
-                                                         result)))}
-        [text-field ?new {:placeholder     (t :tr/request-text)
-                          :field/can-edit? true
-                          :field/classes   {:wrapper "flex-auto"}}]
-        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} (t :tr/add-request)]])]))
+(ui/defview requests-editor [?requests props]
+  [list-editor ?requests (assoc props
+                                :list/label (t :tr/requests)
+                                :list/entry-view show-request
+                                :list/add-label (t :tr/add-request)
+                                :list/make-?entry #(io/form {:request/text ?text}
+                                                     :init {:request/text ""}))])
 
 (ui/defview show-requests [requests]
   (when (seq requests)

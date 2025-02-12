@@ -17,63 +17,33 @@
             [yawn.hooks :as h]
             [yawn.view :as v]))
 
-(ui/defview show-option [{:as props :keys [option/use-order]}
+(ui/defview show-option [props
                          {:as ?option :syms [?label ?value ?color]}]
-  (let [{:keys [drag-handle-props drag-subject-props drop-indicator]} (use-order ?option)]
-    [:div.flex.gap-2.items-center.group.relative.-ml-6.py-1
-     (merge {:key @?value}
-            drag-subject-props)
-     [:div
-      drop-indicator
-      [:div.flex.flex-none.items-center.justify-center.icon-gray
-       (merge drag-handle-props
-              {:class ["w-6 -mr-2"
-                       "opacity-0 group-hover:opacity-100"
-                       "cursor-drag"]})
-       [icons/drag-dots]]]
-     [field.ui/text-field ?label {:field/label     false
-                                  :field/can-edit? true
-                                  :field/classes   {:wrapper "flex-auto"}
-                                  :class           "rounded-sm relative focus:z-2"
-                                  :style           {:background-color @?color
-                                                    :color            (color/contrasting-text-color @?color)}}]
-     [:div.relative.w-10.focus-within-ring.rounded.overflow-hidden.self-stretch
-      [field.ui/color-field* ?color props]]
-     [radix/dropdown-menu {:id      :field-option
-                           :trigger [:button.p-1.relative.icon-gray.cursor-default.rounded.hover:bg-gray-200.self-stretch
-                                     [icons/ellipsis-horizontal "w-4 h-4"]]
-                           :items   [[{:on-select (fn [_]
-                                                    (radix/simple-alert! {:message      (t :tr/remove?)
-                                                                          :confirm-text (t :tr/remove)
-                                                                          :confirm-fn   (fn []
-                                                                                          (io/remove-many! ?option)
-                                                                                          (p/do (entity.data/maybe-save-field ?option)
-                                                                                                (radix/close-alert!)))}))}
-                                      (t :tr/remove)]]}]]))
+  [:<>
+   [:div
+    [field.ui/text-field ?label {:field/label     false
+                                 :placeholder     (t :tr/option-label)
+                                 :field/can-edit? true
+                                 :field/classes   {:wrapper "flex-auto"}
+                                 :class           "rounded-sm relative focus:z-2"
+                                 :style           {:background-color @?color
+                                                   :color            (color/contrasting-text-color @?color)}}]]
+   [:div.mt-2
+    [:div.relative.w-10.h-10.focus-within-ring.rounded.overflow-hidden.self-stretch
+     [field.ui/color-field* ?color props]]]])
 
 (ui/defview options-editor [?options props]
-  (let [use-order (ui/use-orderable-parent ?options {:axis :y})]
-    [:div.col-span-2.flex-v.gap-3
-     [:label.field-label (t :tr/options)]
-     (when (:loading? ?options)
-       [:div.loading-bar.absolute.h-1.top-0.left-0.right-0])
-     (into [:div.flex-v]
-           (map (partial show-option (assoc props :option/use-order use-order)) ?options))
-     (let [?new (h/use-memo #(io/field :init ""))]
-       [:form.flex.gap-2 {:on-submit (fn [^js e]
-                                       (.preventDefault e)
-                                       (io/add-many! ?options {'?value (str (random-uuid))
-                                                               '?label @?new
-                                                               '?color "#ffffff"})
-                                       (io/try-submit+ ?new
-                                         (p/let [result (entity.data/maybe-save-field ?options)]
-                                           (reset! ?new (:init ?new))
-                                           result)))}
-        [field.ui/text-field ?new {:placeholder     (t :tr/option-label)
-                                   :field/can-edit? true
-                                   :field/classes   {:wrapper "flex-auto"}}]
-        [:button.btn.bg-white.px-3.py-1.shadow {:type "submit"} (t :tr/add-option)]])
-     #_[ui/pprinted @?options]]))
+  [field.ui/list-editor ?options (assoc props
+                                        :list/label (t :tr/options)
+                                        :list/template-columns "auto max-content"
+                                        :list/entry-view (partial show-option props)
+                                        :list/add-label (t :tr/add-option)
+                                        :list/make-?entry #(io/form {:field-option/value ?value
+                                                                     :field-option/label ?label
+                                                                     :field-option/color ?color}
+                                                             :init {:field-option/value (str (random-uuid))
+                                                                    :field-option/label ""
+                                                                    :field-option/color "#ffffff"}))])
 
 (ui/defview field-row-detail [{:as ?field :syms [?label
                                                  ?hint
