@@ -262,7 +262,8 @@
 
 (defn -main [& [port]]
   (log/info "Starting server" {:jvm (System/getProperty "java.vm.version")
-                               :env (env/config :env)})
+                               :env (env/config :env)
+                               :version (str/trim (slurp (io/resource "public/version")))})
   #_(fire-jvm/sync-all)                                       ;; cache firebase db locally
   (restart-server! (or (some-> (System/getenv "PORT") (Integer/parseInt))
                        (some-> port Integer.)
