@@ -446,8 +446,8 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                           :fr "Options"
                                           :es "Opciones"}
      :tr/add-option                      {:en "Add option"
-                                          :fr "ajouter une option"
-                                          :es "añadir opción"}
+                                          :fr "Ajouter une option"
+                                          :es "Añadir opción"}
      :tr/option-label                    {:en "Option label"
                                           :fr "étiquette d'option"
                                           :es "etiqueta de opción"}
@@ -587,7 +587,7 @@ See https://iso639-3.sil.org/code_tables/639/data/all for list of codes"
                                           :fr "À la recherche de"
                                           :es "Buscando"}
      :tr/add-request                     {:en "Add request"
-                                          :fr "ajouter une demande"
+                                          :fr "Ajouter une demande"
                                           :es "Añadir solicitud"}
      :tr/request-text                    {:en "Request text"
                                           :fr "texte de la demande"
