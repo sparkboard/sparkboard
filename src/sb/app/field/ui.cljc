@@ -645,7 +645,8 @@
         ;; currently it is reset whenever `?images` changes
         !?current (h/use-state-with-deps (first ?images) hook-deps)
         use-order (ui/use-orderable-parent ?images {:axis :x})
-        [selected-url loading?] (ui/use-last-loaded (some-> @!?current ('?id) deref (asset.ui/asset-src :card)) hook-deps)]
+        [selected-url loading?] (ui/use-last-loaded (some-> @!?current ('?id) deref (asset.ui/asset-src :card)) hook-deps)
+        !gallery-open (h/use-state false)]
     [:div.field-wrapper
      (form.ui/show-label ?images label)
      (when selected-url
@@ -661,7 +662,21 @@
              (map (partial image-thumbnail
                            (merge props {:use-order use-order
                                          :!?current !?current
-                                         :?images   ?images}))))])]))
+                                         :?images   ?images}))))
+        (when can-edit? [:div.relative.h-16.w-16.flex-none
+                         [:label.absolute.inset-0.gap-2.flex-v.items-center.justify-center.p-3.gap-3.default-ring.default-ring-hover.rounded
+                          {:on-click #(swap! !gallery-open not)}
+                          "From gallery"]])])
+     (when @!gallery-open
+       (into [:div.grid.gap-3
+              {;; TODO upgrade to tailwindcss4
+               :class "grid-cols-[repeat(auto-fill, 200px)]"
+               :style {:grid-template-columns "repeat(auto-fill, 200px)"}}]
+             (map (fn [a]
+                    [:div.flex.items-center.justify-center.cursor-copy
+                     [:img {:src (asset.ui/asset-src a :avatar)
+                            :on-click #(do (io/add-many! ?images @a))}]]))
+             (asset.data/my-assets nil)))]))
 
 
 (ui/defview link-field [{:link/syms [?label ?url] :as ?link}]

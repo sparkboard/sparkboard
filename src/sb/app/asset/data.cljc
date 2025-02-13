@@ -1,7 +1,9 @@
 (ns sb.app.asset.data
-  (:require #?(:clj [ring.util.response :as resp])
+  (:require [re-db.api :as db]
+            #?(:clj [ring.util.response :as resp])
             #?(:clj [sb.server.assets :as assets])
             [sb.authorize :as az]
+            [sb.query :as q]
             [sb.server.datalevin :as dl]
             [sb.schema :as sch :refer [s- ?]]
             [sb.util :as u]
@@ -88,3 +90,10 @@
       :prepare  [az/with-account-id!]}
      [req {:keys [account-id]}]
      (assets/upload! req {:account-id account-id})))
+
+(q/defquery my-assets
+  {:prepare [az/with-account-id!]}
+  [{:keys [account-id]}]
+  (->> (db/where [[:entity/created-by account-id]
+                  [:entity/kind :asset]])
+       (mapv (db/pull [:entity/id]))))
