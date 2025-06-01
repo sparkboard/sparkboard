@@ -42,13 +42,15 @@
   [member-id entity-id]
   (:db/id (not-empty (deleted-membership member-id entity-id))))
 
-(defn editor-role? [roles]
-  (or (:role/self roles)
-      (:role/project-admin roles)
-      (:role/project-editor roles)
+(defn admin-role? [roles]
+  (or (:role/project-admin roles)
       (:role/board-admin roles)
       (:role/org-admin roles)))
 
+(defn editor-role? [roles]
+  (or (:role/self roles)
+      (:role/project-editor roles)
+      (admin-role? roles)))
 
 (defn require-account! [req params]
   (when-not (-> req :account :entity/id)
@@ -104,7 +106,9 @@
       #{}))
 
 (defn all-roles [account-id entity]
-  (->> (u/iterate-some :entity/parent entity)
+  (->> (cons entity
+             (u/iterate-some :entity/parent (or (:entity/parent entity)
+                                                (:membership/entity entity))))
        (into #{} (mapcat (partial get-roles account-id)))))
 
 (comment
@@ -131,3 +135,12 @@
    (defn with-roles [entity-key]
      (fn [req params]
        (#'with-roles* entity-key req params))))
+
+(defn assert-can-admin-or-self [id-key]
+  (fn assert-can-admin-or-self* [req params]
+    (let [entity (dl/entity (id-key params))
+          account-id (-> req :account :entity/id)
+          roles (all-roles account-id entity)]
+      (auth-guard! (or (:role/self roles)
+                       (admin-role? roles))
+          "Not authorized to admin this"))))

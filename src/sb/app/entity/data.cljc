@@ -77,7 +77,7 @@
                                  :doc "Date the entity was created"},
      :entity/created-by         (merge (sch/ref :one)
                                        {:doc "Account who created this entity"}),
-     :entity/deleted-at         {:doc  "Date when entity was marked deleted"
+     :entity/deleted-at         {:doc  "Date when entity was marked deleted. Should always be generated on the server because client clocks can't be trusted"
                                  :todo "Excise deleted data after a grace period"
                                  s-    'inst?}
      :entity/modified-by        (merge (sch/ref :one)
@@ -142,25 +142,26 @@
                           (when (and (not admin?) (:tag/restricted? tag))
                             (validate/permission-denied! "Only admins may modify restricted tags"))
                           (when (not tag)
-                            (validate/validation-failed! (str "Tag " tag-id " does not exist"))))))))})
+                            (validate/validation-failed! (str "Tag " tag-id " does not exist"))))))))
+   :membership/roles (fn [roles k entity m]
+                       (when-not (az/admin-role? roles)
+                         (validate/permission-denied!)))})
 
 (q/defx save-attributes!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id]} e m]
-  (let [e      (sch/wrap-id e)
-        entity (dl/entity e)
-        roles  (az/all-roles account-id entity)
-        ;; TODO put this in :prepare with member.data/assert-can-edit ?
-        _      (when-not (az/editor-role? roles)
-                 (validate/permission-denied!))
-        txs    (-> (assoc m :db/id e)
-                   retract-nils)]
-    (doseq [k (keys m)
-            :let [rule (get rules k)]
-            :when rule]
-      (rule roles k entity m))
-
-    (let [parent-schema (-> (keyword (name (:entity/kind entity)) "as-map")
+  {:prepare [az/with-account-id!
+             (fn [_ {:keys [account-id] m :entity}]
+               (let [entity (dl/entity (sch/wrap-id m))
+                     roles  (az/all-roles account-id entity)]
+                 ;; TODO put this in :prepare with member.data/assert-can-edit ?
+                 (when-not (az/editor-role? roles)
+                   (validate/permission-denied!))
+                 (doseq [k (keys m)
+                         :let [rule (get rules k)]
+                         :when rule]
+                   (rule roles k entity m))))]}
+  [{:keys [account-id] m :entity}]
+  (let [txs (retract-nils m)]
+    (let [parent-schema (-> (keyword (name (:entity/kind (dl/entity (sch/wrap-id m)))) "as-map")
                             (@sch/!malli-registry))
           without-nils  (ignore-optional-nils parent-schema m)]
       (validate/assert without-nils (mu/select-keys parent-schema (keys without-nils))))
@@ -170,6 +171,16 @@
       (catch Exception e (def E e) (throw e)))
 
     {:txs txs}))
+
+(q/defx delete!
+  "Sets `:entity/deletat-at` to current instant.
+We use this instead of `save-attributes!` because we do not trust the client's clock"
+  {:prepare [az/with-account-id!
+             (az/assert-can-admin-or-self :entity-id)]}
+  [{:keys [entity-id]}]
+  (db/transact! [{:entity/id entity-id
+                  :entity/deleted-at (java.util.Date.)}])
+  {:body ""})
 
 (defn persisted-value [?field]
   (if-let [{:keys [db/id attribute]} (when (:field/persisted? ?field) ?field)]
@@ -183,7 +194,7 @@
   (when-let [{:as ?persisted-field :keys [db/id attribute]} (io/ancestor-by ?field :field/persisted?)]
     (when (not= @?field (persisted-value ?field))
       (io/try-submit+ ?persisted-field
-        (save-attributes! nil id {attribute @?persisted-field})))))
+                      (save-attributes! {:entity {:entity/id (sch/unwrap-id id) attribute @?persisted-field}})))))
 
 (defn reverse-attr [a]
   (keyword (namespace a) (str "_" (name a))))

@@ -262,14 +262,19 @@
 (defn membership-colors [membership]
   (mapv :tag/color (resolved-tags membership)))
 
-(defn members
-  "Returns members of `entity`, with an optional transducer `xform ` applied to the memberships first."
-  ([entity] (members entity identity))
+(defn memberships
+  "Returns memberships of `entity`, with an optional transducer `xform` applied to them."
+  ([entity] (memberships entity identity))
   ([entity xform]
    (->> (:membership/_entity entity)
         (into [] (comp (remove sch/deleted?)
-                       xform
-                       (map :membership/member))))))
+                       xform)))))
+
+(defn members
+  "Returns members of `entity`, with an optional transducer `xform` applied to the memberships first."
+  ([entity] (members entity identity))
+  ([entity xform]
+   (memberships entity (comp xform (map :membership/member)))))
 
 (defn member-of
   "Returns all entities that `member` is a member of, with an optional transducer `xform` applied to the memberships first."
@@ -298,12 +303,3 @@
                          (validate/assert :membership/as-map))]
       (db/transact! [membership])
       {:entity/id (:entity/id membership)})))
-
-(q/defx leave!
-  {:prepare [az/with-account-id!]}
-  [{:keys [account-id board-id]}]
-  (when-let [member-id (az/membership-id account-id board-id)]
-    (db/transact! [{:db/id member-id
-                    :entity/deleted-at (java.util.Date.)}])
-    (db/pull [:entity/id :entity/deleted-at]
-             member-id)))

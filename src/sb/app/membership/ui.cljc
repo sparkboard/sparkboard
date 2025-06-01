@@ -1,6 +1,7 @@
 (ns sb.app.membership.ui
   (:require [promesa.core :as p]
             [re-db.api :as db]
+            [sb.app.entity.data :as entity.data]
             [sb.app.entity.ui :as entity.ui]
             [sb.app.field.ui :as field.ui]
             [sb.app.form.ui :as form.ui]
@@ -20,7 +21,8 @@
    :view/router :router/modal}
   [params]
   (let [{:as     membership
-         account :membership/member} (data/show params)
+         account :membership/member
+         board   :membership/entity} (data/show params)
         [can-edit? roles dev-panel] (form.ui/use-dev-panel membership {"Current User" (az/all-roles (:account-id params) membership)
                                                                        "Board Admin"  #{:role/board-admin}
                                                                        "This User"    #{:role/self}
@@ -50,7 +52,7 @@
               :items   []}]))
 
         [radix/tooltip "Back to board"
-         [:a.modal-title-icon {:href (routing/entity-path (:membership/entity membership) 'ui/show)}
+         [:a.modal-title-icon {:href (routing/entity-path board 'ui/show)}
           [icons/arrow-left]]]
         [radix/tooltip "Link to member"
          [:a.modal-title-icon {:href (routing/entity-path membership 'ui/show)}
@@ -63,7 +65,7 @@
      [:div.px-body.flex-v.gap-6
       [entity.ui/persisted-attr membership
        :entity/field-entries
-       {:entity/fields    (->> membership :membership/entity :entity/member-fields)
+       {:entity/fields    (-> board :entity/member-fields)
         :membership/roles roles
         :field/can-edit?  can-edit?}]]
      [:div.px-body
@@ -72,21 +74,41 @@
        (for [project (->> (db/where [[:membership/member (sch/wrap-id account)]
                                      (complement sch/deleted?)])
                           (map :membership/entity)
-                          (filter (every-pred (comp #{(:membership/entity membership)} :entity/parent)
+                          (filter (every-pred (comp #{board} :entity/parent)
                                               ;; filter out sticky notes. TODO do we want to show them somewhere else?
                                               (comp #{:project} :entity/kind))))]
          ^{:key (:entity/id project)}
          [:a.btn.btn-white {:href (routing/entity-path project 'ui/show)}
           (:entity/title project)])]]
-     (when (:role/self roles)
+     (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id membership)
+                                                              :membership/roles #{:role/board-admin}}})
+       [:div.px-body
+        [:div.field-label
+         (t :tr/roles)]
+        [:label.flex.items-center.gap-1
+         [:input {:type "checkbox"
+                  :checked (boolean (:role/board-admin (:membership/roles membership)))
+                  :on-change (fn [event]
+                               (entity.data/save-attributes!
+                                {:entity {:entity/id (:entity/id membership)
+                                          :membership/roles ((if (-> event .-target .-checked)
+                                                               (fnil conj #{})
+                                                               disj)
+                                                             (:membership/roles membership)
+                                                             :role/board-admin)}}))}]
+         [:div
+          (t :tr/board-admin)]]])
+     (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id membership)})]
        [:div.px-body
         [ui/action-button
-         {:class "bg-white/40"
+         {:class "bg-white"
           :on-click (fn [_]
                       (p/do
-                        (data/leave! {:board-id (:entity/id (:membership/entity membership))})
+                        (delete!)
                         (routing/dissoc-router! :router/modal)))}
-         (t :tr/leave-board)]])]))
+         (if (:role/self roles)
+           (t :tr/leave-board)
+           (t :tr/remove-from-board))]])]))
 
 (ui/defview tags [size board-membership]
   (let [tag-class (case size :small "tag-sm" :medium "tag-md")]

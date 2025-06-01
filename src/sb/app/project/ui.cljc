@@ -103,22 +103,55 @@
   [:div.field-wrapper
    [:div.field-label (t :tr/team)]
    [:div.grid.grid-cols-2.gap-x-6
-    (for [{:as account :keys [account/display-name]} (member.data/members project (xf/sort-by :entity/created-at u/compare:desc))
-          :let [board-membership (az/membership account (:entity/parent project))]]
-      [:div.flex.items-center.gap-2.cursor-default.hover:bg-gray-100.py-3.rounded
-       {:key      (:entity/id account)
-        :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
-       [ui/avatar {:size 12} account]
-       [:div.flex-v.gap-1
-        display-name
-        [member.ui/tags :small board-membership]]])]
-   (when ((some-fn :role/project-admin :role/board-admin) (:membership/roles props))
+    (for [project-membership (member.data/memberships project (xf/sort-by :entity/created-at u/compare:desc))
+          :let [{:as account :keys [account/display-name]} (:membership/member project-membership)
+                board-membership (az/membership account (:entity/parent project))]]
+      [:div.flex-v.cursor-default.hover:bg-gray-100.py-3.rounded
+       [:div.flex.items-center.gap-2
+        {:key      (:entity/id account)
+         :on-click #(routing/nav! (routing/entity-route board-membership 'ui/show))}
+        [ui/avatar {:size 12} account]
+        [:div.flex-v.gap-1
+         display-name
+         [member.ui/tags :small board-membership]]]
+       (when (entity.data/save-attributes!-authorized {:entity {:entity/id (:entity/id project-membership)
+                                                                :membership/roles #{:role/project-admin}}})
+         (into [:div.flex.flex-wrap.gap-2]
+               (map (fn [role]
+                      [:label.flex.items-center.gap-1
+                       [:input {:type "checkbox"
+                                :checked (boolean (role (:membership/roles project-membership)))
+                                :on-change (fn [event]
+                                             (entity.data/save-attributes!
+                                              {:entity {:entity/id (:entity/id project-membership)
+                                                        :membership/roles ((if (-> event .-target .-checked)
+                                                                             (fnil conj #{})
+                                                                             disj)
+                                                                           (:membership/roles project-membership)
+                                                                           role)}}))}]
+                       [:div
+                        (t (keyword "tr" (name role)))]]))
+               [:role/project-admin :role/project-editor]))
+       (when-let [delete! (entity.data/delete!-authorized {:entity-id (:entity/id project-membership)})]
+         [ui/action-button
+          {:class "bg-white h-8"
+           :on-click (fn [_]
+                       (delete!))}
+          (t :tr/remove-from-project)])])]
+   (when (az/admin-role? (:membership/roles props))
      [entity.ui/persisted-attr project :entity/admission-policy props])
-   (if (some-> (db/get :env/config :account)
-               (az/membership-id project))
-     [ui/action-button
-      {:on-click (fn [_] (data/leave! {:project-id (sch/unwrap-id project)}))}
-      (t :tr/leave)]
+   (if-let [membership-id (some-> (db/get :env/config :account)
+                                  (az/membership project)
+                                  not-empty
+                                  :entity/id)]
+     (when-let [delete! (entity.data/delete!-authorized {:entity-id membership-id})]
+       [ui/action-button
+        {:class "bg-white"
+         :on-click (fn [_]
+                     (p/let [result (delete!)]
+                       (routing/dissoc-router! :router/modal)
+                       result))}
+        (t :tr/leave)])
      (when-let [join! (data/join!-authorized {:project-id (sch/unwrap-id project)})]
        [ui/action-button
         {:on-click (fn [_] (join!))}
@@ -141,7 +174,8 @@
        (when (:entity/draft? project)
          [:div.border-b-2.border-dashed.px-body.py-2.flex-center.gap-3.bg-gray-100
           [:div.mr-auto.text-gray-500 "Draft - only visible to you."]
-          [ui/action-button {:on-click #(entity.data/save-attributes! nil (:entity/id project) {:entity/draft? false})
+          [ui/action-button {:on-click #(entity.data/save-attributes! {:entity {:entity/id (:entity/id project)
+                                                                                :entity/draft? false}})
                              :classes  {:btn          "btn-primary px-4 py-1"
                                         :progress-bar "text-[rgba(255,255,255,0.5)]"}}
            (t :tr/publish)]])
@@ -204,12 +238,14 @@
              [discussion.ui/follow-toggle (:project-id params)]]
             [discussion.ui/show-posts project]])
 
-         (when can-edit?
-           [ui/action-button {:on-click (fn [_]
-                                          (p/let [result (data/delete! {:project-id (sch/unwrap-id (:project-id params))})]
-                                            (routing/dissoc-router! :router/modal)
-                                            result))}
-            "delete"])]]]
+         (when-let [delete! (entity.data/delete!-authorized {:entity-id (sch/unwrap-id (:project-id params))})]
+           [ui/action-button
+            {:class "bg-white"
+             :on-click (fn [_]
+                         (p/let [result (delete!)]
+                           (routing/dissoc-router! :router/modal)
+                           result))}
+            (t :tr/delete)])]]]
       [ui/error-view
        {:error "Project not found"}])))
 
