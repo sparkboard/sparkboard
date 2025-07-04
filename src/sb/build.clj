@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             [clojure.repl.deps :as deps]
             [re-db.api :as db]
-            [sb.migrate.one-time :as one-time]
+            [migration.one-time :as one-time]
             [sb.routing :as routing]
             [sb.server.core]
             [sb.transit :as t]

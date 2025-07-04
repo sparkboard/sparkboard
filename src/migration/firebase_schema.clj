@@ -1,4 +1,4 @@
-(ns sb.migrate.firebase-schema
+(ns migration.firebase-schema
   (:require [clojure.string :as str]
             [clojure.string :as str]
             [jsonista.core :as json]

@@ -1,4 +1,4 @@
-(ns sb.migrate.one-time
+(ns migration.one-time
   (:require [clojure.instant :as inst]
             [clojure.java.shell :refer [sh]]
             [clojure.set :refer [rename-keys]]
