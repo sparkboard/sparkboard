@@ -1,0 +1,11 @@
+.cpcache
+.idea
+.shadow-cljs
+node_modules
+*.iml
+**/js/**
+.cache
+src/**/scratch
+classes/**/scratch
+.clerk
+public/clerk

@@ -1,0 +1,22 @@
+{:deps {:aliases [:bench :clerk :datomic :test]}
+ :builds
+ {:clerk
+  {:target :esm
+   :output-dir "public/clerk"
+   :modules {:clerk {:entries [re-db.notebooks.index]}}
+   :devtools {:http-port 8008
+              :http-root "public"}}
+  :test
+  {:target :browser-test
+   :test-dir "public/test"
+   :ns-regexp "-test$"
+   :devtools {:http-port 8009
+              :http-root "public/test"}}
+  :bench
+  {:target :browser
+   :debug true
+   :compiler-options {:pseudo-names true}
+   :output-dir "public/bench/js"
+   :modules {:bench {:entries [re-db.bench]}}
+   :devtools {:http-port 8010
+              :http-root "public/bench"}}}}
