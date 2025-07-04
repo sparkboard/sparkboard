@@ -1,0 +1,7 @@
+.clerk
+.idea
+.cpcache
+.shadow-cljs
+public
+node_modules
+.nrepl-port

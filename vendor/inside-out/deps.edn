@@ -1,0 +1,18 @@
+{:deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/clojurescript {:mvn/version "1.11.60"}
+        rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}
+        applied-science/js-interop {:mvn/version "0.3.3"}
+        io.github.mhuebert/re-db {#_#_:local/root "../re-db"
+                                  :git/sha "cab8732f2e6315774a637d15dd4f376d089005bd"}
+        funcool/promesa {:mvn/version "9.2.541"}
+        thheller/shadow-cljs {:mvn/version "2.20.13"}}
+ :aliases
+ ;; for compiling clerk notebook
+ {:clerk {:extra-paths ["dev"]
+          :extra-deps {io.github.mhuebert/clerk-cljs
+                       {:git/sha "b8a51d44873a40590f662c776eb6db1a0fccf597"}}}
+
+  ;; for working on Clerk
+  :clerk-local {:extra-paths ["dev"]
+                :extra-deps {io.github.mhuebert/clerk-cljs
+                             {:local/root "../clerk-cljs"}}}}}

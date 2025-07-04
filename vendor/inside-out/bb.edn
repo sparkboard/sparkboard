@@ -1,0 +1,17 @@
+{:tasks {dev (do (shell "yarn")
+                 (shell "shadow-cljs -A:clerk clj-run dev/start"))
+         dev-local (do (shell "yarn")
+                       (shell "shadow-cljs -A:clerk-local server"))
+         sha (let [sha (clojure.string/trim (:out (shell {:out :string} "git rev-parse HEAD")))
+                   file "public/build/index.html"]
+               (->
+                 (slurp file)
+                 (clojure.string/replace "$GIT_SHA" sha)
+                 (->> (spit file))))
+         release (shell "yarn shadow-cljs -A:clerk release clerk")
+         publish (do (shell "yarn")
+                     (run 'release)
+                     (shell "clojure -X:clerk dev/publish!")
+                     (shell "touch public/build/CNAME")
+                     (spit "public/build/CNAME" "inside-out.matt.is")
+                     (run 'sha))}}

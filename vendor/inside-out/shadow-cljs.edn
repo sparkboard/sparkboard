@@ -1,0 +1,12 @@
+{:deps true
+ :dev-http {8765 "public"
+            7778 "public/build"}
+ :builds
+ {:clerk
+  {:target :esm
+   :modules {:main {:entries [inside-out.test-notebook
+                              inside-out.notebook]}}
+   :output-dir "public/js"
+   :release {:output-dir "public/build/js"}
+   :asset-path "/js"
+   }}}
