@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "clojure-mcp": {
+      "command": "/bin/sh",
+      "args": [
+        "-c",
+        "export PATH=/opt/homebrew/bin:$PATH; exec clojure -X:mcp :port 7888"
+      ],
+      "env": {}
+    }
+  }
+}

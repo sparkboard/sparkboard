@@ -1,0 +1,2 @@
+{:allowed-directories ["." "src" "test" "resources" "dev"]
+ :project-summary "Sparkboard - A collaborative platform built with Clojure/ClojureScript"}
